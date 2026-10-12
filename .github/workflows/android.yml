@@ -116,22 +116,26 @@ jobs:
       - name: Run detekt with the owner configuration
         shell: bash
         run: |
-          set +e
+          # TEMPORARY (report-only): remove '--fail-on-severity Never' in step 3.3b.3 part 4,
+          # so that findings fail the job. Any non-zero exit code here is a tool or configuration error.
           java -jar "${RUNNER_TEMP}/detekt-cli.jar" \
-            --input app/src,game-engine/src \
+            --input app/src:game-engine/src \
             --config .github/detekt/detekt.yml \
             --build-upon-default-config \
             --base-path "${GITHUB_WORKSPACE}" \
+            --fail-on-severity Never \
             --report sarif:detekt.sarif \
-            --report markdown:detekt.md
-          code=$?
-          set -e
-          echo "detekt exit code: ${code}"
-          { echo "## detekt (exit code ${code})"; [ -f detekt.md ] && cat detekt.md; } >> "${GITHUB_STEP_SUMMARY}"
-          # Exit code 2 = findings. Any other non-zero code is a tool or configuration error: always fail.
-          if [ "${code}" -ne 0 ] && [ "${code}" -ne 2 ]; then exit "${code}"; fi
-          # TEMPORARY (report-only): remove the next line in step 3.3b.3 part 4, so that findings fail the job.
-          exit 0
+            --report md:detekt.md
+
+      - name: Publish detekt summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f detekt.md ]; then
+            cat detekt.md >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "## detekt: no report produced (see the 'Run detekt' step log)" >> "${GITHUB_STEP_SUMMARY}"
+          fi
 
       - name: Upload detekt results to code scanning
         if: always() && hashFiles('detekt.sarif') != ''
