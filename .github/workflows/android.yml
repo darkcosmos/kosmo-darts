@@ -98,6 +98,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
@@ -145,6 +146,25 @@ jobs:
             exit 1
           fi
 
+      - name: No new suppressions (detekt, Kotlin, Android Lint)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # Exceptions are granted by the owner only, in the configuration under .github/, never in code.
+          added=$(git diff --unified=0 "${BASE_SHA}...${HEAD_SHA}" -- '*.kt' '*.kts' '*.xml' \
+            | grep -E '^\+[^+]' \
+            | grep -E '@(file:)?Suppress(Warnings|Lint)?\b|tools:ignore=' || true)
+          if [ -n "${added}" ]; then
+            echo "::error::This PR adds warning suppressions. Fix the code, or ask the owner for a configuration exception."
+            echo "${added}"
+            exit 1
+          fi
+          echo "OK: no suppression added"
+
       - name: Run detekt with the owner configuration
         shell: bash
         run: |
@@ -156,14 +176,12 @@ jobs:
             exit 1
           fi
           echo "KOTLIN_FILES=${files}" >> "${GITHUB_ENV}"
-          # TEMPORARY (report-only): remove '--fail-on-severity Never' in step 3.3b.3 part 4,
-          # so that findings fail the job. Any non-zero exit code here is a tool or configuration error.
+          # Blocking: any finding of severity 'error', or any tool error, fails the job.
           java -jar "${RUNNER_TEMP}/detekt-cli.jar" \
             --input app/src:game-engine/src \
             --config .github/detekt/detekt.yml \
             --build-upon-default-config \
             --base-path "${GITHUB_WORKSPACE}" \
-            --fail-on-severity Never \
             --report sarif:detekt.sarif
 
       - name: Publish detekt summary
@@ -174,10 +192,13 @@ jobs:
             echo "## detekt"
             echo "Kotlin files analyzed: ${KOTLIN_FILES:-unknown}"
             if [ -f detekt.sarif ]; then
-              echo "Findings: $(jq '[.runs[].results[]] | length' detekt.sarif)"
-              echo '```'
-              jq -r '.runs[].results[] | "\(.ruleId)  \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' detekt.sarif
-              echo '```'
+              count=$(jq '[.runs[].results[]] | length' detekt.sarif)
+              echo "Findings: ${count}"
+              if [ "${count}" -gt 0 ]; then
+                echo '```'
+                jq -r '.runs[].results[] | "\(.ruleId)  \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' detekt.sarif
+                echo '```'
+              fi
             else
               echo "No SARIF report produced (see the 'Run detekt' step log)."
             fi
