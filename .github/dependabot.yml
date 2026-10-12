@@ -1,0 +1,15 @@
+# Owner-maintained. Gradle ecosystem will be added once the Android project exists (step 3.3b).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 7
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
