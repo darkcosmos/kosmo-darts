@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="home_welcome">Comptez les points de vos parties de fléchettes entre amis.</string>
+    <string name="home_new_game">Nouvelle partie</string>
+    <string name="home_coming_soon">Bientôt disponible</string>
+</resources>
