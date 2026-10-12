@@ -1,0 +1,104 @@
+# Owner-maintained Android build. The agent cannot modify this file (token without 'workflow' scope).
+# Same toolchain as the sandbox image (kosmo-agent-sandbox Dockerfile): keep both in sync.
+name: android
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: "25"
+  CLT_BUILD: "15859902"
+  CLT_SHA256: "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
+  ANDROID_PLATFORM: "platforms;android-37.2"
+  ANDROID_BUILD_TOOLS: "build-tools;37.0.0"
+
+jobs:
+  # TEMPORARY (remove in step 3.3b, together with 'needs'/'if' below, before making 'build' required):
+  # skip 'build' while the branch does not contain the Android project yet.
+  # hashFiles() is not allowed in a job-level 'if', hence this small detection job.
+  detect-project:
+    name: detect-project
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      present: ${{ steps.detect.outputs.present }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: detect
+        run: |
+          if [ -f settings.gradle.kts ]; then echo "present=true"; else echo "present=false"; fi >> "$GITHUB_OUTPUT"
+
+  build:
+    name: build
+    needs: detect-project
+    if: needs.detect-project.outputs.present == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Install pinned Android SDK packages (same as the sandbox)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk="${RUNNER_TEMP}/android-sdk"
+          zip="commandlinetools-linux-${CLT_BUILD}_latest.zip"
+          curl -fsSLo "${RUNNER_TEMP}/${zip}" "https://dl.google.com/android/repository/${zip}"
+          echo "${CLT_SHA256}  ${RUNNER_TEMP}/${zip}" | sha256sum -c -
+          mkdir -p "${sdk}/cmdline-tools"
+          unzip -q "${RUNNER_TEMP}/${zip}" -d "${sdk}/cmdline-tools"
+          mv "${sdk}/cmdline-tools/cmdline-tools" "${sdk}/cmdline-tools/latest"
+          (yes || true) | "${sdk}/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null
+          "${sdk}/cmdline-tools/latest/bin/sdkmanager" "${ANDROID_PLATFORM}" "${ANDROID_BUILD_TOOLS}" > /dev/null
+          "${sdk}/cmdline-tools/latest/bin/sdkmanager" --list_installed
+          echo "ANDROID_HOME=${sdk}" >> "${GITHUB_ENV}"
+          echo "ANDROID_SDK_ROOT=${sdk}" >> "${GITHUB_ENV}"
+
+      - name: Validate the Gradle wrapper
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Build, unit tests, Android Lint, debug APK
+        run: ./gradlew build :app:assembleDebug --stacktrace
+
+      - name: The app must not request the INTERNET permission
+        shell: bash
+        run: |
+          apk=app/build/outputs/apk/debug/app-debug.apk
+          perms="$("${ANDROID_HOME}/build-tools/37.0.0/aapt2" dump permissions "${apk}")"
+          echo "${perms}"
+          if echo "${perms}" | grep -q "android.permission.INTERNET"; then
+            echo "::error::android.permission.INTERNET found in ${apk}"
+            exit 1
+          fi
+
+      - name: Publish the debug APK
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kosmo-darts-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

@@ -15,7 +15,8 @@ To suggest a change here, use the "Proposed owner changes" section of your PR de
 ## Technical baseline
 
 - Kotlin, Jetpack Compose, Material 3, dark theme. Single activity.
-- Gradle Kotlin DSL and a version catalog (`gradle/libs.versions.toml`). No versions hardcoded in build files.
+- Gradle Kotlin DSL and a version catalog (`gradle/libs.versions.toml`). Dependency and plugin versions live only
+  in the catalog. SDK levels and `buildToolsVersion` required by the sandbox policy are set directly in the build file.
 - Application id and namespace: `io.github.darkcosmos.kosmodarts`. `minSdk = 30`, `targetSdk = 37`.
 - Modules:
   - `:game-engine`: pure Kotlin/JVM module with all game rules (scores, checkouts, turns, undo).
