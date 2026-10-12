@@ -1,0 +1,79 @@
+# Owner-maintained security checks. The agent cannot modify this file (token without 'workflow' scope).
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions: {}
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  protected-paths:
+    name: protected-paths
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Only the owner (or Dependabot) may change .github/
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed="$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")"
+          echo "Changed files:"; echo "${changed}"
+          protected="$(echo "${changed}" | grep -E '^\.github/' || true)"
+          allowed() { [ "$1" = "${OWNER}" ] || [ "$1" = "dependabot[bot]" ]; }
+          if [ -n "${protected}" ] && ! { allowed "${PR_AUTHOR}" && allowed "${ACTOR}"; }; then
+            echo "::error::Protected paths changed (author='${PR_AUTHOR}', actor='${ACTOR}'):"
+            echo "${protected}"
+            exit 1
+          fi
+          echo "OK: no protected path changed by a non-allowed actor"
+
+  semgrep:
+    name: semgrep
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Semgrep (pinned, not tracked by Dependabot)
+        run: pipx install "semgrep==1.180.0"
+      - name: Scan
+        run: >-
+          semgrep scan --metrics=off
+          --config p/secrets --config p/github-actions --config p/kotlin
+          --sarif --output semgrep.sarif --error
+      - name: Upload results to code scanning
+        if: always() && hashFiles('semgrep.sarif') != ''
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  dependency-review:
+    name: dependency-review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
