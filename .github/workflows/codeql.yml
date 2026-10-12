@@ -66,6 +66,8 @@ jobs:
         with:
           languages: java-kotlin
           build-mode: manual
+          # Broader security query suite (medium-precision rules included); CodeQL is non-blocking here
+          queries: security-extended
 
       - name: Build observed by CodeQL (no cache, no daemon)
         run: ./gradlew assembleDebug --no-build-cache --no-configuration-cache --no-daemon --stacktrace
