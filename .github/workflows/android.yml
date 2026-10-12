@@ -65,6 +65,8 @@ jobs:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
           # Generate the dependency graph in this read-only job; it is submitted by dependency-graph-submit.yml
           dependency-graph: generate-and-upload
+          # Only what ships in the APK: build tooling (AGP and its deps) and tests are excluded
+          dependency-graph-include-configurations: '^(releaseRuntimeClasspath|runtimeClasspath)$'
 
       - name: Build, unit tests, Android Lint, debug APK
         run: ./gradlew build :app:assembleDebug --stacktrace
