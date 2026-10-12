@@ -49,3 +49,5 @@ To suggest a change here, use the "Proposed owner changes" section of your PR de
 
 - Branch names: `feat/...`, `fix/...`, `chore/...`, `build/...`, `test/...`, `docs/...`.
 - PRs are squash-merged by the owner: write the PR title as the final commit message.
+
+<!-- protected-paths canary: do not merge -->
