@@ -37,6 +37,13 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // CI canary only: log4j-core and log4j-api both ship this file, which breaks resource merging.
+    packaging {
+        resources {
+            excludes += "/META-INF/DEPENDENCIES"
+        }
+    }
 }
 
 kotlin {
