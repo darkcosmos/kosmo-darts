@@ -26,7 +26,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Only the owner (or Dependabot) may change .github/
+      - name: Only the owner (or Dependabot) may change protected paths
         env:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           ACTOR: ${{ github.actor }}
@@ -36,7 +36,7 @@ jobs:
         run: |
           changed="$(git diff --name-only "${BASE_SHA}...${HEAD_SHA}")"
           echo "Changed files:"; echo "${changed}"
-          protected="$(echo "${changed}" | grep -E '^\.github/' || true)"
+          protected="$(echo "${changed}" | grep -E '^\.github/|(^|/)\.claude/|(^|/)CLAUDE(\.local)?\.md$' || true)"
           allowed() { [ "$1" = "${OWNER}" ] || [ "$1" = "dependabot[bot]" ]; }
           if [ -n "${protected}" ] && ! { allowed "${PR_AUTHOR}" && allowed "${ACTOR}"; }; then
             echo "::error::Protected paths changed (author='${PR_AUTHOR}', actor='${ACTOR}'):"
