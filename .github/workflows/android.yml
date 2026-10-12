@@ -60,6 +60,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           cache-read-only: ${{ github.ref != 'refs/heads/main' }}
+          # Generate the dependency graph in this read-only job; it is submitted by dependency-graph-submit.yml
+          dependency-graph: generate-and-upload
 
       - name: Build, unit tests, Android Lint, debug APK
         run: ./gradlew build :app:assembleDebug --stacktrace
