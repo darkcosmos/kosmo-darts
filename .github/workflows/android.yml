@@ -21,28 +21,8 @@ env:
   ANDROID_BUILD_TOOLS: "build-tools;37.0.0"
 
 jobs:
-  # TEMPORARY (remove in step 3.3b, together with 'needs'/'if' below, before making 'build' required):
-  # skip 'build' while the branch does not contain the Android project yet.
-  # hashFiles() is not allowed in a job-level 'if', hence this small detection job.
-  detect-project:
-    name: detect-project
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      present: ${{ steps.detect.outputs.present }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - id: detect
-        run: |
-          if [ -f settings.gradle.kts ]; then echo "present=true"; else echo "present=false"; fi >> "$GITHUB_OUTPUT"
-
   build:
     name: build
-    needs: detect-project
-    if: needs.detect-project.outputs.present == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
