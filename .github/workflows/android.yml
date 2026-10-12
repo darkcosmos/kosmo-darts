@@ -113,9 +113,49 @@ jobs:
           curl -fsSLo "${RUNNER_TEMP}/detekt-cli.jar" "${url}"
           echo "${DETEKT_SHA256}  ${RUNNER_TEMP}/detekt-cli.jar" | sha256sum -c -
 
+      - name: detekt self-test (a known-bad snippet must be reported)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir="${RUNNER_TEMP}/detekt-canary"
+          mkdir -p "${dir}"
+          cat > "${dir}/Canary.kt" <<'KT'
+          package canary
+
+          class Canary {
+              fun empty() {}
+
+              fun magic(): Int = 4242 * 17
+
+              // TODO: forbidden comment canary
+              fun unusedParameter(value: Int): Int = 1
+          }
+          KT
+          java -jar "${RUNNER_TEMP}/detekt-cli.jar" \
+            --input "${dir}" \
+            --config .github/detekt/detekt.yml \
+            --build-upon-default-config \
+            --fail-on-severity Never \
+            --report sarif:"${dir}/canary.sarif"
+          found=$(jq '[.runs[].results[]] | length' "${dir}/canary.sarif")
+          echo "detekt self-test findings: ${found}"
+          jq -r '.runs[].results[] | "  \(.ruleId)"' "${dir}/canary.sarif"
+          if [ "${found}" -lt 1 ]; then
+            echo "::error::detekt self-test failed: the known-bad snippet produced no finding"
+            exit 1
+          fi
+
       - name: Run detekt with the owner configuration
         shell: bash
         run: |
+          set -euo pipefail
+          files=$(find app/src game-engine/src -name '*.kt' | wc -l)
+          echo "Kotlin files to analyze: ${files}"
+          if [ "${files}" -lt 1 ]; then
+            echo "::error::no Kotlin file found to analyze"
+            exit 1
+          fi
+          echo "KOTLIN_FILES=${files}" >> "${GITHUB_ENV}"
           # TEMPORARY (report-only): remove '--fail-on-severity Never' in step 3.3b.3 part 4,
           # so that findings fail the job. Any non-zero exit code here is a tool or configuration error.
           java -jar "${RUNNER_TEMP}/detekt-cli.jar" \
@@ -124,18 +164,24 @@ jobs:
             --build-upon-default-config \
             --base-path "${GITHUB_WORKSPACE}" \
             --fail-on-severity Never \
-            --report sarif:detekt.sarif \
-            --report md:detekt.md
+            --report sarif:detekt.sarif
 
       - name: Publish detekt summary
         if: always()
         shell: bash
         run: |
-          if [ -f detekt.md ]; then
-            cat detekt.md >> "${GITHUB_STEP_SUMMARY}"
-          else
-            echo "## detekt: no report produced (see the 'Run detekt' step log)" >> "${GITHUB_STEP_SUMMARY}"
-          fi
+          {
+            echo "## detekt"
+            echo "Kotlin files analyzed: ${KOTLIN_FILES:-unknown}"
+            if [ -f detekt.sarif ]; then
+              echo "Findings: $(jq '[.runs[].results[]] | length' detekt.sarif)"
+              echo '```'
+              jq -r '.runs[].results[] | "\(.ruleId)  \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' detekt.sarif
+              echo '```'
+            else
+              echo "No SARIF report produced (see the 'Run detekt' step log)."
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
 
       - name: Upload detekt results to code scanning
         if: always() && hashFiles('detekt.sarif') != ''
