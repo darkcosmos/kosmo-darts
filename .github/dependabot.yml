@@ -13,3 +13,4 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: ci
+# protected-paths canary: do not merge
