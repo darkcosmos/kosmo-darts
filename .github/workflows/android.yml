@@ -19,6 +19,9 @@ env:
   CLT_SHA256: "4e4c464f145a7512b57d088ac6c278c03c9eea610886b35a5e0804e74eedf583"
   ANDROID_PLATFORM: "platforms;android-37.2"
   ANDROID_BUILD_TOOLS: "build-tools;37.0.0"
+  # detekt: PRE-RELEASE by explicit owner exception (only 2.0.x supports Kotlin 2.4); move to 2.0.0 stable when published
+  DETEKT_VERSION: "2.0.0-alpha.6"
+  DETEKT_SHA256: "d46ca62ea4d62769b5d5c3ba94d49fa9b80ba11c7dba74ddb6df7fcc2c19c5fd"
 
 jobs:
   build:
@@ -84,3 +87,127 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+
+  detekt:
+    name: detekt
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Download detekt CLI (pinned, checksum verified)
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://github.com/detekt/detekt/releases/download/v${DETEKT_VERSION}/detekt-cli-${DETEKT_VERSION}-all.jar"
+          curl -fsSLo "${RUNNER_TEMP}/detekt-cli.jar" "${url}"
+          echo "${DETEKT_SHA256}  ${RUNNER_TEMP}/detekt-cli.jar" | sha256sum -c -
+
+      - name: detekt self-test (a known-bad snippet must be reported)
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir="${RUNNER_TEMP}/detekt-canary"
+          mkdir -p "${dir}"
+          cat > "${dir}/Canary.kt" <<'KT'
+          package canary
+
+          class Canary {
+              fun empty() {}
+
+              fun magic(): Int = 4242 * 17
+
+              // TODO: forbidden comment canary
+              fun unusedParameter(value: Int): Int = 1
+          }
+          KT
+          java -jar "${RUNNER_TEMP}/detekt-cli.jar" \
+            --input "${dir}" \
+            --config .github/detekt/detekt.yml \
+            --build-upon-default-config \
+            --fail-on-severity Never \
+            --report sarif:"${dir}/canary.sarif"
+          found=$(jq '[.runs[].results[]] | length' "${dir}/canary.sarif")
+          echo "detekt self-test findings: ${found}"
+          jq -r '.runs[].results[] | "  \(.ruleId)"' "${dir}/canary.sarif"
+          if [ "${found}" -lt 1 ]; then
+            echo "::error::detekt self-test failed: the known-bad snippet produced no finding"
+            exit 1
+          fi
+
+      - name: No new suppressions (detekt, Kotlin, Android Lint)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # Exceptions are granted by the owner only, in the configuration under .github/, never in code.
+          added=$(git diff --unified=0 "${BASE_SHA}...${HEAD_SHA}" -- '*.kt' '*.kts' '*.xml' \
+            | grep -E '^\+[^+]' \
+            | grep -E '@(file:)?Suppress(Warnings|Lint)?\b|tools:ignore=' || true)
+          if [ -n "${added}" ]; then
+            echo "::error::This PR adds warning suppressions. Fix the code, or ask the owner for a configuration exception."
+            echo "${added}"
+            exit 1
+          fi
+          echo "OK: no suppression added"
+
+      - name: Run detekt with the owner configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          files=$(find app/src game-engine/src -name '*.kt' | wc -l)
+          echo "Kotlin files to analyze: ${files}"
+          if [ "${files}" -lt 1 ]; then
+            echo "::error::no Kotlin file found to analyze"
+            exit 1
+          fi
+          echo "KOTLIN_FILES=${files}" >> "${GITHUB_ENV}"
+          # Blocking: any finding of severity 'error', or any tool error, fails the job.
+          java -jar "${RUNNER_TEMP}/detekt-cli.jar" \
+            --input app/src:game-engine/src \
+            --config .github/detekt/detekt.yml \
+            --build-upon-default-config \
+            --base-path "${GITHUB_WORKSPACE}" \
+            --report sarif:detekt.sarif
+
+      - name: Publish detekt summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "## detekt"
+            echo "Kotlin files analyzed: ${KOTLIN_FILES:-unknown}"
+            if [ -f detekt.sarif ]; then
+              count=$(jq '[.runs[].results[]] | length' detekt.sarif)
+              echo "Findings: ${count}"
+              if [ "${count}" -gt 0 ]; then
+                echo '```'
+                jq -r '.runs[].results[] | "\(.ruleId)  \(.locations[0].physicalLocation.artifactLocation.uri):\(.locations[0].physicalLocation.region.startLine)"' detekt.sarif
+                echo '```'
+              fi
+            else
+              echo "No SARIF report produced (see the 'Run detekt' step log)."
+            fi
+          } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload detekt results to code scanning
+        if: always() && hashFiles('detekt.sarif') != ''
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: detekt.sarif
+          category: detekt
+

@@ -1,0 +1,11 @@
+# Owner-maintained detekt configuration (protected by CI: the agent cannot change it).
+# Applied on top of detekt's default configuration (--build-upon-default-config).
+# Any relaxation is an owner decision, made by PR, with a reason next to it.
+
+config:
+  validation: true
+
+naming:
+  FunctionNaming:
+    # Jetpack Compose convention: @Composable functions are named like types (PascalCase)
+    ignoreAnnotated: ['Composable']
