@@ -37,10 +37,10 @@ private val MIN_KEY_HEIGHT = 48.dp
 private val MIN_LABEL_SIZE = 8.sp
 private val MAX_LABEL_SIZE = 22.sp
 
-/** Rows of the keypad: four rows of numbers, the modifiers and specials, then undo. */
+/** Rows of the keypad: four rows of numbers, the modifiers and specials, then Undo and Next player. */
 const val KEYPAD_ROWS: Int = 6
 
-/** Number grid 1 to 20 in numeric order, Double/Triple one-shot modifiers, 25, Bull, Miss and Undo. */
+/** Number grid 1 to 20 in numeric order, Double/Triple one-shot modifiers, 25, Bull, Miss, Undo and Next player. */
 @Composable
 fun Keypad(game: GameScreenState, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
     val haptics = LocalHapticFeedback.current
@@ -91,6 +91,13 @@ fun Keypad(game: GameScreenState, onEvent: (AppEvent) -> Unit, modifier: Modifie
                 enabled = game.canUndo,
                 colors = ButtonDefaults.outlinedButtonColors(),
                 onClick = { tap(AppEvent.UndoTapped) },
+            )
+            Key(
+                text = stringResource(R.string.key_next_player),
+                tag = KeypadTags.NEXT_PLAYER,
+                enabled = game.canGoToNextPlayer,
+                colors = ButtonDefaults.buttonColors(),
+                onClick = { tap(AppEvent.NextPlayerTapped) },
             )
         }
     }

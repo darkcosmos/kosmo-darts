@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.x01
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
@@ -9,17 +10,21 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
@@ -58,7 +63,7 @@ class X01ScreensTest {
         composeRule.onNodeWithText(string(textId)).performClick()
     }
 
-    /** Setup, end screen and turn panel scroll when the screen is small or the font is large. */
+    /** Setup and end screens scroll when the screen is small or the font is large. */
     private fun clickInScroll(textId: Int) {
         composeRule.onNodeWithText(string(textId)).performScrollTo().performClick()
     }
@@ -73,9 +78,17 @@ class X01ScreensTest {
 
     private fun single(vararg numbers: Int) = numbers.forEach { tap(KeypadTags.number(it)) }
 
-    private fun nextPlayer() = clickInScroll(R.string.panel_next_player)
+    private fun nextPlayer() = tap(KeypadTags.NEXT_PLAYER)
 
-    private fun panel(): SemanticsNodeInteraction = composeRule.onNodeWithTag(GameTags.TURN_PANEL)
+    private fun checkoutDialog(): SemanticsNodeInteraction = composeRule.onNodeWithTag(GameTags.CHECKOUT_DIALOG)
+
+    private fun finishGame() = composeRule.onNodeWithText(string(R.string.checkout_finish)).performClick()
+
+    /** The Undo button of the checkout dialog, not the Undo key of the keypad. */
+    private fun undoInCheckoutDialog() {
+        composeRule.onNode(hasText(string(R.string.key_undo)).and(hasAnyAncestor(hasTestTag(GameTags.CHECKOUT_DIALOG))))
+            .performClick()
+    }
 
     private fun pressBack() {
         composeRule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
@@ -154,18 +167,32 @@ class X01ScreensTest {
     }
 
     @Test
-    fun afterThreeDartsPlayDoesNotMoveOnAndTheKeypadIsDisabled() {
+    fun afterThreeDartsPlayWaitsWithEntryKeysDisabledAndNextPlayerEnabled() {
         startGame("Ann", "Bob")
 
         single(20, 20, 5)
 
-        panel().assertIsDisplayed()
-        panel().assert(hasAnyDescendant(hasText(string(R.string.panel_total, 45))))
-        panel().assert(hasAnyDescendant(hasText(string(R.string.panel_remaining, 456))))
-        panel().assert(hasAnyDescendant(hasText("20 20 5")))
         assertCurrentPlayer("Ann", 456)
+        assertDartSlot(0, "20")
+        assertDartSlot(1, "20")
+        assertDartSlot(2, "5")
+        composeRule.onNodeWithTag(GameTags.CARD_BUST).assertDoesNotExist()
         keypadTags.forEach { key(it).assertIsNotEnabled() }
+        key(KeypadTags.NEXT_PLAYER).assertIsEnabled()
         key(KeypadTags.UNDO).assertIsEnabled()
+    }
+
+    @Test
+    fun nextPlayerIsDisabledWhenNoTurnIsWaiting() {
+        startGame("Ann", "Bob")
+        key(KeypadTags.NEXT_PLAYER).assertIsDisplayed().assertIsNotEnabled()
+
+        single(20, 20)
+        key(KeypadTags.NEXT_PLAYER).assertIsNotEnabled()
+
+        single(5)
+        nextPlayer()
+        key(KeypadTags.NEXT_PLAYER).assertIsNotEnabled()
     }
 
     @Test
@@ -175,13 +202,13 @@ class X01ScreensTest {
 
         nextPlayer()
 
-        panel().assertDoesNotExist()
         assertCurrentPlayer("Bob", 501)
         keypadTags.forEach { key(it).assertIsEnabled() }
+        assertLastTurnScore(0, "45")
     }
 
     @Test
-    fun aBustWaitsForConfirmation() {
+    fun aBustIsShownInTheCardOfThePlayerWhileWaiting() {
         startGame("Ann", "Bob", startScore = 301)
         repeat(3) { triple(20) }
         nextPlayer()
@@ -191,34 +218,36 @@ class X01ScreensTest {
 
         triple(20)
 
-        panel().assert(hasAnyDescendant(hasText(string(R.string.game_bust))))
-        panel().assert(hasAnyDescendant(hasText(string(R.string.panel_remaining, 121))))
+        composeRule.onNodeWithTag(GameTags.CARD_BUST).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag(GameTags.CURRENT_PLAYER)
+            .assert(hasAnyDescendant(hasTestTag(GameTags.CARD_BUST)))
         assertCurrentPlayer("Ann", 121)
+        assertDartSlot(0, "T20")
+        assertDartSlot(1, "T20")
         key(KeypadTags.number(1)).assertIsNotEnabled()
+        key(KeypadTags.NEXT_PLAYER).assertIsEnabled()
 
         nextPlayer()
 
+        composeRule.onNodeWithTag(GameTags.CARD_BUST).assertDoesNotExist()
         assertCurrentPlayer("Bob", 121)
         assertLastTurnScore(0, string(R.string.game_bust))
     }
 
     @Test
-    fun undoFromThePanelReopensTheTurnWithItsFirstTwoDarts() {
+    fun undoWhileWaitingReopensTheTurnWithItsFirstTwoDarts() {
         startGame("Ann", "Bob")
         single(20, 20, 1)
 
-        // The Undo button of the panel, not the Undo key of the keypad.
-        composeRule.onNode(hasText(string(R.string.key_undo)).and(hasAnyAncestor(hasTestTag(GameTags.TURN_PANEL))))
-            .performScrollTo()
-            .performClick()
+        tap(KeypadTags.UNDO)
 
-        panel().assertDoesNotExist()
         assertCurrentPlayer("Ann", 461)
         assertDartSlot(0, "20")
         assertDartSlot(1, "20")
         composeRule.onNodeWithTag(GameTags.dartSlot(2))
             .assertContentDescriptionEquals(string(R.string.game_dart_slot_empty, 3))
         key(KeypadTags.number(20)).assertIsEnabled()
+        key(KeypadTags.NEXT_PLAYER).assertIsNotEnabled()
     }
 
     @Test
@@ -237,7 +266,7 @@ class X01ScreensTest {
     }
 
     @Test
-    fun eachPlayerRowShowsTheirLastTurnScoreBustOrADash() {
+    fun eachPlayerRowShowsTheirPreviousTurnScoreBustOrADash() {
         startGame("Ann", "Bob", "Cid", startScore = 301)
         listOf(0, 1, 2).forEach { assertLastTurnScore(it, string(R.string.game_last_turn_none)) }
 
@@ -273,34 +302,69 @@ class X01ScreensTest {
     }
 
     @Test
-    fun theWinningDartWaitsThenConfirmOpensTheEndScreen() {
+    fun theCheckoutDialogShowsThePlayerAndDartsThenFinishGameOpensTheEndScreen() {
         playAnnToFourRemaining()
 
         double(2)
 
-        panel().assert(hasAnyDescendant(hasText(string(R.string.panel_checkout))))
+        checkoutDialog().assertIsDisplayed()
+        checkoutDialog().assert(hasAnyDescendant(hasText(string(R.string.checkout_title))))
+        checkoutDialog().assert(hasAnyDescendant(hasText("Ann")))
+        checkoutDialog().assert(hasAnyDescendant(hasText("T20 T19 D2")))
         composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertDoesNotExist()
 
-        clickInScroll(R.string.panel_confirm)
+        finishGame()
 
+        checkoutDialog().assertDoesNotExist()
         composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
         composeRule.onNodeWithText(string(R.string.end_rematch)).assertIsDisplayed()
+    }
+
+    @Test
+    fun undoInTheCheckoutDialogReopensTheTurn() {
+        playAnnToFourRemaining()
+        double(2)
+
+        undoInCheckoutDialog()
+
+        checkoutDialog().assertDoesNotExist()
+        assertCurrentPlayer("Ann", 4)
+        assertDartSlot(0, "T20")
+        assertDartSlot(1, "T19")
+        key(KeypadTags.number(2)).assertIsEnabled()
+        double(2)
+        finishGame()
+        composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
+    }
+
+    @Test
+    fun theCheckoutDialogIgnoresOutsideTapsAndSystemBack() {
+        playAnnToFourRemaining()
+        double(2)
+
+        composeRule.onAllNodes(isRoot()).onLast().performTouchInput { click(Offset(1f, 1f)) }
+        pressBack()
+
+        checkoutDialog().assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.game_abandon_title)).assertDoesNotExist()
+        finishGame()
+        composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
     }
 
     @Test
     fun undoFromTheEndScreenReturnsToTheGameWithTheTurnReopened() {
         playAnnToFourRemaining()
         double(2)
-        clickInScroll(R.string.panel_confirm)
+        finishGame()
 
         clickInScroll(R.string.end_undo)
 
-        panel().assertDoesNotExist()
+        checkoutDialog().assertDoesNotExist()
         assertCurrentPlayer("Ann", 4)
         assertDartSlot(0, "T20")
         assertDartSlot(1, "T19")
         double(2)
-        clickInScroll(R.string.panel_confirm)
+        finishGame()
         composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
     }
 
@@ -316,7 +380,7 @@ class X01ScreensTest {
         triple(20)
         triple(20)
         single(1)
-        clickInScroll(R.string.panel_confirm)
+        finishGame()
 
         clickInScroll(R.string.end_rematch)
 
@@ -364,45 +428,65 @@ class X01ScreensTest {
     }
 
     @Test
-    fun thePendingPanelSurvivesAConfigurationChange() {
+    fun theWaitingTurnSurvivesAConfigurationChange() {
         startGame("Ann", "Bob")
         single(20, 20, 5)
 
         composeRule.activityRule.scenario.recreate()
 
-        panel().assert(hasAnyDescendant(hasText(string(R.string.panel_total, 45))))
         assertCurrentPlayer("Ann", 456)
+        assertDartSlot(2, "5")
         key(KeypadTags.number(20)).assertIsNotEnabled()
+        key(KeypadTags.NEXT_PLAYER).assertIsEnabled()
         nextPlayer()
         assertCurrentPlayer("Bob", 501)
     }
 
     @Test
-    fun theHookFiresExactlyOncePerCompletedTurn() {
+    fun theCheckoutDialogSurvivesAConfigurationChange() {
+        playAnnToFourRemaining()
+        double(2)
+
+        composeRule.activityRule.scenario.recreate()
+
+        checkoutDialog().assert(hasAnyDescendant(hasText("T20 T19 D2")))
+        finishGame()
+        composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
+    }
+
+    @Test
+    fun theHookFiresExactlyOncePerCompletedTurnIncludingTheCheckout() {
         val turns = mutableListOf<X01Turn>()
         composeRule.activityRule.scenario.onActivity { activity ->
             ViewModelProvider(activity)[KosmoDartsViewModel::class.java].turnCompletedHook =
                 TurnCompletedHook { turns += it }
         }
-        startGame("Ann", "Bob")
+        startGame("Ann", "Bob", startScore = 301)
 
-        single(20, 20, 5)
+        repeat(3) { triple(20) }
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
         assertEquals(1, turns.size)
-
         nextPlayer()
         single(1, 1)
         assertEquals(1, turns.size)
         single(1)
-        assertEquals(listOf(45, 3), turns.map { it.remainingBefore - it.remainingAfter })
+        nextPlayer()
+        triple(20)
+        triple(19)
+        double(2)
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitForIdle()
+        finishGame()
+
+        assertEquals(listOf(180, 3, 121), turns.map { it.remainingBefore - it.remainingAfter })
     }
 
     @Test
     fun aNewGameIsPrefilledWithTheLastNames() {
         playAnnToFourRemaining()
         double(2)
-        clickInScroll(R.string.panel_confirm)
+        finishGame()
 
         clickInScroll(R.string.home_new_game)
 

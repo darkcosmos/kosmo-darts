@@ -4,8 +4,10 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -36,6 +38,16 @@ class X01ScreensScreenshotTest {
         composeRule.runOnUiThread { events.forEach(viewModel::onEvent) }
         val directory = System.getProperty(SCREENSHOT_DIR_PROPERTY, DEFAULT_SCREENSHOT_DIR)
         composeRule.onRoot().captureRoboImage("$directory/$name.png")
+    }
+
+    /** Whole screen, dialog windows included. */
+    @OptIn(ExperimentalRoborazziApi::class)
+    private fun captureScreen(name: String, vararg events: AppEvent) {
+        val viewModel = ViewModelProvider(composeRule.activity)[KosmoDartsViewModel::class.java]
+        composeRule.runOnUiThread { events.forEach(viewModel::onEvent) }
+        composeRule.waitForIdle()
+        val directory = System.getProperty(SCREENSHOT_DIR_PROPERTY, DEFAULT_SCREENSHOT_DIR)
+        captureScreenRoboImage("$directory/$name.png")
     }
 
     @Test
@@ -88,39 +100,39 @@ class X01ScreensScreenshotTest {
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun panelTurnPortraitEnglish() = capture("panel_turn_portrait_en", *PANEL_TURN)
+    fun waitingTurnPortraitEnglish() = capture("waiting_turn_portrait_en", *WAITING_TURN)
 
     @Test
     @Config(qualifiers = "+en-land")
-    fun panelTurnLandscapeEnglish() = capture("panel_turn_landscape_en", *PANEL_TURN)
+    fun waitingTurnLandscapeEnglish() = capture("waiting_turn_landscape_en", *WAITING_TURN)
 
     @Test
     @Config(qualifiers = "+fr-port")
-    fun panelTurnPortraitFrench() = capture("panel_turn_portrait_fr", *PANEL_TURN)
+    fun waitingTurnPortraitFrench() = capture("waiting_turn_portrait_fr", *WAITING_TURN)
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun panelBustPortraitEnglish() = capture("panel_bust_portrait_en", *PANEL_BUST)
+    fun waitingBustPortraitEnglish() = capture("waiting_bust_portrait_en", *WAITING_BUST)
 
     @Test
     @Config(qualifiers = "+en-land")
-    fun panelBustLandscapeEnglish() = capture("panel_bust_landscape_en", *PANEL_BUST)
+    fun waitingBustLandscapeEnglish() = capture("waiting_bust_landscape_en", *WAITING_BUST)
 
     @Test
     @Config(qualifiers = "+fr-port")
-    fun panelBustPortraitFrench() = capture("panel_bust_portrait_fr", *PANEL_BUST)
+    fun waitingBustPortraitFrench() = capture("waiting_bust_portrait_fr", *WAITING_BUST)
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun panelCheckoutPortraitEnglish() = capture("panel_checkout_portrait_en", *PANEL_CHECKOUT)
+    fun checkoutDialogPortraitEnglish() = captureScreen("checkout_dialog_portrait_en", *CHECKOUT_DIALOG)
 
     @Test
     @Config(qualifiers = "+en-land")
-    fun panelCheckoutLandscapeEnglish() = capture("panel_checkout_landscape_en", *PANEL_CHECKOUT)
+    fun checkoutDialogLandscapeEnglish() = captureScreen("checkout_dialog_landscape_en", *CHECKOUT_DIALOG)
 
     @Test
     @Config(qualifiers = "+fr-port")
-    fun panelCheckoutPortraitFrench() = capture("panel_checkout_portrait_fr", *PANEL_CHECKOUT)
+    fun checkoutDialogPortraitFrench() = captureScreen("checkout_dialog_portrait_fr", *CHECKOUT_DIALOG)
 
     @Test
     @Config(qualifiers = "+en-port")
@@ -168,46 +180,46 @@ class X01ScreensScreenshotTest {
             AppEvent.PlayerAdded,
             *names("Ann", "Bob", "Cid", "Dan"),
             AppEvent.StartRequested,
-            *triple(20), *triple(20), *singles(20), AppEvent.TurnConfirmed,
-            *singles(20, 5, 1), AppEvent.TurnConfirmed,
+            *triple(20), *triple(20), *singles(20), AppEvent.NextPlayerTapped,
+            *singles(20, 5, 1), AppEvent.NextPlayerTapped,
             *triple(19),
             AppEvent.MultiplierTapped(Multiplier.DOUBLE),
         )
 
-        /** 501, two players: Ann's T20 T20 20 waits for confirmation. */
-        val PANEL_TURN: Array<AppEvent> = arrayOf(
+        /** 501, two players: Ann's T20 T20 20 waits for "Next player". */
+        val WAITING_TURN: Array<AppEvent> = arrayOf(
             AppEvent.NewGame,
             *names("Ann", "Bob"),
             AppEvent.StartRequested,
             *triple(20), *triple(20), *singles(20),
         )
 
-        /** 301 double out: Ann and Bob leave 121, then Ann's T20 T20 leaves 1, a bust waiting for confirmation. */
-        val PANEL_BUST: Array<AppEvent> = arrayOf(
+        /** 301 double out: Ann and Bob leave 121, then Ann's T20 T20 leaves 1, a bust waiting for "Next player". */
+        val WAITING_BUST: Array<AppEvent> = arrayOf(
             AppEvent.NewGame,
             AppEvent.StartScoreSelected(301),
             *names("Ann", "Bob"),
             AppEvent.StartRequested,
-            *triple(20), *triple(20), *triple(20), AppEvent.TurnConfirmed,
-            *triple(20), *triple(20), *triple(20), AppEvent.TurnConfirmed,
+            *triple(20), *triple(20), *triple(20), AppEvent.NextPlayerTapped,
+            *triple(20), *triple(20), *triple(20), AppEvent.NextPlayerTapped,
             *triple(20), *triple(20),
         )
 
-        /** 301 single out, three players: Bob and Cid both leave 241, Ann's winning turn waits for confirmation. */
-        val PANEL_CHECKOUT: Array<AppEvent> = arrayOf(
+        /** 301 single out, three players: Bob and Cid both leave 241, the winning dart opens the checkout dialog. */
+        val CHECKOUT_DIALOG: Array<AppEvent> = arrayOf(
             AppEvent.NewGame,
             AppEvent.StartScoreSelected(301),
             AppEvent.CheckoutRuleSelected(CheckoutRule.SINGLE_OUT),
             AppEvent.PlayerAdded,
             *names("Ann", "Bob", "Cid"),
             AppEvent.StartRequested,
-            *triple(20), *triple(20), *triple(20), AppEvent.TurnConfirmed,
-            *singles(20, 20, 20), AppEvent.TurnConfirmed,
-            *singles(20, 20, 20), AppEvent.TurnConfirmed,
+            *triple(20), *triple(20), *triple(20), AppEvent.NextPlayerTapped,
+            *singles(20, 20, 20), AppEvent.NextPlayerTapped,
+            *singles(20, 20, 20), AppEvent.NextPlayerTapped,
             *triple(20), *triple(20), *singles(1),
         )
 
-        /** The checkout above, confirmed: Bob and Cid tie for second place. */
-        val END_TIE: Array<AppEvent> = arrayOf(*PANEL_CHECKOUT, AppEvent.TurnConfirmed)
+        /** The checkout above, finished: Bob and Cid tie for second place. */
+        val END_TIE: Array<AppEvent> = arrayOf(*CHECKOUT_DIALOG, AppEvent.FinishGameTapped)
     }
 }

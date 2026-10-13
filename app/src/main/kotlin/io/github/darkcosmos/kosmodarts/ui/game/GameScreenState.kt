@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.game
 
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
+import io.github.darkcosmos.kosmodarts.engine.x01.TurnOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Turn
 
@@ -9,8 +10,9 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Turn
  * Content of the game screen: the leg, plus what the keypad and the screen show around it. Immutable.
  *
  * When a dart completes a turn (third dart, bust or checkout), play does not move on for the players: the turn waits
- * for a confirmation, with the keypad disabled. The engine has already passed the turn to the next player; the screen
- * keeps showing the player who threw until [confirmTurn].
+ * for a human action, with the dart entry keys disabled: [nextPlayer] after a normal turn or a bust, "Finish game" or
+ * [undo] in the checkout dialog. The engine has already passed the turn to the next player; the screen keeps showing
+ * the player who threw until then.
  *
  * @property multiplier one-shot modifier for the next number: [Multiplier.SINGLE] when no modifier is active.
  * @property isAwaitingConfirmation whether the last dart completed a turn that is not confirmed yet.
@@ -28,6 +30,18 @@ data class GameScreenState(
     /** The completed turn waiting for confirmation, or `null`. */
     val pendingTurn: X01Turn?
         get() = if (isAwaitingConfirmation) game.state.completedTurns.lastOrNull() else null
+
+    /** "Next player" is enabled while a normal or bust turn waits; a checkout waits in its own dialog. */
+    val canGoToNextPlayer: Boolean
+        get() = isAwaitingConfirmation && pendingTurn?.outcome != TurnOutcome.CHECKOUT
+
+    /** The winning dart waits in a modal dialog: "Finish game" or Undo. */
+    val isCheckoutDialogShown: Boolean
+        get() = pendingTurn?.outcome == TurnOutcome.CHECKOUT
+
+    /** BUST is shown in the card of the player who threw while their bust turn waits. */
+    val isBustShown: Boolean
+        get() = pendingTurn?.outcome == TurnOutcome.BUST
 
     /** Numbers, Double, Triple, 25, Bull and Miss are disabled while a turn waits for confirmation. */
     val isKeypadEnabled: Boolean
@@ -62,8 +76,8 @@ data class GameScreenState(
     /** A miss is always a single miss: it also cancels an active modifier. */
     fun throwMiss(): GameScreenState = record(Dart.MISS)
 
-    /** Moves play on after a completed turn. Does nothing if no turn is waiting. */
-    fun confirmTurn(): GameScreenState = copy(isAwaitingConfirmation = false)
+    /** Moves play on after a completed turn. Does nothing if no turn is waiting, or on a checkout. */
+    fun nextPlayer(): GameScreenState = if (canGoToNextPlayer) copy(isAwaitingConfirmation = false) else this
 
     /**
      * Removes the last dart, whoever threw it, and cancels an active modifier. On a pending turn, this reopens the

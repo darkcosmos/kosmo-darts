@@ -4,7 +4,8 @@ package io.github.darkcosmos.kosmodarts.ui.game
 object GameTags {
     const val CURRENT_PLAYER: String = "game_current_player"
     const val CURRENT_REMAINING: String = "game_current_remaining"
-    const val TURN_PANEL: String = "game_turn_panel"
+    const val CARD_BUST: String = "game_card_bust"
+    const val CHECKOUT_DIALOG: String = "game_checkout_dialog"
 
     fun dartSlot(index: Int): String = "game_dart_slot_$index"
 
