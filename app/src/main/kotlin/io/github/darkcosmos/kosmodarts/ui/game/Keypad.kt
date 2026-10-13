@@ -55,6 +55,7 @@ fun Keypad(game: GameScreenState, onEvent: (AppEvent) -> Unit, modifier: Modifie
                     Key(
                         text = stringResource(R.string.dart_single, number),
                         tag = KeypadTags.number(number),
+                        enabled = game.isKeypadEnabled,
                         colors = ButtonDefaults.filledTonalButtonColors(),
                         onClick = { tap(AppEvent.NumberTapped(number)) },
                     )
@@ -79,6 +80,7 @@ fun Keypad(game: GameScreenState, onEvent: (AppEvent) -> Unit, modifier: Modifie
             Key(
                 text = stringResource(R.string.dart_miss),
                 tag = KeypadTags.MISS,
+                enabled = game.isKeypadEnabled,
                 onClick = { tap(AppEvent.MissTapped) },
             )
         }
@@ -118,6 +120,7 @@ private fun RowScope.ModifierKey(
     Key(
         text = text,
         tag = tag,
+        enabled = game.isKeypadEnabled,
         colors = if (isActive) ButtonDefaults.buttonColors() else ButtonDefaults.outlinedButtonColors(),
         modifier = Modifier.semantics { selected = isActive },
         onClick = { tap(AppEvent.MultiplierTapped(multiplier)) },

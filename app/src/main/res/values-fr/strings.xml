@@ -27,8 +27,7 @@
     <string name="game_average">Moy. %1$s</string>
     <string name="game_dart_slot">Fléchette %1$d : %2$s</string>
     <string name="game_dart_slot_empty">Fléchette %1$d : pas encore lancée</string>
-    <string name="game_last_turn">Dernière volée, %1$s : %2$s = %3$d</string>
-    <string name="game_last_turn_bust">Dernière volée, %1$s : %2$s, bust</string>
+    <string name="game_last_turn_score">Volée %1$s</string>
     <string name="game_bust">BUST</string>
     <string name="dart_double">D%1$d</string>
     <string name="dart_triple">T%1$d</string>
@@ -37,6 +36,11 @@
     <string name="key_double">Double</string>
     <string name="key_triple">Triple</string>
     <string name="key_undo">Annuler</string>
+    <string name="panel_checkout">Checkout !</string>
+    <string name="panel_total">Total : %1$d</string>
+    <string name="panel_remaining">Reste : %1$d</string>
+    <string name="panel_next_player">Joueur suivant</string>
+    <string name="panel_confirm">Valider</string>
     <string name="game_abandon_title">Abandonner la partie ?</string>
     <string name="game_abandon_text">La partie en cours sera perdue.</string>
     <string name="game_abandon_confirm">Abandonner</string>

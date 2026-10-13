@@ -76,27 +76,51 @@ class X01ScreensScreenshotTest {
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun gameDoubleActivePortraitEnglish() = capture("game_4p_double_active_portrait_en", *GAME_DOUBLE_ACTIVE)
+    fun gameMidTurnPortraitEnglish() = capture("game_4p_mid_turn_last_scores_portrait_en", *GAME_MID_TURN)
 
     @Test
     @Config(qualifiers = "+en-land")
-    fun gameDoubleActiveLandscapeEnglish() = capture("game_4p_double_active_landscape_en", *GAME_DOUBLE_ACTIVE)
+    fun gameMidTurnLandscapeEnglish() = capture("game_4p_mid_turn_last_scores_landscape_en", *GAME_MID_TURN)
 
     @Test
     @Config(qualifiers = "+fr-port")
-    fun gameDoubleActivePortraitFrench() = capture("game_4p_double_active_portrait_fr", *GAME_DOUBLE_ACTIVE)
+    fun gameMidTurnPortraitFrench() = capture("game_4p_mid_turn_last_scores_portrait_fr", *GAME_MID_TURN)
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun gameBustPortraitEnglish() = capture("game_bust_portrait_en", *GAME_BUST)
+    fun panelTurnPortraitEnglish() = capture("panel_turn_portrait_en", *PANEL_TURN)
 
     @Test
     @Config(qualifiers = "+en-land")
-    fun gameBustLandscapeEnglish() = capture("game_bust_landscape_en", *GAME_BUST)
+    fun panelTurnLandscapeEnglish() = capture("panel_turn_landscape_en", *PANEL_TURN)
 
     @Test
     @Config(qualifiers = "+fr-port")
-    fun gameBustPortraitFrench() = capture("game_bust_portrait_fr", *GAME_BUST)
+    fun panelTurnPortraitFrench() = capture("panel_turn_portrait_fr", *PANEL_TURN)
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun panelBustPortraitEnglish() = capture("panel_bust_portrait_en", *PANEL_BUST)
+
+    @Test
+    @Config(qualifiers = "+en-land")
+    fun panelBustLandscapeEnglish() = capture("panel_bust_landscape_en", *PANEL_BUST)
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun panelBustPortraitFrench() = capture("panel_bust_portrait_fr", *PANEL_BUST)
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun panelCheckoutPortraitEnglish() = capture("panel_checkout_portrait_en", *PANEL_CHECKOUT)
+
+    @Test
+    @Config(qualifiers = "+en-land")
+    fun panelCheckoutLandscapeEnglish() = capture("panel_checkout_landscape_en", *PANEL_CHECKOUT)
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun panelCheckoutPortraitFrench() = capture("panel_checkout_portrait_fr", *PANEL_CHECKOUT)
 
     @Test
     @Config(qualifiers = "+en-port")
@@ -113,8 +137,8 @@ class X01ScreensScreenshotTest {
     /** 2.0 is the largest font size offered by Android 14 and later. */
     @Test
     @Config(qualifiers = "+en-port", fontScale = LARGEST_FONT_SCALE)
-    fun gameDoubleActivePortraitEnglishLargestFont() =
-        capture("game_4p_double_active_portrait_en_font200", *GAME_DOUBLE_ACTIVE)
+    fun gameMidTurnPortraitEnglishLargestFont() =
+        capture("game_4p_mid_turn_last_scores_portrait_en_font200", *GAME_MID_TURN)
 
     private companion object {
         const val SCREENSHOT_DIR_PROPERTY = "kosmodarts.screenshot.dir"
@@ -137,44 +161,53 @@ class X01ScreensScreenshotTest {
 
         val GAME_START: Array<AppEvent> = arrayOf(AppEvent.NewGame, *names("Ann", "Bob"), AppEvent.StartRequested)
 
-        /** 501, four players: Ann and Bob have thrown, Cid has thrown one dart and pressed Double. */
-        val GAME_DOUBLE_ACTIVE: Array<AppEvent> = arrayOf(
+        /** 501, four players, turns confirmed: Ann and Bob show a last turn, Cid has one dart and Double active. */
+        val GAME_MID_TURN: Array<AppEvent> = arrayOf(
             AppEvent.NewGame,
             AppEvent.PlayerAdded,
             AppEvent.PlayerAdded,
             *names("Ann", "Bob", "Cid", "Dan"),
             AppEvent.StartRequested,
-            *triple(20),
-            *triple(20),
-            *singles(20),
-            *singles(20, 5, 1),
+            *triple(20), *triple(20), *singles(20), AppEvent.TurnConfirmed,
+            *singles(20, 5, 1), AppEvent.TurnConfirmed,
             *triple(19),
             AppEvent.MultiplierTapped(Multiplier.DOUBLE),
         )
 
-        /** 301 double out: Ann and Bob leave 121, then Ann's T20 T20 leaves 1, a bust. */
-        val GAME_BUST: Array<AppEvent> = arrayOf(
+        /** 501, two players: Ann's T20 T20 20 waits for confirmation. */
+        val PANEL_TURN: Array<AppEvent> = arrayOf(
+            AppEvent.NewGame,
+            *names("Ann", "Bob"),
+            AppEvent.StartRequested,
+            *triple(20), *triple(20), *singles(20),
+        )
+
+        /** 301 double out: Ann and Bob leave 121, then Ann's T20 T20 leaves 1, a bust waiting for confirmation. */
+        val PANEL_BUST: Array<AppEvent> = arrayOf(
             AppEvent.NewGame,
             AppEvent.StartScoreSelected(301),
             *names("Ann", "Bob"),
             AppEvent.StartRequested,
-            *triple(20), *triple(20), *triple(20),
-            *triple(20), *triple(20), *triple(20),
+            *triple(20), *triple(20), *triple(20), AppEvent.TurnConfirmed,
+            *triple(20), *triple(20), *triple(20), AppEvent.TurnConfirmed,
             *triple(20), *triple(20),
         )
 
-        /** 301 single out: Bob and Cid both leave 241, Ann wins in two turns. */
-        val END_TIE: Array<AppEvent> = arrayOf(
+        /** 301 single out, three players: Bob and Cid both leave 241, Ann's winning turn waits for confirmation. */
+        val PANEL_CHECKOUT: Array<AppEvent> = arrayOf(
             AppEvent.NewGame,
             AppEvent.StartScoreSelected(301),
             AppEvent.CheckoutRuleSelected(CheckoutRule.SINGLE_OUT),
             AppEvent.PlayerAdded,
             *names("Ann", "Bob", "Cid"),
             AppEvent.StartRequested,
-            *triple(20), *triple(20), *triple(20),
-            *singles(20, 20, 20),
-            *singles(20, 20, 20),
+            *triple(20), *triple(20), *triple(20), AppEvent.TurnConfirmed,
+            *singles(20, 20, 20), AppEvent.TurnConfirmed,
+            *singles(20, 20, 20), AppEvent.TurnConfirmed,
             *triple(20), *triple(20), *singles(1),
         )
+
+        /** The checkout above, confirmed: Bob and Cid tie for second place. */
+        val END_TIE: Array<AppEvent> = arrayOf(*PANEL_CHECKOUT, AppEvent.TurnConfirmed)
     }
 }

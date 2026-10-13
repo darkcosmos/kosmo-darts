@@ -2,10 +2,11 @@ package io.github.darkcosmos.kosmodarts.ui.game
 
 /** Test tags of the game screen. */
 object GameTags {
-    const val BUST: String = "game_bust"
     const val CURRENT_PLAYER: String = "game_current_player"
     const val CURRENT_REMAINING: String = "game_current_remaining"
-    const val LAST_TURN: String = "game_last_turn"
+    const val TURN_PANEL: String = "game_turn_panel"
 
     fun dartSlot(index: Int): String = "game_dart_slot_$index"
+
+    fun lastTurnScore(playerIndex: Int): String = "game_last_turn_score_$playerIndex"
 }

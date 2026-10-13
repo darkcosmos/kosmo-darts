@@ -42,11 +42,12 @@ class AppReducer(private val random: Random) {
         else -> setup
     }
 
-    private fun onGame(state: AppState, game: GameScreenState, event: AppEvent): AppState {
-        if (event == AppEvent.AbandonConfirmed) return state.copy(screen = Screen.Home)
-        val next = playGame(game, event)
-        val screen = if (next.game.state.isFinished) Screen.End(next.game) else Screen.Game(next)
-        return state.copy(screen = screen)
+    private fun onGame(state: AppState, game: GameScreenState, event: AppEvent): AppState = when {
+        event == AppEvent.AbandonConfirmed -> state.copy(screen = Screen.Home)
+        // "Confirm" on the checkout panel ends the leg.
+        event == AppEvent.TurnConfirmed && game.isAwaitingConfirmation && game.game.state.isFinished ->
+            state.copy(screen = Screen.End(game.game))
+        else -> state.copy(screen = Screen.Game(playGame(game, event)))
     }
 
     private fun playGame(game: GameScreenState, event: AppEvent): GameScreenState = when (event) {
@@ -58,6 +59,7 @@ class AppReducer(private val random: Random) {
         AppEvent.BullTapped -> game.throwBull()
         AppEvent.MissTapped -> game.throwMiss()
         AppEvent.UndoTapped -> game.undo()
+        AppEvent.TurnConfirmed -> game.confirmTurn()
         else -> game
     }
 

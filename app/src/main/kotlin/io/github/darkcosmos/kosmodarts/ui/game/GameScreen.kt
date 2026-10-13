@@ -25,12 +25,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.keepScreenOn
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -39,15 +39,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.TurnOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01PlayerState
-import io.github.darkcosmos.kosmodarts.engine.x01.X01State
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.format.averageText
 import io.github.darkcosmos.kosmodarts.ui.format.dartText
-import io.github.darkcosmos.kosmodarts.ui.format.dartsText
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 
 private const val DARTS_PER_TURN = 3
@@ -70,12 +67,12 @@ fun GameScreen(game: GameScreenState, onEvent: (AppEvent) -> Unit, modifier: Mod
         BoxWithConstraints(modifier = Modifier.safeDrawingPadding().padding(SPACING)) {
             if (maxWidth > maxHeight) {
                 Row(horizontalArrangement = Arrangement.spacedBy(SPACING)) {
-                    Scoreboard(game, Modifier.weight(1f).fillMaxHeight())
+                    Scoreboard(game, onEvent, Modifier.weight(1f).fillMaxHeight())
                     Keypad(game, onEvent, Modifier.weight(1f).fillMaxHeight())
                 }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(SPACING)) {
-                    Scoreboard(game, Modifier.weight(1f).fillMaxWidth())
+                    Scoreboard(game, onEvent, Modifier.weight(1f).fillMaxWidth())
                     Keypad(game, onEvent, Modifier.fillMaxWidth().height(PORTRAIT_KEY_ROW_HEIGHT * KEYPAD_ROWS))
                 }
             }
@@ -87,49 +84,28 @@ fun GameScreen(game: GameScreenState, onEvent: (AppEvent) -> Unit, modifier: Mod
 }
 
 @Composable
-private fun Scoreboard(game: GameScreenState, modifier: Modifier) {
+private fun Scoreboard(game: GameScreenState, onEvent: (AppEvent) -> Unit, modifier: Modifier) {
     val state = game.game.state
+    val lastTurns = lastTurnScores(state)
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (game.isBustShown) {
-            BustBanner()
+        game.pendingTurn?.let { turn ->
+            TurnPanel(turn, state.players[turn.playerIndex].name, onEvent)
         }
         state.players.forEachIndexed { index, player ->
-            if (index == state.currentPlayerIndex) {
-                CurrentPlayerCard(player)
+            if (index == game.highlightedPlayerIndex) {
+                CurrentPlayerCard(player, index, game.highlightedTurnDarts, lastTurns[index])
             } else {
-                PlayerRow(player)
+                PlayerRow(player, index, lastTurns[index])
             }
         }
-        LastTurn(game, state)
     }
 }
 
 @Composable
-private fun BustBanner() {
-    Surface(
-        color = MaterialTheme.colorScheme.errorContainer,
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag(GameTags.BUST)
-            .semantics { liveRegion = LiveRegionMode.Assertive },
-    ) {
-        Text(
-            text = stringResource(R.string.game_bust),
-            style = MaterialTheme.typography.displayMedium,
-            fontWeight = FontWeight.Black,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(8.dp),
-        )
-    }
-}
-
-@Composable
-private fun CurrentPlayerCard(player: X01PlayerState) {
+private fun CurrentPlayerCard(player: X01PlayerState, index: Int, turnDarts: List<Dart>, lastTurn: LastTurnScore) {
     val toThrow = stringResource(R.string.game_to_throw, player.name)
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer,
@@ -153,10 +129,7 @@ private fun CurrentPlayerCard(player: X01PlayerState) {
                             contentDescription = toThrow
                         },
                 )
-                Text(
-                    text = stringResource(R.string.game_average, averageText(player.threeDartAverage)),
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                PlayerStats(player, index, lastTurn, MaterialTheme.typography.titleMedium)
             }
             Text(
                 text = player.remaining.toString(),
@@ -165,7 +138,7 @@ private fun CurrentPlayerCard(player: X01PlayerState) {
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.testTag(GameTags.CURRENT_REMAINING),
             )
-            DartSlots(player.currentTurnDarts)
+            DartSlots(turnDarts)
         }
     }
 }
@@ -204,7 +177,7 @@ private fun DartSlots(darts: List<Dart>) {
 }
 
 @Composable
-private fun PlayerRow(player: X01PlayerState) {
+private fun PlayerRow(player: X01PlayerState, index: Int, lastTurn: LastTurnScore) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -220,10 +193,12 @@ private fun PlayerRow(player: X01PlayerState) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        Text(
-            text = stringResource(R.string.game_average, averageText(player.threeDartAverage)),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        PlayerStats(
+            player,
+            index,
+            lastTurn,
+            MaterialTheme.typography.bodyMedium,
+            MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = player.remaining.toString(),
@@ -234,24 +209,35 @@ private fun PlayerRow(player: X01PlayerState) {
     }
 }
 
+/** Three-dart average, and the score of the last completed turn under it. */
 @Composable
-private fun LastTurn(game: GameScreenState, state: X01State) {
-    val turn = game.lastTurn ?: return
-    val name = state.players[turn.playerIndex].name
-    val darts = dartsText(turn.darts)
-    val text = if (turn.outcome == TurnOutcome.BUST) {
-        stringResource(R.string.game_last_turn_bust, name, darts)
-    } else {
-        stringResource(R.string.game_last_turn, name, darts, turn.remainingBefore - turn.remainingAfter)
+private fun PlayerStats(
+    player: X01PlayerState,
+    index: Int,
+    lastTurn: LastTurnScore,
+    style: TextStyle,
+    color: Color = Color.Unspecified,
+) {
+    Column(horizontalAlignment = Alignment.End) {
+        Text(
+            text = stringResource(R.string.game_average, averageText(player.threeDartAverage)),
+            style = style,
+            color = color,
+        )
+        Text(
+            text = stringResource(R.string.game_last_turn_score, lastTurnText(lastTurn)),
+            style = style,
+            color = color,
+            modifier = Modifier.testTag(GameTags.lastTurnScore(index)),
+        )
     }
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .testTag(GameTags.LAST_TURN),
-    )
+}
+
+@Composable
+private fun lastTurnText(lastTurn: LastTurnScore): String = when (lastTurn) {
+    LastTurnScore.None -> stringResource(R.string.game_last_turn_none)
+    LastTurnScore.Bust -> stringResource(R.string.game_bust)
+    is LastTurnScore.Points -> lastTurn.points.toString()
 }
 
 @Composable

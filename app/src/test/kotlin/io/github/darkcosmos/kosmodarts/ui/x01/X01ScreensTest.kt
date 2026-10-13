@@ -9,7 +9,9 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -18,12 +20,18 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.engine.x01.Dart
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Turn
+import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
+import io.github.darkcosmos.kosmodarts.ui.app.TurnCompletedHook
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -31,8 +39,8 @@ import org.junit.runner.RunWith
 /**
  * Behaviour tests of the X01 screens (setup, game, end), launched through [MainActivity] like on a phone.
  *
- * Only AndroidJUnit4, androidx.test and Compose UI test APIs are used, so this class can later run unchanged as an
- * instrumented test on a device or an emulator.
+ * Only AndroidJUnit4, androidx.test and Compose UI test APIs are used (plus the app's own ViewModel to observe the
+ * turn completed hook), so this class can later run unchanged as an instrumented test on a device or an emulator.
  */
 @RunWith(AndroidJUnit4::class)
 class X01ScreensTest {
@@ -40,13 +48,17 @@ class X01ScreensTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
 
+    private val numberTags = Dart.NUMBERS.map { KeypadTags.number(it) }
+    private val keypadTags = numberTags +
+        listOf(KeypadTags.DOUBLE, KeypadTags.TRIPLE, KeypadTags.OUTER_BULL, KeypadTags.BULL, KeypadTags.MISS)
+
     private fun string(id: Int, vararg args: Any): String = composeRule.activity.getString(id, *args)
 
     private fun click(textId: Int) {
         composeRule.onNodeWithText(string(textId)).performClick()
     }
 
-    /** Setup and end screens scroll when the screen is small or the font is large. */
+    /** Setup, end screen and turn panel scroll when the screen is small or the font is large. */
     private fun clickInScroll(textId: Int) {
         composeRule.onNodeWithText(string(textId)).performScrollTo().performClick()
     }
@@ -60,6 +72,10 @@ class X01ScreensTest {
     private fun double(number: Int) = tap(KeypadTags.DOUBLE, KeypadTags.number(number))
 
     private fun single(vararg numbers: Int) = numbers.forEach { tap(KeypadTags.number(it)) }
+
+    private fun nextPlayer() = clickInScroll(R.string.panel_next_player)
+
+    private fun panel(): SemanticsNodeInteraction = composeRule.onNodeWithTag(GameTags.TURN_PANEL)
 
     private fun pressBack() {
         composeRule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
@@ -93,13 +109,18 @@ class X01ScreensTest {
             .assertContentDescriptionEquals(string(R.string.game_dart_slot, index + 1, dart))
     }
 
-    /** 301 double out, Ann against Bob: Ann leaves 121, Bob 298, then Ann's T20 T19 leaves 4. */
+    private fun assertLastTurnScore(playerIndex: Int, score: String) {
+        composeRule.onNodeWithTag(GameTags.lastTurnScore(playerIndex))
+            .assertTextEquals(string(R.string.game_last_turn_score, score))
+    }
+
+    /** 301 double out, Ann against Bob, every turn confirmed: Ann leaves 121, Bob 298, then T20 T19 leaves 4. */
     private fun playAnnToFourRemaining() {
         startGame("Ann", "Bob", startScore = 301)
-        triple(20)
-        triple(20)
-        triple(20)
+        repeat(3) { triple(20) }
+        nextPlayer()
         single(1, 1, 1)
+        nextPlayer()
         triple(20)
         triple(19)
     }
@@ -133,24 +154,71 @@ class X01ScreensTest {
     }
 
     @Test
-    fun aBustShowsBustUntilTheNextDart() {
+    fun afterThreeDartsPlayDoesNotMoveOnAndTheKeypadIsDisabled() {
+        startGame("Ann", "Bob")
+
+        single(20, 20, 5)
+
+        panel().assertIsDisplayed()
+        panel().assert(hasAnyDescendant(hasText(string(R.string.panel_total, 45))))
+        panel().assert(hasAnyDescendant(hasText(string(R.string.panel_remaining, 456))))
+        panel().assert(hasAnyDescendant(hasText("20 20 5")))
+        assertCurrentPlayer("Ann", 456)
+        keypadTags.forEach { key(it).assertIsNotEnabled() }
+        key(KeypadTags.UNDO).assertIsEnabled()
+    }
+
+    @Test
+    fun nextPlayerMovesPlayOn() {
+        startGame("Ann", "Bob")
+        single(20, 20, 5)
+
+        nextPlayer()
+
+        panel().assertDoesNotExist()
+        assertCurrentPlayer("Bob", 501)
+        keypadTags.forEach { key(it).assertIsEnabled() }
+    }
+
+    @Test
+    fun aBustWaitsForConfirmation() {
         startGame("Ann", "Bob", startScore = 301)
-        repeat(6) { triple(20) }
+        repeat(3) { triple(20) }
+        nextPlayer()
+        repeat(3) { triple(20) }
+        nextPlayer()
         triple(20)
-        composeRule.onNodeWithTag(GameTags.BUST).assertDoesNotExist()
 
         triple(20)
 
-        composeRule.onNodeWithTag(GameTags.BUST).assertIsDisplayed()
-        composeRule.onNodeWithText(string(R.string.game_bust)).assertIsDisplayed()
-        composeRule.onNodeWithText(string(R.string.game_last_turn_bust, "Ann", "T20 T20"))
-            .performScrollTo()
-            .assertIsDisplayed()
+        panel().assert(hasAnyDescendant(hasText(string(R.string.game_bust))))
+        panel().assert(hasAnyDescendant(hasText(string(R.string.panel_remaining, 121))))
+        assertCurrentPlayer("Ann", 121)
+        key(KeypadTags.number(1)).assertIsNotEnabled()
+
+        nextPlayer()
+
         assertCurrentPlayer("Bob", 121)
+        assertLastTurnScore(0, string(R.string.game_bust))
+    }
 
-        single(1)
+    @Test
+    fun undoFromThePanelReopensTheTurnWithItsFirstTwoDarts() {
+        startGame("Ann", "Bob")
+        single(20, 20, 1)
 
-        composeRule.onNodeWithTag(GameTags.BUST).assertDoesNotExist()
+        // The Undo button of the panel, not the Undo key of the keypad.
+        composeRule.onNode(hasText(string(R.string.key_undo)).and(hasAnyAncestor(hasTestTag(GameTags.TURN_PANEL))))
+            .performScrollTo()
+            .performClick()
+
+        panel().assertDoesNotExist()
+        assertCurrentPlayer("Ann", 461)
+        assertDartSlot(0, "20")
+        assertDartSlot(1, "20")
+        composeRule.onNodeWithTag(GameTags.dartSlot(2))
+            .assertContentDescriptionEquals(string(R.string.game_dart_slot_empty, 3))
+        key(KeypadTags.number(20)).assertIsEnabled()
     }
 
     @Test
@@ -158,6 +226,7 @@ class X01ScreensTest {
         startGame("Ann", "Bob")
         key(KeypadTags.UNDO).assertIsNotEnabled()
         single(1, 2, 3)
+        nextPlayer()
         assertCurrentPlayer("Bob", 501)
 
         tap(KeypadTags.UNDO)
@@ -165,8 +234,26 @@ class X01ScreensTest {
         assertCurrentPlayer("Ann", 498)
         assertDartSlot(0, "1")
         assertDartSlot(1, "2")
-        composeRule.onNodeWithTag(GameTags.dartSlot(2))
-            .assertContentDescriptionEquals(string(R.string.game_dart_slot_empty, 3))
+    }
+
+    @Test
+    fun eachPlayerRowShowsTheirLastTurnScoreBustOrADash() {
+        startGame("Ann", "Bob", "Cid", startScore = 301)
+        listOf(0, 1, 2).forEach { assertLastTurnScore(it, string(R.string.game_last_turn_none)) }
+
+        repeat(3) { triple(20) }
+        nextPlayer()
+        single(1, 2, 3)
+        nextPlayer()
+        repeat(3) { triple(20) }
+        nextPlayer()
+        triple(20)
+        triple(20)
+        nextPlayer()
+
+        assertLastTurnScore(0, string(R.string.game_bust))
+        assertLastTurnScore(1, "6")
+        assertLastTurnScore(2, "180")
     }
 
     @Test
@@ -186,26 +273,34 @@ class X01ScreensTest {
     }
 
     @Test
-    fun aFull301LegEndsOnTheEndScreen() {
+    fun theWinningDartWaitsThenConfirmOpensTheEndScreen() {
         playAnnToFourRemaining()
 
         double(2)
+
+        panel().assert(hasAnyDescendant(hasText(string(R.string.panel_checkout))))
+        composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertDoesNotExist()
+
+        clickInScroll(R.string.panel_confirm)
 
         composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
         composeRule.onNodeWithText(string(R.string.end_rematch)).assertIsDisplayed()
     }
 
     @Test
-    fun undoFromTheEndScreenReturnsToTheGame() {
+    fun undoFromTheEndScreenReturnsToTheGameWithTheTurnReopened() {
         playAnnToFourRemaining()
         double(2)
+        clickInScroll(R.string.panel_confirm)
 
         clickInScroll(R.string.end_undo)
 
+        panel().assertDoesNotExist()
         assertCurrentPlayer("Ann", 4)
         assertDartSlot(0, "T20")
         assertDartSlot(1, "T19")
         double(2)
+        clickInScroll(R.string.panel_confirm)
         composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
     }
 
@@ -213,18 +308,24 @@ class X01ScreensTest {
     fun rematchRotatesTheFirstPlayer() {
         startGame("Ann", "Bob", "Cid", startScore = 301, singleOut = true)
         repeat(3) { triple(20) }
+        nextPlayer()
         single(1, 1, 1)
+        nextPlayer()
         single(1, 1, 1)
+        nextPlayer()
         triple(20)
         triple(20)
         single(1)
+        clickInScroll(R.string.panel_confirm)
 
         clickInScroll(R.string.end_rematch)
 
         assertCurrentPlayer("Bob", 301)
         single(1, 1, 1)
+        nextPlayer()
         assertCurrentPlayer("Cid", 301)
         single(1, 1, 1)
+        nextPlayer()
         assertCurrentPlayer("Ann", 301)
     }
 
@@ -250,6 +351,7 @@ class X01ScreensTest {
     fun theGameSurvivesAConfigurationChange() {
         startGame("Ann", "Bob")
         single(20, 20, 20)
+        nextPlayer()
         triple(19)
         tap(KeypadTags.DOUBLE)
 
@@ -258,19 +360,54 @@ class X01ScreensTest {
         assertCurrentPlayer("Bob", 444)
         assertDartSlot(0, "T19")
         key(KeypadTags.DOUBLE).assertIsSelected()
-        composeRule.onNodeWithText(string(R.string.game_last_turn, "Ann", "20 20 20", 60))
-            .performScrollTo()
-            .assertIsDisplayed()
+        assertLastTurnScore(0, "60")
+    }
+
+    @Test
+    fun thePendingPanelSurvivesAConfigurationChange() {
+        startGame("Ann", "Bob")
+        single(20, 20, 5)
+
+        composeRule.activityRule.scenario.recreate()
+
+        panel().assert(hasAnyDescendant(hasText(string(R.string.panel_total, 45))))
+        assertCurrentPlayer("Ann", 456)
+        key(KeypadTags.number(20)).assertIsNotEnabled()
+        nextPlayer()
+        assertCurrentPlayer("Bob", 501)
+    }
+
+    @Test
+    fun theHookFiresExactlyOncePerCompletedTurn() {
+        val turns = mutableListOf<X01Turn>()
+        composeRule.activityRule.scenario.onActivity { activity ->
+            ViewModelProvider(activity)[KosmoDartsViewModel::class.java].turnCompletedHook =
+                TurnCompletedHook { turns += it }
+        }
+        startGame("Ann", "Bob")
+
+        single(20, 20, 5)
+        composeRule.activityRule.scenario.recreate()
+        composeRule.waitForIdle()
+        assertEquals(1, turns.size)
+
+        nextPlayer()
+        single(1, 1)
+        assertEquals(1, turns.size)
+        single(1)
+        assertEquals(listOf(45, 3), turns.map { it.remainingBefore - it.remainingAfter })
     }
 
     @Test
     fun aNewGameIsPrefilledWithTheLastNames() {
         playAnnToFourRemaining()
         double(2)
+        clickInScroll(R.string.panel_confirm)
 
-        click(R.string.home_new_game)
+        clickInScroll(R.string.home_new_game)
 
         composeRule.onNodeWithTag(SetupTags.nameField(0)).assert(hasText("Ann"))
         composeRule.onNodeWithTag(SetupTags.nameField(1)).assert(hasText("Bob"))
     }
+
 }
