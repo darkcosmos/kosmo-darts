@@ -29,8 +29,8 @@ class AppReducerTest {
 
     private val lastWinningEvent = AppEvent.NumberTapped(1)
 
-    /** The winning dart, then "Confirm" on the checkout panel. */
-    private val finishEvents = arrayOf(lastWinningEvent, AppEvent.TurnConfirmed)
+    /** The winning dart, then "Finish game" in the checkout dialog. */
+    private val finishEvents = arrayOf(lastWinningEvent, AppEvent.FinishGameTapped)
 
     private fun inGame(config: X01Config, darts: List<Dart> = emptyList()) =
         AppState(screen = Screen.Game(GameScreenState(X01Game(config, darts))))
@@ -156,8 +156,29 @@ class AppReducerTest {
     }
 
     @Test
-    fun confirmingACompletedTurnMovesPlayOn() {
-        val state = inGame(singleOut301).after(*Array(3) { AppEvent.NumberTapped(1) }, AppEvent.TurnConfirmed)
+    fun nextPlayerAndBackAreIgnoredWhileTheCheckoutDialogIsShown() {
+        val dialog = inGame(singleOut301, winningDarts).after(lastWinningEvent)
+
+        assertEquals(dialog, dialog.after(AppEvent.NextPlayerTapped, AppEvent.Back))
+    }
+
+    @Test
+    fun finishGameIsIgnoredWithoutCheckout() {
+        val waiting = inGame(singleOut301).after(*Array(3) { AppEvent.NumberTapped(1) })
+
+        assertEquals(waiting, waiting.after(AppEvent.FinishGameTapped))
+    }
+
+    @Test
+    fun undoInTheCheckoutDialogReopensTheTurn() {
+        val state = inGame(singleOut301, winningDarts).after(lastWinningEvent, AppEvent.UndoTapped)
+
+        assertEquals(Screen.Game(GameScreenState(X01Game(singleOut301, winningDarts))), state.screen)
+    }
+
+    @Test
+    fun nextPlayerMovesPlayOnAfterACompletedTurn() {
+        val state = inGame(singleOut301).after(*Array(3) { AppEvent.NumberTapped(1) }, AppEvent.NextPlayerTapped)
 
         val game = (state.screen as Screen.Game).game
         assertFalse(game.isAwaitingConfirmation)
@@ -165,7 +186,7 @@ class AppReducerTest {
     }
 
     @Test
-    fun confirmingTheCheckoutOpensTheEndScreen() {
+    fun finishGameOpensTheEndScreen() {
         val state = inGame(singleOut301, winningDarts).after(*finishEvents)
 
         assertEquals(Screen.End(X01Game(singleOut301, winningDarts + Dart.single(1))), state.screen)

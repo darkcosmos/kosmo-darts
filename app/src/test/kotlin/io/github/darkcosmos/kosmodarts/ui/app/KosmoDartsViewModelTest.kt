@@ -25,7 +25,7 @@ class KosmoDartsViewModelTest {
         repeat(3) { viewModel.onEvent(AppEvent.NumberTapped(20)) }
         // Ignored: the keypad is disabled while the turn waits for confirmation.
         viewModel.onEvent(AppEvent.NumberTapped(20))
-        viewModel.onEvent(AppEvent.TurnConfirmed)
+        viewModel.onEvent(AppEvent.NextPlayerTapped)
         repeat(2) {
             viewModel.onEvent(AppEvent.MultiplierTapped(Multiplier.TRIPLE))
             viewModel.onEvent(AppEvent.NumberTapped(20))
