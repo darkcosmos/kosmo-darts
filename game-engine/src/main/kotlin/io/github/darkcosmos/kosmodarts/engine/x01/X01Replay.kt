@@ -12,14 +12,20 @@ internal class X01Replay(private val config: X01Config) {
 
     private fun record(progress: Progress, dart: Dart): Progress {
         val player = progress.currentPlayer ?: throw LegFinishedException()
-        val counted = progress.copy(dartsThrown = progress.dartsThrown.increment(player))
+        val turnStartScore = progress.turnStartScore
         val scoreAfter = progress.remaining[player] - dart.value
+        val counted = progress.copy(
+            dartsThrown = progress.dartsThrown.increment(player),
+            turnDarts = progress.turnDarts + dart,
+        )
         return when (outcomeOf(scoreAfter, dart)) {
-            DartOutcome.BUST -> counted.withRemaining(player, progress.turnStartScore).nextTurn()
-            DartOutcome.CHECKOUT -> counted.withRemaining(player, 0)
-                .copy(currentPlayer = null, turnDarts = emptyList(), winner = player)
-            DartOutcome.SCORED -> counted.withRemaining(player, scoreAfter).copy(turnDarts = progress.turnDarts + dart)
-                .let { if (it.turnDarts.size == DARTS_PER_TURN) it.nextTurn() else it }
+            DartOutcome.BUST -> counted.endTurn(TurnOutcome.BUST, turnStartScore, turnStartScore)
+            DartOutcome.CHECKOUT -> counted.endTurn(TurnOutcome.CHECKOUT, turnStartScore, 0)
+            DartOutcome.SCORED -> if (counted.turnDarts.size == DARTS_PER_TURN) {
+                counted.endTurn(TurnOutcome.NORMAL, turnStartScore, scoreAfter)
+            } else {
+                counted.withRemaining(player, scoreAfter)
+            }
         }
     }
 
@@ -49,8 +55,10 @@ internal class X01Replay(private val config: X01Config) {
         currentPlayerIndex = currentPlayer,
         winnerIndex = winner,
         ranking = winner?.let { ranking(remaining, it) }.orEmpty(),
+        completedTurns = completedTurns,
     )
 
+    /** Exact value, not rounded (rule A1). */
     private fun threeDartAverage(remaining: Int, dartsThrown: Int): Double? =
         if (dartsThrown == 0) null else (config.startScore - remaining) * DARTS_PER_TURN.toDouble() / dartsThrown
 
@@ -68,6 +76,7 @@ internal class X01Replay(private val config: X01Config) {
         val dartsThrown: List<Int>,
         val currentPlayer: Int?,
         val turnDarts: List<Dart>,
+        val completedTurns: List<X01Turn>,
         val winner: Int?,
     ) {
         /** A bust ends the turn, so the score at the start of the turn is the score plus the darts of the turn. */
@@ -77,8 +86,18 @@ internal class X01Replay(private val config: X01Config) {
         fun withRemaining(player: Int, score: Int): Progress =
             copy(remaining = remaining.mapIndexed { index, old -> if (index == player) score else old })
 
-        fun nextTurn(): Progress =
-            copy(currentPlayer = (checkNotNull(currentPlayer) + 1) % remaining.size, turnDarts = emptyList())
+        /** Records the turn in progress as completed (rule A3), then passes to the next player (rule T2). */
+        fun endTurn(outcome: TurnOutcome, remainingBefore: Int, remainingAfter: Int): Progress {
+            val player = checkNotNull(currentPlayer)
+            val turn = X01Turn(player, turnDarts, outcome, remainingBefore, remainingAfter)
+            val isCheckout = outcome == TurnOutcome.CHECKOUT
+            return withRemaining(player, remainingAfter).copy(
+                currentPlayer = if (isCheckout) null else (player + 1) % remaining.size,
+                turnDarts = emptyList(),
+                completedTurns = completedTurns + turn,
+                winner = if (isCheckout) player else winner,
+            )
+        }
 
         companion object {
             fun start(config: X01Config): Progress = Progress(
@@ -86,6 +105,7 @@ internal class X01Replay(private val config: X01Config) {
                 dartsThrown = config.players.map { 0 },
                 currentPlayer = 0,
                 turnDarts = emptyList(),
+                completedTurns = emptyList(),
                 winner = null,
             )
         }

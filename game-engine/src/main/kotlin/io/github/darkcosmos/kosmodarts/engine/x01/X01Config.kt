@@ -1,5 +1,7 @@
 package io.github.darkcosmos.kosmodarts.engine.x01
 
+import java.text.Normalizer
+
 /** How a player must reach exactly zero (rule C2). */
 enum class CheckoutRule {
     /** The last dart must be a double or the bull. */
@@ -9,7 +11,7 @@ enum class CheckoutRule {
     SINGLE_OUT,
 }
 
-/** Reason why an [X01Config] was rejected (rule C5). */
+/** A broken configuration rule (rule C5). The declaration order is the order in which errors are reported. */
 enum class X01ConfigError {
     INVALID_START_SCORE,
     NO_PLAYERS,
@@ -19,43 +21,56 @@ enum class X01ConfigError {
     DUPLICATE_NAME,
 }
 
-/** Thrown when an [X01Config] is invalid (rule C5). [error] tells which rule is broken. */
-class InvalidX01ConfigException(val error: X01ConfigError) :
-    IllegalArgumentException("Invalid X01 configuration: $error")
+/**
+ * Thrown when an [X01Config] is invalid (rule C5). [errors] lists every broken rule once, in the declaration order
+ * of [X01ConfigError].
+ */
+class InvalidX01ConfigException(val errors: List<X01ConfigError>) :
+    IllegalArgumentException("Invalid X01 configuration: $errors")
 
 /**
  * Configuration of an X01 leg (rules C1 to C5). Entry is always free (straight in, rule C3).
  *
  * @param playerNames player names in throwing order; the caller is responsible for any shuffling. Names are
- *   trimmed, then must be non-blank, at most [MAX_NAME_LENGTH] characters and unique ignoring case.
+ *   trimmed and normalized to Unicode NFC, then must be non-blank, at most [MAX_NAME_LENGTH] code points and unique
+ *   ignoring case (not accents), whatever the default locale.
  * @param startScore 501 or 301.
- * @throws InvalidX01ConfigException if any rule is broken.
+ * @throws InvalidX01ConfigException listing every broken rule.
  */
 class X01Config(
     playerNames: List<String>,
     val startScore: Int = DEFAULT_START_SCORE,
     val checkoutRule: CheckoutRule = CheckoutRule.DOUBLE_OUT,
 ) {
-    /** Trimmed player names, in throwing order. */
-    val players: List<String> = playerNames.map(String::trim)
+    /** Trimmed, NFC-normalized player names, in throwing order. */
+    val players: List<String> = playerNames.map { Normalizer.normalize(it.trim(), Normalizer.Form.NFC) }
 
     init {
-        validationError()?.let { throw InvalidX01ConfigException(it) }
+        val errors = X01ConfigError.entries.filter(::isBroken)
+        if (errors.isNotEmpty()) throw InvalidX01ConfigException(errors)
     }
 
-    private fun validationError(): X01ConfigError? = when {
-        startScore !in START_SCORES -> X01ConfigError.INVALID_START_SCORE
-        players.isEmpty() -> X01ConfigError.NO_PLAYERS
-        players.size > MAX_PLAYERS -> X01ConfigError.TOO_MANY_PLAYERS
-        players.any(String::isBlank) -> X01ConfigError.BLANK_NAME
-        players.any { it.codePointCount(0, it.length) > MAX_NAME_LENGTH } -> X01ConfigError.NAME_TOO_LONG
-        hasDuplicateNames() -> X01ConfigError.DUPLICATE_NAME
-        else -> null
+    private fun isBroken(rule: X01ConfigError): Boolean = when (rule) {
+        X01ConfigError.INVALID_START_SCORE -> startScore !in START_SCORES
+        X01ConfigError.NO_PLAYERS -> players.isEmpty()
+        X01ConfigError.TOO_MANY_PLAYERS -> players.size > MAX_PLAYERS
+        X01ConfigError.BLANK_NAME -> players.any(String::isBlank)
+        X01ConfigError.NAME_TOO_LONG -> players.any { it.codePointCount(0, it.length) > MAX_NAME_LENGTH }
+        X01ConfigError.DUPLICATE_NAME -> hasDuplicateNames()
     }
 
-    private fun hasDuplicateNames(): Boolean = players.withIndex().any { (index, name) ->
-        players.drop(index + 1).any { other -> other.equals(name, ignoreCase = true) }
+    /** Blank names are reported as [X01ConfigError.BLANK_NAME] only, so they are left out of this check. */
+    private fun hasDuplicateNames(): Boolean {
+        val keys = players.filterNot(String::isBlank).map(::caseInsensitiveKey)
+        return keys.size != keys.toSet().size
     }
+
+    /**
+     * Locale-independent case folding, code point by code point (also correct for letters outside the BMP). Upper
+     * then lower case maps every case variant to one form, like [String.equals] with `ignoreCase = true`.
+     */
+    private fun caseInsensitiveKey(name: String): List<Int> =
+        name.codePoints().map { Character.toLowerCase(Character.toUpperCase(it)) }.toArray().toList()
 
     override fun equals(other: Any?): Boolean = other is X01Config &&
         players == other.players &&
@@ -77,7 +92,7 @@ class X01Config(
         /** Maximum number of players (rule C4). */
         const val MAX_PLAYERS: Int = 4
 
-        /** Maximum length of a trimmed player name, in Unicode code points (rule C4). */
+        /** Maximum length of a player name, in Unicode code points after trimming and NFC normalization (rule C4). */
         const val MAX_NAME_LENGTH: Int = 20
 
         private const val HASH_PRIME = 31
