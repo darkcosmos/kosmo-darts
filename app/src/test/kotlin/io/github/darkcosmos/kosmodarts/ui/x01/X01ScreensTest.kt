@@ -3,6 +3,8 @@ package io.github.darkcosmos.kosmodarts.ui.x01
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -13,6 +15,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.hasText
@@ -352,20 +355,16 @@ class X01ScreensTest {
     }
 
     @Test
-    fun undoFromTheEndScreenReturnsToTheGameWithTheTurnReopened() {
+    fun theEndScreenHasNoUndoAction() {
         playAnnToFourRemaining()
         double(2)
         finishGame()
 
-        clickInScroll(R.string.end_undo)
-
-        checkoutDialog().assertDoesNotExist()
-        assertCurrentPlayer("Ann", 4)
-        assertDartSlot(0, "T20")
-        assertDartSlot(1, "T19")
-        double(2)
-        finishGame()
         composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
+        composeRule.onAllNodes(hasClickAction()).assertCountEquals(2)
+        composeRule.onNodeWithText(string(R.string.end_rematch)).assertHasClickAction()
+        composeRule.onNodeWithText(string(R.string.home_new_game)).assertHasClickAction()
+        composeRule.onNodeWithText(string(R.string.key_undo)).assertDoesNotExist()
     }
 
     @Test

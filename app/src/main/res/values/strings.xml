@@ -61,6 +61,5 @@
         <item quantity="one">%1$d dart</item>
         <item quantity="other">%1$d darts</item>
     </plurals>
-    <string name="end_undo">Undo last dart</string>
     <string name="end_rematch">Rematch</string>
 </resources>

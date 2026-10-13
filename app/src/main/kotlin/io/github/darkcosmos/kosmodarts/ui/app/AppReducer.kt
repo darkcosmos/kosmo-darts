@@ -66,7 +66,6 @@ class AppReducer(private val random: Random) {
     private fun onEnd(state: AppState, game: X01Game, event: AppEvent): AppState = when (event) {
         AppEvent.Back -> state.copy(screen = Screen.Home)
         AppEvent.NewGame -> state.toSetup()
-        AppEvent.UndoTapped -> state.copy(screen = Screen.Game(GameScreenState(game.undo())))
         AppEvent.Rematch -> state.copy(screen = Screen.Game(GameScreenState(X01Game(rematchConfig(game.config)))))
         else -> state
     }

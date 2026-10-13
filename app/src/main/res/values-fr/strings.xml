@@ -53,6 +53,5 @@
         <item quantity="many">%1$d fléchettes</item>
         <item quantity="other">%1$d fléchettes</item>
     </plurals>
-    <string name="end_undo">Annuler la dernière fléchette</string>
     <string name="end_rematch">Revanche</string>
 </resources>

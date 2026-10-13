@@ -18,7 +18,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -44,7 +43,7 @@ private val CONTENT_MAX_WIDTH = 560.dp
 private val MIN_TOUCH_TARGET = 48.dp
 private val PADDING = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
 
-/** End of a leg: ranking (ties share a rank), then rematch, new game and undo. */
+/** End of a leg: ranking (ties share a rank), then rematch and new game. */
 @Composable
 fun EndScreen(game: X01Game, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
     val rows = endRows(game)
@@ -102,9 +101,6 @@ private fun Actions(onEvent: (AppEvent) -> Unit) {
     }
     FilledTonalButton(onClick = { onEvent(AppEvent.NewGame) }, modifier = buttonModifier) {
         Text(stringResource(R.string.home_new_game))
-    }
-    OutlinedButton(onClick = { onEvent(AppEvent.UndoTapped) }, modifier = buttonModifier) {
-        Text(stringResource(R.string.end_undo))
     }
 }
 

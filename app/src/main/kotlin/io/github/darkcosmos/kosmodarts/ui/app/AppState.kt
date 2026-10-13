@@ -61,7 +61,7 @@ sealed interface AppEvent {
 
     data object MissTapped : AppEvent
 
-    /** Undo key of the game screen, Undo in the checkout dialog, or "Undo last dart" on the end screen. */
+    /** Undo key of the game screen, or Undo in the checkout dialog. */
     data object UndoTapped : AppEvent
 
     /** "Next player", next to the Undo key. */
