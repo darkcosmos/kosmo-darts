@@ -193,10 +193,10 @@ class AppReducerTest {
     }
 
     @Test
-    fun undoFromTheEndScreenReturnsToTheGameWithoutTheWinningDart() {
-        val state = inGame(singleOut301, winningDarts).after(*finishEvents, AppEvent.UndoTapped)
+    fun undoIsIgnoredOnTheEndScreen() {
+        val end = inGame(singleOut301, winningDarts).after(*finishEvents)
 
-        assertEquals(Screen.Game(GameScreenState(X01Game(singleOut301, winningDarts))), state.screen)
+        assertEquals(end, end.after(AppEvent.UndoTapped))
     }
 
     @Test
