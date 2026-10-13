@@ -87,25 +87,99 @@ class GameScreenStateTest {
     }
 
     @Test
-    fun bustIsShownUntilTheNextDart() {
-        val busted = bustedGame()
+    fun noTurnIsPendingDuringATurn() {
+        val game = start().throwNumber(1).throwNumber(2)
 
-        assertTrue(busted.isBustShown)
-        assertEquals(TurnOutcome.BUST, busted.lastTurn?.outcome)
-        assertFalse(busted.throwNumber(1).isBustShown)
+        assertFalse(game.isAwaitingConfirmation)
+        assertNull(game.pendingTurn)
+        assertTrue(game.isKeypadEnabled)
+        assertFalse(game.canGoToNextPlayer)
     }
 
     @Test
-    fun bustIsHiddenByUndo() {
-        val busted = bustedGame()
-        assertTrue(busted.isBustShown)
+    fun theThirdDartWaitsForConfirmation() {
+        val game = start().throwNumber(1).throwNumber(2).throwNumber(3)
 
-        assertFalse(busted.undo().isBustShown)
+        assertTrue(game.isAwaitingConfirmation)
+        assertTrue(game.canGoToNextPlayer)
+        assertFalse(game.isCheckoutDialogShown)
+        assertEquals(TurnOutcome.NORMAL, game.pendingTurn?.outcome)
+        assertEquals(listOf(Dart.single(1), Dart.single(2), Dart.single(3)), game.pendingTurn?.darts)
+        assertEquals(295, game.pendingTurn?.remainingAfter)
+    }
+
+    @Test
+    fun theWholeKeypadIsDisabledWhileATurnIsPending() {
+        val pending = start().throwNumber(1).throwNumber(2).throwNumber(3)
+
+        assertFalse(pending.isKeypadEnabled)
+        assertFalse(pending.areBullKeysEnabled)
+        assertEquals(pending, pending.throwNumber(20))
+        assertEquals(pending, pending.throwOuterBull())
+        assertEquals(pending, pending.throwBull())
+        assertEquals(pending, pending.throwMiss())
+        assertEquals(pending, pending.toggleMultiplier(Multiplier.DOUBLE))
+    }
+
+    @Test
+    fun thePlayerWhoThrewStaysHighlightedWhileTheTurnIsPending() {
+        val pending = start().throwNumber(1).throwNumber(2).throwNumber(3)
+
+        assertEquals(0, pending.highlightedPlayerIndex)
+        assertEquals(listOf(Dart.single(1), Dart.single(2), Dart.single(3)), pending.highlightedTurnDarts)
+    }
+
+    @Test
+    fun confirmingMovesPlayOnToTheNextPlayer() {
+        val confirmed = start().throwNumber(1).throwNumber(2).throwNumber(3).nextPlayer()
+
+        assertFalse(confirmed.isAwaitingConfirmation)
+        assertTrue(confirmed.isKeypadEnabled)
+        assertEquals(1, confirmed.highlightedPlayerIndex)
+        assertTrue(confirmed.highlightedTurnDarts.isEmpty())
+    }
+
+    @Test
+    fun aBustWaitsForConfirmation() {
+        val busted = bustedGame()
+
+        assertTrue(busted.isAwaitingConfirmation)
+        assertEquals(TurnOutcome.BUST, busted.pendingTurn?.outcome)
+        assertEquals(121, busted.pendingTurn?.remainingAfter)
+        assertEquals(0, busted.highlightedPlayerIndex)
+    }
+
+    @Test
+    fun theWinningDartWaitsForConfirmation() {
+        val single = X01Config(listOf("Ann"), startScore = 301, checkoutRule = CheckoutRule.SINGLE_OUT)
+        val almost = GameScreenState(X01Game(single, List(5) { Dart.triple(20) }))
+
+        val won = almost.throwNumber(1)
+
+        assertTrue(won.isAwaitingConfirmation)
+        assertTrue(won.isCheckoutDialogShown)
+        assertFalse(won.canGoToNextPlayer)
+        assertEquals(won, won.nextPlayer())
+        assertEquals(TurnOutcome.CHECKOUT, won.pendingTurn?.outcome)
+        assertEquals(0, won.highlightedPlayerIndex)
+        assertEquals(listOf(Dart.triple(20), Dart.triple(20), Dart.single(1)), won.highlightedTurnDarts)
+    }
+
+    @Test
+    fun undoFromThePendingTurnReopensItWithItsFirstTwoDarts() {
+        val pending = start().throwNumber(1).throwNumber(2).throwNumber(3)
+
+        val reopened = pending.undo()
+
+        assertFalse(reopened.isAwaitingConfirmation)
+        assertEquals(0, reopened.game.state.currentPlayerIndex)
+        assertEquals(listOf(Dart.single(1), Dart.single(2)), reopened.highlightedTurnDarts)
+        assertEquals(reopened, reopened.throwNumber(4).undo())
     }
 
     @Test
     fun undoRemovesTheLastDartAcrossPlayersAndResetsTheModifier() {
-        val bobToThrow = start().throwNumber(1).throwNumber(2).throwNumber(3)
+        val bobToThrow = start().throwNumber(1).throwNumber(2).throwNumber(3).nextPlayer()
         assertEquals(1, bobToThrow.game.state.currentPlayerIndex)
 
         val undone = bobToThrow.toggleMultiplier(Multiplier.DOUBLE).undo()
@@ -113,6 +187,7 @@ class GameScreenStateTest {
         assertEquals(0, undone.game.state.currentPlayerIndex)
         assertEquals(listOf(Dart.single(1), Dart.single(2)), undone.game.darts)
         assertEquals(Multiplier.SINGLE, undone.multiplier)
+        assertFalse(undone.isAwaitingConfirmation)
     }
 
     @Test
@@ -122,14 +197,23 @@ class GameScreenStateTest {
     }
 
     @Test
-    fun lastTurnIsTheLastCompletedTurn() {
-        val game = start().throwNumber(1).throwNumber(2)
-        assertNull(game.lastTurn)
+    fun undoOnTheCheckoutClosesTheDialogAndReopensTheTurn() {
+        val single = X01Config(listOf("Ann"), startScore = 301, checkoutRule = CheckoutRule.SINGLE_OUT)
+        val won = GameScreenState(X01Game(single, List(5) { Dart.triple(20) })).throwNumber(1)
 
-        val turn = game.throwNumber(3).lastTurn
+        val reopened = won.undo()
 
-        assertEquals(0, turn?.playerIndex)
-        assertEquals(listOf(Dart.single(1), Dart.single(2), Dart.single(3)), turn?.darts)
+        assertFalse(reopened.isCheckoutDialogShown)
+        assertFalse(reopened.game.state.isFinished)
+        assertEquals(listOf(Dart.triple(20), Dart.triple(20)), reopened.highlightedTurnDarts)
+        assertTrue(reopened.isKeypadEnabled)
+    }
+
+    @Test
+    fun nextPlayerWithoutWaitingTurnChangesNothing() {
+        val game = start().throwNumber(1)
+
+        assertEquals(game, game.nextPlayer())
     }
 
     @Test
@@ -152,7 +236,7 @@ class GameScreenStateTest {
 
     /** 301 double out: Ann leaves 121, Bob leaves 121, then Ann's T20 T20 leaves 1, which is a bust. */
     private fun bustedGame(): GameScreenState =
-        start().throwTriples(20, 20, 20).throwTriples(20, 20, 20).throwTriples(20, 20)
+        start().throwTriples(20, 20, 20).nextPlayer().throwTriples(20, 20, 20).nextPlayer().throwTriples(20, 20)
 
     private fun GameScreenState.throwTriples(vararg numbers: Int): GameScreenState =
         numbers.fold(this) { game, number -> game.toggleMultiplier(Multiplier.TRIPLE).throwNumber(number) }

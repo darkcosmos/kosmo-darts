@@ -8,6 +8,7 @@ object KeypadTags {
     const val BULL: String = "key_bull"
     const val MISS: String = "key_miss"
     const val UNDO: String = "key_undo"
+    const val NEXT_PLAYER: String = "key_next_player"
 
     fun number(number: Int): String = "key_$number"
 }

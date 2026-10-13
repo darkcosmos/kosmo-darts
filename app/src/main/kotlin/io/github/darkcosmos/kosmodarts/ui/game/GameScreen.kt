@@ -25,25 +25,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.keepScreenOn
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.TurnOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01PlayerState
-import io.github.darkcosmos.kosmodarts.engine.x01.X01State
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.format.averageText
 import io.github.darkcosmos.kosmodarts.ui.format.dartText
@@ -83,53 +84,38 @@ fun GameScreen(game: GameScreenState, onEvent: (AppEvent) -> Unit, modifier: Mod
         if (game.isAbandonDialogShown) {
             AbandonDialog(onEvent)
         }
+        game.pendingTurn?.takeIf { game.isCheckoutDialogShown }?.let { turn ->
+            CheckoutDialog(game.game.state.players[turn.playerIndex].name, turn.darts, onEvent)
+        }
     }
 }
 
 @Composable
 private fun Scoreboard(game: GameScreenState, modifier: Modifier) {
     val state = game.game.state
+    val lastTurns = lastTurnScores(state)
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        if (game.isBustShown) {
-            BustBanner()
-        }
         state.players.forEachIndexed { index, player ->
-            if (index == state.currentPlayerIndex) {
-                CurrentPlayerCard(player)
+            if (index == game.highlightedPlayerIndex) {
+                CurrentPlayerCard(player, index, game.highlightedTurnDarts, lastTurns[index], game.isBustShown)
             } else {
-                PlayerRow(player)
+                PlayerRow(player, index, lastTurns[index])
             }
         }
-        LastTurn(game, state)
     }
 }
 
 @Composable
-private fun BustBanner() {
-    Surface(
-        color = MaterialTheme.colorScheme.errorContainer,
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier
-            .fillMaxWidth()
-            .testTag(GameTags.BUST)
-            .semantics { liveRegion = LiveRegionMode.Assertive },
-    ) {
-        Text(
-            text = stringResource(R.string.game_bust),
-            style = MaterialTheme.typography.displayMedium,
-            fontWeight = FontWeight.Black,
-            color = MaterialTheme.colorScheme.onErrorContainer,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(8.dp),
-        )
-    }
-}
-
-@Composable
-private fun CurrentPlayerCard(player: X01PlayerState) {
+private fun CurrentPlayerCard(
+    player: X01PlayerState,
+    index: Int,
+    turnDarts: List<Dart>,
+    lastTurn: LastTurnScore,
+    isBust: Boolean,
+) {
     val toThrow = stringResource(R.string.game_to_throw, player.name)
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer,
@@ -153,19 +139,23 @@ private fun CurrentPlayerCard(player: X01PlayerState) {
                             contentDescription = toThrow
                         },
                 )
-                Text(
-                    text = stringResource(R.string.game_average, averageText(player.threeDartAverage)),
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                PlayerStats(player, index, lastTurn, MaterialTheme.typography.titleMedium)
             }
-            Text(
-                text = player.remaining.toString(),
-                fontSize = REMAINING_SIZE,
-                lineHeight = REMAINING_SIZE,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.testTag(GameTags.CURRENT_REMAINING),
-            )
-            DartSlots(player.currentTurnDarts)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = player.remaining.toString(),
+                    fontSize = REMAINING_SIZE,
+                    lineHeight = REMAINING_SIZE,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier
+                        .weight(1f)
+                        .testTag(GameTags.CURRENT_REMAINING),
+                )
+                if (isBust) {
+                    BustBadge()
+                }
+            }
+            DartSlots(turnDarts)
         }
     }
 }
@@ -204,7 +194,7 @@ private fun DartSlots(darts: List<Dart>) {
 }
 
 @Composable
-private fun PlayerRow(player: X01PlayerState) {
+private fun PlayerRow(player: X01PlayerState, index: Int, lastTurn: LastTurnScore) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -220,10 +210,12 @@ private fun PlayerRow(player: X01PlayerState) {
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        Text(
-            text = stringResource(R.string.game_average, averageText(player.threeDartAverage)),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        PlayerStats(
+            player,
+            index,
+            lastTurn,
+            MaterialTheme.typography.bodyMedium,
+            MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
             text = player.remaining.toString(),
@@ -234,23 +226,84 @@ private fun PlayerRow(player: X01PlayerState) {
     }
 }
 
+/** Three-dart average, and the score of the last completed turn under it. */
 @Composable
-private fun LastTurn(game: GameScreenState, state: X01State) {
-    val turn = game.lastTurn ?: return
-    val name = state.players[turn.playerIndex].name
-    val darts = dartsText(turn.darts)
-    val text = if (turn.outcome == TurnOutcome.BUST) {
-        stringResource(R.string.game_last_turn_bust, name, darts)
-    } else {
-        stringResource(R.string.game_last_turn, name, darts, turn.remainingBefore - turn.remainingAfter)
+private fun PlayerStats(
+    player: X01PlayerState,
+    index: Int,
+    lastTurn: LastTurnScore,
+    style: TextStyle,
+    color: Color = Color.Unspecified,
+) {
+    Column(horizontalAlignment = Alignment.End) {
+        Text(
+            text = stringResource(R.string.game_average, averageText(player.threeDartAverage)),
+            style = style,
+            color = color,
+        )
+        Text(
+            text = stringResource(R.string.game_last_turn_score, lastTurnText(lastTurn)),
+            style = style,
+            color = color,
+            modifier = Modifier.testTag(GameTags.lastTurnScore(index)),
+        )
     }
-    Text(
-        text = text,
-        style = MaterialTheme.typography.bodyLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+}
+
+@Composable
+private fun lastTurnText(lastTurn: LastTurnScore): String = when (lastTurn) {
+    LastTurnScore.None -> stringResource(R.string.game_last_turn_none)
+    LastTurnScore.Bust -> stringResource(R.string.game_bust)
+    is LastTurnScore.Points -> lastTurn.points.toString()
+}
+
+/** Shown in the card of the player whose bust turn waits for "Next player". */
+@Composable
+private fun BustBadge() {
+    Surface(
+        color = MaterialTheme.colorScheme.error,
+        contentColor = MaterialTheme.colorScheme.onError,
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier
-            .padding(horizontal = 16.dp)
-            .testTag(GameTags.LAST_TURN),
+            .testTag(GameTags.CARD_BUST)
+            .semantics { liveRegion = LiveRegionMode.Assertive },
+    ) {
+        Text(
+            text = stringResource(R.string.game_bust),
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+    }
+}
+
+/**
+ * Modal confirmation of the winning dart. It cannot be dismissed by tapping outside or with system back: the only
+ * ways out are "Finish game" and Undo.
+ */
+@Composable
+private fun CheckoutDialog(playerName: String, darts: List<Dart>, onEvent: (AppEvent) -> Unit) {
+    AlertDialog(
+        onDismissRequest = {},
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+        modifier = Modifier.testTag(GameTags.CHECKOUT_DIALOG),
+        title = { Text(stringResource(R.string.checkout_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = playerName, style = MaterialTheme.typography.titleLarge)
+                Text(text = dartsText(darts), style = MaterialTheme.typography.headlineSmall)
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onEvent(AppEvent.FinishGameTapped) }) {
+                Text(stringResource(R.string.checkout_finish))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onEvent(AppEvent.UndoTapped) }) {
+                Text(stringResource(R.string.key_undo))
+            }
+        },
     )
 }
 

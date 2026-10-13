@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlin.random.Random
 
 /**
@@ -18,7 +17,14 @@ class KosmoDartsViewModel(random: Random = Random.Default) : ViewModel() {
 
     val state: StateFlow<AppState> = mutableState.asStateFlow()
 
+    /** Called once per completed turn (see [completedTurn]). Does nothing yet. */
+    var turnCompletedHook: TurnCompletedHook = TurnCompletedHook {}
+
+    /** Events come from the main thread only. */
     fun onEvent(event: AppEvent) {
-        mutableState.update { reducer.reduce(it, event) }
+        val before = mutableState.value
+        val after = reducer.reduce(before, event)
+        mutableState.value = after
+        completedTurn(before, after)?.let(turnCompletedHook::onTurnCompleted)
     }
 }

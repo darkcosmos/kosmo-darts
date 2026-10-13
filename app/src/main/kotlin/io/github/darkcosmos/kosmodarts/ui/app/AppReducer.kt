@@ -42,11 +42,12 @@ class AppReducer(private val random: Random) {
         else -> setup
     }
 
-    private fun onGame(state: AppState, game: GameScreenState, event: AppEvent): AppState {
-        if (event == AppEvent.AbandonConfirmed) return state.copy(screen = Screen.Home)
-        val next = playGame(game, event)
-        val screen = if (next.game.state.isFinished) Screen.End(next.game) else Screen.Game(next)
-        return state.copy(screen = screen)
+    private fun onGame(state: AppState, game: GameScreenState, event: AppEvent): AppState = when {
+        event == AppEvent.AbandonConfirmed -> state.copy(screen = Screen.Home)
+        event == AppEvent.FinishGameTapped && game.isCheckoutDialogShown -> state.copy(screen = Screen.End(game.game))
+        // The checkout dialog cannot be dismissed with system back.
+        event == AppEvent.Back && game.isCheckoutDialogShown -> state
+        else -> state.copy(screen = Screen.Game(playGame(game, event)))
     }
 
     private fun playGame(game: GameScreenState, event: AppEvent): GameScreenState = when (event) {
@@ -58,13 +59,13 @@ class AppReducer(private val random: Random) {
         AppEvent.BullTapped -> game.throwBull()
         AppEvent.MissTapped -> game.throwMiss()
         AppEvent.UndoTapped -> game.undo()
+        AppEvent.NextPlayerTapped -> game.nextPlayer()
         else -> game
     }
 
     private fun onEnd(state: AppState, game: X01Game, event: AppEvent): AppState = when (event) {
         AppEvent.Back -> state.copy(screen = Screen.Home)
         AppEvent.NewGame -> state.toSetup()
-        AppEvent.UndoTapped -> state.copy(screen = Screen.Game(GameScreenState(game.undo())))
         AppEvent.Rematch -> state.copy(screen = Screen.Game(GameScreenState(X01Game(rematchConfig(game.config)))))
         else -> state
     }

@@ -33,8 +33,8 @@
     <string name="game_average_none" translatable="false">–</string>
     <string name="game_dart_slot">Dart %1$d: %2$s</string>
     <string name="game_dart_slot_empty">Dart %1$d: not thrown yet</string>
-    <string name="game_last_turn">Last turn, %1$s: %2$s = %3$d</string>
-    <string name="game_last_turn_bust">Last turn, %1$s: %2$s, bust</string>
+    <string name="game_last_turn_score">Prev. %1$s</string>
+    <string name="game_last_turn_none" translatable="false">–</string>
     <string name="game_bust">BUST</string>
     <string name="dart_single" translatable="false">%1$d</string>
     <string name="dart_double">D%1$d</string>
@@ -45,6 +45,9 @@
     <string name="key_double">Double</string>
     <string name="key_triple">Triple</string>
     <string name="key_undo">Undo</string>
+    <string name="checkout_title">Checkout!</string>
+    <string name="checkout_finish">Finish game</string>
+    <string name="key_next_player">Next player</string>
     <string name="game_abandon_title">Abandon the game?</string>
     <string name="game_abandon_text">The current game will be lost.</string>
     <string name="game_abandon_confirm">Abandon</string>
@@ -58,6 +61,5 @@
         <item quantity="one">%1$d dart</item>
         <item quantity="other">%1$d darts</item>
     </plurals>
-    <string name="end_undo">Undo last dart</string>
     <string name="end_rematch">Rematch</string>
 </resources>

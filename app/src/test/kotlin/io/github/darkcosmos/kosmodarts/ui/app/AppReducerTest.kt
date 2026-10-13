@@ -9,6 +9,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.random.Random
@@ -27,6 +28,9 @@ class AppReducerTest {
         listOf(Dart.triple(20), Dart.triple(20))
 
     private val lastWinningEvent = AppEvent.NumberTapped(1)
+
+    /** The winning dart, then "Finish game" in the checkout dialog. */
+    private val finishEvents = arrayOf(lastWinningEvent, AppEvent.FinishGameTapped)
 
     private fun inGame(config: X01Config, darts: List<Dart> = emptyList()) =
         AppState(screen = Screen.Game(GameScreenState(X01Game(config, darts))))
@@ -114,7 +118,8 @@ class AppReducerTest {
         )
 
         val game = (state.screen as Screen.Game).game.game
-        assertEquals(listOf(Dart.double(20), Dart.OUTER_BULL, Dart.BULL), game.darts)
+        // The third dart completes the turn: Miss is ignored while it waits, Undo removes the bull.
+        assertEquals(listOf(Dart.double(20), Dart.OUTER_BULL), game.darts)
     }
 
     @Test
@@ -142,22 +147,61 @@ class AppReducerTest {
     }
 
     @Test
-    fun theWinningDartOpensTheEndScreen() {
+    fun theWinningDartWaitsForConfirmation() {
         val state = inGame(singleOut301, winningDarts).after(lastWinningEvent)
 
-        assertEquals(Screen.End(X01Game(singleOut301, winningDarts + Dart.single(1))), state.screen)
+        val game = (state.screen as Screen.Game).game
+        assertTrue(game.isAwaitingConfirmation)
+        assertTrue(game.game.state.isFinished)
     }
 
     @Test
-    fun undoFromTheEndScreenReturnsToTheGameWithoutTheWinningDart() {
+    fun nextPlayerAndBackAreIgnoredWhileTheCheckoutDialogIsShown() {
+        val dialog = inGame(singleOut301, winningDarts).after(lastWinningEvent)
+
+        assertEquals(dialog, dialog.after(AppEvent.NextPlayerTapped, AppEvent.Back))
+    }
+
+    @Test
+    fun finishGameIsIgnoredWithoutCheckout() {
+        val waiting = inGame(singleOut301).after(*Array(3) { AppEvent.NumberTapped(1) })
+
+        assertEquals(waiting, waiting.after(AppEvent.FinishGameTapped))
+    }
+
+    @Test
+    fun undoInTheCheckoutDialogReopensTheTurn() {
         val state = inGame(singleOut301, winningDarts).after(lastWinningEvent, AppEvent.UndoTapped)
 
         assertEquals(Screen.Game(GameScreenState(X01Game(singleOut301, winningDarts))), state.screen)
     }
 
     @Test
+    fun nextPlayerMovesPlayOnAfterACompletedTurn() {
+        val state = inGame(singleOut301).after(*Array(3) { AppEvent.NumberTapped(1) }, AppEvent.NextPlayerTapped)
+
+        val game = (state.screen as Screen.Game).game
+        assertFalse(game.isAwaitingConfirmation)
+        assertEquals(1, game.game.state.currentPlayerIndex)
+    }
+
+    @Test
+    fun finishGameOpensTheEndScreen() {
+        val state = inGame(singleOut301, winningDarts).after(*finishEvents)
+
+        assertEquals(Screen.End(X01Game(singleOut301, winningDarts + Dart.single(1))), state.screen)
+    }
+
+    @Test
+    fun undoIsIgnoredOnTheEndScreen() {
+        val end = inGame(singleOut301, winningDarts).after(*finishEvents)
+
+        assertEquals(end, end.after(AppEvent.UndoTapped))
+    }
+
+    @Test
     fun rematchKeepsTheSettingsAndRotatesTheFirstPlayer() {
-        val state = inGame(singleOut301, winningDarts).after(lastWinningEvent, AppEvent.Rematch)
+        val state = inGame(singleOut301, winningDarts).after(*finishEvents, AppEvent.Rematch)
 
         val rotated = X01Config(listOf("Bob", "Cid", "Ann"), 301, CheckoutRule.SINGLE_OUT)
         assertEquals(Screen.Game(GameScreenState(X01Game(rotated))), state.screen)
@@ -167,14 +211,14 @@ class AppReducerTest {
     fun newGameFromTheEndScreenOpensThePrefilledSetup() {
         val names = listOf("Ann", "Bob", "Cid")
         val state = AppState(lastNames = names, screen = inGame(singleOut301, winningDarts).screen)
-            .after(lastWinningEvent, AppEvent.NewGame)
+            .after(*finishEvents, AppEvent.NewGame)
 
         assertEquals(Screen.Setup(SetupState.prefilled(listOf("Ann", "Bob", "Cid"))), state.screen)
     }
 
     @Test
     fun backFromTheEndScreenReturnsHome() {
-        val state = inGame(singleOut301, winningDarts).after(lastWinningEvent, AppEvent.Back)
+        val state = inGame(singleOut301, winningDarts).after(*finishEvents, AppEvent.Back)
 
         assertEquals(Screen.Home, state.screen)
     }
