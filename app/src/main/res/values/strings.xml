@@ -4,5 +4,60 @@
     <string name="home_title" translatable="false">Kosmo Darts</string>
     <string name="home_welcome">Keep score of your darts games with friends.</string>
     <string name="home_new_game">New game</string>
-    <string name="home_coming_soon">Coming soon</string>
+
+    <!-- Setup screen -->
+    <string name="setup_title">New game</string>
+    <string name="setup_game_label">Game</string>
+    <string name="setup_start_score" translatable="false">%1$d</string>
+    <string name="setup_finish_label">Finish</string>
+    <string name="setup_double_out">Double out</string>
+    <string name="setup_single_out">Single out</string>
+    <string name="setup_players_label">Players</string>
+    <string name="setup_player_name">Player %1$d</string>
+    <string name="setup_add_symbol" translatable="false">+</string>
+    <string name="setup_remove_symbol" translatable="false">−</string>
+    <string name="setup_add_player">Add a player</string>
+    <string name="setup_remove_player">Remove the last player</string>
+    <string name="setup_shuffle">Shuffle</string>
+    <string name="setup_start">Start</string>
+    <string name="setup_error_blank_name">Enter a name</string>
+    <string name="setup_error_name_too_long">%1$d characters maximum</string>
+    <string name="setup_error_duplicate_name">Another player has the same name</string>
+    <string name="setup_error_invalid_start_score">Choose 501 or 301</string>
+    <string name="setup_error_no_players">Add at least one player</string>
+    <string name="setup_error_too_many_players">%1$d players maximum</string>
+
+    <!-- Game screen -->
+    <string name="game_to_throw">%1$s to throw</string>
+    <string name="game_average">Avg. %1$s</string>
+    <string name="game_average_none" translatable="false">–</string>
+    <string name="game_dart_slot">Dart %1$d: %2$s</string>
+    <string name="game_dart_slot_empty">Dart %1$d: not thrown yet</string>
+    <string name="game_last_turn">Last turn, %1$s: %2$s = %3$d</string>
+    <string name="game_last_turn_bust">Last turn, %1$s: %2$s, bust</string>
+    <string name="game_bust">BUST</string>
+    <string name="dart_single" translatable="false">%1$d</string>
+    <string name="dart_double">D%1$d</string>
+    <string name="dart_triple">T%1$d</string>
+    <string name="dart_outer_bull" translatable="false">25</string>
+    <string name="dart_bull">Bull</string>
+    <string name="dart_miss">Miss</string>
+    <string name="key_double">Double</string>
+    <string name="key_triple">Triple</string>
+    <string name="key_undo">Undo</string>
+    <string name="game_abandon_title">Abandon the game?</string>
+    <string name="game_abandon_text">The current game will be lost.</string>
+    <string name="game_abandon_confirm">Abandon</string>
+    <string name="game_abandon_cancel">Keep playing</string>
+
+    <!-- End screen -->
+    <string name="end_winner">%1$s wins!</string>
+    <string name="end_rank">%1$d.</string>
+    <string name="end_average">3-dart avg. %1$s</string>
+    <plurals name="end_darts_thrown">
+        <item quantity="one">%1$d dart</item>
+        <item quantity="other">%1$d darts</item>
+    </plurals>
+    <string name="end_undo">Undo last dart</string>
+    <string name="end_rematch">Rematch</string>
 </resources>
