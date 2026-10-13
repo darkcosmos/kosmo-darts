@@ -65,4 +65,20 @@ class X01RankingTest {
             )
         assertEquals(listOf(X01Rank(1, 0), X01Rank(2, 1), X01Rank(2, 2)), game.state.ranking)
     }
+
+    /** E1: players listed after the winner do not get an extra turn; they are ranked on their current score. */
+    @Test
+    fun `E1 players without a turn after the checkout are not compensated`() {
+        val game = newGame("Alice", "Bob", "Carol", startScore = 301, checkoutRule = CheckoutRule.SINGLE_OUT)
+            .throwing(
+                "T20", "T20", "T20", // Alice 121
+                "20", "20", "20", // Bob 241
+                "1", "1", "1", // Carol 298
+                "T20", "T20", "1", // Alice wins: Bob and Carol had one turn fewer
+            )
+        assertEquals(null, game.state.currentPlayerIndex)
+        assertEquals(listOf(6, 3, 3), game.state.players.map(X01PlayerState::dartsThrown))
+        assertEquals(listOf(241, 298), listOf(game.player(1).remaining, game.player(2).remaining))
+        assertEquals(listOf(X01Rank(1, 0), X01Rank(2, 1), X01Rank(3, 2)), game.state.ranking)
+    }
 }

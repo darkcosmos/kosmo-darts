@@ -52,17 +52,17 @@ class DartTest {
         assertEquals(Dart(Dart.MISS_SEGMENT, Multiplier.SINGLE), Dart.MISS)
     }
 
-    /** D2: triple bull and triple outer bull cannot be created. */
+    /** D2: triple of 25 or 50 cannot be created. */
     @Test
-    fun `D2 triple bull cannot be created`() {
+    fun `D2 triple of 25 or 50 cannot be created`() {
         assertThrows<IllegalArgumentException> { Dart(Dart.BULL_SEGMENT, Multiplier.TRIPLE) }
         assertThrows<IllegalArgumentException> { Dart(Dart.OUTER_BULL_SEGMENT, Multiplier.TRIPLE) }
         assertThrows<IllegalArgumentException> { Dart.BULL.copy(multiplier = Multiplier.TRIPLE) }
     }
 
-    /** D2: double outer bull (and double bull) cannot be created. */
+    /** D2: double of 25 or 50 cannot be created ("D25" is not the bull). */
     @Test
-    fun `D2 double outer bull cannot be created`() {
+    fun `D2 double of 25 or 50 cannot be created`() {
         assertThrows<IllegalArgumentException> { Dart(Dart.OUTER_BULL_SEGMENT, Multiplier.DOUBLE) }
         assertThrows<IllegalArgumentException> { Dart.OUTER_BULL.copy(multiplier = Multiplier.DOUBLE) }
         assertThrows<IllegalArgumentException> { Dart(Dart.BULL_SEGMENT, Multiplier.DOUBLE) }

@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.engine.x01
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class X01TurnTest {
 
@@ -66,12 +67,13 @@ class X01TurnTest {
         assertEquals(listOf(dart("5")), bobThrows.player(1).currentTurnDarts)
     }
 
-    /** T2, S5: a checkout ends the turn and the leg: nobody is left to throw. */
+    /** T2, S5: a checkout ends the turn and the leg: there is no current player, even if Bob was next. */
     @Test
     fun `T2 S5 checkout ends the turn and the leg`() {
         val game = newGame("Alice", "Bob", startScore = 301, checkoutRule = CheckoutRule.SINGLE_OUT)
             .throwing("T20", "T20", "T20", "1", "1", "1", "T20", "T20", "1")
         assertEquals(null, game.state.currentPlayerIndex)
         assertEquals(0, game.state.winnerIndex)
+        assertThrows<LegFinishedException> { game.throwDart(Dart.MISS) }
     }
 }

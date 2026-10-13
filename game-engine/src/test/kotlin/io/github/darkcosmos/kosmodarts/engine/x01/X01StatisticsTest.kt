@@ -75,4 +75,11 @@ class X01StatisticsTest {
         assertEquals(6, game.player(0).dartsThrown)
         assertEquals(301.0 / 6 * 3, game.player(0).threeDartAverage!!, tolerance)
     }
+
+    /** A1: the average is returned exactly, without rounding (543 / 7 = 77.571428...). */
+    @Test
+    fun `A1 average is the exact value without rounding`() {
+        val game = newGame("Alice").throwing("T20", "T20", "T20", "1", "MISS", "MISS", "MISS")
+        assertEquals(543.0 / 7, game.player(0).threeDartAverage)
+    }
 }
