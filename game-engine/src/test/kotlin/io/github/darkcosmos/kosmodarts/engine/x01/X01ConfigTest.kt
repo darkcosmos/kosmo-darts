@@ -179,6 +179,96 @@ class X01ConfigTest {
         assertTrue("INVALID_START_SCORE" in message && "BLANK_NAME" in message, message)
     }
 
+    private fun violationsOf(build: () -> X01Config): List<X01ConfigViolation> =
+        assertThrows<InvalidX01ConfigException> { build() }.violations
+
+    private fun violation(error: X01ConfigError, vararg playerIndices: Int) =
+        X01ConfigViolation(error, playerIndices.toList())
+
+    /** C4, C5: two blank names are reported as blank only, never as duplicates. */
+    @Test
+    fun `C4 C5 blank names are never reported as duplicates`() {
+        assertEquals(
+            listOf(violation(X01ConfigError.BLANK_NAME, 0, 1)),
+            violationsOf { X01Config(listOf("", "  ", "Alice")) },
+        )
+        assertEquals(
+            listOf(violation(X01ConfigError.BLANK_NAME, 0, 2)),
+            violationsOf { X01Config(listOf(" ", "Alice", "\t")) },
+        )
+    }
+
+    /** C5: a blank name error carries the positions of every blank name. */
+    @Test
+    fun `C5 blank name error carries the player positions`() {
+        assertEquals(
+            listOf(violation(X01ConfigError.BLANK_NAME, 1, 3)),
+            violationsOf { X01Config(listOf("Alice", " ", "Bob", "")) },
+        )
+    }
+
+    /** C5: a name too long error carries the positions of every name that is too long. */
+    @Test
+    fun `C5 name too long error carries the player positions`() {
+        assertEquals(
+            listOf(violation(X01ConfigError.NAME_TOO_LONG, 0, 2)),
+            violationsOf { X01Config(listOf("a".repeat(21), "Bob", "c".repeat(40))) },
+        )
+    }
+
+    /** C5: a duplicate error carries all the positions of the duplicated name. */
+    @Test
+    fun `C5 duplicate error carries all the positions of the duplicated name`() {
+        assertEquals(
+            listOf(violation(X01ConfigError.DUPLICATE_NAME, 0, 2, 3)),
+            violationsOf { X01Config(listOf("Alice", "Bob", "ALICE", " alice ")) },
+        )
+        assertEquals(
+            listOf(violation(X01ConfigError.DUPLICATE_NAME, 1, 3)),
+            violationsOf { X01Config(listOf("Carol", COMPOSED_ELODIE, "Dave", DECOMPOSED_ELODIE)) },
+        )
+    }
+
+    /** C5: two different duplicated names give one duplicate error each, in the order of their first position. */
+    @Test
+    fun `C5 each duplicated name has its own duplicate error`() {
+        assertEquals(
+            listOf(
+                violation(X01ConfigError.DUPLICATE_NAME, 0, 3),
+                violation(X01ConfigError.DUPLICATE_NAME, 1, 2),
+            ),
+            violationsOf { X01Config(listOf("Bob", "Alice", "alice", "BOB")) },
+        )
+    }
+
+    /** C5: errors that are not about a name carry no position. */
+    @Test
+    fun `C5 errors not about a name carry no position`() {
+        assertEquals(
+            listOf(violation(X01ConfigError.INVALID_START_SCORE), violation(X01ConfigError.NO_PLAYERS)),
+            violationsOf { X01Config(emptyList(), startScore = 0) },
+        )
+        assertEquals(
+            listOf(violation(X01ConfigError.TOO_MANY_PLAYERS)),
+            violationsOf { X01Config(listOf("A", "B", "C", "D", "E")) },
+        )
+    }
+
+    /** C5: with several errors, every error comes with its positions, in a stable order. */
+    @Test
+    fun `C5 several errors carry their positions in a stable order`() {
+        assertEquals(
+            listOf(
+                violation(X01ConfigError.INVALID_START_SCORE),
+                violation(X01ConfigError.TOO_MANY_PLAYERS),
+                violation(X01ConfigError.BLANK_NAME, 1, 4),
+                violation(X01ConfigError.NAME_TOO_LONG, 2),
+                violation(X01ConfigError.DUPLICATE_NAME, 0, 3),
+            ),
+            violationsOf { X01Config(listOf("Alice", " ", "a".repeat(21), "ALICE", ""), startScore = 500) },
+        )
+    }
+
     private companion object {
         const val COMPOSED_ELODIE = "\u00C9lodie"
         const val DECOMPOSED_ELODIE = "E\u0301lodie"
