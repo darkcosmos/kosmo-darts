@@ -6,10 +6,16 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import io.github.darkcosmos.kosmodarts.ui.home.HomeScreen
+import androidx.activity.viewModels
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import io.github.darkcosmos.kosmodarts.ui.KosmoDartsApp
+import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 
 class MainActivity : ComponentActivity() {
+
+    private val viewModel: KosmoDartsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // The app is always dark, so system bars always use light icons.
@@ -19,8 +25,9 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
         setContent {
+            val state by viewModel.state.collectAsState()
             KosmoDartsTheme {
-                HomeScreen()
+                KosmoDartsApp(state = state, onEvent = viewModel::onEvent)
             }
         }
     }

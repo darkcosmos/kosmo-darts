@@ -165,7 +165,8 @@ class AppReducerTest {
 
     @Test
     fun newGameFromTheEndScreenOpensThePrefilledSetup() {
-        val state = AppState(lastNames = listOf("Ann", "Bob", "Cid"), screen = inGame(singleOut301, winningDarts).screen)
+        val names = listOf("Ann", "Bob", "Cid")
+        val state = AppState(lastNames = names, screen = inGame(singleOut301, winningDarts).screen)
             .after(lastWinningEvent, AppEvent.NewGame)
 
         assertEquals(Screen.Setup(SetupState.prefilled(listOf("Ann", "Bob", "Cid"))), state.screen)

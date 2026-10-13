@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -24,7 +26,7 @@ import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
+fun HomeScreen(onNewGame: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
@@ -32,6 +34,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         Column(
             modifier = Modifier
                 .safeDrawingPadding()
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -51,17 +54,9 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                 textAlign = TextAlign.Center,
             )
             Spacer(modifier = Modifier.height(40.dp))
-            // Disabled until the first game mode exists.
-            Button(onClick = {}, enabled = false) {
+            Button(onClick = onNewGame) {
                 Text(text = stringResource(R.string.home_new_game))
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.home_coming_soon),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
         }
     }
 }
@@ -70,6 +65,6 @@ fun HomeScreen(modifier: Modifier = Modifier) {
 @Composable
 private fun HomeScreenPreview() {
     KosmoDartsTheme {
-        HomeScreen()
+        HomeScreen(onNewGame = {})
     }
 }

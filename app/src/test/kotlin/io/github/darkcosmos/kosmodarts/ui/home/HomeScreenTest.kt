@@ -4,10 +4,10 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.hasClickAction
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
@@ -41,13 +41,13 @@ class HomeScreenTest {
         composeRule.onNodeWithText(string(R.string.home_welcome)).assertIsDisplayed()
     }
 
-    /** The only button is disabled until the first game mode exists, so there is nothing to click yet. */
     @Test
-    fun newGameButtonIsDisplayedButDisabled() {
-        composeRule.onNode(hasClickAction())
+    fun newGameOpensTheSetup() {
+        composeRule.onNodeWithText(string(R.string.home_new_game))
             .assertIsDisplayed()
-            .assertIsNotEnabled()
-        composeRule.onNodeWithText(string(R.string.home_new_game), useUnmergedTree = true).assertIsDisplayed()
-        composeRule.onNodeWithText(string(R.string.home_coming_soon)).assertIsDisplayed()
+            .assertIsEnabled()
+            .performClick()
+
+        composeRule.onNodeWithText(string(R.string.setup_title)).assertIsDisplayed()
     }
 }

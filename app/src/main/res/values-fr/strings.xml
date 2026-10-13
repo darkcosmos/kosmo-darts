@@ -2,5 +2,55 @@
 <resources>
     <string name="home_welcome">Comptez les points de vos parties de fléchettes entre amis.</string>
     <string name="home_new_game">Nouvelle partie</string>
-    <string name="home_coming_soon">Bientôt disponible</string>
+
+    <!-- Setup screen -->
+    <string name="setup_title">Nouvelle partie</string>
+    <string name="setup_game_label">Jeu</string>
+    <string name="setup_finish_label">Fin de partie</string>
+    <string name="setup_double_out">Sortie double</string>
+    <string name="setup_single_out">Sortie simple</string>
+    <string name="setup_players_label">Joueurs</string>
+    <string name="setup_player_name">Joueur %1$d</string>
+    <string name="setup_add_player">Ajouter un joueur</string>
+    <string name="setup_remove_player">Retirer le dernier joueur</string>
+    <string name="setup_shuffle">Mélanger</string>
+    <string name="setup_start">Commencer</string>
+    <string name="setup_error_blank_name">Saisissez un nom</string>
+    <string name="setup_error_name_too_long">%1$d caractères maximum</string>
+    <string name="setup_error_duplicate_name">Un autre joueur porte le même nom</string>
+    <string name="setup_error_invalid_start_score">Choisissez 501 ou 301</string>
+    <string name="setup_error_no_players">Ajoutez au moins un joueur</string>
+    <string name="setup_error_too_many_players">%1$d joueurs maximum</string>
+
+    <!-- Game screen -->
+    <string name="game_to_throw">À %1$s de lancer</string>
+    <string name="game_average">Moy. %1$s</string>
+    <string name="game_dart_slot">Fléchette %1$d : %2$s</string>
+    <string name="game_dart_slot_empty">Fléchette %1$d : pas encore lancée</string>
+    <string name="game_last_turn">Dernière volée, %1$s : %2$s = %3$d</string>
+    <string name="game_last_turn_bust">Dernière volée, %1$s : %2$s, bust</string>
+    <string name="game_bust">BUST</string>
+    <string name="dart_double">D%1$d</string>
+    <string name="dart_triple">T%1$d</string>
+    <string name="dart_bull">Bull</string>
+    <string name="dart_miss">Raté</string>
+    <string name="key_double">Double</string>
+    <string name="key_triple">Triple</string>
+    <string name="key_undo">Annuler</string>
+    <string name="game_abandon_title">Abandonner la partie ?</string>
+    <string name="game_abandon_text">La partie en cours sera perdue.</string>
+    <string name="game_abandon_confirm">Abandonner</string>
+    <string name="game_abandon_cancel">Continuer</string>
+
+    <!-- End screen -->
+    <string name="end_winner">%1$s gagne !</string>
+    <string name="end_rank">%1$d.</string>
+    <string name="end_average">Moy. 3 fléchettes %1$s</string>
+    <plurals name="end_darts_thrown">
+        <item quantity="one">%1$d fléchette</item>
+        <item quantity="many">%1$d fléchettes</item>
+        <item quantity="other">%1$d fléchettes</item>
+    </plurals>
+    <string name="end_undo">Annuler la dernière fléchette</string>
+    <string name="end_rematch">Revanche</string>
 </resources>
