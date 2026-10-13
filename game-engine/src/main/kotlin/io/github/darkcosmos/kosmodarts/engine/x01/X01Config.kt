@@ -22,11 +22,25 @@ enum class X01ConfigError {
 }
 
 /**
- * Thrown when an [X01Config] is invalid (rule C5). [errors] lists every broken rule once, in the declaration order
- * of [X01ConfigError].
+ * One broken configuration rule (rule C5).
+ *
+ * @property playerIndices positions (0-based, in configuration order) of the players whose name breaks the rule.
+ *   Empty for errors that are not about a name. A [X01ConfigError.DUPLICATE_NAME] violation carries all the positions
+ *   of one duplicated name; each duplicated name has its own violation.
  */
-class InvalidX01ConfigException(val errors: List<X01ConfigError>) :
-    IllegalArgumentException("Invalid X01 configuration: $errors")
+data class X01ConfigViolation(val error: X01ConfigError, val playerIndices: List<Int> = emptyList())
+
+/**
+ * Thrown when an [X01Config] is invalid (rule C5). [violations] lists every broken rule in the declaration order of
+ * [X01ConfigError]; duplicated names are ordered by their first position.
+ */
+class InvalidX01ConfigException(val violations: List<X01ConfigViolation>) :
+    IllegalArgumentException("Invalid X01 configuration: $violations") {
+
+    /** Broken rules, each listed once, in the declaration order of [X01ConfigError]. */
+    val errors: List<X01ConfigError>
+        get() = violations.map(X01ConfigViolation::error).distinct()
+}
 
 /**
  * Configuration of an X01 leg (rules C1 to C5). Entry is always free (straight in, rule C3).
@@ -35,7 +49,7 @@ class InvalidX01ConfigException(val errors: List<X01ConfigError>) :
  *   trimmed and normalized to Unicode NFC, then must be non-blank, at most [MAX_NAME_LENGTH] code points and unique
  *   ignoring case (not accents), whatever the default locale.
  * @param startScore 501 or 301.
- * @throws InvalidX01ConfigException listing every broken rule.
+ * @throws InvalidX01ConfigException listing every broken rule, with the positions of the names concerned.
  */
 class X01Config(
     playerNames: List<String>,
@@ -46,24 +60,34 @@ class X01Config(
     val players: List<String> = playerNames.map { Normalizer.normalize(it.trim(), Normalizer.Form.NFC) }
 
     init {
-        val errors = X01ConfigError.entries.filter(::isBroken)
-        if (errors.isNotEmpty()) throw InvalidX01ConfigException(errors)
+        val violations = X01ConfigError.entries.flatMap(::violationsOf)
+        if (violations.isNotEmpty()) throw InvalidX01ConfigException(violations)
     }
 
-    private fun isBroken(rule: X01ConfigError): Boolean = when (rule) {
-        X01ConfigError.INVALID_START_SCORE -> startScore !in START_SCORES
-        X01ConfigError.NO_PLAYERS -> players.isEmpty()
-        X01ConfigError.TOO_MANY_PLAYERS -> players.size > MAX_PLAYERS
-        X01ConfigError.BLANK_NAME -> players.any(String::isBlank)
-        X01ConfigError.NAME_TOO_LONG -> players.any { it.codePointCount(0, it.length) > MAX_NAME_LENGTH }
-        X01ConfigError.DUPLICATE_NAME -> hasDuplicateNames()
+    private fun violationsOf(rule: X01ConfigError): List<X01ConfigViolation> = when (rule) {
+        X01ConfigError.INVALID_START_SCORE -> ruleViolation(rule, isBroken = startScore !in START_SCORES)
+        X01ConfigError.NO_PLAYERS -> ruleViolation(rule, isBroken = players.isEmpty())
+        X01ConfigError.TOO_MANY_PLAYERS -> ruleViolation(rule, isBroken = players.size > MAX_PLAYERS)
+        X01ConfigError.BLANK_NAME -> nameViolation(rule) { it.isBlank() }
+        X01ConfigError.NAME_TOO_LONG -> nameViolation(rule) { it.codePointCount(0, it.length) > MAX_NAME_LENGTH }
+        X01ConfigError.DUPLICATE_NAME -> duplicateNameViolations()
     }
 
-    /** Blank names are reported as [X01ConfigError.BLANK_NAME] only, so they are left out of this check. */
-    private fun hasDuplicateNames(): Boolean {
-        val keys = players.filterNot(String::isBlank).map(::caseInsensitiveKey)
-        return keys.size != keys.toSet().size
+    private fun ruleViolation(rule: X01ConfigError, isBroken: Boolean): List<X01ConfigViolation> =
+        if (isBroken) listOf(X01ConfigViolation(rule)) else emptyList()
+
+    private fun nameViolation(rule: X01ConfigError, breaks: (String) -> Boolean): List<X01ConfigViolation> {
+        val indices = players.indices.filter { breaks(players[it]) }
+        return if (indices.isEmpty()) emptyList() else listOf(X01ConfigViolation(rule, indices))
     }
+
+    /** One violation per duplicated name. Blank names are reported as [X01ConfigError.BLANK_NAME] only. */
+    private fun duplicateNameViolations(): List<X01ConfigViolation> = players.indices
+        .filterNot { players[it].isBlank() }
+        .groupBy { caseInsensitiveKey(players[it]) }
+        .values
+        .filter { it.size > 1 }
+        .map { X01ConfigViolation(X01ConfigError.DUPLICATE_NAME, it) }
 
     /**
      * Locale-independent case folding, code point by code point (also correct for letters outside the BMP). Upper
