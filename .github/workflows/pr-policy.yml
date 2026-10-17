@@ -1,0 +1,65 @@
+# Owner-maintained PR policy check. The agent cannot modify this file (token without 'workflow' scope).
+# Same rules as the managed skill squad/skills/pr-description (kosmo-agent-sandbox): keep both in sync.
+name: pr-policy
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions: {}
+
+concurrency:
+  group: pr-policy-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-policy:
+    name: pr-policy
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Check PR title and description
+        shell: bash
+        env:
+          # Untrusted input: passed through the environment, never interpolated into the script
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          set -uo pipefail
+
+          check_pr() { # usage: check_pr "<title>" <body-file>; prints FAIL lines, returns non-zero on any failure
+            local title="$1" body="$2" bad=0 headings
+            printf '%s\n' "$title" | grep -Eq '^(feat|fix|chore|build|test|docs)(\([a-z0-9-]+\))?: .{3,}$' \
+              || { echo "FAIL title: Conventional Commits expected (feat|fix|chore|build|test|docs)"; bad=1; }
+            [ "${#title}" -le 72 ] || { echo "FAIL title: longer than 72 characters"; bad=1; }
+            headings=$(grep -E '^## ' "$body" | sed -E 's/^## +//; s/[[:space:]]+$//' | tr '\n' '|')
+            printf '%s\n' "$headings" | grep -Eq '^For the product owner\|How to verify\|Local checks\|(Versions\|)?Known limitations\|(Proposed owner changes\|)?$' \
+              || { echo "FAIL sections: expected order is For the product owner, How to verify, Local checks, [Versions], Known limitations, [Proposed owner changes]; got: ${headings}"; bad=1; }
+            awk '/^## / { if (h != "" && n == 0) { print "FAIL empty section: " h; e = 1 } h = substr($0, 4); n = 0; next }
+                 NF { n++ }
+                 END { if (h != "" && n == 0) { print "FAIL empty section: " h; e = 1 } exit e }' "$body" || bad=1
+            [ "$bad" -eq 0 ] && echo "PR title and description OK"
+            return "$bad"
+          }
+
+          # Self-test: the checker must accept a valid description and reject invalid ones
+          valid="$(mktemp)"; invalid="$(mktemp)"
+          printf '## For the product owner\nx\n\n## How to verify\nx\n\n## Local checks\nx\n\n## Known limitations\nNone.\n' > "$valid"
+          printf '## How to verify\nx\n\n## For the product owner\n\n## Local checks\nx\n' > "$invalid"
+          check_pr "feat: self-test sample" "$valid" > /dev/null || { echo "::error::self-test: valid sample rejected"; exit 1; }
+          if check_pr "self-test sample" "$invalid" > /dev/null; then echo "::error::self-test: invalid sample accepted"; exit 1; fi
+          echo "Self-test OK"
+
+          if [ "${PR_AUTHOR}" = "dependabot[bot]" ]; then
+            echo "Dependabot PR: description policy not applicable"
+            exit 0
+          fi
+
+          # Descriptions edited on github.com use CRLF line endings: normalize before checking
+          body="$(mktemp)"
+          printf '%s\n' "${PR_BODY}" | tr -d '\r' > "$body"
+          if ! check_pr "${PR_TITLE}" "$body"; then
+            echo "::error::PR title or description does not follow the policy (see the FAIL lines above)"
+            exit 1
+          fi
