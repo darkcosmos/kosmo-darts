@@ -3,6 +3,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.ui.game.toSavedGame
 
 /** A change to make on the device after an event (rules R3, R6, R7, R12). */
 sealed interface PersistenceEffect {
@@ -18,7 +19,7 @@ sealed interface PersistenceEffect {
  * screen must state whether it carries the saved game, since `null` deletes it.
  */
 fun savedGameOf(state: AppState): SavedGame? = when (val screen = state.screen) {
-    is Screen.Game -> SavedGame.of(screen.game)
+    is Screen.Game -> screen.game.toSavedGame()
     is Screen.Home -> screen.resumableGame
     is Screen.Setup -> null
     is Screen.End -> null

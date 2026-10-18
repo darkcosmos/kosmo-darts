@@ -109,10 +109,13 @@ Residual risks, accepted after the code review (security-reviewer S4, S5):
 ## Consequences
 
 - Every future `Screen` must state whether it carries the saved game (compile-time, Decision 2).
-- Every future storage effect goes through `PersistenceEffects`, never through a call from the UI.
+- Every future storage effect goes through `persistenceEffects` (`ui/app/PersistenceEffect.kt`), never through a
+  direct call from a screen.
 - Process death restores only the game screen. Other screens restart on home (R1).
-- `persistence.SavedGame` uses `ui.game.GameScreenState` (`of`, `toGameScreenState`), while `ui.app` uses
-  `persistence`. If the packages ever move to separate modules, these two conversions move to the UI side
-  (architecture-reviewer A7).
+- Dependencies go one way only: `ui` uses `persistence`, and `persistence` uses the engine only, tests included. The
+  conversions between the game screen and the saved game (`GameScreenState.toSavedGame`,
+  `SavedGame.toGameScreenState`) live in `ui/game/SavedGameScreen.kt`. Resolved (architecture-reviewer A7): at
+  first, `persistence.SavedGame` held these two conversions and depended on `ui.game.GameScreenState`. The test
+  fixtures of `persistence` build saved games from the engine alone.
 - The `Application` subclass is the only place that knows `filesDir`. Plain JVM tests use in-memory stores and a
   manual executor; Robolectric tests use the real files.

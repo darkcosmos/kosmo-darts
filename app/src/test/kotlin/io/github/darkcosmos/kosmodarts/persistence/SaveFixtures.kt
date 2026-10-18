@@ -2,10 +2,8 @@ package io.github.darkcosmos.kosmodarts.persistence
 
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
-import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import java.io.IOException
 
 /** Games used by the persistence tests. Names are made up; nothing here is ever logged. */
@@ -20,23 +18,14 @@ internal object SaveFixtures {
     ): X01Config = X01Config(NAMES.take(players), startScore, rule)
 
     /**
-     * The game screen after [darts] are entered with the keypad. A turn that waits is confirmed with "Next player"
-     * before the next dart; the last turn is left as it is.
+     * The saved game after [darts] are entered with the keypad, every turn but the last one confirmed with "Next
+     * player": it waits only if its last dart completed a turn. The flag is read from the engine's completed turns,
+     * independently of [SavedGame.isConsistent], which the tests check.
      */
-    fun screenAfter(config: X01Config, darts: List<Dart>): GameScreenState =
-        darts.fold(GameScreenState(X01Game(config))) { screen, dart ->
-            val ready = if (screen.isAwaitingConfirmation) screen.nextPlayer() else screen
-            ready.enter(dart)
-        }
-
-    fun savedAfter(config: X01Config, darts: List<Dart>): SavedGame = SavedGame.of(screenAfter(config, darts))
-
-    private fun GameScreenState.enter(dart: Dart): GameScreenState = when {
-        dart == Dart.MISS -> throwMiss()
-        dart == Dart.OUTER_BULL -> throwOuterBull()
-        dart == Dart.BULL -> throwBull()
-        dart.multiplier == Multiplier.SINGLE -> throwNumber(dart.segment)
-        else -> toggleMultiplier(dart.multiplier).throwNumber(dart.segment)
+    fun savedAfter(config: X01Config, darts: List<Dart>): SavedGame {
+        val game = X01Game(config, darts)
+        val dartsInCompletedTurns = game.state.completedTurns.sumOf { it.darts.size }
+        return SavedGame(game, isAwaitingNextPlayer = darts.isNotEmpty() && dartsInCompletedTurns == darts.size)
     }
 
     private val T20 = Dart.triple(20)

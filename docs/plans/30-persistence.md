@@ -417,7 +417,8 @@ rejected` ``).
 `GameSaveFuzzTest` (R11): `Random(FUZZ_SEED)`, a fixed constant seed. 5,000 mutations of valid saves (flip, insert,
 delete or duplicate bytes, truncate, splice two saves), plus 1,000 random byte arrays from 0 to 70,000 bytes.
 `decode` never throws, and returns `Valid` only when the result re-encodes to the same bytes. On failure, the
-assertion message gives the seed, the iteration and the input as hex. The fixtures use made-up names only, and nothing is logged.
+assertion message gives the seed, the iteration and the input as hex. The fixtures use made-up names only, and
+nothing is logged.
 
 `LastSetupCodecTest`:
 - Round trip for 1 to 4 players, both modes and both rules (R7).
@@ -657,6 +658,10 @@ Implementation changes from the plan (no behaviour change):
   and the message.
 - `HomeTags` gives the summary, rows and scores test tags. The bounded read is the testable `readAtMost`.
 - Each line check uses `ensure(condition, reason)` or `reject(reason)`, to meet detekt's limit on throw statements.
+- Before merge (owner request, architecture-reviewer A7): `SavedGame.of` and `SavedGame.toGameScreenState` moved to
+  `ui/game/SavedGameScreen.kt` as `GameScreenState.toSavedGame()` and `SavedGame.toGameScreenState()`, so that
+  `persistence` imports nothing from `ui`. The test fixtures (`SaveFixtures.savedAfter`) build saved games from the
+  engine alone. A snapshot of all 75 fixture values was identical before and after the change.
 - Code review round 1: an unforeseen loader exception (`ExecutionException` in `Persistence.load`) gives the new
   reason `UNEXPECTED_ERROR` and deletes both files, so that it cannot crash every launch (R11; security-reviewer S5).
 

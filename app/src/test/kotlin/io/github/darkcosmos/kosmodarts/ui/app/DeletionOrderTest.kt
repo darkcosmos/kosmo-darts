@@ -7,6 +7,7 @@ import io.github.darkcosmos.kosmodarts.persistence.MemoryStore
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SaveWriter
+import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -32,7 +33,7 @@ class DeletionOrderTest {
     @Test
     fun `R6 a dart then Finish game leaves no file`() {
         val won = SaveFixtures.WAITING_CHECKOUT.game
-        val beforeWin = SaveFixtures.screenAfter(won.config, won.darts.dropLast(1))
+        val beforeWin = SaveFixtures.savedAfter(won.config, won.darts.dropLast(1)).toGameScreenState()
         val viewModel = viewModel(AppState(screen = Screen.Game(beforeWin)))
 
         viewModel.onEvent(AppEvent.NumberTapped(1)) // The winning dart: a write is queued.

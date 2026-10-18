@@ -7,6 +7,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
+import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -47,7 +48,7 @@ class PersistenceEffectsTest {
     @Test
     fun `R12 the winning dart and Undo in the checkout dialog save the game`() {
         val won = SaveFixtures.WAITING_CHECKOUT.game
-        val beforeWin = inGame(SaveFixtures.screenAfter(won.config, won.darts.dropLast(1)))
+        val beforeWin = inGame(SaveFixtures.savedAfter(won.config, won.darts.dropLast(1)).toGameScreenState())
         val winningDart = AppEvent.NumberTapped(1)
 
         assertEquals(listOf(saveOf(beforeWin, winningDart)), effectsOf(beforeWin, winningDart))

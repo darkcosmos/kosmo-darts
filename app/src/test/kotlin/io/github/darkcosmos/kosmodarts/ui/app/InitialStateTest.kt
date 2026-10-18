@@ -5,6 +5,7 @@ import io.github.darkcosmos.kosmodarts.persistence.GameLoad
 import io.github.darkcosmos.kosmodarts.persistence.InvalidSaveReason
 import io.github.darkcosmos.kosmodarts.persistence.LoadResult
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
+import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 import org.junit.Assert.assertEquals
 import org.junit.Test

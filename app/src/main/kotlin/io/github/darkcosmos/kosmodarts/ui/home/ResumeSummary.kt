@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.home
 
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 
 /**
  * Content of the "Game in progress" summary on the home screen (rule R2). No layout decision here.

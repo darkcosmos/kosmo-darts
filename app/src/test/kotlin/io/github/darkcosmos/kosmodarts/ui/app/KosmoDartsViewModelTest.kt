@@ -4,6 +4,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.TurnOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Turn
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
+import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
