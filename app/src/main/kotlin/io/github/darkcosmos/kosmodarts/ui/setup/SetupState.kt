@@ -62,9 +62,10 @@ data class SetupState(
         private const val DEFAULT_PLAYER_COUNT = 2
         private const val MIN_PLAYER_COUNT = 1
 
-        /** Default setup with the given [names], or the default setup if there are none. */
-        fun prefilled(names: List<String>): SetupState =
-            if (names.isEmpty()) SetupState() else SetupState(names = names)
+        /** The setup of [lastSetup] (names in order, start score, checkout rule), or the default setup (rule R7). */
+        fun prefilled(lastSetup: X01Config?): SetupState = lastSetup
+            ?.let { SetupState(startScore = it.startScore, checkoutRule = it.checkoutRule, names = it.players) }
+            ?: SetupState()
     }
 }
 

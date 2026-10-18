@@ -80,17 +80,23 @@ so a rotation never uses it.
 Alternative: storing the current screen in the save file. That would need one more stored UI field (issue #30 T4),
 and the app could not tell a background kill (R1) from a force stop (R2): both leave the same file. Rejected.
 
-## Decision 5: what is deleted when a file is rejected
+## Decision 5: every rejected file is deleted
 
-- Content judged invalid (`TOO_LARGE` and every parse, range, engine or flag reason of ADR 0001) is deleted inside
-  `load()` before it returns, so the R9 message is shown once (R9), and the last setup falls back to the defaults
-  (R10).
-- `READ_FAILED` (an `IOException` while opening or reading) is not judged content. The file is kept. The app takes
-  the R9 route (message, then the setup screen), and the next launch tries again. The game is lost only if the
-  player then starts a new game, or if the error persists.
+Owner decision Q9 (issue #30). It replaces the first version of this decision, which kept the file on a read error.
 
-  Deleting on a read error would make a passing storage error permanent, against the goal of the issue ("a game must
-  never be lost"). The price is that a read error that persists shows the message at each launch. Accepted.
+A file that cannot be loaded is deleted inside `load()`, on the save thread, before `load()` returns. That covers
+`READ_FAILED` (an `IOException` while opening or reading), `TOO_LARGE`, and every parse, range, engine or flag
+reason of ADR 0001. For the game file, the R9 message is then shown exactly once. For the last setup, the defaults
+are used silently (R10).
+
+Why: errors when reading internal storage are rare and often permanent. Keeping the file would show the message at
+each launch, and a promise to offer the game again would become false as soon as a new game starts.
+
+Alternative: keep the file on `READ_FAILED` and retry at the next launch. Rejected by the owner (Q9).
+
+Every deletion (R3, R6, R9) goes through the same save thread as the writes. A write queued before a deletion
+therefore runs first, or is replaced by it ("latest wins"), and never recreates the file afterwards. One test per
+deletion case covers this (`DeletionOrderTest`).
 
 ## Consequences
 

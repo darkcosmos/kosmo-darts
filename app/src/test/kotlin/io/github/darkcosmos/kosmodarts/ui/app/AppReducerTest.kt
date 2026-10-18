@@ -37,7 +37,7 @@ class AppReducerTest {
 
     @Test
     fun theAppStartsOnHome() {
-        assertEquals(Screen.Home, AppState().screen)
+        assertEquals(Screen.Home(), AppState().screen)
     }
 
     @Test
@@ -47,7 +47,7 @@ class AppReducerTest {
 
     @Test
     fun backFromSetupReturnsHome() {
-        assertEquals(Screen.Home, AppState().after(AppEvent.NewGame, AppEvent.Back).screen)
+        assertEquals(Screen.Home(), AppState().after(AppEvent.NewGame, AppEvent.Back).screen)
     }
 
     @Test
@@ -87,7 +87,8 @@ class AppReducerTest {
     }
 
     @Test
-    fun validStartOpensTheGameAndRemembersTheNames() {
+    /** R7: the last setup is retained when a game starts. */
+    fun validStartOpensTheGameAndRemembersTheSetup() {
         val state = AppState().after(
             AppEvent.NewGame,
             AppEvent.NameChanged(0, " Ann"),
@@ -96,14 +97,15 @@ class AppReducerTest {
         )
 
         assertEquals(Screen.Game(GameScreenState(X01Game(X01Config(listOf("Ann", "Bob"))))), state.screen)
-        assertEquals(listOf("Ann", "Bob"), state.lastNames)
+        assertEquals(X01Config(listOf("Ann", "Bob")), state.lastSetup)
     }
 
     @Test
-    fun aNewSetupIsPrefilledWithTheLastNames() {
-        val state = AppState(lastNames = listOf("Ann", "Bob", "Cid")).after(AppEvent.NewGame)
+    /** R7: names in order, start score and checkout rule. */
+    fun aNewSetupIsPrefilledWithTheLastSetup() {
+        val state = AppState(lastSetup = singleOut301).after(AppEvent.NewGame)
 
-        assertEquals(Screen.Setup(SetupState.prefilled(listOf("Ann", "Bob", "Cid"))), state.screen)
+        assertEquals(Screen.Setup(SetupState(301, CheckoutRule.SINGLE_OUT, listOf("Ann", "Bob", "Cid"))), state.screen)
     }
 
     @Test
@@ -143,7 +145,7 @@ class AppReducerTest {
     fun confirmingTheConfirmationReturnsHome() {
         val state = inGame(singleOut301).after(AppEvent.Back, AppEvent.AbandonConfirmed)
 
-        assertEquals(Screen.Home, state.screen)
+        assertEquals(Screen.Home(), state.screen)
     }
 
     @Test
@@ -209,18 +211,17 @@ class AppReducerTest {
 
     @Test
     fun newGameFromTheEndScreenOpensThePrefilledSetup() {
-        val names = listOf("Ann", "Bob", "Cid")
-        val state = AppState(lastNames = names, screen = inGame(singleOut301, winningDarts).screen)
+        val state = AppState(lastSetup = singleOut301, screen = inGame(singleOut301, winningDarts).screen)
             .after(*finishEvents, AppEvent.NewGame)
 
-        assertEquals(Screen.Setup(SetupState.prefilled(listOf("Ann", "Bob", "Cid"))), state.screen)
+        assertEquals(Screen.Setup(SetupState.prefilled(singleOut301)), state.screen)
     }
 
     @Test
     fun backFromTheEndScreenReturnsHome() {
         val state = inGame(singleOut301, winningDarts).after(*finishEvents, AppEvent.Back)
 
-        assertEquals(Screen.Home, state.screen)
+        assertEquals(Screen.Home(), state.screen)
     }
 
     @Test

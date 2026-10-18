@@ -2,15 +2,22 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
+import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 
 /** The screen on display, with its content. There is no navigation library: the screen is plain state. */
 sealed interface Screen {
-    data object Home : Screen
+    /**
+     * @property resumableGame the saved game shown in the summary, with "Resume game" (rule R2), or `null`.
+     * @property isNewGameDialogShown whether "New game" asks to delete the saved game (rule R3).
+     */
+    data class Home(val resumableGame: SavedGame? = null, val isNewGameDialogShown: Boolean = false) : Screen
 
-    data class Setup(val setup: SetupState) : Screen
+    /** @property isRestoreFailedShown whether the "saved game could not be resumed" message is open (rule R9). */
+    data class Setup(val setup: SetupState, val isRestoreFailedShown: Boolean = false) : Screen
 
     data class Game(val game: GameScreenState) : Screen
 
@@ -21,11 +28,11 @@ sealed interface Screen {
 /**
  * Whole UI state of the app.
  *
- * @property lastNames names of the last started game, to prefill the next setup. Kept for the app session only.
+ * @property lastSetup configuration of the last game started (Start or Rematch), to prefill the next setup (rule R7).
  */
 data class AppState(
-    val screen: Screen = Screen.Home,
-    val lastNames: List<String> = emptyList(),
+    val screen: Screen = Screen.Home(),
+    val lastSetup: X01Config? = null,
 )
 
 /** Everything the user can do. An event that does not apply to the current screen is ignored. */
@@ -35,6 +42,18 @@ sealed interface AppEvent {
 
     /** "New game" on the home and end screens. */
     data object NewGame : AppEvent
+
+    /** "Resume game" on the home screen (rule R2). */
+    data object ResumeTapped : AppEvent
+
+    /** "Delete" in the new-game confirmation (rule R3). */
+    data object NewGameConfirmed : AppEvent
+
+    /** "Cancel" in the new-game confirmation, or a tap outside it (rule R3). */
+    data object NewGameDismissed : AppEvent
+
+    /** "OK" on the "saved game could not be resumed" message, or a tap outside it (rule R9). */
+    data object RestoreFailedDismissed : AppEvent
 
     data class StartScoreSelected(val score: Int) : AppEvent
 

@@ -145,22 +145,23 @@ The steps below run in order. The first failure makes the whole file invalid, wi
 `READ_FAILED`, `TOO_LARGE`, `MALFORMED`, `UNSUPPORTED_VERSION`, `CHECKSUM_MISMATCH`, `OUT_OF_RANGE`,
 `INVALID_CONFIG`, `REJECTED_BY_ENGINE`, `INCONSISTENT_WAITING_FLAG`.
 
-1. Bounded read.
-2. Split into lines (strict LF, final LF), and check the kind line.
-3. Version.
-4. Line structure (keys, order, count) and end marker.
-5. Checksum.
-6. Value syntax and ranges.
+1. Bounded read (`READ_FAILED`, `TOO_LARGE`).
+2. Strict UTF-8, no CR, split into lines, kind line (`MALFORMED`).
+3. Version line (`UNSUPPORTED_VERSION`).
+4. Trailer: final LF, `end` line, well-formed `crc32` line (`MALFORMED`).
+5. Checksum (`CHECKSUM_MISMATCH`).
+6. Body lines read in order, each with its exact key, with no line missing or extra (`MALFORMED`). Each value is
+   checked for syntax and range as it is read (`OUT_OF_RANGE`; an empty dart token is `MALFORMED`).
 7. `X01Config` built from the decoded values. Any `InvalidX01ConfigException` is `INVALID_CONFIG`.
 8. Full replay with `X01Game(config, darts)`. `LegFinishedException` is `REJECTED_BY_ENGINE`.
 9. Waiting flag consistency.
 
-What happens to a rejected file (deleted, or kept on `READ_FAILED`) is decided in ADR 0002, decision 5.
+A rejected file is always deleted (ADR 0002, decision 5).
 
-The decoder catches only the exceptions it expects: `IOException` and its subclass `CharacterCodingException`,
-`IllegalArgumentException` from Base64, `InvalidX01ConfigException`, and `LegFinishedException`. Dart tokens are
-mapped by a fixed table, so the `Dart` constructor can never throw. R11 is proven by tests, including a seeded random
-mutation test. There is no catch-all.
+The store catches `IOException` on read (`READ_FAILED`). The decoder catches only the exceptions it expects:
+`CharacterCodingException`, `IllegalArgumentException` from Base64, `InvalidX01ConfigException`, and
+`LegFinishedException`. Dart tokens are mapped by a fixed table, so the `Dart` constructor can never throw. R11 is
+proven by tests, including a seeded random mutation test. There is no catch-all.
 
 ### Stored fields (issue #30, T4)
 

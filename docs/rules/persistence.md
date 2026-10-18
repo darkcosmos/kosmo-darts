@@ -1,14 +1,29 @@
 # Persistence rules (game in progress and last setup)
 
-Status: draft v1 (issue #30). This document is the source of truth for the persistence tests.
-Rule ids (R1, R2, ...) are stable and referenced by tests. They use the prefix R so that they never collide with the
-X01 rules of `docs/rules/x01.md` (owner decision on issue #30, Q6). R1 to R11 match P1 to P11 of issue #30, refined
-with the owner's answers on the issue; R12 covers the technical frame (T1, T2).
+Status: v1 (issue #30). This document is the single source of truth for the persistence behaviour and its tests:
+tests cite these rules, never the issue text. Rule ids (R1, R2, ...) are stable. They use the prefix R so that they
+never collide with the X01 rules of `docs/rules/x01.md` (owner decision Q6).
+
+R1 to R11 match P1 to P11 of issue #30, refined with every owner decision taken on the issue (Q1 to Q9, recorded
+below). R12 covers the technical frame (T1, T2) and the owner's request that deletions share the write queue.
 
 Vocabulary:
 - *Saved game*: the game in progress stored on the device. There is at most one.
 - *Last setup*: player names in throwing order, start score (501/301) and checkout rule of the last game started.
 - *Home screen*: the first screen of the app (the "start screen" of issue #30).
+
+## Owner decisions (issue #30, 2026-10-18)
+
+| Id | Decision | Rules |
+|---|---|---|
+| Q1, Q7 | With a saved game, the home screen shows "New game", then "Resume game" right under it. "New game" asks for confirmation; "Delete" deletes the saved game at once. | R2, R3 |
+| Q2 | "Abandon" deletes the saved game. | R6 |
+| Q3 | A rematch is a game start: its order (first player moved to the end) becomes the last setup. | R7 |
+| Q4 | The summary shows the player the game screen highlights; with the checkout dialog open, the winner and "Checkout to confirm". | R2 |
+| Q5 | An active Double/Triple modifier and an open "Abandon the game?" dialog are not restored. | R4 |
+| Q6 | Persistence rules use the prefix R. | — |
+| Q8 | The button says "Resume game" (« Reprendre la partie »). | R2 |
+| U5, Q9 | One message, which says the game was deleted. Every load failure deletes the file, a storage read error included. | R9, R10 |
 
 ## Resume
 
@@ -26,12 +41,12 @@ Vocabulary:
 - R3. "New game" on the home screen while a game is saved opens a confirmation dialog. "Cancel" (or system back)
   closes the dialog and keeps the saved game. "Delete" deletes the saved game at once and opens the setup screen;
   going back from the setup screen then leads to a home screen with nothing to resume. Without a saved game, "New
-  game" opens the setup screen directly, as today.
+  game" opens the setup screen directly, as before.
 - R4. A resumed game is exactly as it was: every dart of the game, the darts of the current turn, the player shown
   as throwing, a turn waiting for "Next player" (BUST shown after a bust, dart entry keys disabled, "Next player"
   enabled), and the checkout dialog if it was open, with "Finish game" and "Undo" behaving as before. Not restored
-  (owner decision, Q5): an active Double or Triple modifier, and an open "Abandon the game?" dialog. Resuming never
-  announces a completed turn again (the turn-completed signal is not fired).
+  (Q5): an active Double or Triple modifier, and an open "Abandon the game?" dialog. Resuming never announces a
+  completed turn again (the turn-completed signal is not fired).
 - R5. Undo after a resume works back to the first dart of the game.
 
 ## End of game
@@ -45,33 +60,47 @@ Vocabulary:
 - R7. The last setup is retained every time a game starts: "Start" on the setup screen, and "Rematch" on the end
   screen (in the rematch order, where the first player moved to the end). It prefills the setup screen of the next
   "New game", including after the app was killed or the phone restarted. Without a last setup, the setup screen
-  shows today's defaults (501, double out, two empty names).
+  shows the defaults (501, double out, two empty names).
 - R8. The last setup is stored separately from the saved game. An unreadable saved game never loses the last setup,
   and an unreadable last setup never loses the saved game.
 
 ## Unreadable files
 
-- R9. A saved game that cannot be resumed shows the message "The saved game could not be resumed" once, in a dialog
-  with an "OK" button over the setup screen (prefilled with the last setup, R7); the file is deleted when it is found
-  unreadable, so the message never comes back. A saved game cannot be resumed when it cannot be read from storage,
-  or when it is empty, larger than the size limit, truncated, corrupted (checksum mismatch), not in the expected
-  structure, of an unknown or newer format version, out of range (start score, checkout rule, player count, name
-  length or content, dart token, dart count), rejected by the game engine on replay (for example a dart after the
-  win), or inconsistent with the stored waiting-turn flag (see the save format ADR). R1 and R2 then do not apply.
-  Exception: when the file exists but storage fails while reading it (an input/output error, not invalid content),
-  the message is shown the same way but the file is kept, so a later launch can still resume it; the message then
-  comes back at each launch while the error lasts (ADR 0002, decision 5).
-- R10. An unreadable last setup is ignored silently: the setup screen shows the defaults, and the file is deleted
-  (kept if storage failed while reading it, as in R9). The saved game is not affected (R8).
+- R9. A saved game that cannot be loaded shows the message "The saved game could not be resumed and was deleted"
+  (« La partie enregistrée n'a pas pu être reprise et a été effacée ») once, in a dialog with an "OK" button over
+  the setup screen, prefilled with the last setup (R7). The file is deleted as soon as it is found unreadable, so the
+  message never comes back. A saved game cannot be loaded when:
+  - storage fails while reading it (an input/output error);
+  - it is empty, larger than the size limit, or truncated;
+  - it is corrupted (checksum mismatch) or not in the expected structure;
+  - its format version is unknown or newer;
+  - a value is out of range: start score, checkout rule, player count, name length or content, dart token, or dart
+    count;
+  - the game engine rejects it on replay (for example a dart after the win);
+  - it is inconsistent with the stored waiting-turn flag (see ADR 0001).
+
+  R1 and R2 then do not apply.
+- R10. An unreadable last setup is ignored silently, whatever the reason (a storage read error included): the setup
+  screen shows the defaults, and the file is deleted. The saved game is not affected (R8).
 - R11. No content of either file (any bytes, any size) can crash the app.
 
 ## Saving
 
-- R12. The saved game is written after every action that changes it (dart, undo, end of turn confirmed, checkout
-  dialog shown or dismissed with Undo, resume excepted since it changes nothing) and deleted as described in R3 and
-  R6; the last setup is written as described in R7. Writes run off the main thread, one at a time, in action order;
-  only the latest pending content of a file needs to be written. A rotation or any other configuration change
-  neither reads nor writes the files. Each write is atomic (the file holds either the
-  previous or the new content, never a mix) and goes to the app's private storage only. A failed write keeps the
-  previous file and never crashes the app. A game of more than 10,000 darts is no longer saved after its 10,000th
-  dart (the size limit of R9); saving resumes if undo brings it back under the limit.
+- R12. The saved game is written after every action that changes it:
+  - a dart;
+  - an undo;
+  - "Next player";
+  - the checkout dialog, shown by the winning dart or dismissed with Undo.
+
+  Resume writes nothing, since it changes nothing. The saved game is deleted as described in R3, R6 and R9, and the
+  last setup is written as described in R7.
+
+  Writes and deletions run off the main thread, one at a time, in action order, on one queue shared by both files
+  and by loading. Only the latest pending request for a file needs to run, so a write queued before a deletion never
+  recreates the file after it. A rotation or any other configuration change neither reads nor writes the files.
+
+  Each write is atomic: the file holds either the previous or the new content, never a mix. Files go to the app's
+  private storage only. A failed write keeps the previous file and never crashes the app.
+
+  A game of more than 10,000 darts is no longer saved after its 10,000th dart (the size limit of R9); saving
+  resumes when undo brings it back to 10,000 darts or fewer.

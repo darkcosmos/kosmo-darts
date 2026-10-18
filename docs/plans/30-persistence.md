@@ -176,9 +176,9 @@ check is cheap: `X01Game.equals` compares the config and the darts list.
   in-memory `ByteStore`s and the manual executor.
 - The result is `LoadResult(game: GameLoad, lastSetup: X01Config?)`, where `GameLoad` is `Absent`, `Valid(SavedGame)`
   or `Invalid(reason)`. A read result of `TooLarge` maps to `Invalid(TOO_LARGE)`, and `Failed` to
-  `Invalid(READ_FAILED)`. A game file judged invalid is deleted in `load()` before it returns (R9, "once"). On
-  `READ_FAILED` the file is kept (ADR 0002, decision 5). An invalid setup file is deleted and yields `null`; on a
-  setup read failure the file is kept and also yields `null` (R10).
+  `Invalid(READ_FAILED)`. Any game file that cannot be loaded, a read failure included, is deleted in `load()` before
+  it returns (R9, "once"; owner decision Q9, ADR 0002 decision 5). A setup file that cannot be loaded is deleted and
+  yields `null` (R10).
 - R1 detection (ADR 0002, decision 4): `MainActivity.onSaveInstanceState` stores one boolean, `wasOnGameScreen`,
   from the ViewModel. On `onCreate`, `savedInstanceState?.getBoolean(...) == true` is passed to the factory. It only
   has an effect when a new ViewModel is created, which means process death or an activity destroyed by the system.
@@ -244,9 +244,9 @@ only once, so it must not vanish on a timer before it is read. TalkBack also ann
 Both dialogs are part of the ViewModel state (`Home.isNewGameDialogShown`, `Setup.isRestoreFailedShown`), so they
 survive a rotation.
 
-The message text is the one Kosmo wrote in the issue (P9), unchanged. ux-reviewer's suggestion U5 to add "and was
-deleted" is not applied, because the wording is the owner's. It is listed in the PR as a possible later change.
-
+The message text says the game was deleted: ux-reviewer's suggestion U5, accepted by Kosmo (issue #30, Q9):
+"The saved game could not be resumed and was deleted" / « La partie enregistrée n'a pas pu être reprise et a été
+effacée ».
 ### Manifest
 
 - `android:name=".KosmoDartsApplication"` is added on `<application>`.
@@ -274,7 +274,7 @@ Added:
   - `persistence/SaveWriter.kt`.
   - `persistence/SaveLoader.kt`: reads both stores, decodes them, deletes content judged invalid, and returns
     `LoadResult` (pure; tested with in-memory stores).
-  - `persistence/PersistenceEffects.kt`: `PersistenceEffect`, `savedGameOf`, `between`.
+  - `ui/app/PersistenceEffect.kt`: `PersistenceEffect`, `savedGameOf`, `persistenceEffects`, `applyEffects`.
   - `persistence/Persistence.kt`: `load(): LoadResult` and `apply(effects)`, plus a `@VisibleForTesting`
     `awaitIdle()` that waits for pending writes, for Robolectric tests.
   - `ui/app/InitialState.kt`: `initialState(load, wasOnGameScreen)`.
@@ -437,9 +437,8 @@ seed, the iteration and the input as hex. The fixtures use made-up names only, a
 `SaveLoaderTest` (R8, R9, R10, R12), with in-memory stores and the manual executor:
 - A load submitted after a pending write runs after it and sees the new content.
 - `TooLarge` gives `Invalid(TOO_LARGE)`, and the game file is deleted.
-- `Failed` gives `Invalid(READ_FAILED)`, and the game file is kept (ADR 0002, decision 5).
-- Two loads in a row over a store that fails on read both give `Invalid(READ_FAILED)`, and the file is intact after
-  the second one. A later `SaveGame` (a new game started) overwrites the kept file (test-reviewer T8).
+- `Failed` gives `Invalid(READ_FAILED)`, and the game file is deleted (owner decision Q9).
+- After an unreadable game, the next load finds nothing: the message is shown once (replaces T8, see below).
 - Each invalid content deletes the game file and leaves the setup file untouched (R8).
 - An invalid setup deletes the setup file, gives `null`, and leaves the game file untouched (R8, R10). A setup read
   failure gives `null` and keeps the file.
@@ -573,9 +572,8 @@ contain U+00A0 before the colon, and no plain space.
    - Tap « Terminer la partie », then force-stop on the end screen, and reopen.
    - There is no « Reprendre la partie ». Tap "Nouvelle partie": the names (in the same order), 501 and the checkout
      rule are prefilled.
-5. With a saved game, tap "Nouvelle partie" on the home screen. The question "Une partie est en cours" appears.
-   - "Annuler" keeps the game: the summary is still there.
-   - Tap "Nouvelle partie" again, then "Supprimer": the setup screen opens. Go back: nothing is left to resume.
+5. With a saved game, tap « Nouvelle partie »: « Annuler » keeps it; confirming (« Supprimer ») deletes it, and going
+   back from the setup screen no longer shows « Reprendre la partie ».
 6. Developer options > Background process limit > "No background processes". During a game, go to the home screen
    of the phone, open another app, then come back: the game is shown directly, without the summary. Reset the
    option afterwards.
@@ -607,11 +605,8 @@ screenshot is attached to the PR.
 - After process death on the setup screen, the setup being edited is not restored; the app comes back on the home
   screen.
 - Beyond 10,000 darts, saving pauses (R12).
-- If storage fails while reading the saved game (a hardware or system error, not a damaged file), the message of R9
-  appears, but the game is kept and comes back at the next launch once the error is gone. If the error persists, the
-  message appears at each launch (ADR 0002, decision 5).
-- The unreadable-save message keeps the wording from the issue ("could not be resumed"). It does not say that the
-  game was deleted (ux-reviewer U5, left to Kosmo).
+- If storage fails while reading the saved game (a hardware or system error, not a damaged file), the game is
+  deleted like a damaged file, and the R9 message is shown once (owner decision Q9).
 
 ## Design review, round 1: findings and where they are addressed
 
@@ -636,6 +631,32 @@ screenshot is attached to the PR.
 | T6 | Rotation tests: no reload, no write, dialogs kept. |
 | T7 | Fixed seed; hex input in the failure message; made-up names only. |
 | T8 (round 2, minor) | Repeated `READ_FAILED` loads and the later overwrite, in `SaveLoaderTest`. |
+
+## After the design review: owner decisions and implementation changes
+
+Owner decisions on issue #30, after the design phase was approved:
+- U5 accepted: the R9 message says the game was deleted.
+- Q9 B: every load failure deletes the file, a storage read error included. This replaces ADR 0002 decision 5 as
+  first approved; the S1 and T8 resolutions above are superseded. `SaveLoaderTest` now checks deletion on
+  `READ_FAILED` and that the next load finds nothing.
+- Deletions share the write queue: `DeletionOrderTest` covers every deletion (win confirmed, Abandon, "Delete" in
+  the new-game dialog, unreadable save). In each case a write is queued, then the deletion, then the queue is
+  drained, and no file is left.
+- `docs/rules/persistence.md` is the single reference: it now records Q1 to Q9, and the tests cite it.
+- Phone checks: step 5 and the Abandon step follow Kosmo's wording in the PR. The PR lists every point where the
+  final behaviour differs from the issue body.
+
+Implementation changes from the plan (no behaviour change):
+- `PersistenceEffect`, `savedGameOf`, `persistenceEffects` and `Persistence.applyEffects` live in
+  `ui/app/PersistenceEffect.kt`, not in `persistence/`. This keeps the dependency one-way: `ui.app` depends on
+  `persistence`, and `persistence` only on `ui.game` for `GameScreenState`. `Persistence` exposes
+  `saveGame`, `deleteGame` and `saveLastSetup`.
+- `KosmoDartsViewModel` takes `(random, initial, onEffects)`, so its tests need no `Persistence`.
+- The string `home_saved_game_score` was dropped. Each player row is one merged TalkBack node, which reads the name
+  and the score as they are shown, so no extra description is needed. `FrenchStringsTest` checks the checkout line
+  and the message.
+- `HomeTags` gives the summary, rows and scores test tags. The bounded read is the testable `readAtMost`.
+- Each line check uses `ensure(condition, reason)` or `reject(reason)`, to meet detekt's limit on throw statements.
 
 ## Open questions
 
