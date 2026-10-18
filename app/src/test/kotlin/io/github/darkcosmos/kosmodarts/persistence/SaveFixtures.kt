@@ -79,7 +79,7 @@ internal object SaveFixtures {
 internal class MemoryStore(var content: ByteArray? = null) : ByteStore {
     var failOnRead = false
     var failOnWrite = false
-    var reads = 0
+    @Volatile var reads = 0
         private set
     var writes = 0
         private set

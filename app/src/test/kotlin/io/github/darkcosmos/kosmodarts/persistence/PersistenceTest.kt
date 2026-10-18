@@ -5,8 +5,10 @@ import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -64,16 +66,27 @@ class PersistenceTest {
     @Test
     fun `R12 a load after a pending write sees that write`() {
         val saveThread = Executors.newSingleThreadExecutor()
+        // Queued tasks, in order: the gate, the pending write, then the load.
+        val loadQueued = CountDownLatch(QUEUED_BEFORE_RELEASE)
+        val queue = Executor { task ->
+            saveThread.execute(task)
+            loadQueued.countDown()
+        }
         try {
-            val persistence = Persistence(gameStore, setupStore, saveThread)
+            val persistence = Persistence(gameStore, setupStore, queue)
             // The save thread is held, so the write stays pending while the load is requested.
             val gate = CountDownLatch(1)
-            saveThread.execute { gate.await() }
+            queue.execute { gate.await() }
             persistence.saveGame(SaveFixtures.WAITING_NORMAL)
             var loaded: GameLoad? = null
             val loader = Thread { loaded = persistence.load().game }
             loader.start()
-            // A load that bypassed the queue would read now, before the write, and find nothing.
+
+            // The load is queued behind the write and nothing was read yet: a load that bypassed the queue would
+            // never be queued, and would have read the empty store already.
+            assertTrue(loadQueued.await(JOIN_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS))
+            assertEquals(0, gameStore.reads)
+            assertNull(loaded)
             gate.countDown()
             loader.join(JOIN_TIMEOUT_MILLIS)
 
@@ -113,5 +126,6 @@ class PersistenceTest {
 
     private companion object {
         const val JOIN_TIMEOUT_MILLIS = 10_000L
+        const val QUEUED_BEFORE_RELEASE = 3
     }
 }

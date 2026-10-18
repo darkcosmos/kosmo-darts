@@ -62,7 +62,8 @@ Vocabulary:
   "New game", including after the app was killed or the phone restarted. Without a last setup, the setup screen
   shows the defaults (501, double out, two empty names).
 - R8. The last setup is stored separately from the saved game. An unreadable saved game never loses the last setup,
-  and an unreadable last setup never loses the saved game.
+  and an unreadable last setup never loses the saved game. The one exception is R11: when loading fails in an
+  unforeseen way, it cannot tell which file caused the failure, so both files are deleted.
 
 ## Unreadable files
 
@@ -82,7 +83,9 @@ Vocabulary:
   R1 and R2 then do not apply.
 - R10. An unreadable last setup is ignored silently, whatever the reason (a storage read error included): the setup
   screen shows the defaults, and the file is deleted. The saved game is not affected (R8).
-- R11. No content of either file (any bytes, any size) can crash the app.
+- R11. No content of either file (any bytes, any size) can crash the app. If loading fails in a way that none of the
+  checks of R9 foresaw, both files are deleted and the R9 message is shown, so that the same failure cannot happen at
+  every launch.
 
 ## Saving
 
