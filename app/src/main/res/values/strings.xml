@@ -4,6 +4,16 @@
     <string name="home_title" translatable="false">Kosmo Darts</string>
     <string name="home_welcome">Keep score of your darts games with friends.</string>
     <string name="home_new_game">New game</string>
+    <string name="home_resume_game">Resume game</string>
+    <string name="home_saved_game_title">Game in progress</string>
+    <string name="home_saved_game_mode">%1$d · %2$s</string>
+    <string name="home_saved_game_checkout">Checkout to confirm: %1$s</string>
+    <string name="new_game_confirm_title">A game is in progress</string>
+    <string name="new_game_confirm_text">Delete it and start a new one?</string>
+    <string name="new_game_confirm_delete">Delete</string>
+    <string name="new_game_confirm_cancel">Cancel</string>
+    <string name="restore_failed_message">The saved game could not be resumed and was deleted</string>
+    <string name="restore_failed_ok">OK</string>
 
     <!-- Setup screen -->
     <string name="setup_title">New game</string>

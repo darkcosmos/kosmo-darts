@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.MaterialTheme
@@ -23,6 +24,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,8 +50,17 @@ private val CHECKOUT_RULES = listOf(CheckoutRule.DOUBLE_OUT, CheckoutRule.SINGLE
 private val CONTENT_MAX_WIDTH = 560.dp
 private val MIN_TOUCH_TARGET = 48.dp
 
+/**
+ * Setup screen. [isRestoreFailedShown] opens the "saved game could not be resumed" message over it (rule R9).
+ */
 @Composable
-fun SetupScreen(setup: SetupState, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
+fun SetupScreen(
+    setup: SetupState,
+    onEvent: (AppEvent) -> Unit,
+    modifier: Modifier = Modifier,
+    isRestoreFailedShown: Boolean = false,
+) {
+    if (isRestoreFailedShown) RestoreFailedDialog(onEvent)
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Box(
             modifier = Modifier
@@ -99,6 +110,20 @@ fun SetupScreen(setup: SetupState, onEvent: (AppEvent) -> Unit, modifier: Modifi
             }
         }
     }
+}
+
+/** A dialog rather than a snackbar: shown once, it must stay until read. */
+@Composable
+private fun RestoreFailedDialog(onEvent: (AppEvent) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onEvent(AppEvent.RestoreFailedDismissed) },
+        text = { Text(stringResource(R.string.restore_failed_message)) },
+        confirmButton = {
+            TextButton(onClick = { onEvent(AppEvent.RestoreFailedDismissed) }) {
+                Text(stringResource(R.string.restore_failed_ok))
+            }
+        },
+    )
 }
 
 @Composable

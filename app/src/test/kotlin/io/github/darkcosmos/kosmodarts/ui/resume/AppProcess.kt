@@ -1,0 +1,126 @@
+package io.github.darkcosmos.kosmodarts.ui.resume
+
+import android.os.Bundle
+import androidx.lifecycle.ViewModelProvider
+import androidx.test.core.app.ApplicationProvider
+import io.github.darkcosmos.kosmodarts.KosmoDartsApplication
+import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
+import io.github.darkcosmos.kosmodarts.persistence.AtomicFileStore
+import io.github.darkcosmos.kosmodarts.persistence.ByteStore
+import io.github.darkcosmos.kosmodarts.persistence.GameSaveCodec
+import io.github.darkcosmos.kosmodarts.persistence.LastSetupCodec
+import io.github.darkcosmos.kosmodarts.persistence.Persistence
+import io.github.darkcosmos.kosmodarts.persistence.ReadResult
+import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
+import org.robolectric.Robolectric
+import org.robolectric.android.controller.ActivityController
+import java.io.File
+import java.util.concurrent.Executors
+
+/**
+ * Drives [MainActivity] like Android does, with Robolectric, over the real files of the app:
+ * - [launchFresh]: a launch after a force stop, a reboot or a removal from the recents (no saved instance state);
+ * - [killInBackgroundAndReturn]: the process is killed in the background, then the user returns to the app (the
+ *   saved instance state comes back, with a new ViewModel that reads the files again);
+ * - [rotate]: a configuration change (the ViewModel survives).
+ *
+ * The [persistence] counts reads and writes of the game file, so that tests can check that nothing is read or written
+ * again on rotation.
+ */
+internal class AppProcess {
+
+    val app: KosmoDartsApplication = ApplicationProvider.getApplicationContext()
+
+    val gameFile: File = File(app.filesDir, KosmoDartsApplication.GAME_FILE)
+    private val setupFile = File(app.filesDir, KosmoDartsApplication.SETUP_FILE)
+
+    val gameStore = CountingStore(AtomicFileStore(gameFile))
+    private val saveThread = Executors.newSingleThreadExecutor()
+    val persistence = Persistence(gameStore, AtomicFileStore(setupFile), saveThread)
+
+    private var controller: ActivityController<MainActivity>? = null
+
+    init {
+        app.replacePersistence(persistence)
+    }
+
+    val activity: MainActivity
+        get() = checkNotNull(controller).get()
+
+    val viewModel: KosmoDartsViewModel
+        get() = ViewModelProvider(activity)[KosmoDartsViewModel::class.java]
+
+    fun string(id: Int, vararg args: Any): String = app.getString(id, *args)
+
+    fun writeGame(saved: SavedGame) = AtomicFileStore(gameFile).write(checkNotNull(GameSaveCodec().encode(saved)))
+
+    fun writeRawGame(bytes: ByteArray) = AtomicFileStore(gameFile).write(bytes)
+
+    fun writeSetup(config: X01Config) = AtomicFileStore(setupFile).write(LastSetupCodec().encode(config))
+
+    fun writeRawSetup(bytes: ByteArray) = AtomicFileStore(setupFile).write(bytes)
+
+    fun launchFresh(): MainActivity {
+        finish()
+        controller = Robolectric.buildActivity(MainActivity::class.java).setup()
+        return activity
+    }
+
+    fun killInBackgroundAndReturn(): MainActivity {
+        persistence.awaitIdle()
+        val running = checkNotNull(controller)
+        val bundle = Bundle()
+        running.pause().stop()
+        running.saveInstanceState(bundle)
+        running.destroy()
+        controller = Robolectric.buildActivity(MainActivity::class.java).setup(bundle)
+        return activity
+    }
+
+    /** Recreates the activity as Android does on a configuration change, keeping its ViewModel. */
+    fun rotate() {
+        checkNotNull(controller).recreate()
+    }
+
+    fun pressBack() = activity.onBackPressedDispatcher.onBackPressed()
+
+    /** Stops the activity and waits for every pending write. */
+    fun finish() {
+        controller?.let { running ->
+            persistence.awaitIdle()
+            running.pause().stop().destroy()
+        }
+        controller = null
+    }
+
+    fun close() {
+        finish()
+        saveThread.shutdown()
+    }
+}
+
+/** Counts the reads and writes that reach [delegate]. */
+internal class CountingStore(private val delegate: ByteStore) : ByteStore {
+    @Volatile var reads = 0
+        private set
+
+    @Volatile var writes = 0
+        private set
+
+    override fun read(maxBytes: Int): ReadResult {
+        reads++
+        return delegate.read(maxBytes)
+    }
+
+    override fun write(bytes: ByteArray) {
+        writes++
+        delegate.write(bytes)
+    }
+
+    override fun delete() {
+        writes++
+        delegate.delete()
+    }
+}

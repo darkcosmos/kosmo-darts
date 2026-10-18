@@ -23,13 +23,19 @@ class SetupStateTest {
     }
 
     @Test
-    fun prefilledKeepsTheGivenNames() {
-        assertEquals(listOf("Ann", "Bob", "Cid"), SetupState.prefilled(listOf("Ann", "Bob", "Cid")).names)
+    /** R7: the last setup prefills names in order, start score and checkout rule. */
+    fun `R7 prefilled keeps names in order, start score and checkout rule`() {
+        val lastSetup = X01Config(listOf("Cid", "Ann", "Bob"), 301, CheckoutRule.SINGLE_OUT)
+
+        assertEquals(
+            SetupState(301, CheckoutRule.SINGLE_OUT, listOf("Cid", "Ann", "Bob")),
+            SetupState.prefilled(lastSetup),
+        )
     }
 
     @Test
-    fun prefilledWithoutNamesIsTheDefault() {
-        assertEquals(SetupState(), SetupState.prefilled(emptyList()))
+    fun `R7 prefilled without a last setup is the default`() {
+        assertEquals(SetupState(), SetupState.prefilled(null))
     }
 
     @Test

@@ -6,6 +6,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.TurnOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Turn
+import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -63,5 +64,13 @@ class TurnCompletionTest {
     @Test
     fun outsideTheGameNothingIsCompleted() {
         assertNull(completedBy(AppState(), AppEvent.NewGame))
+    }
+
+    /** R4: resuming a saved game whose turn already waits never announces that turn again. */
+    @Test
+    fun `R4 resuming a waiting turn completes nothing`() {
+        listOf(SaveFixtures.WAITING_NORMAL, SaveFixtures.WAITING_BUST, SaveFixtures.WAITING_CHECKOUT).forEach { saved ->
+            assertNull(completedBy(AppState(screen = Screen.Home(resumableGame = saved)), AppEvent.ResumeTapped))
+        }
     }
 }

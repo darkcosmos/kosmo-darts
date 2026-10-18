@@ -2,6 +2,17 @@
 <resources>
     <string name="home_welcome">Comptez les points de vos parties de fléchettes entre amis.</string>
     <string name="home_new_game">Nouvelle partie</string>
+    <string name="home_resume_game">Reprendre la partie</string>
+    <string name="home_saved_game_title">Partie en cours</string>
+    <string name="home_saved_game_mode">%1$d · %2$s</string>
+    <!-- \u00A0: non-breaking space, so that the colon never starts a line. -->
+    <string name="home_saved_game_checkout">Checkout à confirmer\u00A0: %1$s</string>
+    <string name="new_game_confirm_title">Une partie est en cours</string>
+    <string name="new_game_confirm_text">La supprimer et en commencer une nouvelle ?</string>
+    <string name="new_game_confirm_delete">Supprimer</string>
+    <string name="new_game_confirm_cancel">Annuler</string>
+    <string name="restore_failed_message">La partie enregistrée n\'a pas pu être reprise et a été effacée</string>
+    <string name="restore_failed_ok">OK</string>
 
     <!-- Setup screen -->
     <string name="setup_title">Nouvelle partie</string>

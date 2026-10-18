@@ -15,7 +15,12 @@ import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: KosmoDartsViewModel by viewModels()
+    /** Whether Android recreates this activity after the process was killed on the game screen (rule R1). */
+    private var wasOnGameScreen = false
+
+    private val viewModel: KosmoDartsViewModel by viewModels {
+        KosmoDartsViewModel.factory((application as KosmoDartsApplication).persistence, wasOnGameScreen)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // The app is always dark, so system bars always use light icons.
@@ -24,11 +29,23 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+        // Read before the ViewModel is first used. The bundle only comes back when Android restores the task.
+        wasOnGameScreen = savedInstanceState?.getBoolean(KEY_WAS_ON_GAME_SCREEN) == true
         setContent {
             val state by viewModel.state.collectAsState()
             KosmoDartsTheme {
                 KosmoDartsApp(state = state, onEvent = viewModel::onEvent)
             }
         }
+    }
+
+    /** Only this boolean is kept by Android, never names or darts: the game itself is in the app's files. */
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(KEY_WAS_ON_GAME_SCREEN, viewModel.isOnGameScreen)
+    }
+
+    private companion object {
+        const val KEY_WAS_ON_GAME_SCREEN = "wasOnGameScreen"
     }
 }
