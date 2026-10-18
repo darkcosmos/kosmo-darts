@@ -98,10 +98,21 @@ Every deletion (R3, R6, R9) goes through the same save thread as the writes. A w
 therefore runs first, or is replaced by it ("latest wins"), and never recreates the file afterwards. One test per
 deletion case covers this (`DeletionOrderTest`).
 
+Residual risks, accepted after the code review (security-reviewer S4, S5):
+- An exception that the loader does not foresee (a bug, not a known invalid content) reaches `Persistence.load` as
+  an `ExecutionException`. Both files are then deleted through the queue and the R9 message is shown
+  (`UNEXPECTED_ERROR`), so that the same file cannot crash every launch (R11). The decoder itself still has no
+  catch-all.
+- On the save thread, `SaveWriter` only catches `IOException`, which is how `AtomicFile` reports storage failures. A
+  `RuntimeException` there would be a bug and is not hidden.
+
 ## Consequences
 
 - Every future `Screen` must state whether it carries the saved game (compile-time, Decision 2).
 - Every future storage effect goes through `PersistenceEffects`, never through a call from the UI.
 - Process death restores only the game screen. Other screens restart on home (R1).
+- `persistence.SavedGame` uses `ui.game.GameScreenState` (`of`, `toGameScreenState`), while `ui.app` uses
+  `persistence`. If the packages ever move to separate modules, these two conversions move to the UI side
+  (architecture-reviewer A7).
 - The `Application` subclass is the only place that knows `filesDir`. Plain JVM tests use in-memory stores and a
   manual executor; Robolectric tests use the real files.

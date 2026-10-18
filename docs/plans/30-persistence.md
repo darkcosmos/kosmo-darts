@@ -415,9 +415,9 @@ rejected` ``).
   engine state (ADR 0001).
 
 `GameSaveFuzzTest` (R11): `Random(FUZZ_SEED)`, a fixed constant seed. 5,000 mutations of valid saves (flip, insert,
-delete or duplicate bytes, truncate, splice two saves), plus 1,000 random byte arrays from 0 to 70,000 bytes. `decode` never throws, and
-returns `Valid` only when the result re-encodes to the same bytes. On failure, the assertion message gives the
-seed, the iteration and the input as hex. The fixtures use made-up names only, and nothing is logged.
+delete or duplicate bytes, truncate, splice two saves), plus 1,000 random byte arrays from 0 to 70,000 bytes.
+`decode` never throws, and returns `Valid` only when the result re-encodes to the same bytes. On failure, the
+assertion message gives the seed, the iteration and the input as hex. The fixtures use made-up names only, and nothing is logged.
 
 `LastSetupCodecTest`:
 - Round trip for 1 to 4 players, both modes and both rules (R7).
@@ -441,7 +441,7 @@ seed, the iteration and the input as hex. The fixtures use made-up names only, a
 - After an unreadable game, the next load finds nothing: the message is shown once (replaces T8, see below).
 - Each invalid content deletes the game file and leaves the setup file untouched (R8).
 - An invalid setup deletes the setup file, gives `null`, and leaves the game file untouched (R8, R10). A setup read
-  failure gives `null` and keeps the file.
+  failure gives `null` and deletes the file too (Q9).
 - Absent files give `Absent` and `null`, and nothing is written or deleted.
 
 `PersistenceEffectsTest` (R3, R6, R7, R12). One test per transition:
@@ -616,7 +616,7 @@ screenshot is attached to the PR.
 | A2, S2 | ADR 0002 decision 3: main-thread read accepted, linear replay; test counts the game builds (no timing). |
 | A3 | `ResumeSummary` reads `toGameScreenState()` highlight; test asserts equality. |
 | A4 | Flag check reads the replayed engine state (ADR 0001). |
-| S1 | ADR 0002 decision 5: `READ_FAILED` keeps the file; R9, R10 refined; tested in `SaveLoaderTest`. |
+| S1 | Superseded by owner decision Q9: `READ_FAILED` deletes the file like any unreadable content (ADR 0002 decision 5). |
 | S3 | No log of names or content (plan, Data section); checked at code review. |
 | U1 | Layout rules and TalkBack for the summary card; 4-player, long-name, landscape and 200 % captures; scroll and clipping test. |
 | U2 | Phone steps 7, 9, 10, 11. |
@@ -630,7 +630,7 @@ screenshot is attached to the PR.
 | T5 | 4-player captures; existing captures re-recorded and listed. |
 | T6 | Rotation tests: no reload, no write, dialogs kept. |
 | T7 | Fixed seed; hex input in the failure message; made-up names only. |
-| T8 (round 2, minor) | Repeated `READ_FAILED` loads and the later overwrite, in `SaveLoaderTest`. |
+| T8 (round 2, minor) | Superseded by Q9: `SaveLoaderTest` checks that the next load after an unreadable game finds nothing. |
 
 ## After the design review: owner decisions and implementation changes
 
@@ -657,6 +657,8 @@ Implementation changes from the plan (no behaviour change):
   and the message.
 - `HomeTags` gives the summary, rows and scores test tags. The bounded read is the testable `readAtMost`.
 - Each line check uses `ensure(condition, reason)` or `reject(reason)`, to meet detekt's limit on throw statements.
+- Code review round 1: an unforeseen loader exception (`ExecutionException` in `Persistence.load`) gives the new
+  reason `UNEXPECTED_ERROR` and deletes both files, so that it cannot crash every launch (R11; security-reviewer S5).
 
 ## Open questions
 

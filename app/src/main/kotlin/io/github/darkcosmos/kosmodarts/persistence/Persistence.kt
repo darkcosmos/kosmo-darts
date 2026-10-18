@@ -1,7 +1,9 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import androidx.annotation.VisibleForTesting
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executor
 import java.util.concurrent.FutureTask
 
@@ -27,7 +29,15 @@ class Persistence(
     fun load(): LoadResult {
         val task = FutureTask(loader::load)
         executor.execute(task)
-        return task.get()
+        return try {
+            task.get()
+        } catch (ignored: ExecutionException) {
+            // Rule R11: a content that breaks the loader in an unforeseen way must not crash every launch. Both files
+            // are deleted through the queue, as for any unreadable file (ADR 0002, decision 5).
+            deleteGame()
+            setupWriter.delete()
+            LoadResult(GameLoad.Invalid(InvalidSaveReason.UNEXPECTED_ERROR), lastSetup = null)
+        }
     }
 
     /** Saves [saved] in the background. A game over [GameSaveCodec.MAX_DARTS] darts keeps the previous file (R12). */
@@ -40,6 +50,7 @@ class Persistence(
     fun saveLastSetup(config: X01Config) = setupWriter.write(setupCodec.encode(config))
 
     /** Waits until every read and write requested so far is done. For tests that check the files. */
+    @VisibleForTesting
     fun awaitIdle() {
         val done = CountDownLatch(1)
         executor.execute(done::countDown)

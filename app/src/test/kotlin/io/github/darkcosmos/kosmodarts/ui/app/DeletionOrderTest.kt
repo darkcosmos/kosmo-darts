@@ -9,6 +9,7 @@ import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SaveWriter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -35,6 +36,7 @@ class DeletionOrderTest {
         val viewModel = viewModel(AppState(screen = Screen.Game(beforeWin)))
 
         viewModel.onEvent(AppEvent.NumberTapped(1)) // The winning dart: a write is queued.
+        assertTrue((viewModel.state.value.screen as Screen.Game).game.isCheckoutDialogShown)
         viewModel.onEvent(AppEvent.FinishGameTapped)
         executor.runAll()
 

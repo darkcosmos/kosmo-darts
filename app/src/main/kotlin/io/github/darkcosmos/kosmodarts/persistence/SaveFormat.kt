@@ -19,6 +19,9 @@ enum class InvalidSaveReason {
     INVALID_CONFIG,
     REJECTED_BY_ENGINE,
     INCONSISTENT_WAITING_FLAG,
+
+    /** The loader failed in an unforeseen way: both files are deleted, so it cannot recur at every launch (R11). */
+    UNEXPECTED_ERROR,
 }
 
 /**

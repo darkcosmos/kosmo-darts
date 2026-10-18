@@ -6,6 +6,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -62,18 +63,21 @@ class PersistenceTest {
     /** ADR 0002, decision 3: a load waits behind a write still pending on the save thread. */
     @Test
     fun `R12 a load after a pending write sees that write`() {
-        val slowStore = object : ByteStore by gameStore {
-            override fun write(bytes: ByteArray) {
-                Thread.sleep(SLOW_WRITE_MILLIS)
-                gameStore.write(bytes)
-            }
-        }
         val saveThread = Executors.newSingleThreadExecutor()
         try {
-            val persistence = Persistence(slowStore, setupStore, saveThread)
+            val persistence = Persistence(gameStore, setupStore, saveThread)
+            // The save thread is held, so the write stays pending while the load is requested.
+            val gate = CountDownLatch(1)
+            saveThread.execute { gate.await() }
             persistence.saveGame(SaveFixtures.WAITING_NORMAL)
+            var loaded: GameLoad? = null
+            val loader = Thread { loaded = persistence.load().game }
+            loader.start()
+            // A load that bypassed the queue would read now, before the write, and find nothing.
+            gate.countDown()
+            loader.join(JOIN_TIMEOUT_MILLIS)
 
-            assertEquals(GameLoad.Valid(SaveFixtures.WAITING_NORMAL), persistence.load().game)
+            assertEquals(GameLoad.Valid(SaveFixtures.WAITING_NORMAL), loaded)
         } finally {
             saveThread.shutdown()
             saveThread.awaitTermination(1, TimeUnit.SECONDS)
@@ -94,7 +98,20 @@ class PersistenceTest {
         }
     }
 
+    /** R11: an unforeseen loader failure deletes both files, so the app cannot fail the same way at every launch. */
+    @Test
+    fun `R11 an unexpected loader failure deletes both files instead of crashing`() {
+        val failing = GameSaveCodec { _, _ -> throw IllegalStateException("unforeseen") }
+        gameStore.content = codec.encode(SaveFixtures.MID_TURN)
+        setupStore.content = LastSetupCodec().encode(SaveFixtures.config())
+        val persistence = Persistence(gameStore, setupStore, Runnable::run, gameCodec = failing)
+
+        assertEquals(LoadResult(GameLoad.Invalid(InvalidSaveReason.UNEXPECTED_ERROR), null), persistence.load())
+        assertNull(gameStore.content)
+        assertNull(setupStore.content)
+    }
+
     private companion object {
-        const val SLOW_WRITE_MILLIS = 200L
+        const val JOIN_TIMEOUT_MILLIS = 10_000L
     }
 }

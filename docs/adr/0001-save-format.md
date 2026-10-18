@@ -143,7 +143,8 @@ end
 
 The steps below run in order. The first failure makes the whole file invalid, with a reason used by the tests:
 `READ_FAILED`, `TOO_LARGE`, `MALFORMED`, `UNSUPPORTED_VERSION`, `CHECKSUM_MISMATCH`, `OUT_OF_RANGE`,
-`INVALID_CONFIG`, `REJECTED_BY_ENGINE`, `INCONSISTENT_WAITING_FLAG`.
+`INVALID_CONFIG`, `REJECTED_BY_ENGINE`, `INCONSISTENT_WAITING_FLAG`. `UNEXPECTED_ERROR` is given by
+`Persistence.load` if the loader throws an exception that none of these checks foresaw (ADR 0002, decision 5).
 
 1. Bounded read (`READ_FAILED`, `TOO_LARGE`).
 2. Strict UTF-8, no CR, split into lines, kind line (`MALFORMED`).
