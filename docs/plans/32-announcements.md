@@ -786,14 +786,18 @@ E5. Play the seven sounds at a constant media volume: even levels, no clipping.
     an error leaves no file and the status unchanged.
   - File (S11): one fixed name in the app's cache (`tts-warm-up.wav`), deleted when a speaker is created (leftover of
     a killed process), at the warm-up's end and on release.
-  - One warm-up per engine, after the first successful `setVoice` only. The Settings probe warms up too (T26
-    decision): its first phrase, "Announcements on", benefits in the same way.
+  - One warm-up per engine, after the first successful `setVoice` only. A warm-up cancelled by a real phrase
+    (`QUEUE_FLUSH`, its `onStop` arrives) still deletes its file and is not retried: the real phrase loads the voice
+    model itself.
+  - The Settings probe does not warm up (T26 decision, architecture preference): it only checks the voice, and its
+    single phrase "Announcements on" is not time-critical. `TtsSpeaker` takes `warmUp: Boolean`; the game session's
+    speaker passes `true`, the probe `false` (`AudioFactory.speaker(context, warmUp)`).
   - Privacy: the warm-up text is a constant, never a name; it is only sent after the embedded voice is set (ADR 0003
     unchanged). The file stays in the app's private cache.
   - Rejected alternative: speaking a silent phrase (volume 0) — it would still open an audio output, and could take
     or disturb audio focus.
-  - Limitation: when "Start" is tapped before the warm-up ends (a very quick setup), the first phrase waits for the
-    rest of the warm-up; this will be checked on the phone.
+  - Limitation: when "Start" is tapped before the warm-up ends (a very quick setup), the first phrase cancels the
+    warm-up and loads the voice model itself, so it may still be a little late; this will be checked on the phone.
 - Tests (`TtsSpeakerTest`, over `ShadowTextToSpeech`, which records the last text and file given to
   `synthesizeToFile`):
   - after `onInit` with a usable voice: exactly one warm-up, with the constant text, to the fixed cache file, and no
@@ -803,7 +807,9 @@ E5. Play the seven sounds at a constant media volume: even levels, no clipping.
   - warm-up `onDone` and `onStop`: the file is deleted, no real `onEnd` is called, no focus is abandoned;
   - warm-up `onError`: the status stays `AVAILABLE`, the file is deleted, no `onEnd`; a real `onError` afterwards
     still gives `NO_USABLE_VOICE` (AN18);
-  - a phrase asked for during the warm-up is spoken once and its `onEnd` is called once;
+  - a phrase asked for during the warm-up is spoken once and its `onEnd` is called once; the warm-up's `onStop`
+    that follows is ignored (no `onEnd`, no focus abandon, no status change) and its file is deleted;
+  - the Settings probe (`warmUp = false`) sends no warm-up, and its release leaves no file;
   - `synthesizeToFile` returning an error: no file left, no crash, status `AVAILABLE`;
   - release during the warm-up: no file left and no callback after release;
   - a leftover warm-up file is deleted when a speaker is created;
