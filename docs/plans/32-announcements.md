@@ -583,3 +583,71 @@ Differences from the design above, each recorded where it applies:
   scrolled content never passes under the gear (U7); the in-memory settings store moved to the tests and the
   ViewModel's settings parameter made required (A5); end-to-end tests for the win on the end screen and the rematch
   (T10), and for what plays after returning to a hidden game screen (T9); a looper helper in the AN18 test (T11).
+
+## Owner evolutions E1 to E5 (PR #33 review, 2026-10-19)
+
+Kosmo's review of PR #33 completes or replaces parts of the issue; `docs/rules/announcements.md` v2 records them
+(table "Owner evolutions", rules AN1, AN2, AN4, AN5, AN8 to AN10, AN13 to AN15, AN21, AN23 to AN26).
+
+### Engine (`:game-engine`)
+
+- `X01Cue.DartHit` becomes `data class DartHit(val dart: Dart)` (AN1, AN25: the app needs the dart to call it).
+- `X01Cue.TurnStart` gets `isGameStart: Boolean`, true when no dart was thrown yet (AN4, E1). A turn start cue is
+  only produced on Start, Rematch and "Next player" (unchanged), so an empty game means the first turn.
+- E3: `X01Cues.afterDart` returns `[DartHit(dart), GameShot | BigFish]` for a checkout dart. `checkoutConfirmed` is
+  removed. `gameCues` no longer reacts to "Finish game"; the checkout dialog's Undo stays an undo cue.
+
+### Rendering (`:app`, pure)
+
+- `Phrases`: `turnStart(name, isGameStart)`, `checkoutSuffix(remaining)`, `turnScore`, `noScore`, `win(name)`,
+  `dartCall(dart): String?` (null for a miss), `announcementsOn`. `oneEighty`, `bust` and `bigFish` are removed (E2).
+- E1, AN26: `PhraseVariants(picker: VariantPicker)` remembers the last index drawn per line and asks
+  `fun interface VariantPicker { fun pick(allowed: List<Int>): Int }` to choose among the other indices. Production:
+  `RandomVariantPicker(Random.Default)`; tests: a picker that returns the first allowed index (fixed draw).
+  `ResourcePhrases(resources, variants)` reads `string-array` resources (`announce_game_start`, `announce_next_turn`)
+  and formats the drawn item with the name. A game session owns one `ResourcePhrases`, so "never twice in a row" holds
+  across turns and a rematch.
+- `CueScript` (E2, E3, AN25): `DartHit` -> `DartSound(DART_HIT, call = phrases.dartCall(dart))`; `DartMiss` ->
+  `DartSound(DART_MISS, call = null)`; `Bust` -> `[Sound(BUST)]`; `OneEighty` -> `[Sound(ONE_EIGHTY)]`;
+  `GameShot` -> `[Sound(GAME_SHOT), Speech(win)]`; `BigFish` -> `[Sound(BIG_FISH), Speech(win)]`; `TurnStart` ->
+  `[Speech(turnStart + optional suffix)]`.
+- `AnnouncementPlayer` (AN10, AN25):
+  - a dart sound with a call plays the impact sound at once, then, when "Call each dart" and the voice are on:
+    removes any call still waiting in the queue, interrupts a call in progress (its late end is ignored), and puts
+    the new call at the head of the queue;
+  - each running step gets a token; only the end of the current token advances the queue (replaces the single
+    generation counter, which `stopAll` still uses);
+  - the call waits for its impact sound like any step (AN10), so on the last dart the order is impact, call, then the
+    event sound or the score.
+
+### Settings
+
+- `AudioSettings.callEachDart = false` (AN14); key `call_each_dart` in the codec. `format_version` stays 1: an older
+  file without the key gives `false` (per-key default), so no migration is needed.
+- `SettingsUiState.callEachDart`, `SettingsEvent.CallEachDartToggled(on)`; the switch row sits under the Voice status
+  line, `enabled = voiceEnabled` (greyed when the voice is off); its value is kept while greyed.
+- Strings: `settings_call_each_dart` ("Call each dart" / « Annoncer chaque fléchette »).
+
+### Sounds (E5)
+
+- `origin/assets/sound-effects` (18e4956, "normalize sound effect levels") merged into the mission branch (689980b).
+  Durations are unchanged (measured). `docs/sounds/CREDITS.md` records the normalization; the per-file gains were
+  asked to Kosmo on PR #33 (not in the commit).
+
+### Tests added or changed
+
+- Engine: `X01CuesTest` (checkout dart gives the win cue; `isGameStart`; `DartHit(dart)`).
+- `GameCuesTest`: "Finish game" gives nothing; the dialog's Undo gives the undo cue.
+- `PhraseVariantsTest`: fixed draw; never twice in a row; each line has its own memory.
+- `CueScriptTest`: bust and 180 sound only; win sound then "win" voice; dart calls; miss without call.
+- `AnnouncementPlayerTest`: call after impact; a new dart cancels a waiting call and interrupts a call being spoken;
+  last-dart order (impact, call, event sound or score); calls off or voice off -> no call; bust and 180 with sounds
+  off -> nothing; win with sounds off -> win voice.
+- `ResourcePhrasesTest`: every variant and dart call in English and French.
+- `AnnouncementsScreenTest`: start phrase, varied next-turn phrases, no score voice for bust and 180, win sound and
+  voice on the winning dart, nothing on "Finish game", cancel sound when the dialog is refused, big fish only from
+  170, dart calls end to end.
+- `SettingsScreenTest`, `SettingsViewModelTest`, `AudioSettingsCodecTest`: third switch off by default, greyed with
+  the voice off, kept.
+- Roborazzi: Settings with three switches, and with the third one greyed.
+- Canary: "Finish game" plays the win again -> the "nothing on Finish game" test must fail.
