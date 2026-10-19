@@ -737,3 +737,31 @@ E5. Play the seven sounds at a constant media volume: even levels, no clipping.
   checkout dart with calls on, 180 with calls on), T22 and U11 (step E3), A9 (AN10 states the win exception), A10
   (`GameShot` and `BigFish` render the same; merge the cues later if nothing uses the distinction; the engine tests
   for both stay meanwhile), S9 (the origin of `sfx_victory.ogg` must be in CREDITS before merge).
+
+## Owner adjustments A.3 and A.4 (Kosmo's answer on PR #33, 2026-10-19)
+
+- A.3, origin: `sfx_victory.ogg` was generated with ElevenLabs like the others (free plan, October 2026). The PENDING
+  line of `docs/sounds/CREDITS.md` is replaced; the in-app mention stays true (closes S9 and A11).
+- A.3, volume: "the sound must be discreet and never cover the voice". The file cannot be changed (assets branch), so
+  the app plays it lower: `SoundPoolPlayer` plays every effect at 1.0 except `VICTORY` at `VICTORY_VOLUME = 0.4f`
+  (about -8 dB), a named constant that Kosmo can have tuned after listening. This is the only in-app gain (AN9, AN24;
+  it supersedes "no gain in the app" of E5 for this one file).
+- A.4, regression: at the start of a new game the first phrase came late, but not after a rematch. Cause: the game
+  audio session (speech engine and sounds) is created when the game screen opens; the engine binds, lists its voices
+  and sets one before the held phrase can be spoken. After a rematch the session already exists (end screen).
+  Fix: the session also exists on the **setup** screen (`AudioBinder`: Setup, Game and End), so the engine is ready
+  when "Start" is tapped. Nothing is played on the setup screen (no cue comes from it). This departs from the issue's
+  "initialized on entering the game screen" constraint; it is listed in the PR deviations and ADR 0004 decision 1.
+  - Rejected alternative: a process-wide speech engine kept for the whole app (AN21 and ADR 0004 reject a binding
+    held on every screen).
+  - AN16 consequence: the first voice check may end on the setup screen, where no message can open. The binder keeps
+    the result of the session's first check and reports an unavailable voice when a **new** game screen opens
+    (`Screen.Game.isNewGame`), still only for the first check (a later failure stays silent, AN18).
+- Tests:
+  - `SoundPoolPlayerTest`: `VICTORY` plays at 0.4 (both channels), every other effect at 1.0.
+  - `OwnerEvolutionsScreenTest`/`AnnouncementsScreenTest`: with the engine ready during setup, the game start phrase is
+    spoken as soon as "Start" is tapped, with no further engine start (one engine for setup and game); leaving setup
+    for home releases the session; the AN16 message still opens once on the first game when the check ended during
+    setup; AN19 volume stream unchanged on setup (default).
+- Phone check: start a new game from the setup screen: the first phrase is immediate, as after a rematch. Finish a
+  game: the victory sound is clearly under « Victoire de … ».

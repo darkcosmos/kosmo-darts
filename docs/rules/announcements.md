@@ -24,6 +24,8 @@ They complete or replace the issue body; in case of contradiction they prevail.
 | E5 | The seven sounds are the normalized ones of `assets/sound-effects`. | AN24 |
 | A.1 | Second review: on a 180, the voice does not announce the score; only the sound plays (confirms E2). | AN8, AN9 |
 | A.2 | Second review: the game shot and big fish sounds are removed. One new sound, `sfx_victory`, plays **at the same time** as « Victoire de {nom} », for any win. | AN9, AN10, AN24 |
+| A.3 | `sfx_victory` comes from ElevenLabs like the others. It must be discreet and never cover the voice: the app plays it at a reduced volume. | AN9, AN24 |
+| A.4 | Regression: at the start of a new game, the first player was announced late (the speech engine was only started on the game screen); not after a rematch. The first announcement must be immediate. | AN4, AN21 |
 
 ## Cues (`:game-engine`)
 
@@ -82,9 +84,11 @@ They complete or replace the issue body; in case of contradiction they prevail.
   | Undo | `sfx_dart_cancel` |
   | Bust | `sfx_bust` |
   | One hundred and eighty | `sfx_one_eighty` |
-  | Game shot or big fish | `sfx_victory`, started together with the win voice (A.2) |
+  | Game shot or big fish | `sfx_victory`, started together with the win voice (A.2), at a reduced volume (A.3) |
 
-  Turn score, no score and turn start have no sound. The win voice and `sfx_victory` start together (A.2); the voice
+  Every sound plays at full media volume except `sfx_victory`, which the app plays at `VICTORY_VOLUME` (0.4 of the
+  media volume, about -8 dB) so that it stays under the win voice (A.3). Turn score, no score and turn start have no
+  sound. The win voice and `sfx_victory` start together (A.2); the voice
   is spoken even with sounds off (when the voice is on), and the sound plays even with the voice off.
 - AN10. Order and overlap:
   - a dart sound plays at once; dart sounds may overlap each other; a dart sound is never queued nor played late (a
@@ -128,7 +132,8 @@ They complete or replace the issue body; in case of contradiction they prevail.
 ## No usable voice
 
 - AN16. On a game start (AN4) with the voice switched on, if the game screen finds no usable voice and the message
-  was never shown on this device, a message explains it once, with an "Install a voice" button (AN17) and "OK".
+  was never shown on this device, a message explains it once (when the voice check already ended on the setup screen,
+  the message opens as the game screen opens, A.4), with an "Install a voice" button (AN17) and "OK".
   System back or "OK" closes it; a tap outside does not. The game goes on with sounds only. Once shown, it is never
   shown again, even after the app is stopped.
 - AN17. "Install a voice" (in the AN16 message and on "Settings") opens `TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA`
@@ -150,6 +155,8 @@ They complete or replace the issue body; in case of contradiction they prevail.
   focus.
 - AN21. When the game screen is no longer visible (another app, screen off, leaving the game screen), everything in
   progress or pending stops, and nothing is played until it is visible again; then only new cues play (AN7). The
+  sounds and the speech engine are already started on the setup screen, so that the first player of a new game is
+  announced at once (A.4); nothing is played there. The
   end screen counts as part of the game here: "Finish game" does not cut the win sound and voice that started with
   the checkout dialog (AN5), and a rematch started from it announces its first player (AN4).
 - AN22. Player names are spoken at their turn start and at the win. Rate, pitch and voice details come from the
@@ -164,9 +171,10 @@ They complete or replace the issue body; in case of contradiction they prevail.
 ## Credits
 
 - AN24. The six sounds of `app/src/main/res/raw/` (since A.2, `sfx_victory` replaced `sfx_game_shot` and
-  `sfx_big_fish`) are listed in `docs/sounds/CREDITS.md` with their tool, plan and generation date. The ElevenLabs
+  `sfx_big_fish`) were all generated with ElevenLabs (A.3) and are listed in `docs/sounds/CREDITS.md` with their
+  tool, plan and generation date. The ElevenLabs
   free plan requires the mention "elevenlabs.io", which is also in the app (AN13). The files are used as delivered on
-  the `assets/sound-effects` branch; its normalization commit evened out their levels (E5). The app applies no gain.
+  the `assets/sound-effects` branch; its normalization commit evened out their levels (E5). The app applies no gain, except the reduced volume of `sfx_victory` (A.3, AN9).
   `docs/sounds/CREDITS.md` does not describe the normalization: the owner withdrew that request (PR #33 comment,
   2026-10-19), the gains being no longer known.
 
