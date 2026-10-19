@@ -314,35 +314,6 @@ private fun CheckoutDialog(playerName: String, darts: List<Dart>, onEvent: (AppE
     )
 }
 
-/**
- * AN16: shown once per device. "OK" and back close it; a tap outside does not, so that a keypad tap landing as it
- * opens neither closes it unread nor enters a dart.
- */
-@Composable
-private fun NoVoiceDialog(notice: NoVoiceNotice, onEvent: (AppEvent) -> Unit) {
-    AlertDialog(
-        onDismissRequest = { onEvent(AppEvent.NoVoiceNoticeDismissed) },
-        properties = DialogProperties(dismissOnClickOutside = false),
-        modifier = Modifier.testTag(GameTags.NO_VOICE_DIALOG),
-        title = { Text(stringResource(R.string.no_voice_title)) },
-        text = { Text(stringResource(R.string.no_voice_text)) },
-        confirmButton = {
-            TextButton(onClick = { onEvent(AppEvent.NoVoiceNoticeDismissed) }) {
-                Text(stringResource(R.string.no_voice_ok))
-            }
-        },
-        dismissButton = if (notice.canInstall) {
-            {
-                TextButton(onClick = { onEvent(AppEvent.InstallVoiceTapped) }) {
-                    Text(stringResource(R.string.voice_install))
-                }
-            }
-        } else {
-            null
-        },
-    )
-}
-
 @Composable
 private fun AbandonDialog(onEvent: (AppEvent) -> Unit) {
     AlertDialog(

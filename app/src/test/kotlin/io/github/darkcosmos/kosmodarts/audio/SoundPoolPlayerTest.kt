@@ -19,7 +19,8 @@ class SoundPoolPlayerTest {
     private val player = SoundPoolPlayer(context)
     private val pool = shadowOf(player.pool)
 
-    private fun loadAll() = SoundEffect.entries.forEach { pool.notifyResourceLoaded(SoundPoolPlayer.resourceOf(it), true) }
+    private fun loadAll() =
+        SoundEffect.entries.forEach { pool.notifyResourceLoaded(SoundPoolPlayer.resourceOf(it), true) }
 
     @Test
     fun `AN9 each effect is its own raw file`() {

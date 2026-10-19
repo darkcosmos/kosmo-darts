@@ -17,7 +17,8 @@ fun gameCues(before: AppState, event: AppEvent, after: AppState): List<X01Cue> {
     return when {
         screenBefore !is Screen.Game && screenAfter is Screen.Game ->
             if (screenAfter.isNewGame) listOfNotNull(X01Cues.turnStart(screenAfter.game.game)) else emptyList()
-        screenBefore is Screen.Game && screenAfter is Screen.Game -> inGameCues(screenBefore.game, event, screenAfter.game)
+        screenBefore is Screen.Game && screenAfter is Screen.Game ->
+            inGameCues(screenBefore.game, event, screenAfter.game)
         screenBefore is Screen.Game && screenAfter is Screen.End && event == AppEvent.FinishGameTapped ->
             listOfNotNull(X01Cues.checkoutConfirmed(screenAfter.game))
         else -> emptyList()

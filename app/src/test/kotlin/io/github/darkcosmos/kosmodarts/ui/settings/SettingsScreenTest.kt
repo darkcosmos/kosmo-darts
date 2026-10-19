@@ -1,16 +1,13 @@
 package io.github.darkcosmos.kosmodarts.ui.settings
 
 import android.content.Context
-import android.content.Intent
-import android.content.pm.ActivityInfo
-import android.content.pm.ResolveInfo
 import android.speech.tts.TextToSpeech
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextEquals
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -40,7 +37,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowTextToSpeech
 
-/** The Settings screen through [io.github.darkcosmos.kosmodarts.MainActivity] (docs/rules/announcements.md, AN13 to AN17). */
+/** The Settings screen, through the app's activity (docs/rules/announcements.md, AN13 to AN17). */
 @RunWith(AndroidJUnit4::class)
 class SettingsScreenTest {
 
@@ -92,14 +89,7 @@ class SettingsScreenTest {
 
     private fun registerInstallScreen(enginePackage: String) {
         audio.enginePackage = enginePackage
-        val intent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).setPackage(enginePackage)
-        val info = ResolveInfo().apply {
-            activityInfo = ActivityInfo().apply {
-                packageName = enginePackage
-                name = "$enginePackage.InstallVoice"
-            }
-        }
-        shadowOf(process.app.packageManager).addResolveInfoForIntent(intent, info)
+        TtsTestSupport.registerInstallScreen(process.app, enginePackage)
     }
 
     @Test

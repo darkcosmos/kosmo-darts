@@ -36,6 +36,22 @@ internal object TtsTestSupport {
         return if (language == "fr") frenchLocal else englishLocal
     }
 
+    /**
+     * Declares the "install voice data" screen of a TTS engine [enginePackage], so that the explicit install intent
+     * resolves (AN17).
+     */
+    fun registerInstallScreen(context: android.content.Context, enginePackage: String) {
+        val component = android.content.ComponentName(enginePackage, "$enginePackage.InstallVoice")
+        val packageManager = shadowOf(context.packageManager)
+        packageManager.addActivityIfNotPresent(component)
+        packageManager.addIntentFilterForActivity(
+            component,
+            android.content.IntentFilter(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).apply {
+                addCategory(android.content.Intent.CATEGORY_DEFAULT)
+            },
+        )
+    }
+
     /** The engine of the last TextToSpeech created, as the shadow sees it. */
     fun lastEngine(): ShadowTextToSpeech = shadowOf(checkNotNull(ShadowTextToSpeech.getLastTextToSpeechInstance()))
 

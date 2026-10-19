@@ -81,14 +81,16 @@ class SettingsViewModel(
 
     /** AN14: "on" needs a usable voice, and then says so; otherwise the switch stays off. */
     private fun onVoiceToggled(on: Boolean) {
-        if (!on) {
-            repository.setVoiceEnabled(false)
-            return
+        val speaker = probe
+        when {
+            !on -> repository.setVoiceEnabled(false)
+            speaker != null && speaker.status == VoiceStatus.AVAILABLE -> {
+                repository.setVoiceEnabled(true)
+                speaker.speak(phrases().announcementsOn()) {}
+            }
+            // Refused: the stored value stays off, so the switch snaps back (AN14).
+            else -> Unit
         }
-        val speaker = probe ?: return
-        if (speaker.status != VoiceStatus.AVAILABLE) return
-        repository.setVoiceEnabled(true)
-        speaker.speak(phrases().announcementsOn()) {}
     }
 
     private fun refresh() {

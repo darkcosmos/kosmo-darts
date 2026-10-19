@@ -41,12 +41,12 @@ class SoundPoolPlayer(context: Context) : SoundPlayer {
 
     override fun play(effect: SoundEffect): Boolean {
         val soundId = soundIds.getValue(effect)
-        if (isReleased || soundId !in loaded) return false
-        val streamId = pool.play(soundId, 1f, 1f, 1, 0, 1f)
-        if (streamId == 0) return false
-        streams.addLast(streamId)
-        if (streams.size > MAX_TRACKED_STREAMS) streams.removeFirst()
-        return true
+        val streamId = if (isReleased || soundId !in loaded) 0 else pool.play(soundId, 1f, 1f, 1, 0, 1f)
+        if (streamId != 0) {
+            streams.addLast(streamId)
+            if (streams.size > MAX_TRACKED_STREAMS) streams.removeFirst()
+        }
+        return streamId != 0
     }
 
     override fun durationMillis(effect: SoundEffect): Long? = durations[effect]

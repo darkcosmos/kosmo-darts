@@ -550,3 +550,24 @@ Extra states (U6):
    devices). No question for Kosmo unless a reviewer disagrees.
 2. AN16 when the voice was switched off before the first game: proposed, no message (the user chose silence). No
    question for Kosmo unless a reviewer disagrees.
+
+## Implementation notes (code phase)
+
+Differences from the design above, each recorded where it applies:
+- The game audio session lives on the game screen **and the end screen** (ADR 0004 decision 1, AN19, AN21). The
+  end-to-end tests showed that "Finish game" opens the end screen before the win cue is handed over; a session
+  limited to the game screen was released first, so the win was never announced. A rematch then keeps the same
+  session and announces its first player at once.
+- Only the result of the **first** voice check of a session is reported to the ViewModel (`AudioBinder`): a voice
+  that fails later (AN18) silences the game without the AN16 message.
+- The ViewModel exposes `addCueSink`/`removeCueSink` (several sinks: the session, and tests) and `onScreenChanged`,
+  called before the cues of the same event, so that the session exists when the first player's name is cued.
+- `AudioSettingsDecoder` is named `AudioSettingsCodec` (encode and decode in one pure object).
+- The two icons come from Material Icons (not Material Symbols), Apache 2.0, noted in each drawable.
+- The no-voice dialog is in its own file, `ui/game/NoVoiceDialog.kt` (detekt `TooManyFunctions`).
+- `KEY_FEATURE_NETWORK_SYNTHESIS` is deprecated: its value `"networkTts"` is a private constant of `TtsSpeaker`, so no
+  deprecated API and no suppression are needed.
+- A tap outside the no-voice dialog (U5) is set with `DialogProperties(dismissOnClickOutside = false)`; Robolectric
+  cannot tap outside a dialog window, so it is not covered by a test. The keypad being inert while the message is
+  open is covered by `NoVoiceNoticeTest`.
+- The canaries were run on the committed code and reverted (`git checkout`); their output is in the PR.

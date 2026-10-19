@@ -100,11 +100,12 @@ class TtsSpeaker(
         }
         val candidates = voices.associateBy(::candidateOf)
         val chosen = VoiceChoice.choose(candidates.keys, appLanguage, appCountry)?.let(candidates::get)
-            ?: return VoiceStatus.NO_USABLE_VOICE
-        if (tts.setVoice(chosen) != TextToSpeech.SUCCESS) return VoiceStatus.NO_USABLE_VOICE
-        tts.setAudioAttributes(AUDIO_ATTRIBUTES)
-        tts.setOnUtteranceProgressListener(progressListener)
-        return VoiceStatus.AVAILABLE
+        val isSet = chosen != null && tts.setVoice(chosen) == TextToSpeech.SUCCESS
+        if (isSet) {
+            tts.setAudioAttributes(AUDIO_ATTRIBUTES)
+            tts.setOnUtteranceProgressListener(progressListener)
+        }
+        return if (isSet) VoiceStatus.AVAILABLE else VoiceStatus.NO_USABLE_VOICE
     }
 
     private fun utter(text: String, onEnd: () -> Unit) {

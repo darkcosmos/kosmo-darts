@@ -4,7 +4,7 @@ import android.media.AudioManager
 import android.os.Looper
 import android.speech.tts.TextToSpeech
 import androidx.compose.ui.test.SemanticsNodeInteraction
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -91,6 +91,8 @@ class AnnouncementsScreenTest {
 
     private val sounds: List<SoundEffect>
         get() = audio.timeline.sounds
+
+    private val threeHits = List(3) { SoundEffect.DART_HIT }
 
     /** From home: one player (or more), 301 double out, then Start. */
     private fun startGame(vararg names: String = arrayOf("Ann")) {
@@ -259,7 +261,7 @@ class AnnouncementsScreenTest {
         undo()
         playEverything()
 
-        assertEquals(listOf(SoundEffect.DART_HIT, SoundEffect.DART_HIT, SoundEffect.DART_HIT, SoundEffect.DART_CANCEL), sounds)
+        assertEquals(threeHits + SoundEffect.DART_CANCEL, sounds)
         assertEquals(listOf("Ann"), spoken)
     }
 
@@ -292,7 +294,7 @@ class AnnouncementsScreenTest {
 
         assertEquals(emptyList<String>(), spoken)
         assertNull(lastEngine().currentVoice)
-        assertEquals(listOf(SoundEffect.DART_HIT, SoundEffect.DART_HIT, SoundEffect.DART_HIT, SoundEffect.ONE_EIGHTY), sounds)
+        assertEquals(threeHits + SoundEffect.ONE_EIGHTY, sounds)
     }
 
     /** AN12, AN16: a voice marked not installed is the same as no voice. */
@@ -358,7 +360,7 @@ class AnnouncementsScreenTest {
         playEverything()
 
         assertNull(ShadowTextToSpeech.getLastTextToSpeechInstance())
-        assertEquals(listOf(SoundEffect.DART_HIT, SoundEffect.DART_HIT, SoundEffect.DART_HIT, SoundEffect.ONE_EIGHTY), sounds)
+        assertEquals(threeHits + SoundEffect.ONE_EIGHTY, sounds)
         key(GameTags.NO_VOICE_DIALOG).assertDoesNotExist()
     }
 
@@ -395,7 +397,7 @@ class AnnouncementsScreenTest {
         assertEquals(listOf("Ann", "One hundred and eighty!"), audio.allSpoken)
     }
 
-    /** AN7: resuming a waiting turn from home, after Android killed the app, and after a fresh launch, replays nothing. */
+    /** AN7: resuming a waiting turn from home, after Android killed the app, or after a fresh launch: no replay. */
     @Test
     fun `AN7 nothing is replayed after a resume`() {
         ShadowTextToSpeech.addVoice(TtsTestSupport.englishLocal)
@@ -455,7 +457,7 @@ class AnnouncementsScreenTest {
         process.stopActivity()
         playEverything()
 
-        assertEquals(listOf(SoundEffect.DART_HIT, SoundEffect.DART_HIT, SoundEffect.DART_HIT), sounds)
+        assertEquals(threeHits, sounds)
         assertEquals(listOf("Ann"), engine.spokenTextList)
         assertTrue(engine.isShutdown)
         assertTrue(audio.soundPlayers.single().isReleased)

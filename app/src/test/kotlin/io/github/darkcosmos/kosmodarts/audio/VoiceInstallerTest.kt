@@ -4,8 +4,6 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
-import android.content.pm.ActivityInfo
-import android.content.pm.ResolveInfo
 import android.speech.tts.TextToSpeech
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -23,14 +21,7 @@ class VoiceInstallerTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
 
     private fun registerInstallScreen(enginePackage: String) {
-        val intent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).setPackage(enginePackage)
-        val info = ResolveInfo().apply {
-            activityInfo = ActivityInfo().apply {
-                packageName = enginePackage
-                name = "$enginePackage.InstallVoice"
-            }
-        }
-        shadowOf(context.packageManager).addResolveInfoForIntent(intent, info)
+        TtsTestSupport.registerInstallScreen(context, enginePackage)
     }
 
     private class Throwing(base: Context, private val error: RuntimeException) : ContextWrapper(base) {

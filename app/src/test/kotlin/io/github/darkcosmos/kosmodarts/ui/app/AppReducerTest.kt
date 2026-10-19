@@ -96,7 +96,8 @@ class AppReducerTest {
             AppEvent.StartRequested,
         )
 
-        assertEquals(Screen.Game(GameScreenState(X01Game(X01Config(listOf("Ann", "Bob")))), isNewGame = true), state.screen)
+        val expected = GameScreenState(X01Game(X01Config(listOf("Ann", "Bob"))))
+        assertEquals(Screen.Game(expected, isNewGame = true), state.screen)
         assertEquals(X01Config(listOf("Ann", "Bob")), state.lastSetup)
     }
 

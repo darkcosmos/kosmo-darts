@@ -1,8 +1,5 @@
 package io.github.darkcosmos.kosmodarts.screenshots
 
-import android.content.Intent
-import android.content.pm.ActivityInfo
-import android.content.pm.ResolveInfo
 import android.speech.tts.TextToSpeech
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -66,14 +63,7 @@ class AnnouncementsScreenshotTest {
     private fun canInstall() {
         val engine = "com.example.tts"
         audio.enginePackage = engine
-        val intent = Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA).setPackage(engine)
-        val info = ResolveInfo().apply {
-            activityInfo = ActivityInfo().apply {
-                packageName = engine
-                name = "$engine.InstallVoice"
-            }
-        }
-        shadowOf(process.app.packageManager).addResolveInfoForIntent(intent, info)
+        TtsTestSupport.registerInstallScreen(process.app, engine)
     }
 
     private fun settings(name: String, voice: android.speech.tts.Voice?, initStatus: Int? = TextToSpeech.SUCCESS) {
