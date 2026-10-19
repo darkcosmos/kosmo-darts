@@ -113,6 +113,12 @@ internal abstract class AnnouncementsScreenTestBase {
 
     /** From home: one player (or more), 301 double out, then Start. */
     protected fun startGame(vararg names: String = arrayOf("Ann")) {
+        openSetup(*names)
+        tapStart()
+    }
+
+    /** From home: opens the setup and fills it, 301 double out, without starting. */
+    protected fun openSetup(vararg names: String = arrayOf("Ann")) {
         composeRule.onNodeWithText(string(R.string.home_new_game)).performScrollTo().performClick()
         composeRule.onNodeWithText("301").performClick()
         if (names.size == 1) {
@@ -121,6 +127,10 @@ internal abstract class AnnouncementsScreenTestBase {
         names.forEachIndexed { index, name ->
             composeRule.onNodeWithTag(SetupTags.nameField(index)).performScrollTo().performTextReplacement(name)
         }
+        composeRule.waitForIdle()
+    }
+
+    protected fun tapStart() {
         composeRule.onNodeWithText(string(R.string.setup_start)).performScrollTo().performClick()
         composeRule.waitForIdle()
     }

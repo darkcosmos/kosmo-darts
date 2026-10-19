@@ -18,6 +18,6 @@ screen ("Sound effects generated with elevenlabs.io" / « Effets sonores génér
 - Plan: free.
 - Generated: October 2026.
 - The files are used as delivered on the `assets/sound-effects` branch, unchanged.
-- `sfx_victory.ogg` replaced `sfx_game_shot.ogg` and `sfx_big_fish.ogg` (owner decision A.2, October 2026). PENDING:
-  its origin (tool, plan, licence) is to be confirmed by the owner (question on PR #33); this line is replaced by the
-  answer before merge.
+- `sfx_victory.ogg` replaced `sfx_game_shot.ogg` and `sfx_big_fish.ogg` (owner decision A.2, October 2026). It was
+  generated with ElevenLabs on the free plan like the others (owner confirmation on PR #33). The app plays it at a
+  reduced volume (A.3), so that it stays under the win voice.

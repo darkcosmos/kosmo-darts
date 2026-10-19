@@ -38,6 +38,22 @@ class SoundPoolPlayerTest {
     }
 
     @Test
+    fun `A3 the victory sound plays lower than the others`() {
+        loadAll()
+        SoundEffect.entries.forEach { player.play(it) }
+
+        val victory = pool.getResourcePlaybacks(R.raw.sfx_victory).single()
+        assertEquals(SoundPoolPlayer.VICTORY_VOLUME, victory.leftVolume)
+        assertEquals(SoundPoolPlayer.VICTORY_VOLUME, victory.rightVolume)
+        assertEquals(0.4f, SoundPoolPlayer.VICTORY_VOLUME)
+        SoundEffect.entries.filter { it != SoundEffect.VICTORY }.forEach { effect ->
+            val playback = pool.getResourcePlaybacks(SoundPoolPlayer.resourceOf(effect)).single()
+            assertEquals("$effect", 1f, playback.leftVolume)
+            assertEquals("$effect", 1f, playback.rightVolume)
+        }
+    }
+
+    @Test
     fun `AN10 a sound asked for before it is loaded is skipped, not played later`() {
         assertFalse(player.play(SoundEffect.DART_HIT))
         pool.notifyResourceLoaded(R.raw.sfx_dart_hit, true)

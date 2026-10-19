@@ -41,7 +41,8 @@ class SoundPoolPlayer(context: Context) : SoundPlayer {
 
     override fun play(effect: SoundEffect): Boolean {
         val soundId = soundIds.getValue(effect)
-        val streamId = if (isReleased || soundId !in loaded) 0 else pool.play(soundId, 1f, 1f, 1, 0, 1f)
+        val volume = volumeOf(effect)
+        val streamId = if (isReleased || soundId !in loaded) 0 else pool.play(soundId, volume, volume, 1, 0, 1f)
         if (streamId != 0) {
             streams.addLast(streamId)
             if (streams.size > MAX_TRACKED_STREAMS) streams.removeFirst()
@@ -90,6 +91,15 @@ class SoundPoolPlayer(context: Context) : SoundPlayer {
     companion object {
         private const val MAX_STREAMS = 6
         private const val MAX_TRACKED_STREAMS = 16
+
+        /**
+         * A.3: the victory sound plays with the win voice and must stay under it. About -8 dB; tune it here after
+         * listening on the phone.
+         */
+        const val VICTORY_VOLUME: Float = 0.4f
+
+        /** AN9, A.3: every sound at full media volume, but the victory sound. */
+        fun volumeOf(effect: SoundEffect): Float = if (effect == SoundEffect.VICTORY) VICTORY_VOLUME else 1f
 
         fun resourceOf(effect: SoundEffect): Int = when (effect) {
             SoundEffect.DART_HIT -> R.raw.sfx_dart_hit

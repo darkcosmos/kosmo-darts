@@ -21,12 +21,21 @@ on recreation, and that settings are stored apart from the saved game file, whos
 
 `AudioBinder`, owned by `MainActivity`, observes two things: the current `Screen` (from `KosmoDartsViewModel.state`)
 and the activity lifecycle.
-- A `GameAudioSession` (sound player, speaker, sequencer) exists exactly while the screen is `Game` or `End` and the
-  activity is at least `STARTED`. It is created on entering that state and released on leaving it (`ON_STOP`, or
-  another screen). The end screen keeps the session so that the win sound and voice, which start with the checkout
-  dialog (AN5, owner evolution E3), go on after "Finish game", and so that a rematch announces its first player.
-  While it exists, the session is one of the `KosmoDartsViewModel` cue sinks (`addCueSink`); it is removed when the
-  session is released.
+- A `GameAudioSession` (sound player, speaker, sequencer) exists exactly while the screen is `Setup`, `Game` or `End`
+  and the activity is at least `STARTED`. It is created on entering that state and released on leaving it
+  (`ON_STOP`, or another screen: home, settings).
+  - The setup screen starts it so that the speech engine has bound, listed its voices and set one before "Start" is
+    tapped: the first player of a new game is announced at once (owner adjustment A.4). Starting it on the game
+    screen, as the issue first required, made that first phrase late, while a rematch (session already alive) was
+    immediate. No cue comes from the setup screen, so nothing is played there; the embedded-voice rules (ADR 0003)
+    are unchanged and no text reaches the engine before a game starts.
+  - The end screen keeps the session so that the win sound and voice, which start with the checkout dialog (AN5,
+    owner evolution E3), go on after "Finish game", and so that a rematch announces its first player.
+  - While it exists, the session is one of the `KosmoDartsViewModel` cue sinks (`addCueSink`); it is removed when the
+    session is released.
+  - The first result of the session's voice check is kept by the pure `FirstVoiceCheck`, and an unusable voice is
+    reported to the ViewModel when a new game screen is shown, once per session (AN16); a later failure is not
+    reported (AN18).
 - A Settings voice probe exists exactly while the screen is `Settings` and the activity is started; it is attached
   to `SettingsViewModel` and released on leaving. Returning from the engine's install screen restarts the activity,
   so the voice is checked again (AN17).

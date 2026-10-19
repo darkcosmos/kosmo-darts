@@ -34,6 +34,7 @@ class AudioBinder(
     private var gameSession: GameAudioSession? = null
     private var gameSpeaker: Speaker? = null
     private var probe: Speaker? = null
+    private var voiceCheck = FirstVoiceCheck()
     private val screenListener: (Screen) -> Unit = { update() }
     private val mainHandler = Handler(Looper.getMainLooper())
 
@@ -65,7 +66,15 @@ class AudioBinder(
         val isGameShown = screen is Screen.Game || screen is Screen.End
         activity.volumeControlStream =
             if (isGameShown) AudioManager.STREAM_MUSIC else AudioManager.USE_DEFAULT_STREAM_TYPE
-        if (isStarted && isGameShown) openGameSession() else closeGameSession()
+        // A.4: the session already exists on the setup screen, so the speech engine is ready when "Start" is tapped.
+        // No cue comes from the setup screen, so nothing is played there.
+        val isSessionNeeded = isGameShown || screen is Screen.Setup
+        if (isStarted && isSessionNeeded) openGameSession() else closeGameSession()
+        // Posted: this runs inside the ViewModel's event that changed the screen, which must end first.
+        gameSpeaker?.let { speaker ->
+            val status = speaker.status
+            mainHandler.post { if (gameSpeaker === speaker) reportUnavailableVoice(speaker, status) }
+        }
         if (isStarted && screen is Screen.Settings) openProbe() else closeProbe()
     }
 
@@ -80,29 +89,24 @@ class AudioBinder(
             phrases = ResourcePhrases(activity.resources, PhraseVariants(factory.variantPicker())),
             settings = { settings.settings.value },
         )
-        speaker?.let { reportUnavailableVoice(it) }
         gameSpeaker = speaker
+        voiceCheck = FirstVoiceCheck()
+        // Each change is reported with its own status, in order: a later failure is never taken for the first result.
+        speaker?.onStatusChanged = { status ->
+            mainHandler.post { if (gameSpeaker === speaker) reportUnavailableVoice(speaker, status) }
+        }
         gameSession = session
         game.addCueSink(session)
     }
 
-    /**
-     * AN16: the result of the first voice check is reported, and the ViewModel decides whether the message shows.
-     * A voice that fails later in the game (AN18) is not reported: the game goes silent, without a message.
-     */
-    private fun reportUnavailableVoice(speaker: Speaker) {
-        var isReported = false
-        val report = report@{ status: VoiceStatus ->
-            if (isReported || status == VoiceStatus.CHECKING) return@report
-            isReported = true
-            if (status.isUnavailable) {
-                val canInstall = VoiceInstaller(activity, speaker.enginePackage).canInstall
-                game.onEvent(AppEvent.VoiceUnavailable(canInstall))
-            }
+    /** AN16, A.4: [FirstVoiceCheck] decides; the ViewModel then decides whether the message shows. */
+    private fun reportUnavailableVoice(speaker: Speaker, status: VoiceStatus) {
+        val screen = game.state.value.screen
+        val isNewGameShown = screen is Screen.Game && screen.isNewGame
+        if (voiceCheck.shouldReport(status, isNewGameShown)) {
+            val canInstall = VoiceInstaller(activity, speaker.enginePackage).canInstall
+            game.onEvent(AppEvent.VoiceUnavailable(canInstall))
         }
-        speaker.onStatusChanged = report
-        // Posted: this runs inside the ViewModel's event that opened the game screen, which must end first.
-        mainHandler.post { if (gameSpeaker === speaker) report(speaker.status) }
     }
 
     private fun closeGameSession() {

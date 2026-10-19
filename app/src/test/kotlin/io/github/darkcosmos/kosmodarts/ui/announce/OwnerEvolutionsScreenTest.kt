@@ -275,4 +275,99 @@ internal class OwnerEvolutionsScreenTest : AnnouncementsScreenTestBase() {
 
         assertEquals(listOf("DART_HIT"), heardAsText())
     }
+    /** A.4, S10: the engine starts during setup, where nothing is spoken; the first phrase is immediate at Start. */
+    @Test
+    fun `A4 the first phrase is immediate when the engine was ready during setup`() {
+        launchWithVoice(TtsTestSupport.englishLocal)
+        openSetup("Ann", "Bob")
+        initLastEngine()
+        playEverything()
+        assertEquals(emptyList<String>(), spoken)
+
+        tapStart()
+
+        assertEquals(listOf("Ann, you're throwing first."), spoken)
+        assertEquals(1, audio.speakers.size)
+    }
+    /** A.4, T23: with the voice off, no speech engine is started on the setup screen either. */
+    @Test
+    fun `A4 voice off starts no engine on the setup screen`() {
+        process.app.audioSettings.setVoiceEnabled(false)
+        launchWithVoice(TtsTestSupport.englishLocal)
+        openSetup("Ann", "Bob")
+
+        assertNull(ShadowTextToSpeech.getLastTextToSpeechInstance())
+        assertEquals(1, audio.soundPlayers.size)
+    }
+
+    /** A.4, T23, AN21: leaving the setup screen for home, or the app going to the background, releases the session. */
+    @Test
+    fun `A4 the setup session is released when leaving setup or the app`() {
+        launchWithVoice(TtsTestSupport.englishLocal)
+        openSetup("Ann", "Bob")
+        val first = lastEngine()
+        process.pressBack()
+        composeRule.waitForIdle()
+        assertTrue(first.isShutdown)
+        assertTrue(audio.soundPlayers.single().isReleased)
+
+        openSetup("Ann", "Bob")
+        val second = lastEngine()
+        assertTrue(!second.isShutdown)
+        process.stopActivity()
+        assertTrue(second.isShutdown)
+        process.restartActivity()
+        composeRule.waitForIdle()
+        assertEquals(3, audio.speakers.size)
+        assertTrue(!lastEngine().isShutdown)
+    }
+
+    /** A.4, S10, T23, AN7: nothing is played or spoken on the setup screen, even after a rotation. */
+    @Test
+    fun `A4 nothing is played on the setup screen, even after a rotation`() {
+        launchWithVoice(TtsTestSupport.englishLocal)
+        openSetup("Ann", "Bob")
+        val cues = mutableListOf<io.github.darkcosmos.kosmodarts.engine.x01.X01Cue>()
+        process.viewModel.addCueSink { cues.addAll(it) }
+        initLastEngine()
+        process.rotate()
+        composeRule.waitForIdle()
+        initLastEngine()
+        playEverything()
+
+        assertEquals(emptyList<io.github.darkcosmos.kosmodarts.engine.x01.X01Cue>(), cues)
+        assertEquals(emptyList<String>(), audio.allSpoken)
+        assertEquals(emptyList<Heard>(), audio.timeline.heard)
+        assertEquals(AudioManager.USE_DEFAULT_STREAM_TYPE, process.activity.volumeControlStream)
+    }
+
+    /** A.4, AN16: a check that ended during setup still opens the message once, on the first game only. */
+    @Test
+    fun `A4 the no voice message opens at Start when the check ended during setup, and not on a rematch`() {
+        launchWithVoice(TtsTestSupport.englishNetwork)
+        openSetup("Ann")
+        initLastEngine()
+        playEverything()
+        key(GameTags.NO_VOICE_DIALOG).assertDoesNotExist()
+
+        tapStart()
+        playEverything()
+        key(GameTags.NO_VOICE_DIALOG).assertExists()
+        composeRule.onNodeWithText(string(R.string.no_voice_ok)).performClick()
+        composeRule.waitForIdle()
+
+        playAnnToWin()
+        finishGame()
+        composeRule.onNodeWithText(string(R.string.end_rematch)).performScrollTo().performClick()
+        playEverything()
+        key(GameTags.NO_VOICE_DIALOG).assertDoesNotExist()
+    }
+
+    /** One player from 301: 180 (121 left), then T20, T11, D14. */
+    private fun playAnnToWin() {
+        triple(20); triple(20); triple(20)
+        nextPlayer()
+        triple(20); triple(11); double(14)
+        playEverything()
+    }
 }
