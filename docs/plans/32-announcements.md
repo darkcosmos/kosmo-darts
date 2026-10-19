@@ -778,16 +778,38 @@ E5. Play the seven sounds at a constant media volume: even levels, no clipping.
   - Fix: right after a usable voice is set (AN12), `TtsSpeaker` asks the engine to synthesize a short neutral text
     ("0") **to a file** in the app's cache (`synthesizeToFile`), a warm-up that loads the voice model without any
     sound and without audio focus. The file is deleted when the engine reports the end of that synthesis, and on
-    release. The warm-up never delays a real phrase: a phrase asked for meanwhile is spoken as usual (the engine
-    queues it after the warm-up).
+    release. The warm-up never delays a real phrase: real phrases use `QUEUE_FLUSH`, so a phrase asked for while
+    the warm-up still runs cancels it and is spoken at once.
+  - Isolation (A15, S12): the warm-up has its own utterance id (`warm-up`). Its `onDone`, `onStop` and `onError`
+    only delete the file: they call no `onEnd`, abandon no audio focus (none is requested for it) and never change
+    the status (an error of the warm-up is not the AN18 failure of a real phrase). A `synthesizeToFile` that returns
+    an error leaves no file and the status unchanged.
+  - File (S11): one fixed name in the app's cache (`tts-warm-up.wav`), deleted when a speaker is created (leftover of
+    a killed process), at the warm-up's end and on release.
+  - One warm-up per engine, after the first successful `setVoice` only. The Settings probe warms up too (T26
+    decision): its first phrase, "Announcements on", benefits in the same way.
   - Privacy: the warm-up text is a constant, never a name; it is only sent after the embedded voice is set (ADR 0003
     unchanged). The file stays in the app's private cache.
   - Rejected alternative: speaking a silent phrase (volume 0) — it would still open an audio output, and could take
     or disturb audio focus.
   - Limitation: when "Start" is tapped before the warm-up ends (a very quick setup), the first phrase waits for the
     rest of the warm-up; this will be checked on the phone.
-- Tests: `TtsSpeakerTest`: after `onInit` with a usable voice, exactly one synthesis to a file in the cache, with
-  the constant text, never with a network voice nor before a voice is set, and no spoken text; the file is deleted on
-  the warm-up's end and on release. `SoundPoolPlayerTest`: `VICTORY` at 0.05. The A.4 screen tests stay.
+- Tests (`TtsSpeakerTest`, over `ShadowTextToSpeech`, which records the last text and file given to
+  `synthesizeToFile`):
+  - after `onInit` with a usable voice: exactly one warm-up, with the constant text, to the fixed cache file, and no
+    spoken text; no warm-up before `onInit`, none with only a network voice, none on `NO_ENGINE` (T27 canary: a
+    warm-up sent with only a network voice must fail this test);
+  - one warm-up per engine, not one per `speak`;
+  - warm-up `onDone` and `onStop`: the file is deleted, no real `onEnd` is called, no focus is abandoned;
+  - warm-up `onError`: the status stays `AVAILABLE`, the file is deleted, no `onEnd`; a real `onError` afterwards
+    still gives `NO_USABLE_VOICE` (AN18);
+  - a phrase asked for during the warm-up is spoken once and its `onEnd` is called once;
+  - `synthesizeToFile` returning an error: no file left, no crash, status `AVAILABLE`;
+  - release during the warm-up: no file left and no callback after release;
+  - a leftover warm-up file is deleted when a speaker is created;
+  - no audio focus is requested for the warm-up.
+- `SoundPoolPlayerTest`: `VICTORY` at 0.05 (named constant). The A.4 screen tests stay.
 - Phone check: from home, open the setup, wait two seconds, tap "Commencer": the first phrase is immediate. Finish a
-  game: the victory sound at 5 % is heard under « Victoire de … ».
+  game: the victory sound at 5 % is heard under « Victoire de … ». With the Voice switch off, is the victory sound
+  still heard (U12)? If not, Kosmo may choose a higher level when no voice speaks.
+- The PR states that A.6 is a likely cause, not a measured one: the phone check decides (A16).
