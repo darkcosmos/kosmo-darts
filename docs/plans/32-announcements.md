@@ -765,3 +765,29 @@ E5. Play the seven sounds at a constant media volume: even levels, no clipping.
     setup; AN19 volume stream unchanged on setup (default).
 - Phone check: start a new game from the setup screen: the first phrase is immediate, as after a rematch. Finish a
   game: the victory sound is clearly under « Victoire de … ».
+
+## Owner feedback on A.3 and A.4 (PR #33 comment, 2026-10-19): A.5 and A.6
+
+- A.5, volume: Kosmo asks to test the victory sound at **5 %** of the media volume: `VICTORY_VOLUME = 0.05f`
+  (about -26 dB). The test asserts the named constant, so only the value and its test change.
+- A.6, the first phrase of a new game is still a few seconds late on the Pixel, even with the engine started on the
+  setup screen (A.4). No device is available in the sandbox, so the cause cannot be measured here. Most likely cause:
+  the speech engine loads the voice model on the **first synthesis** after `setVoice`, which takes seconds on the
+  first phrase of a session; after a rematch the same engine has just spoken the win, so the model is loaded and
+  the phrase is immediate. Binding earlier (A.4) did not load the model.
+  - Fix: right after a usable voice is set (AN12), `TtsSpeaker` asks the engine to synthesize a short neutral text
+    ("0") **to a file** in the app's cache (`synthesizeToFile`), a warm-up that loads the voice model without any
+    sound and without audio focus. The file is deleted when the engine reports the end of that synthesis, and on
+    release. The warm-up never delays a real phrase: a phrase asked for meanwhile is spoken as usual (the engine
+    queues it after the warm-up).
+  - Privacy: the warm-up text is a constant, never a name; it is only sent after the embedded voice is set (ADR 0003
+    unchanged). The file stays in the app's private cache.
+  - Rejected alternative: speaking a silent phrase (volume 0) — it would still open an audio output, and could take
+    or disturb audio focus.
+  - Limitation: when "Start" is tapped before the warm-up ends (a very quick setup), the first phrase waits for the
+    rest of the warm-up; this will be checked on the phone.
+- Tests: `TtsSpeakerTest`: after `onInit` with a usable voice, exactly one synthesis to a file in the cache, with
+  the constant text, never with a network voice nor before a voice is set, and no spoken text; the file is deleted on
+  the warm-up's end and on release. `SoundPoolPlayerTest`: `VICTORY` at 0.05. The A.4 screen tests stay.
+- Phone check: from home, open the setup, wait two seconds, tap "Commencer": the first phrase is immediate. Finish a
+  game: the victory sound at 5 % is heard under « Victoire de … ».
