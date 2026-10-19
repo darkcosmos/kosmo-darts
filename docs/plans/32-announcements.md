@@ -691,10 +691,11 @@ E1. Start a two-player game: the first player is announced with a game start phr
     the phrase, then « Il te reste 40. »
 E2. Score 180: only the 180 sound, no voice. Bust: only the bust sound, no voice. Turn off the sounds in Settings,
     then do a 180 and a bust again: silence. A turn of 0 still says « Pas de score ».
-E3. Finish from 170 (T20, T20, Bull): the Big Fish sound starts when the third dart is entered, then « Victoire de … »,
-    with the checkout dialog open. Tap "Terminer la partie": nothing more plays, and the voice is not cut. In another
-    game, enter the winning dart then tap "Annuler" in the dialog: everything stops, then the cancel sound.
-    With sounds off, the win still says « Victoire de … ».
+E3. (Updated for A.2.) Finish from 170 (T20, T20, Bull), then another game normally: in both cases the victory sound
+    and « Victoire de … » start together when the winning dart is entered, with the checkout dialog open; the name
+    is clearly understood over the sound, in French and in English (U11). Tap "Terminer la partie": nothing more
+    plays, and the voice is not cut. In another game, enter the winning dart then tap "Annuler" in the dialog:
+    everything stops, then the cancel sound. With sounds off, the win still says « Victoire de … ».
 E4. In Settings, "Annoncer chaque fléchette" is off. Turn the voice off: the switch is greyed with « Nécessite la
     voix » under it. Turn the voice on, then the switch on. Play 18, Double 20, Triple 20, Bull and a miss: each dart
     is called after its impact sound, except the miss (sound only). Enter three darts quickly: no call comes late.
@@ -731,4 +732,8 @@ E5. Play the seven sounds at a constant media volume: even levels, no clipping.
   both); `SoundPoolPlayerTest` (six raw files); `OwnerEvolutionsScreenTest` and `AnnouncementsScreenTest` (the win
   plays `VICTORY` and the voice together, for a normal win and from 170; "Finish game" still plays nothing; refusing
   the dialog plays the cancel sound).
-- Phone check: finish a game normally and from 170: the victory sound and « Victoire de … » start together.
+- Phone check: step E3 above, rewritten for A.2 (T22), with the name clearly understood over the victory sound (U11).
+- Design round 5 findings: T21 (four more `AnnouncementPlayerTest` cases: victory sound not loaded, unknown length,
+  checkout dart with calls on, 180 with calls on), T22 and U11 (step E3), A9 (AN10 states the win exception), A10
+  (`GameShot` and `BigFish` render the same; merge the cues later if nothing uses the distinction; the engine tests
+  for both stay meanwhile), S9 (the origin of `sfx_victory.ogg` must be in CREDITS before merge).

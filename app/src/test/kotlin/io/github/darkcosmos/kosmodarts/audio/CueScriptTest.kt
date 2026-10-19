@@ -40,13 +40,13 @@ class CueScriptTest {
     }
 
     @Test
-    fun `E2 wins are their sound then the same win phrase`() {
+    fun `A2 any win is the victory sound and the win phrase together`() {
         assertEquals(
-            steps(AudioStep.Sound(SoundEffect.GAME_SHOT), AudioStep.Speech("win Ann")),
+            steps(AudioStep.SoundWithSpeech(SoundEffect.VICTORY, "win Ann")),
             of(X01Cue.GameShot(0, "Ann")),
         )
         assertEquals(
-            steps(AudioStep.Sound(SoundEffect.BIG_FISH), AudioStep.Speech("win Ann")),
+            steps(AudioStep.SoundWithSpeech(SoundEffect.VICTORY, "win Ann")),
             of(X01Cue.BigFish(0, "Ann")),
         )
     }

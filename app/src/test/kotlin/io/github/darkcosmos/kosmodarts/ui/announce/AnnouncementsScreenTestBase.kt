@@ -203,7 +203,7 @@ internal abstract class AnnouncementsScreenTestBase {
         composeRule.waitForIdle()
     }
 
-    protected val winSounds = setOf(SoundEffect.GAME_SHOT, SoundEffect.BIG_FISH)
+    protected val winSounds = setOf(SoundEffect.VICTORY)
 
     private companion object {
         /** More than any announcement ever schedules: a guard against an endless loop. */

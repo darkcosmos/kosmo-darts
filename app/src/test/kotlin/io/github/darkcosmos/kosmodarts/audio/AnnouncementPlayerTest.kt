@@ -4,8 +4,8 @@ import io.github.darkcosmos.kosmodarts.audio.SoundEffect.BUST
 import io.github.darkcosmos.kosmodarts.audio.SoundEffect.DART_CANCEL
 import io.github.darkcosmos.kosmodarts.audio.SoundEffect.DART_HIT
 import io.github.darkcosmos.kosmodarts.audio.SoundEffect.DART_MISS
-import io.github.darkcosmos.kosmodarts.audio.SoundEffect.GAME_SHOT
 import io.github.darkcosmos.kosmodarts.audio.SoundEffect.ONE_EIGHTY
+import io.github.darkcosmos.kosmodarts.audio.SoundEffect.VICTORY
 import io.github.darkcosmos.kosmodarts.settings.AudioSettings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -55,18 +55,18 @@ class AnnouncementPlayerTest {
         )
     }
 
-    /** AN10: a turn start voice queues behind a long pending sequence (game shot sound, then its voice). */
+    /** AN10: a turn start voice queues behind a long pending sequence (a 4 s sound, then a voice). */
     @Test
     fun `AN10 a turn start voice queues behind a long sequence`() {
-        soundThenSpeech(GAME_SHOT, "game shot Ann")
+        soundThenSpeech(ONE_EIGHTY, "score 3")
         announce(AudioStep.Speech("start Bob"))
         clock.advanceBy(20_000)
 
         assertEquals(
             listOf(
-                Heard.Sound(GAME_SHOT, 0),
-                Heard.Speech("game shot Ann", 5_160),
-                Heard.Speech("start Bob", 5_160 + 800),
+                Heard.Sound(ONE_EIGHTY, 0),
+                Heard.Speech("score 3", 4_000),
+                Heard.Speech("start Bob", 4_000 + 800),
             ),
             timeline.heard,
         )
@@ -346,42 +346,130 @@ class AnnouncementPlayerTest {
         assertEquals(listOf("turn Bob", "19"), timeline.speech)
     }
 
-    /** AN10, AN25: on the last dart: impact, call, then the event sound, then the win voice. */
+    private fun win() = announce(AudioStep.SoundWithSpeech(VICTORY, "win Ann"))
+
+    /** AN10, AN25, A.2: on a checkout dart: impact, call, then the victory sound and the win voice together. */
     @Test
-    fun `AN25 the last dart is called before the event sound`() {
+    fun `AN25 A2 the checkout dart is called before the victory sound and voice`() {
         callsOn()
         dartWithCall("Double 20")
-        soundThenSpeech(GAME_SHOT, "win Ann")
+        win()
         clock.advanceBy(20_000)
 
         assertEquals(
             listOf(
                 Heard.Sound(DART_HIT, 0),
                 Heard.Speech("Double 20", 510),
-                Heard.Sound(GAME_SHOT, 510 + 800),
-                Heard.Speech("win Ann", 510 + 800 + 5_160),
+                Heard.Sound(VICTORY, 510 + 800),
+                Heard.Speech("win Ann", 510 + 800),
             ),
             timeline.heard,
         )
     }
 
-    /** E2: with sounds off, a bust or a 180 (sound only) is silent; a win keeps its voice. */
+    /** AN25, A.1: on a 180 with calls on: the call of the last dart, then the 180 sound, and no score voice. */
     @Test
-    fun `E2 with sounds off, sound-only events are silent and the win is spoken`() {
+    fun `AN25 A1 a 180 is the call, then its sound, and no score voice`() {
+        callsOn()
+        dartWithCall("Triple 20")
+        announce(AudioStep.Sound(ONE_EIGHTY))
+        clock.advanceBy(20_000)
+
+        assertEquals(
+            listOf(Heard.Sound(DART_HIT, 0), Heard.Speech("Triple 20", 510), Heard.Sound(ONE_EIGHTY, 510 + 800)),
+            timeline.heard,
+        )
+    }
+
+    /** A.2: the victory sound and the win voice start together; the next step waits for the longer of the two. */
+    @Test
+    fun `A2 victory sound and voice start together and the next step waits for both`() {
+        win()
+        announce(AudioStep.Speech("first Bob"))
+        clock.advanceBy(20_000)
+
+        assertEquals(
+            listOf(Heard.Sound(VICTORY, 0), Heard.Speech("win Ann", 0), Heard.Speech("first Bob", 4_000)),
+            timeline.heard,
+        )
+    }
+
+    /** A.2: a voice longer than the sound: the next step waits for the voice. */
+    @Test
+    fun `A2 the next step waits for a voice longer than the victory sound`() {
+        val longVoice = FakeSpeaker(timeline, clock, speechMillis = 6_000)
+        val player = AnnouncementPlayer(sounds, longVoice, clock, { settings })
+        player.play(AudioAction.Announcement(listOf(AudioStep.SoundWithSpeech(VICTORY, "win Ann"))))
+        player.play(AudioAction.Announcement(listOf(AudioStep.Speech("first Bob"))))
+        clock.advanceBy(20_000)
+
+        assertEquals(Heard.Speech("first Bob", 6_000), timeline.heard.last())
+    }
+
+    /** A.2, E2: sounds off: the win voice only; voice off: the victory sound only. */
+    @Test
+    fun `A2 each part of the win follows its own switch`() {
         settings = AudioSettings(soundsEnabled = false)
         announce(AudioStep.Sound(BUST))
         announce(AudioStep.Sound(ONE_EIGHTY))
-        soundThenSpeech(GAME_SHOT, "win Ann")
+        win()
+        clock.advanceBy(20_000)
+        assertEquals(listOf(Heard.Speech("win Ann", 0)), timeline.heard)
+
+        timeline.heard.clear()
+        settings = AudioSettings(voiceEnabled = false)
+        win()
+        announce(AudioStep.Speech("first Bob"))
+        clock.advanceBy(20_000)
+        assertEquals(listOf(Heard.Sound(VICTORY, 20_000)), timeline.heard)
+    }
+
+    /** A.2: a victory sound not loaded yet: the voice still plays and the step ends with it. */
+    @Test
+    fun `A2 an unloaded victory sound leaves the voice`() {
+        sounds.notLoaded += VICTORY
+        win()
+        announce(AudioStep.Speech("first Bob"))
         clock.advanceBy(20_000)
 
-        assertEquals(listOf(Heard.Speech("win Ann", 0)), timeline.heard)
+        assertEquals(listOf(Heard.Speech("win Ann", 0), Heard.Speech("first Bob", 800)), timeline.heard)
+    }
+
+    /** A.2: a victory sound of unknown length counts for the default length. */
+    @Test
+    fun `A2 an unknown victory sound length uses the default`() {
+        val unknown = FakeSoundPlayer(timeline, clock, durations = emptyMap())
+        val shortVoice = FakeSpeaker(timeline, clock, speechMillis = 100)
+        val player = AnnouncementPlayer(unknown, shortVoice, clock, { settings })
+        player.play(AudioAction.Announcement(listOf(AudioStep.SoundWithSpeech(VICTORY, "win Ann"))))
+        player.play(AudioAction.Announcement(listOf(AudioStep.Speech("first Bob"))))
+        clock.advanceBy(20_000)
+
+        assertEquals(Heard.Speech("first Bob", AnnouncementPlayer.DEFAULT_SOUND_MILLIS), timeline.heard.last())
+    }
+
+    /** A.2, AN23: an undo during the win stops both its sound and its voice. */
+    @Test
+    fun `A2 undo stops the victory sound and voice`() {
+        win()
+        announce(AudioStep.Speech("first Bob"))
+        clock.advanceBy(100)
+        player.play(AudioAction.Undo)
+        clock.advanceBy(20_000)
+
+        assertEquals(
+            listOf(Heard.Sound(VICTORY, 0), Heard.Speech("win Ann", 0), Heard.Sound(DART_CANCEL, 100)),
+            timeline.heard,
+        )
+        assertEquals(1, sounds.stopAllCount)
+        assertEquals(1, speaker.stopCount)
     }
 
     /** AN21: after stopAll, nothing scheduled plays any more. */
     @Test
     fun `AN21 stop all forgets everything pending`() {
         dart()
-        soundThenSpeech(GAME_SHOT, "game shot Ann")
+        soundThenSpeech(BUST, "score 3")
         player.stopAll()
         clock.advanceBy(20_000)
 

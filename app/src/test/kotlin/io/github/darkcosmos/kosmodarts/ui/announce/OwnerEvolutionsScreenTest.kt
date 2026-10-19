@@ -91,7 +91,7 @@ internal class OwnerEvolutionsScreenTest : AnnouncementsScreenTestBase() {
         )
     }
 
-    /** AN5, E3: the win sound and voice start with the checkout dialog; "Finish game" plays nothing. */
+    /** AN5, E3, A.2: the victory sound and the win voice start together; "Finish game" plays nothing. */
     @Test
     fun `AN5 the win plays on the winning dart and Finish game plays nothing`() {
         launchWithVoice(TtsTestSupport.englishLocal)
@@ -103,11 +103,13 @@ internal class OwnerEvolutionsScreenTest : AnnouncementsScreenTestBase() {
         double(20)
         composeRule.onNodeWithTag(GameTags.CHECKOUT_DIALOG).assertExists()
         playEverything()
-        assertEquals(listOf("DART_HIT", "GAME_SHOT", "Game shot! Ann wins"), heardAsText())
+        assertEquals(listOf("DART_HIT", "VICTORY", "Game shot! Ann wins"), heardAsText())
+        // A.2: the victory sound and the win voice start together.
+        assertEquals(audio.timeline.heard[1].at, audio.timeline.heard[2].at)
 
         finishGame()
         playEverything()
-        assertEquals(listOf("DART_HIT", "GAME_SHOT", "Game shot! Ann wins"), heardAsText())
+        assertEquals(listOf("DART_HIT", "VICTORY", "Game shot! Ann wins"), heardAsText())
     }
 
     /** E3, T14: "Finish game" while the win voice is spoken: the voice is not cut, no second win, the rematch after. */
@@ -131,7 +133,7 @@ internal class OwnerEvolutionsScreenTest : AnnouncementsScreenTestBase() {
         playEverything()
 
         assertEquals(1, audio.timeline.speech.count { it == "Game shot! Ann wins" })
-        assertEquals(1, sounds.count { it == SoundEffect.GAME_SHOT })
+        assertEquals(1, sounds.count { it == SoundEffect.VICTORY })
         assertEquals("Bob to throw first.", spoken.last())
         assertEquals(AudioManager.STREAM_MUSIC, process.activity.volumeControlStream)
         assertEquals(1, audio.speakers.size) // the same session went on from the game to the end screen
@@ -170,7 +172,7 @@ internal class OwnerEvolutionsScreenTest : AnnouncementsScreenTestBase() {
         playEverything()
 
         assertEquals(2, audio.timeline.speech.count { it == "Game shot! Ann wins" })
-        assertEquals(2, sounds.count { it == SoundEffect.GAME_SHOT })
+        assertEquals(2, sounds.count { it == SoundEffect.VICTORY })
     }
 
     /** E2, E3: with sounds off, the win is still spoken. */
@@ -256,7 +258,7 @@ internal class OwnerEvolutionsScreenTest : AnnouncementsScreenTestBase() {
         double(20)
         playEverything()
 
-        assertEquals(listOf("DART_HIT", "Double 20", "GAME_SHOT", "Game shot! Ann wins"), heardAsText())
+        assertEquals(listOf("DART_HIT", "Double 20", "VICTORY", "Game shot! Ann wins"), heardAsText())
     }
 
     /** AN25, AN14: with "Call each dart" off (the default) or the voice off, no dart is called. */

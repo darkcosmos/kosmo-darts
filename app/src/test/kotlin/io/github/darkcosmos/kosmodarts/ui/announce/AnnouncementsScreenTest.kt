@@ -70,7 +70,7 @@ internal class AnnouncementsScreenTest : AnnouncementsScreenTestBase() {
             ),
             audio.timeline.speech,
         )
-        assertEquals(listOf(SoundEffect.GAME_SHOT, SoundEffect.BIG_FISH), sounds.filter { it in winSounds })
+        assertEquals(listOf(SoundEffect.VICTORY, SoundEffect.VICTORY), sounds.filter { it in winSounds })
     }
 
     /** AN8, E1, E2: the same game in French; the voice says "tu". */

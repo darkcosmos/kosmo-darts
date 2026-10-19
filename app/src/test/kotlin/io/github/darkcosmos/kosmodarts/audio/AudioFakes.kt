@@ -87,8 +87,7 @@ class FakeSoundPlayer(
             SoundEffect.DART_CANCEL to 1_000L,
             SoundEffect.BUST to 1_910L,
             SoundEffect.ONE_EIGHTY to 4_000L,
-            SoundEffect.BIG_FISH to 4_000L,
-            SoundEffect.GAME_SHOT to 5_160L,
+            SoundEffect.VICTORY to 4_000L,
         )
     }
 }

@@ -7,6 +7,9 @@ sealed interface AudioStep {
     data class Sound(val effect: SoundEffect) : AudioStep
 
     data class Speech(val text: String) : AudioStep
+
+    /** A.2: [effect] and [text] start together; the step ends when both have ended. */
+    data class SoundWithSpeech(val effect: SoundEffect, val text: String) : AudioStep
 }
 
 /** What to do for one cue. */
@@ -26,7 +29,7 @@ sealed interface AudioAction {
 
 /**
  * Renders a cue as sounds and speech (AN8, AN9, AN25). Pure. Bust and 180 are their sound only: the sound replaces
- * the score (E2). A win is its sound, then the win phrase (E2, E3).
+ * the score (E2, A.1). A win is the victory sound and the win phrase together (A.2).
  */
 object CueScript {
 
@@ -38,8 +41,8 @@ object CueScript {
         X01Cue.NoScore -> speech(phrases.noScore())
         X01Cue.OneEighty -> sound(SoundEffect.ONE_EIGHTY)
         X01Cue.Bust -> sound(SoundEffect.BUST)
-        is X01Cue.GameShot -> soundThenSpeech(SoundEffect.GAME_SHOT, phrases.win(cue.name))
-        is X01Cue.BigFish -> soundThenSpeech(SoundEffect.BIG_FISH, phrases.win(cue.name))
+        is X01Cue.GameShot -> victory(phrases.win(cue.name))
+        is X01Cue.BigFish -> victory(phrases.win(cue.name))
         is X01Cue.TurnStart -> speech(turnStart(cue, phrases))
     }
 
@@ -53,6 +56,6 @@ object CueScript {
 
     private fun sound(effect: SoundEffect) = AudioAction.Announcement(listOf(AudioStep.Sound(effect)))
 
-    private fun soundThenSpeech(effect: SoundEffect, text: String) =
-        AudioAction.Announcement(listOf(AudioStep.Sound(effect), AudioStep.Speech(text)))
+    private fun victory(text: String) =
+        AudioAction.Announcement(listOf(AudioStep.SoundWithSpeech(SoundEffect.VICTORY, text)))
 }

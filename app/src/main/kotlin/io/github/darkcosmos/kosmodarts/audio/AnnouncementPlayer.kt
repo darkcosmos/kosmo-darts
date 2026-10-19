@@ -6,7 +6,8 @@ import io.github.darkcosmos.kosmodarts.settings.AudioSettings
  * Plays [AudioAction]s in the order of docs/rules/announcements.md, AN10, AN14, AN21, AN23 and AN25:
  * - a dart sound plays at once and may overlap other dart sounds;
  * - announcement steps run one at a time, from one queue, and each step starts only after the last dart sound has
- *   ended, so an event sound and a voice never overlap;
+ *   ended, so an event sound and a voice never overlap, except the victory sound and the win voice, which start
+ *   together (A.2);
  * - a dart call goes to the head of the queue; the next dart drops it if it is still waiting, or interrupts it if it
  *   is being spoken. Other announcements are never interrupted by a dart;
  * - an undo stops everything, then plays the cancel sound.
@@ -103,6 +104,26 @@ class AnnouncementPlayer(
             } else {
                 finish(running)
             }
+            is AudioStep.SoundWithSpeech -> runTogether(running, step, audio)
+        }
+    }
+
+    /** A.2: the sound and the speech start together; the step ends when both have ended. */
+    private fun runTogether(running: Running, step: AudioStep.SoundWithSpeech, audio: AudioSettings) {
+        val soundPlays = audio.soundsEnabled && sounds.play(step.effect)
+        var partsLeft = (if (soundPlays) 1 else 0) + (if (audio.voiceEnabled) 1 else 0)
+        val partEnded = {
+            partsLeft--
+            if (partsLeft == 0) finish(running)
+        }
+        if (partsLeft == 0) {
+            finish(running)
+            return
+        }
+        if (soundPlays) running.scheduled = scheduler.post(durationOf(step.effect)) { partEnded() }
+        if (audio.voiceEnabled) {
+            running.isSpeaking = true
+            speaker.speak(step.text) { if (current === running) partEnded() }
         }
     }
 
