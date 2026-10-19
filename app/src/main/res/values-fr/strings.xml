@@ -65,4 +65,32 @@
         <item quantity="other">%1$d fléchettes</item>
     </plurals>
     <string name="end_rematch">Revanche</string>
+
+    <!-- Settings (docs/rules/announcements.md, AN13 to AN17) -->
+    <string name="home_settings">Réglages</string>
+    <string name="settings_title">Réglages</string>
+    <string name="settings_back">Retour</string>
+    <string name="settings_voice">Voix</string>
+    <string name="settings_sounds">Sons</string>
+    <string name="settings_voice_checking">Vérification de la voix…</string>
+    <string name="settings_voice_available">Voix hors ligne disponible</string>
+    <string name="settings_voice_missing">Aucune voix hors ligne pour la langue de l\'appli. Les parties n\'ont que les sons.</string>
+    <string name="settings_voice_no_engine">Aucun moteur de synthèse vocale sur ce téléphone. Les parties n\'ont que les sons.</string>
+    <string name="settings_sound_credits">Effets sonores générés avec elevenlabs.io</string>
+    <string name="voice_install">Installer une voix</string>
+    <string name="no_voice_title">Aucune voix hors ligne</string>
+    <string name="no_voice_text">Les annonces ont besoin d\'une voix hors ligne dans la langue de l\'appli. La partie continue avec les sons seuls.</string>
+    <string name="no_voice_ok">OK</string>
+
+    <!-- Spoken announcements (AN8). \u00A0: non-breaking space before "!", as French typography requires. -->
+    <string name="announce_language">fr</string>
+    <string name="announce_turn_start">%1$s</string>
+    <string name="announce_turn_start_checkout">%1$s, il te reste %2$d</string>
+    <string name="announce_turn_score">%1$d</string>
+    <string name="announce_one_eighty">Cent quatre-vingts\u00A0!</string>
+    <string name="announce_no_score">Pas de score</string>
+    <string name="announce_bust">Bust</string>
+    <string name="announce_game_shot">Victoire de %1$s</string>
+    <string name="announce_big_fish">Big Fish\u00A0! Victoire de %1$s</string>
+    <string name="announce_announcements_on">Annonces activées</string>
 </resources>

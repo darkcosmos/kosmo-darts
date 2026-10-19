@@ -17,8 +17,9 @@ class AppReducer(private val random: Random) {
     fun reduce(state: AppState, event: AppEvent): AppState = when (val screen = state.screen) {
         is Screen.Home -> onHome(state, screen, event)
         is Screen.Setup -> onSetup(state, screen, event)
-        is Screen.Game -> onGame(state, screen.game, event)
+        is Screen.Game -> onGame(state, screen, event)
         is Screen.End -> onEnd(state, screen.game, event)
+        is Screen.Settings -> onSettings(state, screen, event)
     }
 
     /** Rules R2 and R3: "Resume game", and "New game" that asks before deleting the saved game. */
@@ -31,6 +32,7 @@ class AppReducer(private val random: Random) {
                     state.copy(screen = home.copy(isNewGameDialogShown = false))
                 else -> state
             }
+            event == AppEvent.SettingsTapped -> state.copy(screen = Screen.Settings(home))
             event == AppEvent.NewGame && saved == null -> state.toSetup()
             event == AppEvent.NewGame -> state.copy(screen = home.copy(isNewGameDialogShown = true))
             event == AppEvent.ResumeTapped && saved != null ->
@@ -49,7 +51,7 @@ class AppReducer(private val random: Random) {
         event == AppEvent.Back -> state.copy(screen = Screen.Home())
         event == AppEvent.StartRequested -> when (val result = screen.setup.start()) {
             is SetupResult.Valid -> AppState(
-                screen = Screen.Game(GameScreenState(X01Game(result.config))),
+                screen = Screen.Game(GameScreenState(X01Game(result.config)), isNewGame = true),
                 lastSetup = result.config,
             )
             is SetupResult.Invalid -> state.copy(screen = Screen.Setup(result.setup))
@@ -67,14 +69,30 @@ class AppReducer(private val random: Random) {
         else -> setup
     }
 
-    private fun onGame(state: AppState, game: GameScreenState, event: AppEvent): AppState = when {
-        // Rule R6: leaving the game screen this way deletes the saved game.
-        event == AppEvent.AbandonConfirmed -> state.copy(screen = Screen.Home())
-        event == AppEvent.FinishGameTapped && game.isCheckoutDialogShown -> state.copy(screen = Screen.End(game.game))
-        // The checkout dialog cannot be dismissed with system back.
-        event == AppEvent.Back && game.isCheckoutDialogShown -> state
-        else -> state.copy(screen = Screen.Game(playGame(game, event)))
+    private fun onGame(state: AppState, screen: Screen.Game, event: AppEvent): AppState {
+        val game = screen.game
+        return when {
+            // AN16: the message is modal; "OK", back and "Install a voice" close it.
+            screen.noVoiceNotice != null -> when (event) {
+                AppEvent.NoVoiceNoticeDismissed, AppEvent.InstallVoiceTapped, AppEvent.Back ->
+                    state.copy(screen = screen.copy(noVoiceNotice = null))
+                else -> state
+            }
+            event is AppEvent.VoiceUnavailable ->
+                state.copy(screen = screen.copy(noVoiceNotice = NoVoiceNotice(event.canInstall)))
+            // Rule R6: leaving the game screen this way deletes the saved game.
+            event == AppEvent.AbandonConfirmed -> state.copy(screen = Screen.Home())
+            event == AppEvent.FinishGameTapped && game.isCheckoutDialogShown ->
+                state.copy(screen = Screen.End(game.game))
+            // The checkout dialog cannot be dismissed with system back.
+            event == AppEvent.Back && game.isCheckoutDialogShown -> state
+            else -> state.copy(screen = screen.copy(game = playGame(game, event)))
+        }
     }
+
+    /** AN13: back returns to the home screen it came from. */
+    private fun onSettings(state: AppState, screen: Screen.Settings, event: AppEvent): AppState =
+        if (event == AppEvent.Back) state.copy(screen = screen.home) else state
 
     private fun playGame(game: GameScreenState, event: AppEvent): GameScreenState = when (event) {
         AppEvent.Back -> game.withAbandonDialog(shown = true)
@@ -94,7 +112,7 @@ class AppReducer(private val random: Random) {
         AppEvent.NewGame -> state.toSetup()
         // Rule R7: a rematch is a game start, so its order becomes the last setup (owner decision, issue #30 Q3).
         AppEvent.Rematch -> rematchConfig(game.config).let { config ->
-            AppState(screen = Screen.Game(GameScreenState(X01Game(config))), lastSetup = config)
+            AppState(screen = Screen.Game(GameScreenState(X01Game(config)), isNewGame = true), lastSetup = config)
         }
         else -> state
     }

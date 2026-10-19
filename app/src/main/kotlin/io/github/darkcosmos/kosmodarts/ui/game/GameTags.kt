@@ -6,6 +6,7 @@ object GameTags {
     const val CURRENT_REMAINING: String = "game_current_remaining"
     const val CARD_BUST: String = "game_card_bust"
     const val CHECKOUT_DIALOG: String = "game_checkout_dialog"
+    const val NO_VOICE_DIALOG: String = "game_no_voice_dialog"
 
     fun dartSlot(index: Int): String = "game_dart_slot_$index"
 

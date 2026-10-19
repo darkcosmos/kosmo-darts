@@ -46,6 +46,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01PlayerState
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.NoVoiceNotice
 import io.github.darkcosmos.kosmodarts.ui.format.averageText
 import io.github.darkcosmos.kosmodarts.ui.format.dartText
 import io.github.darkcosmos.kosmodarts.ui.format.dartsText
@@ -61,7 +62,12 @@ private val REMAINING_SIZE = 88.sp
  * is displayed, and system back opens the "Abandon the game?" confirmation.
  */
 @Composable
-fun GameScreen(game: GameScreenState, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
+fun GameScreen(
+    game: GameScreenState,
+    onEvent: (AppEvent) -> Unit,
+    modifier: Modifier = Modifier,
+    noVoiceNotice: NoVoiceNotice? = null,
+) {
     Surface(
         modifier = modifier
             .fillMaxSize()
@@ -87,6 +93,7 @@ fun GameScreen(game: GameScreenState, onEvent: (AppEvent) -> Unit, modifier: Mod
         game.pendingTurn?.takeIf { game.isCheckoutDialogShown }?.let { turn ->
             CheckoutDialog(game.game.state.players[turn.playerIndex].name, turn.darts, onEvent)
         }
+        noVoiceNotice?.let { NoVoiceDialog(it, onEvent) }
     }
 }
 
@@ -303,6 +310,35 @@ private fun CheckoutDialog(playerName: String, darts: List<Dart>, onEvent: (AppE
             TextButton(onClick = { onEvent(AppEvent.UndoTapped) }) {
                 Text(stringResource(R.string.key_undo))
             }
+        },
+    )
+}
+
+/**
+ * AN16: shown once per device. "OK" and back close it; a tap outside does not, so that a keypad tap landing as it
+ * opens neither closes it unread nor enters a dart.
+ */
+@Composable
+private fun NoVoiceDialog(notice: NoVoiceNotice, onEvent: (AppEvent) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onEvent(AppEvent.NoVoiceNoticeDismissed) },
+        properties = DialogProperties(dismissOnClickOutside = false),
+        modifier = Modifier.testTag(GameTags.NO_VOICE_DIALOG),
+        title = { Text(stringResource(R.string.no_voice_title)) },
+        text = { Text(stringResource(R.string.no_voice_text)) },
+        confirmButton = {
+            TextButton(onClick = { onEvent(AppEvent.NoVoiceNoticeDismissed) }) {
+                Text(stringResource(R.string.no_voice_ok))
+            }
+        },
+        dismissButton = if (notice.canInstall) {
+            {
+                TextButton(onClick = { onEvent(AppEvent.InstallVoiceTapped) }) {
+                    Text(stringResource(R.string.voice_install))
+                }
+            }
+        } else {
+            null
         },
     )
 }

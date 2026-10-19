@@ -72,4 +72,32 @@
         <item quantity="other">%1$d darts</item>
     </plurals>
     <string name="end_rematch">Rematch</string>
+
+    <!-- Settings (docs/rules/announcements.md, AN13 to AN17) -->
+    <string name="home_settings">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_back">Back</string>
+    <string name="settings_voice">Voice</string>
+    <string name="settings_sounds">Sounds</string>
+    <string name="settings_voice_checking">Checking the voice…</string>
+    <string name="settings_voice_available">Offline voice available</string>
+    <string name="settings_voice_missing">No offline voice for the app language. Games play sounds only.</string>
+    <string name="settings_voice_no_engine">No speech engine on this phone. Games play sounds only.</string>
+    <string name="settings_sound_credits">Sound effects generated with elevenlabs.io</string>
+    <string name="voice_install">Install a voice</string>
+    <string name="no_voice_title">No offline voice</string>
+    <string name="no_voice_text">Announcements need an offline voice for the app language. The game goes on with sounds only.</string>
+    <string name="no_voice_ok">OK</string>
+
+    <!-- Spoken announcements (AN8). announce_language is the language of these texts (AN11). -->
+    <string name="announce_language">en</string>
+    <string name="announce_turn_start">%1$s</string>
+    <string name="announce_turn_start_checkout">%1$s, you require %2$d</string>
+    <string name="announce_turn_score">%1$d</string>
+    <string name="announce_one_eighty">One hundred and eighty!</string>
+    <string name="announce_no_score">No score</string>
+    <string name="announce_bust">Bust</string>
+    <string name="announce_game_shot">Game shot! %1$s wins</string>
+    <string name="announce_big_fish">Big Fish! %1$s wins</string>
+    <string name="announce_announcements_on">Announcements on</string>
 </resources>

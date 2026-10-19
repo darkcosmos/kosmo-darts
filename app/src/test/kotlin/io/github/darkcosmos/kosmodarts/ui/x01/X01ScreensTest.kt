@@ -33,9 +33,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.X01Turn
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
-import io.github.darkcosmos.kosmodarts.ui.app.TurnCompletedHook
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
@@ -454,21 +453,21 @@ class X01ScreensTest {
     }
 
     @Test
-    fun theHookFiresExactlyOncePerCompletedTurnIncludingTheCheckout() {
-        val turns = mutableListOf<X01Turn>()
+    fun eachTurnEndAndTheWinAreAnnouncedOnceEvenAcrossRecreations() {
+        val cues = mutableListOf<X01Cue>()
         composeRule.activityRule.scenario.onActivity { activity ->
-            ViewModelProvider(activity)[KosmoDartsViewModel::class.java].turnCompletedHook =
-                TurnCompletedHook { turns += it }
+            ViewModelProvider(activity)[KosmoDartsViewModel::class.java].addCueSink { cues += it }
         }
+        fun turnEnds() = cues.filter { it is X01Cue.TurnScore || it == X01Cue.OneEighty }
         startGame("Ann", "Bob", startScore = 301)
 
         repeat(3) { triple(20) }
         composeRule.activityRule.scenario.recreate()
         composeRule.waitForIdle()
-        assertEquals(1, turns.size)
+        assertEquals(1, turnEnds().size)
         nextPlayer()
         single(1, 1)
-        assertEquals(1, turns.size)
+        assertEquals(1, turnEnds().size)
         single(1)
         nextPlayer()
         triple(20)
@@ -478,7 +477,8 @@ class X01ScreensTest {
         composeRule.waitForIdle()
         finishGame()
 
-        assertEquals(listOf(180, 3, 121), turns.map { it.remainingBefore - it.remainingAfter })
+        assertEquals(listOf(X01Cue.OneEighty, X01Cue.TurnScore(3)), turnEnds())
+        assertEquals(listOf(X01Cue.GameShot(0, "Ann")), cues.filterIsInstance<X01Cue.GameShot>())
     }
 
     @Test

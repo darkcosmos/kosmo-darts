@@ -96,7 +96,7 @@ class AppReducerTest {
             AppEvent.StartRequested,
         )
 
-        assertEquals(Screen.Game(GameScreenState(X01Game(X01Config(listOf("Ann", "Bob"))))), state.screen)
+        assertEquals(Screen.Game(GameScreenState(X01Game(X01Config(listOf("Ann", "Bob")))), isNewGame = true), state.screen)
         assertEquals(X01Config(listOf("Ann", "Bob")), state.lastSetup)
     }
 
@@ -206,7 +206,7 @@ class AppReducerTest {
         val state = inGame(singleOut301, winningDarts).after(*finishEvents, AppEvent.Rematch)
 
         val rotated = X01Config(listOf("Bob", "Cid", "Ann"), 301, CheckoutRule.SINGLE_OUT)
-        assertEquals(Screen.Game(GameScreenState(X01Game(rotated))), state.screen)
+        assertEquals(Screen.Game(GameScreenState(X01Game(rotated)), isNewGame = true), state.screen)
     }
 
     @Test

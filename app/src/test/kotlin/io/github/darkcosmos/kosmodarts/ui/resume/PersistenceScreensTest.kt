@@ -28,10 +28,9 @@ import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
-import io.github.darkcosmos.kosmodarts.engine.x01.X01Turn
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
-import io.github.darkcosmos.kosmodarts.ui.app.TurnCompletedHook
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
@@ -317,20 +316,20 @@ class PersistenceScreensTest {
         text(R.string.setup_double_out).assertIsSelected()
     }
 
-    /** R4: resuming never announces a completed turn again. */
+    /** R4, AN7: resuming never announces a completed turn again. */
     @Test
-    fun `R4 resuming a waiting turn fires the turn-completed hook zero times`() {
-        val turns = mutableListOf<X01Turn>()
+    fun `R4 AN7 resuming a waiting turn gives no cue`() {
+        val cues = mutableListOf<X01Cue>()
         process.writeGame(SaveFixtures.WAITING_NORMAL)
         process.launchFresh()
-        process.viewModel.turnCompletedHook = TurnCompletedHook { turns += it }
+        process.viewModel.addCueSink { cues += it }
 
         click(R.string.home_resume_game)
         process.killInBackgroundAndReturn()
-        process.viewModel.turnCompletedHook = TurnCompletedHook { turns += it }
+        process.viewModel.addCueSink { cues += it }
         composeRule.waitForIdle()
 
-        assertEquals(emptyList<X01Turn>(), turns)
+        assertEquals(emptyList<X01Cue>(), cues)
     }
 
     /** R4 (owner decision Q5): an active Double is not restored. */

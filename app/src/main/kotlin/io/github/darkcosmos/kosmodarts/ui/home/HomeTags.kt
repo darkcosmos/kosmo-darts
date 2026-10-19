@@ -3,6 +3,7 @@ package io.github.darkcosmos.kosmodarts.ui.home
 /** Test tags of the home screen. */
 object HomeTags {
     const val SUMMARY = "home_summary"
+    const val SETTINGS = "home_settings"
 
     fun player(index: Int): String = "home_summary_player_$index"
 

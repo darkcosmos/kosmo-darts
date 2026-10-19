@@ -1,8 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
-import io.github.darkcosmos.kosmodarts.engine.x01.TurnOutcome
-import io.github.darkcosmos.kosmodarts.engine.x01.X01Turn
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 import org.junit.Assert.assertEquals
@@ -12,11 +11,12 @@ import kotlin.random.Random
 
 class KosmoDartsViewModelTest {
 
+    /** AN2, AN6: each completed turn gives its score once; an undone turn completed again gives it again. */
     @Test
-    fun theHookIsCalledOncePerCompletedTurn() {
-        val turns = mutableListOf<X01Turn>()
+    fun `AN2 each completed turn gives its score once`() {
+        val cues = mutableListOf<X01Cue>()
         val viewModel = KosmoDartsViewModel(Random(0))
-        viewModel.turnCompletedHook = TurnCompletedHook { turns += it }
+        viewModel.addCueSink { cues += it }
         listOf(
             AppEvent.NewGame,
             AppEvent.StartScoreSelected(301),
@@ -38,24 +38,25 @@ class KosmoDartsViewModelTest {
         viewModel.onEvent(AppEvent.UndoTapped)
         viewModel.onEvent(AppEvent.NumberTapped(1))
 
-        assertEquals(listOf(TurnOutcome.NORMAL, TurnOutcome.NORMAL, TurnOutcome.NORMAL), turns.map { it.outcome })
-        assertEquals(listOf(0, 1, 1), turns.map { it.playerIndex })
-        assertEquals(listOf(60, 140, 121), turns.map { it.remainingBefore - it.remainingAfter })
+        val turnScores = cues.filterIsInstance<X01Cue.TurnScore>()
+        assertEquals(listOf(X01Cue.TurnScore(60), X01Cue.TurnScore(140), X01Cue.TurnScore(121)), turnScores)
+        val turnStarts = cues.filterIsInstance<X01Cue.TurnStart>()
+        assertEquals(listOf(X01Cue.TurnStart(0, "Ann", null), X01Cue.TurnStart(1, "Bob", null)), turnStarts)
     }
 
-    /** R4: the restored state is set directly: no hook and no write for an already completed turn. */
+    /** R4, AN7: the restored state is set directly: no cue and no write for an already completed turn. */
     @Test
-    fun `R4 restoring a waiting turn fires no hook and writes nothing`() {
-        val turns = mutableListOf<X01Turn>()
+    fun `R4 AN7 restoring a waiting turn gives no cue and writes nothing`() {
+        val cues = mutableListOf<X01Cue>()
         val effects = mutableListOf<PersistenceEffect>()
         val restored = AppState(screen = Screen.Game(SaveFixtures.WAITING_NORMAL.toGameScreenState()))
         val viewModel = KosmoDartsViewModel(Random(0), restored) { effects += it }
-        viewModel.turnCompletedHook = TurnCompletedHook { turns += it }
+        viewModel.addCueSink { cues += it }
 
         viewModel.onEvent(AppEvent.NumberTapped(20)) // Ignored: the turn waits.
 
         assertEquals(restored, viewModel.state.value)
-        assertEquals(emptyList<X01Turn>(), turns)
+        assertEquals(emptyList<X01Cue>(), cues)
         assertEquals(emptyList<PersistenceEffect>(), effects)
         assertTrue(viewModel.isOnGameScreen)
     }
