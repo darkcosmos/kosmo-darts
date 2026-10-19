@@ -700,3 +700,12 @@ E4. In Settings, "Annoncer chaque fléchette" is off. Turn the voice off: the sw
     is called after its impact sound, except the miss (sound only). Enter three darts quickly: no call comes late.
     On a last dart: impact, call, then the score (or the special sound).
 E5. Play the seven sounds at a constant media volume: even levels, no clipping.
+
+### Implementation notes for E1 to E5 (code phase)
+
+- The screen tests are split into `AnnouncementsScreenTest` and `OwnerEvolutionsScreenTest`, over a shared
+  `AnnouncementsScreenTestBase` (detekt `LargeClass`).
+- `docs/sounds/CREDITS.md`: only the stale commit id of the sound files (b632807) is removed, since the files now come
+  from the normalization commit; nothing is added about the normalization (owner's withdrawal).
+- Canary 5 ("Finish game" plays the win again) fails 5 tests: `GameCuesTest` (1), `OwnerEvolutionsScreenTest` (2),
+  `AnnouncementsScreenTest` (2, the AN8 games). Canaries 1 to 4, re-run on this code: 10, 16, 3 and 2 failures.
