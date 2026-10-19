@@ -786,6 +786,8 @@ E5. Play the seven sounds at a constant media volume: even levels, no clipping.
     an error leaves no file and the status unchanged.
   - File (S11): one fixed name in the app's cache (`tts-warm-up.wav`), deleted when a speaker is created (leftover of
     a killed process), at the warm-up's end and on release.
+  - No warm-up when a phrase is already waiting at the end of the engine start (Start tapped before the engine was
+    ready): that phrase is spoken at once and loads the voice model itself (T30).
   - One warm-up per engine, after the first successful `setVoice` only. A warm-up cancelled by a real phrase
     (`QUEUE_FLUSH`, its `onStop` arrives) still deletes its file and is not retried: the real phrase loads the voice
     model itself.
