@@ -87,8 +87,8 @@ They complete or replace the issue body; in case of contradiction they prevail.
   | Game shot or big fish | `sfx_victory`, started together with the win voice (A.2), at a reduced volume (A.3) |
 
   Every sound plays at full media volume except `sfx_victory`, which the app plays at `VICTORY_VOLUME` (0.05 of the
-  media volume, about -26 dB, owner adjustment A.5) so that it stays under the win voice (A.3). Turn score, no score and turn start have no
-  sound. The win voice and `sfx_victory` start together (A.2); the voice
+  media volume, about -26 dB, owner adjustment A.5) so that it stays under the win voice (A.3). Turn score, no score
+  and turn start have no sound. The win voice and `sfx_victory` start together (A.2); the voice
   is spoken even with sounds off (when the voice is on), and the sound plays even with the voice off.
 - AN10. Order and overlap:
   - a dart sound plays at once; dart sounds may overlap each other; a dart sound is never queued nor played late (a
