@@ -233,4 +233,158 @@ class TtsSpeakerTest {
         assertEquals(emptyList<String>(), lastEngine().spokenTextList)
         assertEquals(listOf("Ann"), ends)
     }
+    private val warmUpFile = java.io.File(context.cacheDir, TtsSpeaker.WARM_UP_FILE)
+
+    private fun warmSpeaker() = TtsSpeaker(context, Locale.ENGLISH, Locale.US, audioManager, warmUp = true)
+
+    @Test
+    fun `A6 after the voice is set, one silent warm-up to the cache file, nothing spoken`() {
+        ShadowTextToSpeech.addVoice(englishLocal)
+        val speaker = warmSpeaker()
+        assertNull(lastEngine().lastSynthesizeToFileText)
+
+        initLastEngine()
+
+        assertEquals("0", lastEngine().lastSynthesizeToFileText)
+        assertEquals(warmUpFile, lastEngine().lastSynthesizeToFile)
+        assertEquals(emptyList<String>(), lastEngine().spokenTextList)
+        assertNull("no focus for the warm-up", shadowOf(audioManager).lastAudioFocusRequest)
+        assertEquals(VoiceStatus.AVAILABLE, speaker.status)
+    }
+
+    @Test
+    fun `A6 T27 no warm-up with only a network voice, nor without an engine`() {
+        ShadowTextToSpeech.addVoice(englishNetwork)
+        warmSpeaker()
+        initLastEngine()
+        assertNull(lastEngine().lastSynthesizeToFileText)
+
+        warmSpeaker()
+        initLastEngine(TextToSpeech.ERROR)
+        assertNull(lastEngine().lastSynthesizeToFileText)
+    }
+
+    @Test
+    fun `A6 the warm-up end deletes the file and ends no phrase`() {
+        ShadowTextToSpeech.addVoice(englishLocal)
+        val speaker = warmSpeaker()
+        val statuses = mutableListOf<VoiceStatus>()
+        speaker.onStatusChanged = { statuses += it }
+        initLastEngine()
+        assertTrue(warmUpFile.exists())
+
+        lastEngine().utteranceProgressListener.onDone(TtsSpeaker.WARM_UP_ID)
+        idle()
+
+        assertTrue(!warmUpFile.exists())
+        assertEquals(emptyList<String>(), ends)
+        assertEquals(emptyList<VoiceStatus>(), statuses.drop(1))
+        assertNull(shadowOf(audioManager).lastAbandonedAudioFocusRequest)
+    }
+
+    @Test
+    fun `A6 S12 a warm-up error neither silences the voice nor ends a phrase, and a real error still does`() {
+        ShadowTextToSpeech.addVoice(englishLocal)
+        val speaker = warmSpeaker()
+        initLastEngine()
+        idle()
+        lastEngine().utteranceProgressListener.onError(TtsSpeaker.WARM_UP_ID, TextToSpeech.ERROR_SYNTHESIS)
+        idle()
+
+        assertEquals(VoiceStatus.AVAILABLE, speaker.status)
+        assertEquals(emptyList<String>(), ends)
+        assertTrue(!warmUpFile.exists())
+
+        speaker.say("Ann")
+        lastEngine().utteranceProgressListener.onError("announcement-0", TextToSpeech.ERROR_SYNTHESIS)
+        idle()
+        assertEquals(VoiceStatus.NO_USABLE_VOICE, speaker.status)
+    }
+
+    @Test
+    fun `A6 a phrase during the warm-up is spoken once and the warm-up stop is ignored`() {
+        ShadowTextToSpeech.addVoice(englishLocal)
+        val speaker = warmSpeaker()
+        initLastEngine()
+        speaker.say("Ann")
+        lastEngine().utteranceProgressListener.onStop(TtsSpeaker.WARM_UP_ID, true)
+        idle()
+
+        assertEquals(listOf("Ann"), lastEngine().spokenTextList)
+        assertEquals(listOf("Ann"), ends)
+        assertEquals(VoiceStatus.AVAILABLE, speaker.status)
+        assertTrue(!warmUpFile.exists())
+        assertEquals(TextToSpeech.QUEUE_FLUSH, lastEngine().queueMode)
+    }
+
+    @Test
+    fun `A6 T29 one warm-up per engine, never retried nor sent per phrase`() {
+        ShadowTextToSpeech.addVoice(englishLocal)
+        val speaker = warmSpeaker()
+        initLastEngine()
+        lastEngine().utteranceProgressListener.onDone(TtsSpeaker.WARM_UP_ID)
+        idle()
+        assertTrue(!warmUpFile.exists())
+
+        // A second warm-up would write the file again at once (the engine reports its end later).
+        speaker.say("Ann")
+        assertTrue(!warmUpFile.exists())
+        speaker.stop()
+        speaker.say("Bob")
+        assertTrue(!warmUpFile.exists())
+    }
+
+    @Test
+    fun `A6 a phrase already waiting at start makes the warm-up useless, so none is sent`() {
+        ShadowTextToSpeech.addVoice(englishLocal)
+        val speaker = warmSpeaker()
+        speaker.say("Ann")
+        initLastEngine()
+
+        assertNull(lastEngine().lastSynthesizeToFileText)
+        assertEquals(listOf("Ann"), lastEngine().spokenTextList)
+    }
+
+    @Test
+    fun `A6 a failed warm-up leaves no file and the voice usable`() {
+        ShadowTextToSpeech.addVoice(englishLocal)
+        val speaker = TtsSpeaker(context, Locale.ENGLISH, Locale.US, audioManager, warmUp = true)
+        lastEngine().simulateSynthesizeToFileResult(TextToSpeech.ERROR)
+        initLastEngine()
+        idle()
+
+        assertTrue(!warmUpFile.exists())
+        assertEquals(VoiceStatus.AVAILABLE, speaker.status)
+    }
+
+    @Test
+    fun `A6 release during the warm-up leaves no file and no callback`() {
+        ShadowTextToSpeech.addVoice(englishLocal)
+        val speaker = warmSpeaker()
+        initLastEngine()
+        speaker.release()
+        idle()
+
+        assertTrue(!warmUpFile.exists())
+        assertEquals(emptyList<String>(), ends)
+    }
+
+    @Test
+    fun `A6 S11 a leftover warm-up file is deleted when a speaker is created`() {
+        warmUpFile.writeText("leftover")
+        TtsSpeaker(context, Locale.ENGLISH, Locale.US, audioManager)
+
+        assertTrue(!warmUpFile.exists())
+    }
+
+    @Test
+    fun `A6 T26 the Settings probe does not warm up and leaves no file`() {
+        ShadowTextToSpeech.addVoice(englishLocal)
+        val probe = speaker() // warmUp = false
+        initLastEngine()
+        probe.release()
+
+        assertNull(lastEngine().lastSynthesizeToFileText)
+        assertTrue(!warmUpFile.exists())
+    }
 }

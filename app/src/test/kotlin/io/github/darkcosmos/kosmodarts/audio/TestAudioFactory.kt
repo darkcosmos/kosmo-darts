@@ -19,8 +19,8 @@ internal class TestAudioFactory : AudioFactory {
     override fun soundPlayer(context: Context): SoundPlayer =
         FakeSoundPlayer(timeline, clock).also { soundPlayers += it }
 
-    override fun speaker(context: Context): Speaker =
-        RecordingSpeaker(SystemAudioFactory().speaker(context), timeline, clock, enginePackage).also { speakers += it }
+    override fun speaker(context: Context, warmUp: Boolean): Speaker =
+        RecordingSpeaker(SystemAudioFactory().speaker(context, warmUp), timeline, clock, enginePackage).also { speakers += it }
 
     override fun scheduler(): Scheduler = clock
 

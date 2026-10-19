@@ -93,10 +93,10 @@ class SoundPoolPlayer(context: Context) : SoundPlayer {
         private const val MAX_TRACKED_STREAMS = 16
 
         /**
-         * A.3: the victory sound plays with the win voice and must stay under it. About -8 dB; tune it here after
-         * listening on the phone.
+         * A.3: the victory sound plays with the win voice and must stay under it. About -26 dB; tune it here after
+         * listening on the phone (A.5: 5 %).
          */
-        const val VICTORY_VOLUME: Float = 0.4f
+        const val VICTORY_VOLUME: Float = 0.05f
 
         /** AN9, A.3: every sound at full media volume, but the victory sound. */
         fun volumeOf(effect: SoundEffect): Float = if (effect == SoundEffect.VICTORY) VICTORY_VOLUME else 1f

@@ -9,7 +9,8 @@ import java.util.Locale
 interface AudioFactory {
     fun soundPlayer(context: Context): SoundPlayer
 
-    fun speaker(context: Context): Speaker
+    /** [warmUp]: load the voice model in advance (A.6); the game session does, the Settings probe does not. */
+    fun speaker(context: Context, warmUp: Boolean): Speaker
 
     fun scheduler(): Scheduler
 
@@ -23,11 +24,12 @@ class SystemAudioFactory : AudioFactory {
     override fun soundPlayer(context: Context): SoundPlayer = SoundPoolPlayer(context)
 
     /** AN11: the voice speaks the language of the app's texts, which [context]'s resources resolve. */
-    override fun speaker(context: Context): Speaker = TtsSpeaker(
+    override fun speaker(context: Context, warmUp: Boolean): Speaker = TtsSpeaker(
         context = context.applicationContext,
         language = Locale.forLanguageTag(context.getString(R.string.announce_language)),
         deviceLocale = context.resources.configuration.locales[0],
         audioManager = context.getSystemService(AudioManager::class.java),
+        warmUp = warmUp,
     )
 
     override fun scheduler(): Scheduler = HandlerScheduler()

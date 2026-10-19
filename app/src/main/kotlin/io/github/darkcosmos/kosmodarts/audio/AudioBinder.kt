@@ -80,7 +80,7 @@ class AudioBinder(
 
     private fun openGameSession() {
         if (gameSession != null) return
-        val speaker = if (settings.settings.value.voiceEnabled) factory.speaker(activity) else null
+        val speaker = if (settings.settings.value.voiceEnabled) factory.speaker(activity, warmUp = true) else null
         val session = GameAudioSession(
             sounds = factory.soundPlayer(activity),
             speaker = speaker,
@@ -119,7 +119,7 @@ class AudioBinder(
 
     private fun openProbe() {
         if (probe != null) return
-        val speaker = factory.speaker(activity)
+        val speaker = factory.speaker(activity, warmUp = false)
         probe = speaker
         settingsViewModel.attachProbe(speaker) { VoiceInstaller(activity, speaker.enginePackage).canInstall }
     }

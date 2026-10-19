@@ -4,12 +4,14 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.speech.tts.Voice
 import android.util.Log
+import java.io.File
 import java.util.Locale
 import java.util.MissingResourceException
 
@@ -19,18 +21,26 @@ import java.util.MissingResourceException
  *   called, since the engine could then pick a network voice;
  * - no text is sent to the engine before that voice is set; a text asked for while the engine starts is held (only
  *   the latest one) until the voice is known;
- * - each utterance holds transient, ducking audio focus; a refused focus skips it.
+ * - each utterance holds transient, ducking audio focus; a refused focus skips it;
+ * - with [warmUp], the engine synthesizes a constant text to a cache file once the voice is set, so that the voice
+ *   model is loaded before the first real phrase (owner adjustment A.6). Nothing is heard and no focus is taken.
  *
  * @param language the app language, as the app's texts are shown (AN11).
  * @param deviceLocale the phone's locale: its country is used only to prefer one voice of [language], and only if
  *   it has that language.
+ * @param warmUp whether to warm the engine up (the game session does; the Settings probe does not).
  */
 class TtsSpeaker(
     context: Context,
     language: Locale,
     deviceLocale: Locale,
     private val audioManager: AudioManager,
+    private val warmUp: Boolean = false,
 ) : Speaker {
+
+    /** One fixed, app-owned file; a leftover of a killed process is deleted here. */
+    private val warmUpFile = File(context.cacheDir, WARM_UP_FILE).also { it.delete() }
+    private var isWarmUpSent = false
 
     private val appLanguage = iso3Language(language)
     private val appCountry = if (iso3Language(deviceLocale) == appLanguage) iso3Country(deviceLocale) else ""
@@ -79,12 +89,15 @@ class TtsSpeaker(
         isReleased = true
         onStatusChanged = {}
         tts.shutdown()
+        warmUpFile.delete()
     }
 
     private fun onInit(initStatus: Int) {
         if (isReleased) return
         val next = if (initStatus == TextToSpeech.SUCCESS) selectVoice() else VoiceStatus.NO_ENGINE
         setStatus(next)
+        // A phrase already waiting loads the voice model itself: no warm-up then.
+        if (next == VoiceStatus.AVAILABLE && held == null) sendWarmUp()
         held?.let {
             held = null
             speak(it.text, it.onEnd)
@@ -106,6 +119,19 @@ class TtsSpeaker(
             tts.setOnUtteranceProgressListener(progressListener)
         }
         return if (isSet) VoiceStatus.AVAILABLE else VoiceStatus.NO_USABLE_VOICE
+    }
+
+    /** A.6: once per engine, after the voice is set (AN12); a real phrase (QUEUE_FLUSH) cancels it. */
+    private fun sendWarmUp() {
+        if (!warmUp || isWarmUpSent) return
+        isWarmUpSent = true
+        val result = tts.synthesizeToFile(WARM_UP_TEXT, Bundle(), warmUpFile, WARM_UP_ID)
+        if (result != TextToSpeech.SUCCESS) warmUpFile.delete()
+    }
+
+    /** The warm-up only deletes its file: it never ends a real phrase, abandons a focus or changes the status. */
+    private fun endWarmUp() {
+        warmUpFile.delete()
     }
 
     private fun utter(text: String, onEnd: () -> Unit) {
@@ -145,20 +171,24 @@ class TtsSpeaker(
         override fun onStart(utteranceId: String) = Unit
 
         override fun onDone(utteranceId: String) {
-            mainHandler.post { finish(utteranceId, isError = false) }
+            mainHandler.post { end(utteranceId, isError = false) }
         }
 
         override fun onStop(utteranceId: String, interrupted: Boolean) {
-            mainHandler.post { finish(utteranceId, isError = false) }
+            mainHandler.post { end(utteranceId, isError = false) }
         }
 
         @Deprecated("Deprecated in the framework; still called by engines that do not report an error code.")
         override fun onError(utteranceId: String) {
-            mainHandler.post { finish(utteranceId, isError = true) }
+            mainHandler.post { end(utteranceId, isError = true) }
         }
 
         override fun onError(utteranceId: String, errorCode: Int) {
-            mainHandler.post { finish(utteranceId, isError = true) }
+            mainHandler.post { end(utteranceId, isError = true) }
+        }
+
+        private fun end(utteranceId: String, isError: Boolean) {
+            if (utteranceId == WARM_UP_ID) endWarmUp() else finish(utteranceId, isError)
         }
     }
 
@@ -168,6 +198,11 @@ class TtsSpeaker(
 
     companion object {
         private const val TAG = "TtsSpeaker"
+
+        /** A.6: a constant, never a name. */
+        private const val WARM_UP_TEXT = "0"
+        const val WARM_UP_ID = "warm-up"
+        const val WARM_UP_FILE = "tts-warm-up.wav"
 
         /**
          * Value of `TextToSpeech.Engine.KEY_FEATURE_NETWORK_SYNTHESIS`, deprecated since API 21 but still reported by

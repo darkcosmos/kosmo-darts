@@ -45,7 +45,7 @@ class SoundPoolPlayerTest {
         val victory = pool.getResourcePlaybacks(R.raw.sfx_victory).single()
         assertEquals(SoundPoolPlayer.VICTORY_VOLUME, victory.leftVolume)
         assertEquals(SoundPoolPlayer.VICTORY_VOLUME, victory.rightVolume)
-        assertEquals(0.4f, SoundPoolPlayer.VICTORY_VOLUME)
+        assertEquals(0.05f, SoundPoolPlayer.VICTORY_VOLUME)
         SoundEffect.entries.filter { it != SoundEffect.VICTORY }.forEach { effect ->
             val playback = pool.getResourcePlaybacks(SoundPoolPlayer.resourceOf(effect)).single()
             assertEquals("$effect", 1f, playback.leftVolume)
