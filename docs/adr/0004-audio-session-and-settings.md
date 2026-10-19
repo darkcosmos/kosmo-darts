@@ -21,9 +21,11 @@ on recreation, and that settings are stored apart from the saved game file, whos
 
 `AudioBinder`, owned by `MainActivity`, observes two things: the current `Screen` (from `KosmoDartsViewModel.state`)
 and the activity lifecycle.
-- A `GameAudioSession` (sound player, speaker, sequencer) exists exactly while the screen is `Game` and the activity
-  is at least `STARTED`. It is created on entering that state and released on leaving it (`ON_STOP`, or another
-  screen). While it exists, `KosmoDartsViewModel.cueSink` points to it; otherwise the sink does nothing.
+- A `GameAudioSession` (sound player, speaker, sequencer) exists exactly while the screen is `Game` or `End` and the
+  activity is at least `STARTED`. It is created on entering that state and released on leaving it (`ON_STOP`, or
+  another screen). The end screen keeps the session because "Finish game" opens it and the win is announced there
+  (AN5); found by the end-to-end tests of the code phase, where a session limited to `Game` was released before
+  the win cue arrived. While it exists, `KosmoDartsViewModel.cueSink` points to it; otherwise the sink does nothing.
 - A Settings voice probe exists exactly while the screen is `Settings` and the activity is started; it is attached
   to `SettingsViewModel` and released on leaving. Returning from the engine's install screen restarts the activity,
   so the voice is checked again (AN17).

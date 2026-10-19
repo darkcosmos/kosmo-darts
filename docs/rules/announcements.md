@@ -118,7 +118,7 @@ Vocabulary:
 
 ## Volume and other apps
 
-- AN19. Voice and sounds use the media volume. On the game screen, the phone's volume buttons set the media volume.
+- AN19. Voice and sounds use the media volume. On the game screen and the end screen that follows it, the phone's volume buttons set the media volume.
   Silent and vibrate modes do not mute them. Do Not Disturb applies its own media setting; the app does not work
   around it.
 - AN20. Each voice announcement requests transient audio focus with ducking (`AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`)
@@ -126,7 +126,9 @@ Vocabulary:
   call, for example), the announcement is skipped and never played later; sounds still play. Sounds never request
   focus.
 - AN21. When the game screen is no longer visible (another app, screen off, leaving the game screen), everything in
-  progress or pending stops, and nothing is played until it is visible again; then only new cues play (AN7).
+  progress or pending stops, and nothing is played until it is visible again; then only new cues play (AN7). The
+  end screen counts as part of the game here: the win is announced on it, after "Finish game" (AN5), and a rematch
+  starts from it.
 - AN22. Player names are spoken at their turn start and at the win. Rate, pitch and voice details come from the
   system settings.
 
