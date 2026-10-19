@@ -624,9 +624,11 @@ Kosmo's review of PR #33 completes or replaces parts of the issue; `docs/rules/a
 
 - `AudioSettings.callEachDart = false` (AN14); key `call_each_dart` in the codec. `format_version` stays 1: an older
   file without the key gives `false` (per-key default), so no migration is needed.
-- `SettingsUiState.callEachDart`, `SettingsEvent.CallEachDartToggled(on)`; the switch row sits under the Voice status
-  line, `enabled = voiceEnabled` (greyed when the voice is off); its value is kept while greyed.
-- Strings: `settings_call_each_dart` ("Call each dart" / « Annoncer chaque fléchette »).
+- `SettingsUiState.callEachDart`, `SettingsEvent.CallEachDartToggled(on)`. Row order (AN13, U9): Voice, status line,
+  Install a voice, Call each dart, Sounds, credit. The "Call each dart" row has `enabled = voiceEnabled` (greyed when
+  the voice is off); its value is kept while greyed and a tap does nothing. While greyed, a supporting line "Needs the
+  voice" / « Nécessite la voix » shows under it and is part of the row's TalkBack text (U10).
+- Strings: `settings_call_each_dart` ("Call each dart" / « Annoncer chaque fléchette »), `settings_call_each_dart_needs_voice`.
 
 ### Sounds (E5)
 
@@ -651,3 +653,50 @@ Kosmo's review of PR #33 completes or replaces parts of the issue; `docs/rules/a
   the voice off, kept.
 - Roborazzi: Settings with three switches, and with the third one greyed.
 - Canary: "Finish game" plays the win again -> the "nothing on Finish game" test must fail.
+
+### Design round 3: additions (findings T13 to T18, S8, A6, A7, U9, U10)
+
+Tests (in addition to the list above):
+- `AnnouncementPlayerTest` (T14, A6): a new dart removes a waiting call; a new dart interrupts a call being spoken and
+  its late end is ignored; a call does not interrupt a turn-start, score or win voice being spoken and waits behind
+  it; a call waiting behind such a voice is dropped by the next dart.
+- `AnnouncementsScreenTest` (T14, T15): "Finish game" tapped while the win voice is spoken: the voice is not stopped,
+  no second win plays, and the rematch announces its first player after the win voice; on the checkout dart with
+  calls on: impact, call, win sound, win voice, in that order; undo of the winning dart then the same dart again: the
+  win sound and voice again; resuming a saved waiting game (normal, bust and checkout) plays nothing.
+- `ResourcePhrasesTest` (T16): every scoring dart (singles, doubles, triples 1 to 20, 25, 50) has a non-empty call in
+  English and French; a miss has none. `PhraseVariantsTest`: a seeded `RandomVariantPicker` over 1,000 draws never
+  repeats a phrase twice in a row.
+- `AudioSettingsCodecTest` (T17, S8): a version 1 file without `call_each_dart` gives `false` and keeps the other
+  keys; a wrongly typed `call_each_dart` (string) gives `false`; no exception.
+- `SettingsViewModelTest`, `SettingsScreenTest` (U10): voice off -> the call switch is disabled, keeps its value,
+  a tap does nothing, and "Needs the voice" / « Nécessite la voix » shows (English and French); voice on -> enabled,
+  no supporting line; row order as AN13.
+- Roborazzi: Settings with the three switches, and with the third one greyed, in English and French, portrait and
+  landscape.
+
+Rules: AN2 says 1 to 177 like AN8 (T18); AN13 gives the row order and the supporting line (U9, U10).
+
+Known limitations (A7): the "never twice in a row" memory belongs to the game audio session, so it starts again when
+the session is recreated (rotation, return from the background).
+
+### How Kosmo verifies E1 to E5 on the phone (T13)
+
+The earlier steps 9 (bust and 180), 16 and 17 (big fish and win after "Finish game") and 25 described the
+behaviour before E2 and E3; they are replaced by the steps below. The others are unchanged.
+
+E1. Start a two-player game: the first player is announced with a game start phrase ("…, c'est toi qui commences",
+    "On commence avec …" or "…, à toi l'honneur"). At each "Joueur suivant", a next-turn phrase ("…, c'est ton tour",
+    "…, à toi de jouer", "À toi, …", "…, c'est à toi"); the same phrase never comes twice in a row. With 40 left:
+    the phrase, then « Il te reste 40. »
+E2. Score 180: only the 180 sound, no voice. Bust: only the bust sound, no voice. Turn off the sounds in Settings,
+    then do a 180 and a bust again: silence. A turn of 0 still says « Pas de score ».
+E3. Finish from 170 (T20, T20, Bull): the Big Fish sound starts when the third dart is entered, then « Victoire de … »,
+    with the checkout dialog open. Tap "Terminer la partie": nothing more plays, and the voice is not cut. In another
+    game, enter the winning dart then tap "Annuler" in the dialog: everything stops, then the cancel sound.
+    With sounds off, the win still says « Victoire de … ».
+E4. In Settings, "Annoncer chaque fléchette" is off. Turn the voice off: the switch is greyed with « Nécessite la
+    voix » under it. Turn the voice on, then the switch on. Play 18, Double 20, Triple 20, Bull and a miss: each dart
+    is called after its impact sound, except the miss (sound only). Enter three darts quickly: no call comes late.
+    On a last dart: impact, call, then the score (or the special sound).
+E5. Play the seven sounds at a constant media volume: even levels, no clipping.

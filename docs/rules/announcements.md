@@ -31,7 +31,7 @@ They complete or replace the issue body; in case of contradiction they prevail.
   - *bust* when the turn is a bust;
   - else *one hundred and eighty* when the turn scores 180;
   - else *no score* when the turn scores 0;
-  - else *turn score N*, N from 1 to 179.
+  - else *turn score N*, N from 1 to 177 (178 and 179 cannot be scored with three darts).
 
   A checkout dart produces its dart cue, then the win cue (AN5): the winning turn has no score cue.
 - AN3. A checkout is *possible* for a remaining score R when at most three darts can score exactly R, the last one
@@ -107,10 +107,11 @@ They complete or replace the issue body; in case of contradiction they prevail.
   top bar, return from "Settings" to
   the home screen, with its saved game summary unchanged. The "Settings" screen shows:
   - a "Voice" switch;
-  - under the "Voice" switch, a "Call each dart" switch, greyed (disabled) while the voice is off (AN25);
-  - a "Sounds" switch;
   - under the "Voice" switch, a status line: a usable voice is available, or there is no offline voice for the app
     language (then with an "Install a voice" button, AN17), or the check is in progress;
+  - then a "Call each dart" switch (AN25), greyed (disabled) while the voice is off, with the line "Needs the voice" /
+    « Nécessite la voix » under it while greyed;
+  - a "Sounds" switch;
   - at the bottom, a non-clickable mention: "Sound effects generated with elevenlabs.io" / « Effets sonores générés
     avec elevenlabs.io ».
 - AN14. The Voice and Sounds switches are independent: sounds play without the voice and the reverse. Both are on by
