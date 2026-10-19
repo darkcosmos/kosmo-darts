@@ -533,6 +533,10 @@ Extra states (U6):
 22. With TalkBack on, open "Réglages" from home: the gear is read "Réglages", the back arrow "Retour", then the
     switches and the status line in order.
 23. Without a speech engine (if one can be disabled in Apps): Settings shows the explanation without the button.
+24. When the "no voice" message is open (step 4), tap outside it: it stays open; only "OK", "Installer une voix" or
+    the back button close it (not covered by an automated test, see Implementation notes).
+25. Finish a game: the win is announced on the end screen; there, the volume buttons still set the media volume.
+    Tap "Revanche": the first player of the rematch is announced.
 
 ## Known limitations
 
@@ -542,6 +546,10 @@ Extra states (U6):
   lands on the message's scrim and is ignored (U5).
 - Durations of sounds are read at load; until they are known (a fraction of a second), a 1 s default is used.
 - The TTS engine is a third-party app: ADR 0003.
+- One failed utterance (engine error) silences the voice until the game screen is shown again (AN18); sounds keep
+  playing, and the Settings status line checks the voice again on its next visit.
+- With no usable voice, the Voice switch keeps showing its stored value (on by default) and the status line says why
+  no voice speaks; a tap to switch it on snaps back (AN14).
 
 ## Open questions
 
@@ -571,3 +579,7 @@ Differences from the design above, each recorded where it applies:
   cannot tap outside a dialog window, so it is not covered by a test. The keypad being inert while the message is
   open is covered by `NoVoiceNoticeTest`.
 - The canaries were run on the committed code and reverted (`git checkout`); their output is in the PR.
+- Code review round 1 (all four APPROVE, minor findings only) led to: 56 dp of top space on the home screen so that
+  scrolled content never passes under the gear (U7); the in-memory settings store moved to the tests and the
+  ViewModel's settings parameter made required (A5); end-to-end tests for the win on the end screen and the rematch
+  (T10), and for what plays after returning to a hidden game screen (T9); a looper helper in the AN18 test (T11).

@@ -6,7 +6,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.settings.AudioSettingsRepository
-import io.github.darkcosmos.kosmodarts.settings.InMemoryAudioSettingsStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +22,7 @@ import kotlin.random.Random
 class KosmoDartsViewModel(
     random: Random = Random.Default,
     initial: AppState = AppState(),
-    private val audioSettings: AudioSettingsRepository = AudioSettingsRepository(InMemoryAudioSettingsStore()),
+    private val audioSettings: AudioSettingsRepository,
     private val onEffects: (List<PersistenceEffect>) -> Unit = {},
 ) : ViewModel() {
 

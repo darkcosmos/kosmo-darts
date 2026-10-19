@@ -46,6 +46,7 @@ import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 
 private val CONTENT_MAX_WIDTH = 560.dp
 private val MIN_TOUCH_TARGET = 48.dp
+private val GEAR_CLEARANCE = 56.dp
 
 /** Home screen; with a saved game, its summary, "New game" and "Resume game" under it (rules R2, R3). */
 @Composable
@@ -60,7 +61,8 @@ fun HomeScreen(home: Screen.Home, onEvent: (AppEvent) -> Unit, modifier: Modifie
                     .fillMaxSize()
                     .safeDrawingPadding()
                     .verticalScroll(rememberScrollState())
-                    .padding(24.dp),
+                    // The top padding keeps scrolled content clear of the gear (AN13).
+                    .padding(start = 24.dp, end = 24.dp, bottom = 24.dp, top = GEAR_CLEARANCE),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {

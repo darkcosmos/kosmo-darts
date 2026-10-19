@@ -86,6 +86,19 @@ class AnnouncementsScreenTest {
         composeRule.waitForIdle()
     }
 
+    /**
+     * Runs the main looper one task at a time until the engine has received [text], so that a test can act before
+     * the engine reports its end. Independent of how many tasks lead there.
+     */
+    private fun runUntilSpoken(text: String) {
+        val looper = shadowOf(Looper.getMainLooper())
+        repeat(MAX_TASKS) {
+            if (text in spoken) return
+            looper.runOneTask()
+        }
+        error("\"$text\" was never sent to the engine")
+    }
+
     private val spoken: List<String>
         get() = ShadowTextToSpeech.getLastTextToSpeechInstance()?.let { shadowOf(it).spokenTextList }.orEmpty()
 
@@ -461,7 +474,20 @@ class AnnouncementsScreenTest {
         assertEquals(listOf("Ann"), engine.spokenTextList)
         assertTrue(engine.isShutdown)
         assertTrue(audio.soundPlayers.single().isReleased)
+
+        // Back in the app: nothing is replayed, and only new cues play (AN7).
         process.restartActivity()
+        composeRule.waitForIdle()
+        initLastEngine()
+        playEverything()
+        assertEquals(threeHits, sounds)
+        assertEquals(emptyList<String>(), lastEngine().spokenTextList)
+
+        nextPlayer()
+        single(1)
+        playEverything()
+        assertEquals(listOf("Bob"), lastEngine().spokenTextList)
+        assertEquals(threeHits + SoundEffect.DART_HIT, sounds)
     }
 
     /** AN18: a voice that fails during the game goes silent, without a message; sounds go on. */
@@ -474,11 +500,8 @@ class AnnouncementsScreenTest {
 
         triple(20); triple(20); triple(20)
         composeRule.waitForIdle()
-        val looper = shadowOf(Looper.getMainLooper())
-        // Runs the 180 sound, then the step that sends the 180 text to the engine, then makes the engine fail on it
-        // before it reports the end of that text.
-        looper.runOneTask()
-        looper.runOneTask()
+        // The engine fails on the 180 text before it reports the end of that text.
+        runUntilSpoken("One hundred and eighty!")
         assertEquals(listOf("Ann", "One hundred and eighty!"), spoken)
         lastEngine().utteranceProgressListener.onError("announcement-1", TextToSpeech.ERROR_SYNTHESIS)
         playEverything()
@@ -492,7 +515,35 @@ class AnnouncementsScreenTest {
         assertEquals(7, sounds.size) // 3 hits, the 180 sound, then 3 hits
     }
 
-    /** AN19: the volume buttons set the media volume on the game screen only. */
+    /** AN5, AN19: the win is announced on the end screen, where the volume buttons still set the media volume. */
+    @Test
+    fun `AN5 AN19 the win is announced on the end screen and a rematch announces its first player`() {
+        launchWithVoice(TtsTestSupport.englishLocal)
+        startGame("Ann", "Bob")
+        initLastEngine()
+        playEverything()
+        triple(20); triple(20); triple(20) // Ann: 121 left
+        nextPlayer()
+        single(1, 1, 1)
+        nextPlayer()
+        triple(20); triple(11); double(14) // checkout from 121
+        playEverything()
+        finishGame()
+        composeRule.waitForIdle()
+
+        composeRule.onNodeWithText(string(R.string.end_rematch)).performScrollTo().assertExists()
+        assertEquals(AudioManager.STREAM_MUSIC, process.activity.volumeControlStream)
+        playEverything()
+        assertEquals("Game shot! Ann wins", spoken.last())
+        assertEquals(SoundEffect.GAME_SHOT, sounds.last())
+
+        composeRule.onNodeWithText(string(R.string.end_rematch)).performScrollTo().performClick()
+        playEverything()
+        assertEquals("Bob", spoken.last()) // the rematch starts with the second player
+        assertEquals(1, audio.speakers.size) // the same session went on from the game to the end screen
+    }
+
+    /** AN19: the volume buttons set the media volume on the game and end screens, not on the other screens. */
     @Test
     fun `AN19 volume buttons follow the media volume on the game screen`() {
         launchWithVoice(TtsTestSupport.englishLocal)
@@ -507,5 +558,10 @@ class AnnouncementsScreenTest {
 
         abandonToHome()
         assertEquals(AudioManager.USE_DEFAULT_STREAM_TYPE, process.activity.volumeControlStream)
+    }
+
+    private companion object {
+        /** More than any announcement ever schedules: a guard against an endless loop. */
+        const val MAX_TASKS = 100
     }
 }

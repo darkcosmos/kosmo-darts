@@ -8,11 +8,3 @@ interface AudioSettingsStore {
     fun write(settings: AudioSettings)
 }
 
-/** Keeps the settings in memory only: the default for code that does not need them on the device. */
-class InMemoryAudioSettingsStore(private var settings: AudioSettings = AudioSettings()) : AudioSettingsStore {
-    override fun read(): AudioSettings = settings
-
-    override fun write(settings: AudioSettings) {
-        this.settings = settings
-    }
-}

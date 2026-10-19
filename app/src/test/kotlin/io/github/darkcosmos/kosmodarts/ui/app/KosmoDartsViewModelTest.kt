@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.settings.inMemoryAudioSettings
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
@@ -15,7 +16,7 @@ class KosmoDartsViewModelTest {
     @Test
     fun `AN2 each completed turn gives its score once`() {
         val cues = mutableListOf<X01Cue>()
-        val viewModel = KosmoDartsViewModel(Random(0))
+        val viewModel = KosmoDartsViewModel(Random(0), audioSettings = inMemoryAudioSettings())
         viewModel.addCueSink { cues += it }
         listOf(
             AppEvent.NewGame,
@@ -50,7 +51,7 @@ class KosmoDartsViewModelTest {
         val cues = mutableListOf<X01Cue>()
         val effects = mutableListOf<PersistenceEffect>()
         val restored = AppState(screen = Screen.Game(SaveFixtures.WAITING_NORMAL.toGameScreenState()))
-        val viewModel = KosmoDartsViewModel(Random(0), restored) { effects += it }
+        val viewModel = KosmoDartsViewModel(Random(0), restored, inMemoryAudioSettings()) { effects += it }
         viewModel.addCueSink { cues += it }
 
         viewModel.onEvent(AppEvent.NumberTapped(20)) // Ignored: the turn waits.
@@ -66,7 +67,7 @@ class KosmoDartsViewModelTest {
     fun `R12 events hand their storage changes over`() {
         val effects = mutableListOf<List<PersistenceEffect>>()
         val home = AppState(screen = Screen.Home(resumableGame = SaveFixtures.MID_TURN))
-        val viewModel = KosmoDartsViewModel(Random(0), home) { effects += it }
+        val viewModel = KosmoDartsViewModel(Random(0), home, inMemoryAudioSettings()) { effects += it }
 
         viewModel.onEvent(AppEvent.ResumeTapped)
         viewModel.onEvent(AppEvent.MissTapped)
