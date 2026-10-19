@@ -8,7 +8,7 @@ the prefix AN so that they never collide with the X01 rules (`docs/rules/x01.md`
 Vocabulary:
 - *Cue*: a semantic event produced by `:game-engine` (dart hit, bust, turn start...). It carries no text and no sound.
 - *Voice*: an announcement spoken by Android's text-to-speech (TTS) engine.
-- *Sound*: one of the seven sound effects of `app/src/main/res/raw/`.
+- *Sound*: one of the six sound effects of `app/src/main/res/raw/`.
 - *Usable voice*: see AN12.
 
 ## Owner evolutions after the tests on the Pixel (PR #33 review, 2026-10-19)
@@ -22,6 +22,8 @@ They complete or replace the issue body; in case of contradiction they prevail.
 | E3 | The win sound and voice play on the winning dart, when the checkout dialog opens. "Finish game" plays nothing. Refusing the dialog (its Undo) stops everything and plays the cancel sound. | AN5, AN10, AN23 |
 | E4 | New "Call each dart" switch, off by default, greyed while the voice is off: the voice says each dart after its impact sound. | AN13 to AN15, AN25 |
 | E5 | The seven sounds are the normalized ones of `assets/sound-effects`. | AN24 |
+| A.1 | Second review: on a 180, the voice does not announce the score; only the sound plays (confirms E2). | AN8, AN9 |
+| A.2 | Second review: the game shot and big fish sounds are removed. One new sound, `sfx_victory`, plays **at the same time** as « Victoire de {nom} », for any win. | AN9, AN10, AN24 |
 
 ## Cues (`:game-engine`)
 
@@ -80,17 +82,17 @@ They complete or replace the issue body; in case of contradiction they prevail.
   | Undo | `sfx_dart_cancel` |
   | Bust | `sfx_bust` |
   | One hundred and eighty | `sfx_one_eighty` |
-  | Big fish | `sfx_big_fish` (instead of `sfx_game_shot`) |
-  | Game shot | `sfx_game_shot` |
+  | Game shot or big fish | `sfx_victory`, started together with the win voice (A.2) |
 
-  Turn score, no score and turn start have no sound. The win voice follows the win sound, and is spoken even with
-  sounds off (when the voice is on).
+  Turn score, no score and turn start have no sound. The win voice and `sfx_victory` start together (A.2); the voice
+  is spoken even with sounds off (when the voice is on), and the sound plays even with the voice off.
 - AN10. Order and overlap:
   - a dart sound plays at once; dart sounds may overlap each other; a dart sound is never queued nor played late (a
     sound not loaded yet is skipped);
   - on the last dart of a turn: its dart sound, then its dart call (AN25, when on), then either the event sound (bust,
-    180, big fish or game shot, then the win voice) or the turn score. Each waits for the end of the previous one. A
-    voice and an event sound never overlap;
+    180) or the turn score, or the win (victory sound and win voice together, A.2). Each waits for the end of the
+    previous one, and the step after a win waits for both its sound and its voice. Apart from the win, a voice and an
+    event sound never overlap;
   - a turn start voice waits for the end of the announcement in progress or pending.
 - AN11. The voice speaks the language the app's texts are shown in (English or French). There is no language
   setting. The country of the phone's locale only orders several voices of that language. There is no fallback to
@@ -161,11 +163,12 @@ They complete or replace the issue body; in case of contradiction they prevail.
 
 ## Credits
 
-- AN24. The seven sounds were generated with ElevenLabs (free plan, which requires the mention "elevenlabs.io").
-  `docs/sounds/CREDITS.md` lists the seven files, the tool, the plan and the generation date (October 2026); the
-  mention is also in the app (AN13). The files are used as delivered on the `assets/sound-effects` branch, whose
-  last commit evened out their levels (E5). The app applies no gain. `docs/sounds/CREDITS.md` does not describe the
-  normalization: the owner withdrew that request (PR #33 comment, 2026-10-19), the gains being no longer known.
+- AN24. The six sounds of `app/src/main/res/raw/` (since A.2, `sfx_victory` replaced `sfx_game_shot` and
+  `sfx_big_fish`) are listed in `docs/sounds/CREDITS.md` with their tool, plan and generation date. The ElevenLabs
+  free plan requires the mention "elevenlabs.io", which is also in the app (AN13). The files are used as delivered on
+  the `assets/sound-effects` branch; its normalization commit evened out their levels (E5). The app applies no gain.
+  `docs/sounds/CREDITS.md` does not describe the normalization: the owner withdrew that request (PR #33 comment,
+  2026-10-19), the gains being no longer known.
 
 ## Dart calls and phrase variants
 

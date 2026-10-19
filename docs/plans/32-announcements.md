@@ -709,3 +709,26 @@ E5. Play the seven sounds at a constant media volume: even levels, no clipping.
   from the normalization commit; nothing is added about the normalization (owner's withdrawal).
 - Canary 5 ("Finish game" plays the win again) fails 5 tests: `GameCuesTest` (1), `OwnerEvolutionsScreenTest` (2),
   `AnnouncementsScreenTest` (2, the AN8 games). Canaries 1 to 4, re-run on this code: 10, 16, 3 and 2 failures.
+
+## Owner adjustments A.1 and A.2 (second review of PR #33, 2026-10-19)
+
+- A.1: on a 180, the voice says nothing; only `sfx_one_eighty` plays. This is already the behaviour since E2 (the
+  `OneEighty` cue renders as `[Sound(ONE_EIGHTY)]`, covered by `CueScriptTest` and the E2 screen test). A question was
+  asked on the PR in case Kosmo heard the dart call of the last triple 20 (E4).
+- A.2: `sfx_game_shot` and `sfx_big_fish` are deleted by the assets commit 32ac20f ("change victory SFX"), merged into
+  the mission branch; `sfx_victory.ogg` (4.0 s, Vorbis) is added. Design:
+  - `SoundEffect`: `GAME_SHOT` and `BIG_FISH` are replaced by `VICTORY` (`R.raw.sfx_victory`).
+  - New `AudioStep.SoundWithSpeech(effect, text)`: the sound and the speech start together. Each part is skipped
+    on its own switch (sounds off: speech only; voice off: sound only). The step ends when both parts have ended
+    (sound length and speech end), so a rematch's turn start or anything queued waits for both.
+  - `CueScript`: `GameShot` and `BigFish` both render as `[SoundWithSpeech(VICTORY, win)]`. The engine keeps the two
+    cues (AN5): the distinction costs nothing and stays available.
+  - Undo (dialog refused) stops both parts, as for any step.
+  - `docs/sounds/CREDITS.md`: the two deleted files are removed from the list and `sfx_victory.ogg` is added; its
+    origin was asked to Kosmo on the PR.
+- Tests: `CueScriptTest` (both wins render the same step); `AnnouncementPlayerTest` (sound and voice start at the same
+  time; the next step waits for the longer of the two; sounds off -> voice only; voice off -> sound only; undo stops
+  both); `SoundPoolPlayerTest` (six raw files); `OwnerEvolutionsScreenTest` and `AnnouncementsScreenTest` (the win
+  plays `VICTORY` and the voice together, for a normal win and from 170; "Finish game" still plays nothing; refusing
+  the dialog plays the cancel sound).
+- Phone check: finish a game normally and from 170: the victory sound and « Victoire de … » start together.
