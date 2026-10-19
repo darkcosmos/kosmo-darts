@@ -23,6 +23,10 @@ internal class TestAudioFactory : AudioFactory {
         RecordingSpeaker(SystemAudioFactory().speaker(context), timeline, clock, enginePackage).also { speakers += it }
 
     override fun scheduler(): Scheduler = clock
+
+    /** Every text that any engine created by this factory really spoke, held texts included. */
+    val allSpoken: List<String>
+        get() = speakers.filterIsInstance<RecordingSpeaker>().flatMap { it.spokenByEngine }
 }
 
 /** Adds what the engine really speaks to the [timeline], in order with the sounds. */
@@ -39,6 +43,10 @@ internal class RecordingSpeaker(
         delegate.speak(text, onEnd)
         spoken().drop(before).forEach { timeline.heard += Heard.Speech(it, clock.now()) }
     }
+
+    /** Everything this speaker's engine spoke. */
+    val spokenByEngine: List<String>
+        get() = spoken()
 
     private fun spoken(): List<String> =
         engine?.let { org.robolectric.Shadows.shadowOf(it).spokenTextList }.orEmpty()

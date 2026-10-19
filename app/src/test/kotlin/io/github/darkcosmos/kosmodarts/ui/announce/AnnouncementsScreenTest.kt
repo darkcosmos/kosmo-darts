@@ -385,18 +385,17 @@ class AnnouncementsScreenTest {
         triple(20); triple(20); triple(20)
         playEverything()
         val heardBefore = audio.timeline.heard.toList()
-        val spokenBefore = spoken.toList()
+        assertEquals(listOf("Ann", "One hundred and eighty!"), audio.allSpoken)
 
         process.rotate()
         initLastEngine()
         playEverything()
 
         assertEquals(heardBefore, audio.timeline.heard)
-        assertEquals(emptyList<String>(), spoken - spokenBefore.toSet())
-        assertEquals(listOf("Ann", "One hundred and eighty!"), spokenBefore)
+        assertEquals(listOf("Ann", "One hundred and eighty!"), audio.allSpoken)
     }
 
-    /** AN7: resuming a waiting turn, after the app was stopped or killed, replays nothing. */
+    /** AN7: resuming a waiting turn from home, after Android killed the app, and after a fresh launch, replays nothing. */
     @Test
     fun `AN7 nothing is replayed after a resume`() {
         ShadowTextToSpeech.addVoice(TtsTestSupport.englishLocal)
@@ -412,8 +411,16 @@ class AnnouncementsScreenTest {
         initLastEngine()
         playEverything()
 
+        process.finish()
+        process.launchFresh()
+        composeRule.onNodeWithText(string(R.string.home_resume_game)).performScrollTo().performClick()
+        composeRule.waitForIdle()
+        initLastEngine()
+        playEverything()
+
         assertEquals(emptyList<Heard>(), audio.timeline.heard)
-        assertEquals(emptyList<String>(), spoken)
+        assertEquals(3, audio.speakers.size) // one engine per return to the game screen
+        assertEquals(emptyList<String>(), audio.allSpoken)
         key(GameTags.NO_VOICE_DIALOG).assertDoesNotExist()
     }
 
