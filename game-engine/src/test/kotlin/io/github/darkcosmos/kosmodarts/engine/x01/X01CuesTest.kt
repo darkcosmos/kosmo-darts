@@ -153,7 +153,10 @@ class X01CuesTest {
     /** AN5: a win whose turn started at 170 is a big fish. */
     @Test
     fun `AN5 win from 170 is a big fish`() {
-        assertEquals(X01Cue.BigFish(0, "Alice"), cuesOf(gameAtRemaining(170).throwing("T20", "T20"), "BULL").last())
+        assertEquals(
+            listOf(X01Cue.DartHit(Dart.BULL), X01Cue.BigFish(0, "Alice")),
+            cuesOf(gameAtRemaining(170).throwing("T20", "T20"), "BULL"),
+        )
     }
 
     /** AN5: any other win is a game shot. */

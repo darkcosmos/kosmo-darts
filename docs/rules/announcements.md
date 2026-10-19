@@ -148,8 +148,8 @@ They complete or replace the issue body; in case of contradiction they prevail.
   focus.
 - AN21. When the game screen is no longer visible (another app, screen off, leaving the game screen), everything in
   progress or pending stops, and nothing is played until it is visible again; then only new cues play (AN7). The
-  end screen counts as part of the game here: the win sound and voice that started with the checkout dialog (AN5)
-  go on after "Finish game", and a rematch starts from it.
+  end screen counts as part of the game here: "Finish game" does not cut the win sound and voice that started with
+  the checkout dialog (AN5), and a rematch started from it announces its first player (AN4).
 - AN22. Player names are spoken at their turn start and at the win. Rate, pitch and voice details come from the
   system settings.
 
