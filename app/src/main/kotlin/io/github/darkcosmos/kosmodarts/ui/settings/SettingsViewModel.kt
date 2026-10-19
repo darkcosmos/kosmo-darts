@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 data class SettingsUiState(
     val voiceEnabled: Boolean,
     val soundsEnabled: Boolean,
+    val callEachDart: Boolean,
     val voiceStatus: VoiceStatus,
     val canInstall: Boolean,
 )
@@ -29,6 +30,9 @@ sealed interface SettingsEvent {
     data class VoiceToggled(val on: Boolean) : SettingsEvent
 
     data class SoundsToggled(val on: Boolean) : SettingsEvent
+
+    /** AN25: ignored while the voice is off (the switch is greyed). */
+    data class CallEachDartToggled(val on: Boolean) : SettingsEvent
 
     data object InstallVoiceTapped : SettingsEvent
 }
@@ -73,6 +77,8 @@ class SettingsViewModel(
         when (event) {
             is SettingsEvent.VoiceToggled -> onVoiceToggled(event.on)
             is SettingsEvent.SoundsToggled -> repository.setSoundsEnabled(event.on)
+            is SettingsEvent.CallEachDartToggled ->
+                if (repository.settings.value.voiceEnabled) repository.setCallEachDart(event.on)
             // Opening the engine's screen is the activity's job; the state does not change.
             SettingsEvent.InstallVoiceTapped -> Unit
         }
@@ -102,6 +108,7 @@ class SettingsViewModel(
         return SettingsUiState(
             voiceEnabled = settings.voiceEnabled,
             soundsEnabled = settings.soundsEnabled,
+            callEachDart = settings.callEachDart,
             voiceStatus = status,
             canInstall = status.isUnavailable && canInstall(),
         )

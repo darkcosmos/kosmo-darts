@@ -71,6 +71,8 @@
     <string name="settings_title">Réglages</string>
     <string name="settings_back">Retour</string>
     <string name="settings_voice">Voix</string>
+    <string name="settings_call_each_dart">Annoncer chaque fléchette</string>
+    <string name="settings_call_each_dart_needs_voice">Nécessite la voix</string>
     <string name="settings_sounds">Sons</string>
     <string name="settings_voice_checking">Vérification de la voix…</string>
     <string name="settings_voice_available">Voix hors ligne disponible</string>
@@ -82,15 +84,29 @@
     <string name="no_voice_text">Les annonces ont besoin d\'une voix hors ligne dans la langue de l\'appli. La partie continue avec les sons seuls.</string>
     <string name="no_voice_ok">OK</string>
 
-    <!-- Spoken announcements (AN8). \u00A0: non-breaking space before "!", as French typography requires. -->
+    <!-- Spoken announcements (AN8). -->
     <string name="announce_language">fr</string>
-    <string name="announce_turn_start">%1$s</string>
-    <string name="announce_turn_start_checkout">%1$s, il te reste %2$d</string>
     <string name="announce_turn_score">%1$d</string>
-    <string name="announce_one_eighty">Cent quatre-vingts\u00A0!</string>
     <string name="announce_no_score">Pas de score</string>
-    <string name="announce_bust">Bust</string>
-    <string name="announce_game_shot">Victoire de %1$s</string>
-    <string name="announce_big_fish">Big Fish\u00A0! Victoire de %1$s</string>
+    <!-- E1: one item is drawn at random, never the same twice in a row (AN26). The voice says "tu". -->
+    <string-array name="announce_game_start">
+        <item>%1$s, c\'est toi qui commences.</item>
+        <item>On commence avec %1$s.</item>
+        <item>%1$s, à toi l\'honneur.</item>
+    </string-array>
+    <string-array name="announce_next_turn">
+        <item>%1$s, c\'est ton tour.</item>
+        <item>%1$s, à toi de jouer.</item>
+        <item>À toi, %1$s.</item>
+        <item>%1$s, c\'est à toi.</item>
+    </string-array>
+    <string name="announce_checkout_suffix">Il te reste %1$d.</string>
+    <string name="announce_win">Victoire de %1$s</string>
+    <!-- AN25: dart calls. -->
+    <string name="announce_dart_single">%1$d</string>
+    <string name="announce_dart_double">Double %1$d</string>
+    <string name="announce_dart_triple">Triple %1$d</string>
+    <string name="announce_dart_outer_bull">25</string>
+    <string name="announce_dart_bull">Bull</string>
     <string name="announce_announcements_on">Annonces activées</string>
 </resources>

@@ -5,8 +5,8 @@ package io.github.darkcosmos.kosmodarts.engine.x01
  * turns cues into localized speech and sound effects.
  */
 sealed interface X01Cue {
-    /** AN1: a dart that scores at least one point. */
-    data object DartHit : X01Cue
+    /** AN1, AN25: [dart] scores at least one point. */
+    data class DartHit(val dart: Dart) : X01Cue
 
     /** AN1: a dart that scores 0 (outside the scoring area). */
     data object DartMiss : X01Cue
@@ -14,7 +14,7 @@ sealed interface X01Cue {
     /** AN6: a dart was undone. */
     data object DartUndone : X01Cue
 
-    /** AN2: a completed turn that scored [points], from 1 to 179. */
+    /** AN2: a completed turn that scored [points], from 1 to 177. */
     data class TurnScore(val points: Int) : X01Cue
 
     /** AN2: a completed turn that scored 180. */
@@ -28,18 +28,23 @@ sealed interface X01Cue {
 
     /**
      * AN4: [name] throws next. [checkoutRemaining] is their remaining score when a checkout is possible for it (AN3),
-     * else `null`.
+     * else `null`. [isGameStart]: this is the first turn of the game (E1).
      */
-    data class TurnStart(val playerIndex: Int, val name: String, val checkoutRemaining: Int?) : X01Cue
+    data class TurnStart(
+        val playerIndex: Int,
+        val name: String,
+        val checkoutRemaining: Int?,
+        val isGameStart: Boolean,
+    ) : X01Cue
 
-    /** AN5: a confirmed win, from any remaining score but [X01Cues.BIG_FISH_REMAINING]. */
+    /** AN5: a win, from any remaining score but [X01Cues.BIG_FISH_REMAINING]. */
     data class GameShot(val playerIndex: Int, val name: String) : X01Cue
 
-    /** AN5: a confirmed win whose turn started at [X01Cues.BIG_FISH_REMAINING]. */
+    /** AN5: a win whose turn started at [X01Cues.BIG_FISH_REMAINING]. */
     data class BigFish(val playerIndex: Int, val name: String) : X01Cue
 }
 
-/** Decides which cues a game action produces (docs/rules/announcements.md, AN1 to AN6). Pure. */
+/** Decides which cues a game action produces (docs/rules/announcements.md, AN1 to AN6, AN25). Pure. */
 object X01Cues {
 
     /** Remaining score of the "big fish" checkout: T20, T20, bull (AN5). */
@@ -52,8 +57,8 @@ object X01Cues {
     val dartUndone: X01Cue = X01Cue.DartUndone
 
     /**
-     * AN1, AN2: cues of the dart that changed [before] into [after]: its dart cue, then the end-of-turn cue when it
-     * completed a turn other than a checkout.
+     * AN1, AN2, AN5: cues of the dart that changed [before] into [after]: its dart cue, then the end-of-turn cue
+     * when it completed a turn, which is the win cue for a checkout (E3).
      *
      * @throws IllegalArgumentException if [after] is not [before] plus exactly one dart.
      */
@@ -62,9 +67,10 @@ object X01Cues {
             after.darts.subList(0, before.darts.size) == before.darts) {
             "afterDart expects exactly one more dart"
         }
-        val dartCue = if (after.darts.last().value == 0) X01Cue.DartMiss else X01Cue.DartHit
+        val dart = after.darts.last()
+        val dartCue = if (dart.value == 0) X01Cue.DartMiss else X01Cue.DartHit(dart)
         val completedTurn = after.state.completedTurns.drop(before.state.completedTurns.size).singleOrNull()
-        return listOfNotNull(dartCue, completedTurn?.let(::endOfTurnCue))
+        return listOfNotNull(dartCue, completedTurn?.let { endOfTurnCue(after, it) })
     }
 
     /** AN4: the player who throws next in [game], or `null` once the leg is finished. */
@@ -72,25 +78,23 @@ object X01Cues {
         val index = game.state.currentPlayerIndex ?: return null
         val player = game.state.players[index]
         val checkoutRemaining = player.remaining.takeIf { Checkouts.isPossible(it, game.config.checkoutRule) }
-        return X01Cue.TurnStart(index, player.name, checkoutRemaining)
+        return X01Cue.TurnStart(index, player.name, checkoutRemaining, isGameStart = game.darts.isEmpty())
     }
 
-    /** AN5: the win of a finished [game], or `null` while it is in progress. */
-    fun checkoutConfirmed(game: X01Game): X01Cue? {
-        val winner = game.state.winnerIndex ?: return null
-        val name = game.state.players[winner].name
-        val winningTurn = game.state.completedTurns.last()
-        return if (winningTurn.remainingBefore == BIG_FISH_REMAINING) {
-            X01Cue.BigFish(winner, name)
+    /** AN5: big fish when the winning [turn] started at [BIG_FISH_REMAINING], else game shot. */
+    private fun winCue(game: X01Game, turn: X01Turn): X01Cue {
+        val name = game.state.players[turn.playerIndex].name
+        return if (turn.remainingBefore == BIG_FISH_REMAINING) {
+            X01Cue.BigFish(turn.playerIndex, name)
         } else {
-            X01Cue.GameShot(winner, name)
+            X01Cue.GameShot(turn.playerIndex, name)
         }
     }
 
-    private fun endOfTurnCue(turn: X01Turn): X01Cue? {
+    private fun endOfTurnCue(game: X01Game, turn: X01Turn): X01Cue {
         val points = turn.darts.sumOf(Dart::value)
         return when {
-            turn.outcome == TurnOutcome.CHECKOUT -> null
+            turn.outcome == TurnOutcome.CHECKOUT -> winCue(game, turn)
             turn.outcome == TurnOutcome.BUST -> X01Cue.Bust
             points == MAX_TURN_SCORE -> X01Cue.OneEighty
             points == 0 -> X01Cue.NoScore

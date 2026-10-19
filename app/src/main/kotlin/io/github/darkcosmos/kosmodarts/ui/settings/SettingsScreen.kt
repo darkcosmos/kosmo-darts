@@ -71,6 +71,19 @@ fun SettingsScreen(
                     onToggle = { onEvent(SettingsEvent.VoiceToggled(it)) },
                 )
                 VoiceStatusLine(state, onInstall = { onEvent(SettingsEvent.InstallVoiceTapped) })
+                Spacer(modifier = Modifier.height(8.dp))
+                SwitchRow(
+                    label = stringResource(R.string.settings_call_each_dart),
+                    checked = state.callEachDart,
+                    tag = SettingsTags.CALL_EACH_DART_SWITCH,
+                    onToggle = { onEvent(SettingsEvent.CallEachDartToggled(it)) },
+                    enabled = state.voiceEnabled,
+                    supportingText = if (state.voiceEnabled) {
+                        null
+                    } else {
+                        stringResource(R.string.settings_call_each_dart_needs_voice)
+                    },
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 SwitchRow(
                     label = stringResource(R.string.settings_sounds),
@@ -116,25 +129,40 @@ private fun TopBar(onBack: () -> Unit) {
     }
 }
 
-/** The whole row toggles; TalkBack reads it as one switch with its label. */
+/**
+ * The whole row toggles; TalkBack reads it as one switch with its label and [supportingText]. A disabled row keeps its
+ * value and ignores taps (AN25: greyed while the voice is off).
+ */
 @Composable
-private fun SwitchRow(label: String, checked: Boolean, tag: String, onToggle: (Boolean) -> Unit) {
+private fun SwitchRow(
+    label: String,
+    checked: Boolean,
+    tag: String,
+    onToggle: (Boolean) -> Unit,
+    enabled: Boolean = true,
+    supportingText: String? = null,
+) {
+    val labelColor = if (enabled) {
+        MaterialTheme.colorScheme.onBackground
+    } else {
+        MaterialTheme.colorScheme.onSurfaceVariant
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
             .sizeIn(minHeight = SWITCH_ROW_MIN_HEIGHT)
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onToggle)
+            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onToggle)
             .testTag(tag)
             .padding(horizontal = 8.dp),
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.weight(1f),
-        )
-        Switch(checked = checked, onCheckedChange = null)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = label, style = MaterialTheme.typography.titleMedium, color = labelColor)
+            supportingText?.let {
+                Text(text = it, style = MaterialTheme.typography.bodyMedium, color = labelColor)
+            }
+        }
+        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }
 
@@ -181,6 +209,7 @@ private fun SettingsScreenPreview() {
             state = SettingsUiState(
                 voiceEnabled = true,
                 soundsEnabled = true,
+                callEachDart = false,
                 voiceStatus = VoiceStatus.NO_USABLE_VOICE,
                 canInstall = true,
             ),

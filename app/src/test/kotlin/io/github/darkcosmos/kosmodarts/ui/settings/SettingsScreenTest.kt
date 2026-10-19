@@ -3,10 +3,14 @@ package io.github.darkcosmos.kosmodarts.ui.settings
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -170,6 +174,59 @@ class SettingsScreenTest {
         openSettings()
         node(SettingsTags.VOICE_SWITCH).assertIsOff()
         node(SettingsTags.SOUNDS_SWITCH).assertIsOn()
+    }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun `AN13 AN25 call each dart is off, under the voice status, and kept after a new process`() {
+        ShadowTextToSpeech.addVoice(TtsTestSupport.englishLocal)
+        process.launchFresh()
+        openSettings()
+        node(SettingsTags.CALL_EACH_DART_SWITCH).assertIsOff().assertIsEnabled()
+        composeRule.onNodeWithText("Needs the voice").assertDoesNotExist()
+
+        val top = { tag: String -> node(tag).fetchSemanticsNode().boundsInRoot.top }
+        val order = listOf(
+            SettingsTags.VOICE_SWITCH,
+            SettingsTags.VOICE_STATUS,
+            SettingsTags.CALL_EACH_DART_SWITCH,
+            SettingsTags.SOUNDS_SWITCH,
+            SettingsTags.CREDITS,
+        )
+        assertEquals(order, order.sortedBy(top))
+
+        node(SettingsTags.CALL_EACH_DART_SWITCH).performClick()
+        newProcess()
+        openSettings()
+        node(SettingsTags.CALL_EACH_DART_SWITCH).assertIsOn()
+    }
+
+    @Test
+    @Config(qualifiers = "en")
+    fun `AN25 U10 with the voice off, call each dart is greyed, says why and keeps its value`() {
+        ShadowTextToSpeech.addVoice(TtsTestSupport.englishLocal)
+        process.launchFresh()
+        openSettings()
+        node(SettingsTags.CALL_EACH_DART_SWITCH).performClick()
+        node(SettingsTags.VOICE_SWITCH).performClick()
+        composeRule.waitForIdle()
+
+        node(SettingsTags.CALL_EACH_DART_SWITCH).assertIsNotEnabled().assertIsOn()
+        node(SettingsTags.CALL_EACH_DART_SWITCH).assert(hasText("Needs the voice", substring = true))
+        node(SettingsTags.CALL_EACH_DART_SWITCH).performClick()
+        node(SettingsTags.CALL_EACH_DART_SWITCH).assertIsOn()
+    }
+
+    @Test
+    @Config(qualifiers = "fr")
+    fun `AN25 U10 the greyed switch says why in French`() {
+        process.app.audioSettings.setVoiceEnabled(false)
+        process.launchFresh()
+        openSettings()
+
+        node(SettingsTags.CALL_EACH_DART_SWITCH).assertIsNotEnabled()
+            .assert(hasText("Annoncer chaque fléchette", substring = true))
+            .assert(hasText("Nécessite la voix", substring = true))
     }
 
     @Test

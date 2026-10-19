@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.settings
 
+import io.github.darkcosmos.kosmodarts.settings.AudioSettingsCodec.KEY_CALL_EACH_DART
 import io.github.darkcosmos.kosmodarts.settings.AudioSettingsCodec.KEY_FORMAT_VERSION
 import io.github.darkcosmos.kosmodarts.settings.AudioSettingsCodec.KEY_NO_VOICE_NOTICE_SHOWN
 import io.github.darkcosmos.kosmodarts.settings.AudioSettingsCodec.KEY_SOUNDS_ENABLED
@@ -63,6 +64,30 @@ class AudioSettingsCodecTest {
     fun `S1 a missing value falls back to its own default only`() {
         val values = valid(voice = false, sounds = false, shown = true) - KEY_NO_VOICE_NOTICE_SHOWN
         assertEquals(AudioSettings(voiceEnabled = false, soundsEnabled = false), AudioSettingsCodec.decode(values))
+    }
+
+    @Test
+    fun `AN25 S8 a version 1 file without call_each_dart gives false and keeps the other keys`() {
+        val old = valid(voice = false, sounds = false, shown = true)
+        assertEquals(
+            AudioSettings(voiceEnabled = false, soundsEnabled = false, noVoiceNoticeShown = true, callEachDart = false),
+            AudioSettingsCodec.decode(old),
+        )
+    }
+
+    @Test
+    fun `AN25 S8 a wrongly typed call_each_dart gives false`() {
+        listOf<Any?>("true", 1, null).forEach { wrong ->
+            val values = valid(voice = true, sounds = true, shown = false) + (KEY_CALL_EACH_DART to wrong)
+            assertEquals("value $wrong", AudioSettings(), AudioSettingsCodec.decode(values))
+        }
+    }
+
+    @Test
+    fun `AN25 call_each_dart round trips`() {
+        val settings = AudioSettings(callEachDart = true)
+        assertEquals(settings, AudioSettingsCodec.decode(AudioSettingsCodec.encode(settings)))
+        assertEquals(true, AudioSettingsCodec.encode(settings)[KEY_CALL_EACH_DART])
     }
 
     @Test

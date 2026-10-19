@@ -12,12 +12,16 @@ object AudioSettingsCodec {
     const val KEY_SOUNDS_ENABLED = "sounds_enabled"
     const val KEY_NO_VOICE_NOTICE_SHOWN = "no_voice_notice_shown"
 
+    /** Added with E4. Version 1 files without it read as `false`: a missing key gets its own default. */
+    const val KEY_CALL_EACH_DART = "call_each_dart"
+
     /** Every value written, the format version included. */
     fun encode(settings: AudioSettings): Map<String, Any> = mapOf(
         KEY_FORMAT_VERSION to FORMAT_VERSION,
         KEY_VOICE_ENABLED to settings.voiceEnabled,
         KEY_SOUNDS_ENABLED to settings.soundsEnabled,
         KEY_NO_VOICE_NOTICE_SHOWN to settings.noVoiceNoticeShown,
+        KEY_CALL_EACH_DART to settings.callEachDart,
     )
 
     /**
@@ -31,6 +35,7 @@ object AudioSettingsCodec {
             voiceEnabled = values.booleanOr(KEY_VOICE_ENABLED, defaults.voiceEnabled),
             soundsEnabled = values.booleanOr(KEY_SOUNDS_ENABLED, defaults.soundsEnabled),
             noVoiceNoticeShown = values.booleanOr(KEY_NO_VOICE_NOTICE_SHOWN, defaults.noVoiceNoticeShown),
+            callEachDart = values.booleanOr(KEY_CALL_EACH_DART, defaults.callEachDart),
         )
     }
 

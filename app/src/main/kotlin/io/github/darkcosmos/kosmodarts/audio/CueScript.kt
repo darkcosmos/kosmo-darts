@@ -11,8 +11,11 @@ sealed interface AudioStep {
 
 /** What to do for one cue. */
 sealed interface AudioAction {
-    /** AN10: played at once, may overlap other dart sounds, never queued. */
-    data class DartSound(val effect: SoundEffect) : AudioAction
+    /**
+     * AN10: played at once, may overlap other dart sounds, never queued. [call] is the dart call (AN25), spoken after
+     * it when "Call each dart" is on.
+     */
+    data class DartSound(val effect: SoundEffect, val call: String? = null) : AudioAction
 
     /** AN23: stop everything, then play the cancel sound. */
     data object Undo : AudioAction
@@ -21,25 +24,34 @@ sealed interface AudioAction {
     data class Announcement(val steps: List<AudioStep>) : AudioAction
 }
 
-/** Renders a cue as sounds and speech (AN8, AN9). Pure. */
+/**
+ * Renders a cue as sounds and speech (AN8, AN9, AN25). Pure. Bust and 180 are their sound only: the sound replaces
+ * the score (E2). A win is its sound, then the win phrase (E2, E3).
+ */
 object CueScript {
 
     fun of(cue: X01Cue, phrases: Phrases): AudioAction = when (cue) {
-        X01Cue.DartHit -> AudioAction.DartSound(SoundEffect.DART_HIT)
+        is X01Cue.DartHit -> AudioAction.DartSound(SoundEffect.DART_HIT, phrases.dartCall(cue.dart))
         X01Cue.DartMiss -> AudioAction.DartSound(SoundEffect.DART_MISS)
         X01Cue.DartUndone -> AudioAction.Undo
         is X01Cue.TurnScore -> speech(phrases.turnScore(cue.points))
         X01Cue.NoScore -> speech(phrases.noScore())
-        X01Cue.OneEighty -> soundThenSpeech(SoundEffect.ONE_EIGHTY, phrases.oneEighty())
-        X01Cue.Bust -> soundThenSpeech(SoundEffect.BUST, phrases.bust())
-        is X01Cue.GameShot -> soundThenSpeech(SoundEffect.GAME_SHOT, phrases.gameShot(cue.name))
-        is X01Cue.BigFish -> soundThenSpeech(SoundEffect.BIG_FISH, phrases.bigFish(cue.name))
-        is X01Cue.TurnStart -> speech(
-            cue.checkoutRemaining?.let { phrases.turnStartWithCheckout(cue.name, it) } ?: phrases.turnStart(cue.name),
-        )
+        X01Cue.OneEighty -> sound(SoundEffect.ONE_EIGHTY)
+        X01Cue.Bust -> sound(SoundEffect.BUST)
+        is X01Cue.GameShot -> soundThenSpeech(SoundEffect.GAME_SHOT, phrases.win(cue.name))
+        is X01Cue.BigFish -> soundThenSpeech(SoundEffect.BIG_FISH, phrases.win(cue.name))
+        is X01Cue.TurnStart -> speech(turnStart(cue, phrases))
+    }
+
+    /** E1: the turn start phrase, then the remaining score when a checkout is possible. */
+    private fun turnStart(cue: X01Cue.TurnStart, phrases: Phrases): String {
+        val phrase = phrases.turnStart(cue.name, cue.isGameStart)
+        return cue.checkoutRemaining?.let { "$phrase ${phrases.checkoutSuffix(it)}" } ?: phrase
     }
 
     private fun speech(text: String) = AudioAction.Announcement(listOf(AudioStep.Speech(text)))
+
+    private fun sound(effect: SoundEffect) = AudioAction.Announcement(listOf(AudioStep.Sound(effect)))
 
     private fun soundThenSpeech(effect: SoundEffect, text: String) =
         AudioAction.Announcement(listOf(AudioStep.Sound(effect), AudioStep.Speech(text)))

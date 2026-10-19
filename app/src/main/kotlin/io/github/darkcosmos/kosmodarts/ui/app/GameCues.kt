@@ -7,9 +7,9 @@ import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 /**
  * The cues of the event that changed [before] into [after] (docs/rules/announcements.md, AN1 to AN7). Pure.
  *
- * Only five hook points produce cues: a dart entered (with the end of its turn), an undo, a turn start (a game
- * opened by Start or Rematch, or "Next player"), and a confirmed win. Anything else, a resume included, produces
- * none, and a rotation or a recomposition sends no event at all.
+ * Only these hook points produce cues: a dart entered (with the end of its turn, the win included: E3), an undo, and
+ * a turn start (a game opened by Start or Rematch, or "Next player"). "Finish game" produces none, nor does anything
+ * else, a resume included; a rotation or a recomposition sends no event at all.
  */
 fun gameCues(before: AppState, event: AppEvent, after: AppState): List<X01Cue> {
     val screenBefore = before.screen
@@ -19,8 +19,6 @@ fun gameCues(before: AppState, event: AppEvent, after: AppState): List<X01Cue> {
             if (screenAfter.isNewGame) listOfNotNull(X01Cues.turnStart(screenAfter.game.game)) else emptyList()
         screenBefore is Screen.Game && screenAfter is Screen.Game ->
             inGameCues(screenBefore.game, event, screenAfter.game)
-        screenBefore is Screen.Game && screenAfter is Screen.End && event == AppEvent.FinishGameTapped ->
-            listOfNotNull(X01Cues.checkoutConfirmed(screenAfter.game))
         else -> emptyList()
     }
 }

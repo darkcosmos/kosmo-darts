@@ -261,6 +261,122 @@ class AnnouncementPlayerTest {
         assertEquals(listOf(1, 1, 1), speaker.endCounts)
     }
 
+    private fun dartWithCall(call: String) = player.play(AudioAction.DartSound(DART_HIT, call))
+
+    private fun callsOn() {
+        settings = AudioSettings(callEachDart = true)
+    }
+
+    /** AN25: the call comes right after its impact sound. */
+    @Test
+    fun `AN25 a dart call follows its impact sound`() {
+        callsOn()
+        dartWithCall("Triple 20")
+        clock.advanceBy(5_000)
+
+        assertEquals(listOf(Heard.Sound(DART_HIT, 0), Heard.Speech("Triple 20", 510)), timeline.heard)
+    }
+
+    /** AN25, AN14: no call when "Call each dart" is off (the default) or when the voice is off. */
+    @Test
+    fun `AN25 no call when calls or the voice are off`() {
+        dartWithCall("18")
+        settings = AudioSettings(voiceEnabled = false, callEachDart = true)
+        dartWithCall("19")
+        clock.advanceBy(5_000)
+
+        assertEquals(listOf(DART_HIT, DART_HIT), timeline.sounds)
+        assertEquals(emptyList<String>(), timeline.speech)
+    }
+
+    /** AN25: a new dart removes the call that still waits for its impact sound. */
+    @Test
+    fun `AN25 a new dart drops a waiting call`() {
+        callsOn()
+        dartWithCall("18")
+        clock.advanceBy(100)
+        dartWithCall("Double 20")
+        clock.advanceBy(5_000)
+
+        assertEquals(listOf("Double 20"), timeline.speech)
+    }
+
+    /** AN25: a new dart interrupts the call being spoken; its late end does not move the queue twice. */
+    @Test
+    fun `AN25 a new dart interrupts a call being spoken`() {
+        callsOn()
+        dartWithCall("18")
+        announce(AudioStep.Speech("score 98"))
+        clock.advanceBy(600) // "18" is being spoken
+        dartWithCall("Bull")
+        clock.advanceBy(5_000)
+
+        assertEquals(listOf("18", "Bull", "score 98"), timeline.speech)
+        assertEquals(1, speaker.stopCount)
+        assertEquals(listOf(1, 1, 1), speaker.endCounts)
+    }
+
+    /** AN25: a call never interrupts another announcement: it waits behind a turn start voice. */
+    @Test
+    fun `AN25 a call waits behind a turn start voice`() {
+        callsOn()
+        announce(AudioStep.Speech("turn Bob"))
+        clock.advanceBy(100)
+        dartWithCall("18")
+        clock.advanceBy(5_000)
+
+        assertEquals(
+            listOf(Heard.Speech("turn Bob", 0), Heard.Sound(DART_HIT, 100), Heard.Speech("18", 800)),
+            timeline.heard,
+        )
+        assertEquals(0, speaker.stopCount)
+    }
+
+    /** AN25: a call waiting behind another voice is dropped by the next dart. */
+    @Test
+    fun `AN25 a call waiting behind a voice is dropped by the next dart`() {
+        callsOn()
+        announce(AudioStep.Speech("turn Bob"))
+        clock.advanceBy(100)
+        dartWithCall("18")
+        clock.advanceBy(100)
+        dartWithCall("19")
+        clock.advanceBy(5_000)
+
+        assertEquals(listOf("turn Bob", "19"), timeline.speech)
+    }
+
+    /** AN10, AN25: on the last dart: impact, call, then the event sound, then the win voice. */
+    @Test
+    fun `AN25 the last dart is called before the event sound`() {
+        callsOn()
+        dartWithCall("Double 20")
+        soundThenSpeech(GAME_SHOT, "win Ann")
+        clock.advanceBy(20_000)
+
+        assertEquals(
+            listOf(
+                Heard.Sound(DART_HIT, 0),
+                Heard.Speech("Double 20", 510),
+                Heard.Sound(GAME_SHOT, 510 + 800),
+                Heard.Speech("win Ann", 510 + 800 + 5_160),
+            ),
+            timeline.heard,
+        )
+    }
+
+    /** E2: with sounds off, a bust or a 180 (sound only) is silent; a win keeps its voice. */
+    @Test
+    fun `E2 with sounds off, sound-only events are silent and the win is spoken`() {
+        settings = AudioSettings(soundsEnabled = false)
+        announce(AudioStep.Sound(BUST))
+        announce(AudioStep.Sound(ONE_EIGHTY))
+        soundThenSpeech(GAME_SHOT, "win Ann")
+        clock.advanceBy(20_000)
+
+        assertEquals(listOf(Heard.Speech("win Ann", 0)), timeline.heard)
+    }
+
     /** AN21: after stopAll, nothing scheduled plays any more. */
     @Test
     fun `AN21 stop all forgets everything pending`() {

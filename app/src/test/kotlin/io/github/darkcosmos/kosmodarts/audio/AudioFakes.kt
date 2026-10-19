@@ -168,13 +168,15 @@ class FakeSpeaker(
 
 /** Phrases that name the line of the table they come from, so tests read clearly. */
 object TestPhrases : Phrases {
-    override fun turnStart(name: String) = "start $name"
-    override fun turnStartWithCheckout(name: String, remaining: Int) = "start $name requires $remaining"
+    override fun turnStart(name: String, isGameStart: Boolean) = if (isGameStart) "first $name" else "turn $name"
+    override fun checkoutSuffix(remaining: Int) = "requires $remaining"
     override fun turnScore(points: Int) = "score $points"
-    override fun oneEighty() = "180!"
     override fun noScore() = "no score"
-    override fun bust() = "bust"
-    override fun gameShot(name: String) = "game shot $name"
-    override fun bigFish(name: String) = "big fish $name"
+    override fun win(name: String) = "win $name"
+    override fun dartCall(dart: io.github.darkcosmos.kosmodarts.engine.x01.Dart) =
+        if (dart.value == 0) null else "call ${dart.value}"
     override fun announcementsOn() = "announcements on"
 }
+
+/** The fixed draw of the tests: always the first allowed variant (AN26). */
+val FirstVariant = VariantPicker { it.first() }

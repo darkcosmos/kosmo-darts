@@ -3,10 +3,12 @@ package io.github.darkcosmos.kosmodarts.audio
 import io.github.darkcosmos.kosmodarts.settings.AudioSettings
 
 /**
- * Plays [AudioAction]s in the order of docs/rules/announcements.md, AN10, AN14, AN21 and AN23:
+ * Plays [AudioAction]s in the order of docs/rules/announcements.md, AN10, AN14, AN21, AN23 and AN25:
  * - a dart sound plays at once and may overlap other dart sounds;
- * - announcement steps run one at a time, from one queue, and the queue starts only after the last dart sound has
+ * - announcement steps run one at a time, from one queue, and each step starts only after the last dart sound has
  *   ended, so an event sound and a voice never overlap;
+ * - a dart call goes to the head of the queue; the next dart drops it if it is still waiting, or interrupts it if it
+ *   is being spoken. Other announcements are never interrupted by a dart;
  * - an undo stops everything, then plays the cancel sound.
  *
  * Main thread only.
@@ -17,32 +19,33 @@ class AnnouncementPlayer(
     private val scheduler: Scheduler,
     private val settings: () -> AudioSettings,
 ) {
-    private val queue = ArrayDeque<AudioStep>()
-    private var isBusy = false
+    private val queue = ArrayDeque<Queued>()
 
-    /** Incremented by [stopAll]: callbacks of an older generation do nothing. */
-    private var generation = 0
-    private var pendingStep: Cancellable? = null
+    /** The step being played; only its own end moves the queue on, so a late end of an older step does nothing. */
+    private var current: Running? = null
     private var dartSoundEndsAt = 0L
 
     fun play(action: AudioAction) {
         when (action) {
-            is AudioAction.DartSound -> playDartSound(action.effect)
+            is AudioAction.DartSound -> {
+                playDartSound(action.effect)
+                action.call?.let(::callDart)
+            }
             AudioAction.Undo -> {
                 stopAll()
                 playDartSound(SoundEffect.DART_CANCEL)
             }
-            is AudioAction.Announcement -> enqueue(action.steps)
+            is AudioAction.Announcement -> {
+                queue.addAll(action.steps.map { Queued(it, isDartCall = false) })
+                if (current == null) startNext()
+            }
         }
     }
 
     /** AN21, AN23: stops what is playing, forgets what is pending. */
     fun stopAll() {
-        generation++
-        pendingStep?.cancel()
-        pendingStep = null
         queue.clear()
-        isBusy = false
+        cancelCurrent()
         dartSoundEndsAt = 0L
         speaker.stop()
         sounds.stopAll()
@@ -54,52 +57,69 @@ class AnnouncementPlayer(
         dartSoundEndsAt = maxOf(dartSoundEndsAt, endsAt)
     }
 
-    private fun enqueue(steps: List<AudioStep>) {
-        queue.addAll(steps)
-        if (!isBusy) startNext()
+    /** AN25: the newest call replaces any older call, waiting or spoken; it never waits behind pending steps. */
+    private fun callDart(text: String) {
+        val audio = settings()
+        if (!audio.voiceEnabled || !audio.callEachDart) return
+        queue.removeAll { it.isDartCall }
+        val running = current
+        if (running != null && running.queued.isDartCall) {
+            cancelCurrent()
+            if (running.isSpeaking) speaker.stop()
+        }
+        queue.addFirst(Queued(AudioStep.Speech(text), isDartCall = true))
+        if (current == null) startNext()
+    }
+
+    private fun cancelCurrent() {
+        current?.scheduled?.cancel()
+        current = null
     }
 
     private fun startNext() {
-        val step = queue.removeFirstOrNull()
-        if (step == null) {
-            isBusy = false
-            return
-        }
-        isBusy = true
-        val stepGeneration = generation
+        val queued = queue.removeFirstOrNull() ?: return
+        val running = Running(queued)
+        current = running
         val wait = dartSoundEndsAt - scheduler.now()
         if (wait > 0) {
-            pendingStep = scheduler.post(wait) { if (stepGeneration == generation) run(step, stepGeneration) }
+            running.scheduled = scheduler.post(wait) { if (current === running) run(running) }
         } else {
-            run(step, stepGeneration)
+            run(running)
         }
     }
 
-    private fun run(step: AudioStep, stepGeneration: Int) {
-        pendingStep = null
-        val current = settings()
-        when (step) {
-            is AudioStep.Sound -> if (current.soundsEnabled && sounds.play(step.effect)) {
-                pendingStep = scheduler.post(durationOf(step.effect)) { continueAfter(stepGeneration) }
+    private fun run(running: Running) {
+        running.scheduled = null
+        val audio = settings()
+        when (val step = running.queued.step) {
+            is AudioStep.Sound -> if (audio.soundsEnabled && sounds.play(step.effect)) {
+                running.scheduled = scheduler.post(durationOf(step.effect)) { finish(running) }
             } else {
-                startNext()
+                finish(running)
             }
-            is AudioStep.Speech -> if (current.voiceEnabled) {
-                speaker.speak(step.text) { continueAfter(stepGeneration) }
+            is AudioStep.Speech -> if (audio.voiceEnabled) {
+                running.isSpeaking = true
+                speaker.speak(step.text) { finish(running) }
             } else {
-                startNext()
+                finish(running)
             }
         }
     }
 
-    private fun continueAfter(stepGeneration: Int) {
-        if (stepGeneration == generation) {
-            pendingStep = null
-            startNext()
-        }
+    private fun finish(running: Running) {
+        if (current !== running) return
+        current = null
+        startNext()
     }
 
     private fun durationOf(effect: SoundEffect): Long = sounds.durationMillis(effect) ?: DEFAULT_SOUND_MILLIS
+
+    private class Queued(val step: AudioStep, val isDartCall: Boolean)
+
+    private class Running(val queued: Queued) {
+        var scheduled: Cancellable? = null
+        var isSpeaking = false
+    }
 
     companion object {
         /** Used while the length of a sound is not known yet. */

@@ -101,6 +101,51 @@ class AnnouncementsScreenshotTest {
         capture(name)
     }
 
+    /** AN25, U10: the voice off: "Call each dart" greyed with "Needs the voice", its value (on) kept. */
+    private fun callsGreyed(name: String) {
+        process.app.audioSettings.setCallEachDart(true)
+        process.app.audioSettings.setVoiceEnabled(false)
+        settings(name, TtsTestSupport.localVoiceForTheAppLanguage())
+    }
+
+    /** AN25: the three switches on. */
+    private fun threeSwitchesOn(name: String) {
+        process.app.audioSettings.setCallEachDart(true)
+        settings(name, TtsTestSupport.localVoiceForTheAppLanguage())
+    }
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun settingsCallsGreyedPortraitEnglish() = callsGreyed("settings_calls_greyed_portrait_en")
+
+    @Test
+    @Config(qualifiers = "+en-land")
+    fun settingsCallsGreyedLandscapeEnglish() = callsGreyed("settings_calls_greyed_landscape_en")
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun settingsCallsGreyedPortraitFrench() = callsGreyed("settings_calls_greyed_portrait_fr")
+
+    @Test
+    @Config(qualifiers = "+fr-land")
+    fun settingsCallsGreyedLandscapeFrench() = callsGreyed("settings_calls_greyed_landscape_fr")
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun settingsThreeSwitchesPortraitEnglish() = threeSwitchesOn("settings_three_switches_portrait_en")
+
+    @Test
+    @Config(qualifiers = "+en-land")
+    fun settingsThreeSwitchesLandscapeEnglish() = threeSwitchesOn("settings_three_switches_landscape_en")
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun settingsThreeSwitchesPortraitFrench() = threeSwitchesOn("settings_three_switches_portrait_fr")
+
+    @Test
+    @Config(qualifiers = "+fr-land")
+    fun settingsThreeSwitchesLandscapeFrench() = threeSwitchesOn("settings_three_switches_landscape_fr")
+
     @Test
     @Config(qualifiers = "+en-port")
     fun settingsVoiceAvailablePortraitEnglish() = voiceAvailable("settings_voice_available_portrait_en")

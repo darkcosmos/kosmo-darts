@@ -633,8 +633,8 @@ Kosmo's review of PR #33 completes or replaces parts of the issue; `docs/rules/a
 ### Sounds (E5)
 
 - `origin/assets/sound-effects` (18e4956, "normalize sound effect levels") merged into the mission branch (689980b).
-  Durations are unchanged (measured). `docs/sounds/CREDITS.md` records the normalization; the per-file gains were
-  asked to Kosmo on PR #33 (not in the commit).
+  Durations are unchanged (measured). `docs/sounds/CREDITS.md` is not changed: Kosmo withdrew the request to record
+  the normalization there, the per-file gains being no longer known (PR #33 comment, 2026-10-19).
 
 ### Tests added or changed
 

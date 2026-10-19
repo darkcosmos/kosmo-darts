@@ -163,9 +163,9 @@ They complete or replace the issue body; in case of contradiction they prevail.
 
 - AN24. The seven sounds were generated with ElevenLabs (free plan, which requires the mention "elevenlabs.io").
   `docs/sounds/CREDITS.md` lists the seven files, the tool, the plan and the generation date (October 2026); the
-  mention is also in the app (AN13). The files are used as delivered on the `assets/sound-effects` branch, which
-  normalized their levels (E5, ffmpeg `volume` filter, gain per file, Vorbis quality 5, October 2026; the gains are
-  listed in `docs/sounds/CREDITS.md`). The app applies no gain.
+  mention is also in the app (AN13). The files are used as delivered on the `assets/sound-effects` branch, whose
+  last commit evened out their levels (E5). The app applies no gain. `docs/sounds/CREDITS.md` does not describe the
+  normalization: the owner withdrew that request (PR #33 comment, 2026-10-19), the gains being no longer known.
 
 ## Dart calls and phrase variants
 

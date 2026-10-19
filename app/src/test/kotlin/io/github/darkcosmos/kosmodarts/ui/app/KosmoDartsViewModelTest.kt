@@ -42,7 +42,10 @@ class KosmoDartsViewModelTest {
         val turnScores = cues.filterIsInstance<X01Cue.TurnScore>()
         assertEquals(listOf(X01Cue.TurnScore(60), X01Cue.TurnScore(140), X01Cue.TurnScore(121)), turnScores)
         val turnStarts = cues.filterIsInstance<X01Cue.TurnStart>()
-        assertEquals(listOf(X01Cue.TurnStart(0, "Ann", null), X01Cue.TurnStart(1, "Bob", null)), turnStarts)
+        assertEquals(listOf(
+            X01Cue.TurnStart(0, "Ann", null, isGameStart = true),
+            X01Cue.TurnStart(1, "Bob", null, isGameStart = false),
+        ), turnStarts)
     }
 
     /** R4, AN7: the restored state is set directly: no cue and no write for an already completed turn. */

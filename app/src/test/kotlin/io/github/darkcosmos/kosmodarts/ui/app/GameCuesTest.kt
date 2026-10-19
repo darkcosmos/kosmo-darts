@@ -41,9 +41,9 @@ class GameCuesTest {
     /** AN1: a dart entry gives its dart cue. */
     @Test
     fun `AN1 a dart gives its dart cue`() {
-        assertEquals(listOf(X01Cue.DartHit), cuesOf(inGame(), AppEvent.NumberTapped(20)))
+        assertEquals(listOf(X01Cue.DartHit(Dart.single(20))), cuesOf(inGame(), AppEvent.NumberTapped(20)))
         assertEquals(listOf(X01Cue.DartMiss), cuesOf(inGame(), AppEvent.MissTapped))
-        assertEquals(listOf(X01Cue.DartHit), cuesOf(inGame(), AppEvent.BullTapped))
+        assertEquals(listOf(X01Cue.DartHit(Dart.BULL)), cuesOf(inGame(), AppEvent.BullTapped))
     }
 
     /** AN2: the third dart gives the end-of-turn cue after its dart cue. */
@@ -51,14 +51,17 @@ class GameCuesTest {
     fun `AN2 the third dart gives the turn score`() {
         val twoDarts = inGame(listOf(Dart.triple(20), Dart.triple(20)))
         val cues = cuesOf(twoDarts, AppEvent.MultiplierTapped(Multiplier.TRIPLE), AppEvent.NumberTapped(20))
-        assertEquals(listOf(X01Cue.DartHit, X01Cue.OneEighty), cues)
+        assertEquals(listOf(X01Cue.DartHit(Dart.triple(20)), X01Cue.OneEighty), cues)
     }
 
     /** AN4: Start opens the game and announces the first player. */
     @Test
     fun `AN4 start announces the first player`() {
         val setup = AppState(screen = Screen.Setup(SetupState.prefilled(config)))
-        assertEquals(listOf(X01Cue.TurnStart(0, "Ann", null)), cuesOf(setup, AppEvent.StartRequested))
+        assertEquals(
+            listOf(X01Cue.TurnStart(0, "Ann", null, isGameStart = true)),
+            cuesOf(setup, AppEvent.StartRequested),
+        )
     }
 
     /** AN4: an invalid setup does not start a game, so nothing is announced. */
@@ -82,7 +85,10 @@ class GameCuesTest {
     @Test
     fun `AN4 next player announces the next player`() {
         val waiting = reduceAll(inGame(listOf(Dart.single(1), Dart.single(1))), AppEvent.NumberTapped(1))
-        assertEquals(listOf(X01Cue.TurnStart(1, "Bob", null)), cuesOf(waiting, AppEvent.NextPlayerTapped))
+        assertEquals(
+            listOf(X01Cue.TurnStart(1, "Bob", null, isGameStart = false)),
+            cuesOf(waiting, AppEvent.NextPlayerTapped),
+        )
     }
 
     /** AN4: "Next player" after a bust announces the next player too. */
@@ -94,13 +100,25 @@ class GameCuesTest {
         assertEquals(expected, cuesOf(bust, AppEvent.NextPlayerTapped))
     }
 
-    /** AN5: "Finish game" in the checkout dialog announces the win. */
+    /** AN5 (E3): the winning dart gives its dart cue, then the win, as the checkout dialog opens. */
     @Test
-    fun `AN5 finish game announces the win`() {
+    fun `AN5 the winning dart announces the win`() {
+        val saved = SaveFixtures.WAITING_CHECKOUT.game
+        val beforeWin = AppState(screen = Screen.Game(GameScreenState(X01Game(saved.config, saved.darts.dropLast(1)))))
+        val winningDart = saved.darts.last()
+        val cues = enter(beforeWin, winningDart)
+        assertEquals(X01Cue.DartHit(winningDart), cues.first())
+        assertEquals(2, cues.size)
+        assert(cues.last() is X01Cue.GameShot || cues.last() is X01Cue.BigFish)
+    }
+
+    /** AN5 (E3): "Finish game" produces nothing: the win was announced on the winning dart. */
+    @Test
+    fun `AN5 finish game announces nothing`() {
         val checkout = AppState(screen = Screen.Game(SaveFixtures.WAITING_CHECKOUT.toGameScreenState()))
-        val cues = cuesOf(checkout, AppEvent.FinishGameTapped)
-        assertEquals(1, cues.size)
-        assertEquals(X01Cues.checkoutConfirmed(SaveFixtures.WAITING_CHECKOUT.game), cues.single())
+        val next = reducer.reduce(checkout, AppEvent.FinishGameTapped)
+        assertEquals(Screen.End::class, next.screen::class)
+        assertEquals(emptyList<X01Cue>(), gameCues(checkout, AppEvent.FinishGameTapped, next))
     }
 
     /** AN5, AN6: Undo in the checkout dialog gives the undo cue only, no win. */
@@ -116,12 +134,9 @@ class GameCuesTest {
         val checkout = AppState(screen = Screen.Game(SaveFixtures.WAITING_CHECKOUT.toGameScreenState()))
         val undone = reduceAll(checkout, AppEvent.UndoTapped)
         val lastDart = SaveFixtures.WAITING_CHECKOUT.game.darts.last()
-        val again = if (lastDart.multiplier == Multiplier.SINGLE) {
-            cuesOf(undone, numberEvent(lastDart))
-        } else {
-            cuesOf(undone, AppEvent.MultiplierTapped(lastDart.multiplier), numberEvent(lastDart))
-        }
-        assertEquals(listOf(X01Cue.DartHit), again)
+        val again = enter(undone, lastDart)
+        assertEquals(X01Cue.DartHit(lastDart), again.first())
+        assertEquals(2, again.size) // the win again
     }
 
     /** AN6: undo of a third dart, then the same dart: the end-of-turn cue is produced again. */
@@ -130,7 +145,10 @@ class GameCuesTest {
         val waiting = reduceAll(inGame(listOf(Dart.single(1), Dart.single(1))), AppEvent.NumberTapped(1))
         assertEquals(listOf(X01Cue.DartUndone), cuesOf(waiting, AppEvent.UndoTapped))
         val reopened = reduceAll(waiting, AppEvent.UndoTapped)
-        assertEquals(listOf(X01Cue.DartHit, X01Cue.TurnScore(3)), cuesOf(reopened, AppEvent.NumberTapped(1)))
+        assertEquals(
+            listOf(X01Cue.DartHit(Dart.single(1)), X01Cue.TurnScore(3)),
+            cuesOf(reopened, AppEvent.NumberTapped(1)),
+        )
     }
 
     /** AN6: undo of the first dart of a turn. */
@@ -146,7 +164,10 @@ class GameCuesTest {
         val next = reduceAll(twoDarts, AppEvent.NumberTapped(1), AppEvent.NextPlayerTapped)
         assertEquals(listOf(X01Cue.DartUndone), cuesOf(next, AppEvent.UndoTapped))
         val reopened = reduceAll(next, AppEvent.UndoTapped)
-        assertEquals(listOf(X01Cue.DartHit, X01Cue.TurnScore(3)), cuesOf(reopened, AppEvent.NumberTapped(1)))
+        assertEquals(
+            listOf(X01Cue.DartHit(Dart.single(1)), X01Cue.TurnScore(3)),
+            cuesOf(reopened, AppEvent.NumberTapped(1)),
+        )
     }
 
     /** AN6: undo with no dart does nothing, so no cue. */
@@ -188,6 +209,13 @@ class GameCuesTest {
     fun `AN7 outside the game nothing is announced`() {
         assertEquals(emptyList<X01Cue>(), cuesOf(AppState(), AppEvent.NewGame))
         assertEquals(emptyList<X01Cue>(), cuesOf(AppState(), AppEvent.SettingsTapped, AppEvent.Back))
+    }
+
+    /** Enters [dart] with the keypad and returns the cues of its last key. */
+    private fun enter(state: AppState, dart: Dart): List<X01Cue> = if (dart.multiplier == Multiplier.SINGLE) {
+        cuesOf(state, numberEvent(dart))
+    } else {
+        cuesOf(state, AppEvent.MultiplierTapped(dart.multiplier), numberEvent(dart))
     }
 
     private fun numberEvent(dart: Dart): AppEvent = when (dart) {

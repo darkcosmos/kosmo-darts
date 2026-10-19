@@ -4,6 +4,9 @@ import android.media.AudioManager
 import android.os.Looper
 import android.speech.tts.TextToSpeech
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -26,6 +29,7 @@ import io.github.darkcosmos.kosmodarts.ui.resume.AppProcess
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -41,191 +45,63 @@ import java.time.Duration
  * Voice and sounds during real games, through [io.github.darkcosmos.kosmodarts.MainActivity]
  * (docs/rules/announcements.md). The engine is Robolectric's text-to-speech; sounds are recorded by a fake player.
  */
-@RunWith(AndroidJUnit4::class)
-class AnnouncementsScreenTest {
-
-    @get:Rule
-    val composeRule = createEmptyComposeRule()
-
-    private val process = AppProcess()
-    private val audio = TestAudioFactory()
-
-    @Before
-    fun setUp() = process.app.replaceAudioFactory(audio)
-
-    @After
-    fun tearDown() {
-        process.close()
-        ShadowTextToSpeech.reset()
-    }
-
-    private fun string(id: Int, vararg args: Any): String = process.string(id, *args)
-
-    private fun key(tag: String): SemanticsNodeInteraction = composeRule.onNodeWithTag(tag)
-
-    private fun tap(vararg tags: String) = tags.forEach { key(it).performClick() }
-
-    private fun triple(number: Int) = tap(KeypadTags.TRIPLE, KeypadTags.number(number))
-
-    private fun double(number: Int) = tap(KeypadTags.DOUBLE, KeypadTags.number(number))
-
-    private fun single(vararg numbers: Int) = numbers.forEach { tap(KeypadTags.number(it)) }
-
-    private fun miss(times: Int = 1) = repeat(times) { tap(KeypadTags.MISS) }
-
-    private fun nextPlayer() = tap(KeypadTags.NEXT_PLAYER)
-
-    private fun undo() = tap(KeypadTags.UNDO)
-
-    private fun finishGame() = composeRule.onNodeWithText(string(R.string.checkout_finish)).performClick()
-
-    /** Lets every pending sound and voice play. */
-    private fun playEverything() {
-        composeRule.waitForIdle()
-        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(60))
-        composeRule.waitForIdle()
-    }
-
-    /**
-     * Runs the main looper one task at a time until the engine has received [text], so that a test can act before
-     * the engine reports its end. Independent of how many tasks lead there.
-     */
-    private fun runUntilSpoken(text: String) {
-        val looper = shadowOf(Looper.getMainLooper())
-        repeat(MAX_TASKS) {
-            if (text in spoken) return
-            looper.runOneTask()
-        }
-        error("\"$text\" was never sent to the engine")
-    }
-
-    private val spoken: List<String>
-        get() = ShadowTextToSpeech.getLastTextToSpeechInstance()?.let { shadowOf(it).spokenTextList }.orEmpty()
-
-    private val sounds: List<SoundEffect>
-        get() = audio.timeline.sounds
-
-    private val threeHits = List(3) { SoundEffect.DART_HIT }
-
-    /** From home: one player (or more), 301 double out, then Start. */
-    private fun startGame(vararg names: String = arrayOf("Ann")) {
-        composeRule.onNodeWithText(string(R.string.home_new_game)).performScrollTo().performClick()
-        composeRule.onNodeWithText("301").performClick()
-        if (names.size == 1) {
-            composeRule.onNodeWithContentDescription(string(R.string.setup_remove_player)).performClick()
-        }
-        names.forEachIndexed { index, name ->
-            composeRule.onNodeWithTag(SetupTags.nameField(index)).performScrollTo().performTextReplacement(name)
-        }
-        composeRule.onNodeWithText(string(R.string.setup_start)).performScrollTo().performClick()
-        composeRule.waitForIdle()
-    }
-
-    private fun launchWithVoice(vararg voices: android.speech.tts.Voice) {
-        voices.forEach(ShadowTextToSpeech::addVoice)
-        process.launchFresh()
-    }
-
-    /** Back on the game screen, "Abandon": the home screen. */
-    private fun abandonToHome() {
-        process.pressBack()
-        composeRule.onNodeWithText(string(R.string.game_abandon_confirm)).performClick()
-        composeRule.waitForIdle()
-    }
-
-    /**
-     * One player, 301: 180, no score, a bust, 94, then a checkout from 27; then a second game: 131, then a big fish.
-     * Covers every line of the AN8 table but the Settings one.
-     */
-    private fun playEveryAnnouncement() {
-        startGame("Ann")
-        initLastEngine()
-        triple(20); triple(20); triple(20) // 180, 121 left
-        playEverything()
-        nextPlayer()
-        miss(3) // no score
-        playEverything()
-        nextPlayer()
-        triple(20); triple(20) // 1 left: bust
-        playEverything()
-        nextPlayer()
-        triple(20); triple(11); single(1) // 94, 27 left
-        playEverything()
-        nextPlayer()
-        single(7); double(10) // checkout from 27
-        playEverything()
-        finishGame()
-        playEverything()
-
-        composeRule.onNodeWithText(string(R.string.end_rematch)).performScrollTo().performClick()
-        composeRule.waitForIdle()
-        // The end screen kept the voice: the rematch's first player is announced at once.
-        triple(20); triple(20); single(11) // 131, 170 left
-        playEverything()
-        nextPlayer()
-        triple(20); triple(20); tap(KeypadTags.BULL) // big fish
-        playEverything()
-        finishGame()
-        playEverything()
-    }
-
-    /** AN8: every English announcement of a game, in order. */
+internal class AnnouncementsScreenTest : AnnouncementsScreenTestBase() {
+    /** AN8, E1, E2: every English announcement of a game, in order; bust and 180 have no voice. */
     @Test
     @Config(qualifiers = "en-rUS")
     fun `AN8 English announcements`() {
         launchWithVoice(TtsTestSupport.englishLocal)
         playEveryAnnouncement()
 
+        assertEquals("Ann, you're throwing first.", audio.allSpoken.first())
         assertEquals(
             listOf(
-                "One hundred and eighty!",
-                "Ann, you require 121",
+                "Ann, your turn. You require 121.",
                 "No score",
-                "Ann, you require 121",
-                "Bust",
-                "Ann, you require 121",
+                "Ann, you're up. You require 121.",
+                "Ann, your turn. You require 121.",
                 "94",
-                "Ann, you require 27",
+                "Ann, you're up. You require 27.",
                 "Game shot! Ann wins",
-                "Ann",
+                "Ann to throw first.",
                 "131",
-                "Ann, you require 170",
-                "Big Fish! Ann wins",
+                "Ann, your turn. You require 170.",
+                "Game shot! Ann wins",
             ),
             audio.timeline.speech,
         )
+        assertEquals(listOf(SoundEffect.GAME_SHOT, SoundEffect.BIG_FISH), sounds.filter { it in winSounds })
     }
 
-    /** AN8: the same game in French. */
+    /** AN8, E1, E2: the same game in French; the voice says "tu". */
     @Test
     @Config(qualifiers = "fr-rFR")
     fun `AN8 French announcements`() {
         launchWithVoice(TtsTestSupport.frenchLocal)
         playEveryAnnouncement()
 
+        assertEquals("Ann, c'est toi qui commences.", audio.allSpoken.first())
         assertEquals(
             listOf(
-                "Cent quatre-vingts\u00A0!",
-                "Ann, il te reste 121",
+                "Ann, c'est ton tour. Il te reste 121.",
                 "Pas de score",
-                "Ann, il te reste 121",
-                "Bust",
-                "Ann, il te reste 121",
+                "Ann, à toi de jouer. Il te reste 121.",
+                "Ann, c'est ton tour. Il te reste 121.",
                 "94",
-                "Ann, il te reste 27",
+                "Ann, à toi de jouer. Il te reste 27.",
                 "Victoire de Ann",
-                "Ann",
+                "On commence avec Ann.",
                 "131",
-                "Ann, il te reste 170",
-                "Big Fish\u00A0! Victoire de Ann",
+                "Ann, c'est ton tour. Il te reste 170.",
+                "Victoire de Ann",
             ),
             audio.timeline.speech,
         )
     }
 
-    /** AN4, AN22: the first player's name is spoken at game start, once the engine is ready. */
+    /** AN4, AN22, E1: the first player is announced with a game start phrase, once the engine is ready. */
     @Test
-    fun `AN4 the first player's name is spoken at game start`() {
+    fun `AN4 the first player is announced at game start`() {
         launchWithVoice(TtsTestSupport.englishLocal)
         startGame("Ann", "Bob")
         assertEquals(emptyList<String>(), spoken)
@@ -233,10 +109,10 @@ class AnnouncementsScreenTest {
         initLastEngine()
         playEverything()
 
-        assertEquals(listOf("Ann"), spoken)
+        assertEquals(listOf("Ann, you're throwing first."), spoken)
     }
 
-    /** AN10: dart sounds, then the event sound, then the end-of-turn voice, then the next turn's voice. */
+    /** AN10, E2: dart sounds, then the 180 sound (no voice), then the next turn's voice after the 180 sound. */
     @Test
     fun `AN10 order of sounds and voices`() {
         launchWithVoice(TtsTestSupport.englishLocal)
@@ -246,17 +122,10 @@ class AnnouncementsScreenTest {
         audio.timeline.heard.clear()
 
         triple(20); triple(20); triple(20)
-        playEverything()
         nextPlayer()
         playEverything()
 
-        val heard = audio.timeline.heard.map {
-            when (it) {
-                is Heard.Sound -> it.effect.name
-                is Heard.Speech -> it.text
-            }
-        }
-        assertEquals(listOf("DART_HIT", "DART_HIT", "DART_HIT", "ONE_EIGHTY", "One hundred and eighty!", "Bob"), heard)
+        assertEquals(listOf("DART_HIT", "DART_HIT", "DART_HIT", "ONE_EIGHTY", "Bob, your turn."), heardAsText())
         val oneEighty = audio.timeline.heard[3].at
         val voice = audio.timeline.heard[4].at
         assertTrue("the voice waits for the 180 sound", voice - oneEighty >= 4_000)
@@ -275,7 +144,7 @@ class AnnouncementsScreenTest {
         playEverything()
 
         assertEquals(threeHits + SoundEffect.DART_CANCEL, sounds)
-        assertEquals(listOf("Ann"), spoken)
+        assertEquals(listOf("Ann, you're throwing first."), spoken)
     }
 
     /** AN23, AN14: with sounds off, an undo plays nothing. */
@@ -384,11 +253,11 @@ class AnnouncementsScreenTest {
         launchWithVoice(TtsTestSupport.englishLocal)
         startGame("Ann", "Bob")
         initLastEngine()
-        triple(20); triple(20); triple(20)
+        single(20, 20, 20)
         playEverything()
 
         assertEquals(emptyList<SoundEffect>(), sounds)
-        assertEquals(listOf("Ann", "One hundred and eighty!"), spoken)
+        assertEquals(listOf("Ann, you're throwing first.", "60"), spoken)
     }
 
     /** AN7: a rotation replays nothing. */
@@ -397,44 +266,40 @@ class AnnouncementsScreenTest {
         launchWithVoice(TtsTestSupport.englishLocal)
         startGame("Ann", "Bob")
         initLastEngine()
-        triple(20); triple(20); triple(20)
+        single(20, 20, 20)
         playEverything()
         val heardBefore = audio.timeline.heard.toList()
-        assertEquals(listOf("Ann", "One hundred and eighty!"), audio.allSpoken)
+        assertEquals(listOf("Ann, you're throwing first.", "60"), audio.allSpoken)
 
         process.rotate()
         initLastEngine()
         playEverything()
 
         assertEquals(heardBefore, audio.timeline.heard)
-        assertEquals(listOf("Ann", "One hundred and eighty!"), audio.allSpoken)
+        assertEquals(listOf("Ann, you're throwing first.", "60"), audio.allSpoken)
     }
 
-    /** AN7: resuming a waiting turn from home, after Android killed the app, or after a fresh launch: no replay. */
+    /** AN7: resuming a waiting turn (normal, bust or checkout), then returning after a kill: no replay. */
     @Test
     fun `AN7 nothing is replayed after a resume`() {
         ShadowTextToSpeech.addVoice(TtsTestSupport.englishLocal)
-        process.writeGame(SaveFixtures.WAITING_BUST)
-        process.launchFresh()
-        composeRule.onNodeWithText(string(R.string.home_resume_game)).performScrollTo().performClick()
-        composeRule.waitForIdle()
-        initLastEngine()
-        playEverything()
+        listOf(SaveFixtures.WAITING_NORMAL, SaveFixtures.WAITING_BUST, SaveFixtures.WAITING_CHECKOUT).forEach { saved ->
+            process.finish()
+            process.writeGame(saved)
+            process.launchFresh()
+            composeRule.onNodeWithText(string(R.string.home_resume_game)).performScrollTo().performClick()
+            composeRule.waitForIdle()
+            initLastEngine()
+            playEverything()
 
-        process.killInBackgroundAndReturn()
-        composeRule.waitForIdle()
-        initLastEngine()
-        playEverything()
-
-        process.finish()
-        process.launchFresh()
-        composeRule.onNodeWithText(string(R.string.home_resume_game)).performScrollTo().performClick()
-        composeRule.waitForIdle()
-        initLastEngine()
-        playEverything()
+            process.killInBackgroundAndReturn()
+            composeRule.waitForIdle()
+            initLastEngine()
+            playEverything()
+        }
 
         assertEquals(emptyList<Heard>(), audio.timeline.heard)
-        assertEquals(3, audio.speakers.size) // one engine per return to the game screen
+        assertEquals(6, audio.speakers.size) // one engine per return to the game screen
         assertEquals(emptyList<String>(), audio.allSpoken)
         key(GameTags.NO_VOICE_DIALOG).assertDoesNotExist()
     }
@@ -449,11 +314,11 @@ class AnnouncementsScreenTest {
         val audioManager = process.app.getSystemService(AudioManager::class.java)
         shadowOf(audioManager).setNextFocusRequestResponse(AudioManager.AUDIOFOCUS_REQUEST_FAILED)
 
-        triple(20); triple(20); triple(20)
+        single(20, 20, 20)
         playEverything()
 
-        assertEquals(listOf("Ann"), spoken)
-        assertEquals(SoundEffect.ONE_EIGHTY, sounds.last())
+        assertEquals(listOf("Ann, you're throwing first."), spoken)
+        assertEquals(threeHits, sounds)
     }
 
     /** AN21: when the game screen is no longer visible, nothing pending plays, and the engine is shut down. */
@@ -471,7 +336,7 @@ class AnnouncementsScreenTest {
         playEverything()
 
         assertEquals(threeHits, sounds)
-        assertEquals(listOf("Ann"), engine.spokenTextList)
+        assertEquals(listOf("Ann, you're throwing first."), engine.spokenTextList)
         assertTrue(engine.isShutdown)
         assertTrue(audio.soundPlayers.single().isReleased)
 
@@ -486,11 +351,11 @@ class AnnouncementsScreenTest {
         nextPlayer()
         single(1)
         playEverything()
-        assertEquals(listOf("Bob"), lastEngine().spokenTextList)
+        assertEquals(listOf("Bob, your turn."), lastEngine().spokenTextList)
         assertEquals(threeHits + SoundEffect.DART_HIT, sounds)
     }
 
-    /** AN18: a voice that fails during the game goes silent, without a message; sounds go on. */
+    /** AN18: a voice failing mid-game goes silent, without a message; sounds go on. */
     @Test
     fun `AN18 a voice failing mid-game goes silent without a message`() {
         launchWithVoice(TtsTestSupport.englishLocal)
@@ -498,49 +363,20 @@ class AnnouncementsScreenTest {
         initLastEngine()
         playEverything()
 
-        triple(20); triple(20); triple(20)
-        composeRule.waitForIdle()
-        // The engine fails on the 180 text before it reports the end of that text.
-        runUntilSpoken("One hundred and eighty!")
-        assertEquals(listOf("Ann", "One hundred and eighty!"), spoken)
-        lastEngine().utteranceProgressListener.onError("announcement-1", TextToSpeech.ERROR_SYNTHESIS)
-        playEverything()
-        nextPlayer()
-        triple(19); single(1); single(1)
-        playEverything()
-
-        assertEquals(listOf("Ann", "One hundred and eighty!"), spoken)
-        key(GameTags.NO_VOICE_DIALOG).assertDoesNotExist()
-        assertEquals(SoundEffect.DART_HIT, sounds.last())
-        assertEquals(7, sounds.size) // 3 hits, the 180 sound, then 3 hits
-    }
-
-    /** AN5, AN19: the win is announced on the end screen, where the volume buttons still set the media volume. */
-    @Test
-    fun `AN5 AN19 the win is announced on the end screen and a rematch announces its first player`() {
-        launchWithVoice(TtsTestSupport.englishLocal)
-        startGame("Ann", "Bob")
-        initLastEngine()
-        playEverything()
-        triple(20); triple(20); triple(20) // Ann: 121 left
-        nextPlayer()
         single(1, 1, 1)
         nextPlayer()
-        triple(20); triple(11); double(14) // checkout from 121
-        playEverything()
-        finishGame()
         composeRule.waitForIdle()
-
-        composeRule.onNodeWithText(string(R.string.end_rematch)).performScrollTo().assertExists()
-        assertEquals(AudioManager.STREAM_MUSIC, process.activity.volumeControlStream)
+        // The engine fails on Bob's turn phrase before it reports the end of that text.
+        runUntilSpoken("Bob, your turn.")
+        lastEngine().utteranceProgressListener.onError("announcement-2", TextToSpeech.ERROR_SYNTHESIS)
         playEverything()
-        assertEquals("Game shot! Ann wins", spoken.last())
-        assertEquals(SoundEffect.GAME_SHOT, sounds.last())
-
-        composeRule.onNodeWithText(string(R.string.end_rematch)).performScrollTo().performClick()
+        single(1, 1, 1)
+        nextPlayer()
         playEverything()
-        assertEquals("Bob", spoken.last()) // the rematch starts with the second player
-        assertEquals(1, audio.speakers.size) // the same session went on from the game to the end screen
+
+        assertEquals(listOf("Ann, you're throwing first.", "3", "Bob, your turn."), spoken)
+        key(GameTags.NO_VOICE_DIALOG).assertDoesNotExist()
+        assertEquals(6, sounds.count { it == SoundEffect.DART_HIT })
     }
 
     /** AN19: the volume buttons set the media volume on the game and end screens, not on the other screens. */
@@ -558,10 +394,5 @@ class AnnouncementsScreenTest {
 
         abandonToHome()
         assertEquals(AudioManager.USE_DEFAULT_STREAM_TYPE, process.activity.volumeControlStream)
-    }
-
-    private companion object {
-        /** More than any announcement ever schedules: a guard against an endless loop. */
-        const val MAX_TASKS = 100
     }
 }

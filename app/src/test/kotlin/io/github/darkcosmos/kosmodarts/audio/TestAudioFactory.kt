@@ -24,6 +24,8 @@ internal class TestAudioFactory : AudioFactory {
 
     override fun scheduler(): Scheduler = clock
 
+    override fun variantPicker(): VariantPicker = FirstVariant
+
     /** Every text that any engine created by this factory really spoke, held texts included. */
     val allSpoken: List<String>
         get() = speakers.filterIsInstance<RecordingSpeaker>().flatMap { it.spokenByEngine }

@@ -12,6 +12,9 @@ interface AudioFactory {
     fun speaker(context: Context): Speaker
 
     fun scheduler(): Scheduler
+
+    /** How phrase variants are drawn (AN26); tests use a fixed draw. */
+    fun variantPicker(): VariantPicker
 }
 
 /** The real [SoundPool][android.media.SoundPool] and text-to-speech engine. */
@@ -28,4 +31,6 @@ class SystemAudioFactory : AudioFactory {
     )
 
     override fun scheduler(): Scheduler = HandlerScheduler()
+
+    override fun variantPicker(): VariantPicker = RandomVariantPicker()
 }

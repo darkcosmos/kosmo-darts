@@ -76,7 +76,8 @@ class AudioBinder(
             sounds = factory.soundPlayer(activity),
             speaker = speaker,
             scheduler = factory.scheduler(),
-            phrases = ResourcePhrases(activity.resources),
+            // One set of phrase variants per session: "never twice in a row" holds across turns and a rematch.
+            phrases = ResourcePhrases(activity.resources, PhraseVariants(factory.variantPicker())),
             settings = { settings.settings.value },
         )
         speaker?.let { reportUnavailableVoice(it) }

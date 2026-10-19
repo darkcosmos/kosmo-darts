@@ -18,4 +18,4 @@ rule AN13 of `docs/rules/announcements.md`).
 - Tool: ElevenLabs sound effects generator.
 - Plan: free.
 - Generated: October 2026.
-- The files are used as delivered on the `assets/sound-effects` branch (commit b632807), unchanged.
+- The files are used as delivered on the `assets/sound-effects` branch, unchanged.

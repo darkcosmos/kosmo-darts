@@ -18,6 +18,9 @@ class AudioSettingsRepository(private val store: AudioSettingsStore) {
 
     fun setSoundsEnabled(enabled: Boolean) = update { it.copy(soundsEnabled = enabled) }
 
+    /** AN25. */
+    fun setCallEachDart(enabled: Boolean) = update { it.copy(callEachDart = enabled) }
+
     /** AN16: the "no offline voice" message is never shown again on this device. */
     fun markNoVoiceNoticeShown() = update { it.copy(noVoiceNoticeShown = true) }
 

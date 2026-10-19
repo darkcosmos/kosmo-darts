@@ -92,6 +92,27 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `AN14 AN25 call each dart is off by default and can be switched on with the voice on`() {
+        assertFalse(state.callEachDart)
+        viewModel.onEvent(SettingsEvent.CallEachDartToggled(true))
+        assertTrue(state.callEachDart)
+        assertTrue(store.read().callEachDart)
+    }
+
+    @Test
+    fun `AN25 U10 with the voice off, call each dart keeps its value and ignores taps`() {
+        viewModel.attachProbe(probe(VoiceStatus.AVAILABLE)) { false }
+        viewModel.onEvent(SettingsEvent.CallEachDartToggled(true))
+        viewModel.onEvent(SettingsEvent.VoiceToggled(false))
+
+        viewModel.onEvent(SettingsEvent.CallEachDartToggled(false))
+
+        assertTrue(state.callEachDart)
+        assertTrue(store.read().callEachDart)
+        assertFalse(state.voiceEnabled)
+    }
+
+    @Test
     fun `AN17 install shows only without a usable voice and when the engine can install`() {
         viewModel.attachProbe(probe(VoiceStatus.NO_USABLE_VOICE)) { true }
         assertTrue(state.canInstall)
