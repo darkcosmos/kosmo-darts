@@ -26,7 +26,8 @@ class VisitBoxTextTest {
     private fun lastVisit(points: Int) =
         VisitBoxText(R.string.game_visit_value, R.string.game_visit_last_description, listOf(points))
 
-    private val notPlayed = VisitBoxText(R.string.game_visit_value, R.string.game_visit_not_played_description, listOf(0))
+    private val notPlayed =
+        VisitBoxText(R.string.game_visit_value, R.string.game_visit_not_played_description, listOf(0))
 
     private val bust = VisitBoxText(R.string.game_bust, R.string.game_visit_last_bust_description, emptyList())
 

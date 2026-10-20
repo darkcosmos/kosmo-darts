@@ -76,7 +76,8 @@ class VisitTotalScreensTest {
     private fun assertLastVisit(player: Int, points: Int) =
         assertBox(player, "$points", string(R.string.game_visit_last_description, points))
 
-    private fun assertNotPlayed(player: Int) = assertBox(player, "0", string(R.string.game_visit_not_played_description))
+    private fun assertNotPlayed(player: Int) =
+        assertBox(player, "0", string(R.string.game_visit_not_played_description))
 
     private fun assertBust(player: Int) =
         assertBox(player, string(R.string.game_bust), string(R.string.game_visit_last_bust_description))
