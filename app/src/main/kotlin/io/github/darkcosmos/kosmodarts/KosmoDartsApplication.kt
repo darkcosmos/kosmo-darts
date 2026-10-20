@@ -2,15 +2,35 @@ package io.github.darkcosmos.kosmodarts
 
 import android.app.Application
 import androidx.annotation.VisibleForTesting
+import io.github.darkcosmos.kosmodarts.audio.AudioFactory
+import io.github.darkcosmos.kosmodarts.audio.SystemAudioFactory
 import io.github.darkcosmos.kosmodarts.persistence.AtomicFileStore
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
+import io.github.darkcosmos.kosmodarts.settings.AudioSettingsRepository
+import io.github.darkcosmos.kosmodarts.settings.SharedPreferencesAudioSettingsStore
 import java.io.File
 import java.util.concurrent.Executors
 
-/** Holds the process-wide [persistence], which outlives activities and ViewModels (ADR 0002, decision 1). */
+/**
+ * Holds the process-wide [persistence] and [audioSettings], which outlive activities and ViewModels (ADR 0002,
+ * decision 1; ADR 0004, decision 2).
+ */
 class KosmoDartsApplication : Application() {
 
     private var current: Persistence? = null
+    private var currentAudioSettings: AudioSettingsRepository? = null
+
+    /** Sound settings of the device (ADR 0004, decision 2). Read on first use, on the main thread. */
+    val audioSettings: AudioSettingsRepository
+        get() = currentAudioSettings ?: AudioSettingsRepository(
+            SharedPreferencesAudioSettingsStore(
+                getSharedPreferences(SharedPreferencesAudioSettingsStore.FILE_NAME, MODE_PRIVATE),
+            ),
+        ).also { currentAudioSettings = it }
+
+    /** Creates the sound player and the speaker of each screen. Tests replace it with [replaceAudioFactory]. */
+    var audioFactory: AudioFactory = SystemAudioFactory()
+        private set
 
     /** Created on first use, on the main thread. */
     val persistence: Persistence
@@ -20,6 +40,18 @@ class KosmoDartsApplication : Application() {
     @VisibleForTesting
     internal fun replacePersistence(persistence: Persistence) {
         current = persistence
+    }
+
+    /** Lets a test record sounds and speech before any activity. */
+    @VisibleForTesting
+    internal fun replaceAudioFactory(factory: AudioFactory) {
+        audioFactory = factory
+    }
+
+    /** Lets a test start from given sound settings before any activity. */
+    @VisibleForTesting
+    internal fun replaceAudioSettings(repository: AudioSettingsRepository) {
+        currentAudioSettings = repository
     }
 
     private fun createPersistence(): Persistence {

@@ -86,6 +86,16 @@ internal class AppProcess {
 
     fun pressBack() = activity.onBackPressedDispatcher.onBackPressed()
 
+    /** The app goes to the background (another app, screen off): the activity is stopped, not destroyed. */
+    fun stopActivity() {
+        checkNotNull(controller).pause().stop()
+    }
+
+    /** Back to the app after [stopActivity]. */
+    fun restartActivity() {
+        checkNotNull(controller).restart().start().resume()
+    }
+
     /** Stops the activity and waits for every pending write. */
     fun finish() {
         controller?.let { running ->

@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +16,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -24,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -42,6 +46,7 @@ import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 
 private val CONTENT_MAX_WIDTH = 560.dp
 private val MIN_TOUCH_TARGET = 48.dp
+private val GEAR_CLEARANCE = 56.dp
 
 /** Home screen; with a saved game, its summary, "New game" and "Resume game" under it (rules R2, R3). */
 @Composable
@@ -50,40 +55,64 @@ fun HomeScreen(home: Screen.Home, onEvent: (AppEvent) -> Unit, modifier: Modifie
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background,
     ) {
-        Column(
-            modifier = Modifier
-                .safeDrawingPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = stringResource(R.string.home_title),
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.semantics { heading() },
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = stringResource(R.string.home_welcome),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(modifier = Modifier.height(40.dp))
-            val saved = home.resumableGame
-            if (saved == null) {
-                Button(onClick = { onEvent(AppEvent.NewGame) }) {
-                    Text(text = stringResource(R.string.home_new_game))
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .safeDrawingPadding()
+                    .verticalScroll(rememberScrollState())
+                    // The top padding keeps scrolled content clear of the gear (AN13).
+                    .padding(start = 24.dp, end = 24.dp, bottom = 24.dp, top = GEAR_CLEARANCE),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = stringResource(R.string.home_title),
+                    style = MaterialTheme.typography.displaySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.semantics { heading() },
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = stringResource(R.string.home_welcome),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(modifier = Modifier.height(40.dp))
+                val saved = home.resumableGame
+                if (saved == null) {
+                    Button(onClick = { onEvent(AppEvent.NewGame) }) {
+                        Text(text = stringResource(R.string.home_new_game))
+                    }
+                } else {
+                    SavedGameActions(ResumeSummary.of(saved), onEvent)
                 }
-            } else {
-                SavedGameActions(ResumeSummary.of(saved), onEvent)
             }
+            SettingsButton(onEvent, Modifier.align(Alignment.TopEnd))
         }
     }
     if (home.isNewGameDialogShown) NewGameDialog(onEvent)
+}
+
+/** AN13: the gear opens the Settings screen. It takes the status bar and cutout insets, like the content. */
+@Composable
+private fun SettingsButton(onEvent: (AppEvent) -> Unit, modifier: Modifier) {
+    IconButton(
+        onClick = { onEvent(AppEvent.SettingsTapped) },
+        modifier = modifier
+            .safeDrawingPadding()
+            .padding(4.dp)
+            .sizeIn(minWidth = MIN_TOUCH_TARGET, minHeight = MIN_TOUCH_TARGET)
+            .testTag(HomeTags.SETTINGS),
+    ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_settings),
+            contentDescription = stringResource(R.string.home_settings),
+            tint = MaterialTheme.colorScheme.onBackground,
+        )
+    }
 }
 
 /** "Resume game" is the main action while a game is saved, but stays under "New game" (owner decision, Q1). */

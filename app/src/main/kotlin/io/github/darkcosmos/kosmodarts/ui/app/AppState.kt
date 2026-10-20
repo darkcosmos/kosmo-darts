@@ -19,7 +19,18 @@ sealed interface Screen {
     /** @property isRestoreFailedShown whether the "saved game could not be resumed" message is open (rule R9). */
     data class Setup(val setup: SetupState, val isRestoreFailedShown: Boolean = false) : Screen
 
-    data class Game(val game: GameScreenState) : Screen
+    /**
+     * @property isNewGame whether "Start" or "Rematch" opened this screen, rather than a resume (AN4, AN16).
+     * @property noVoiceNotice the open "no offline voice" message (AN16), or `null`. Neither is saved.
+     */
+    data class Game(
+        val game: GameScreenState,
+        val isNewGame: Boolean = false,
+        val noVoiceNotice: NoVoiceNotice? = null,
+    ) : Screen
+
+    /** The "Settings" screen (AN13); Back returns to [home], with its saved game summary. */
+    data class Settings(val home: Home) : Screen
 
     /** End of a finished leg. */
     data class End(val game: X01Game) : Screen
@@ -94,4 +105,16 @@ sealed interface AppEvent {
     data object AbandonDismissed : AppEvent
 
     data object Rematch : AppEvent
+
+    /** The gear on the home screen (AN13). */
+    data object SettingsTapped : AppEvent
+
+    /** The game screen found no usable voice (AN16). The ViewModel decides whether the message shows. */
+    data class VoiceUnavailable(val canInstall: Boolean) : AppEvent
+
+    /** "OK" or back on the "no offline voice" message (AN16). */
+    data object NoVoiceNoticeDismissed : AppEvent
+
+    /** "Install a voice" on the "no offline voice" message: it also closes it (AN16, AN17). */
+    data object InstallVoiceTapped : AppEvent
 }

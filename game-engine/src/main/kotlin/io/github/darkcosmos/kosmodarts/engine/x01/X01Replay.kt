@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.engine.x01
 
-private const val DARTS_PER_TURN = 3
+/** Maximum number of darts in a turn (rule T1). */
+internal const val DARTS_PER_TURN = 3
 
 /** Result of a single dart under rules S2 and S3. */
 private enum class DartOutcome { SCORED, BUST, CHECKOUT }

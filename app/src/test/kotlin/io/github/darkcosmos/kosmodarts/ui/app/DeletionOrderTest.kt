@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.settings.inMemoryAudioSettings
 import io.github.darkcosmos.kosmodarts.persistence.GameLoad
 import io.github.darkcosmos.kosmodarts.persistence.InvalidSaveReason
 import io.github.darkcosmos.kosmodarts.persistence.ManualExecutor
@@ -28,7 +29,8 @@ class DeletionOrderTest {
     private val gameStore = MemoryStore()
     private val persistence = Persistence(gameStore, MemoryStore(), executor)
 
-    private fun viewModel(initial: AppState) = KosmoDartsViewModel(Random(0), initial) { persistence.applyEffects(it) }
+    private fun viewModel(initial: AppState) =
+        KosmoDartsViewModel(Random(0), initial, inMemoryAudioSettings()) { persistence.applyEffects(it) }
 
     @Test
     fun `R6 a dart then Finish game leaves no file`() {

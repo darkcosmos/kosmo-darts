@@ -23,6 +23,8 @@ fun savedGameOf(state: AppState): SavedGame? = when (val screen = state.screen) 
     is Screen.Home -> screen.resumableGame
     is Screen.Setup -> null
     is Screen.End -> null
+    // Opening Settings from home keeps the saved game of that home screen.
+    is Screen.Settings -> screen.home.resumableGame
 }
 
 /** What to write or delete after the event that changed [before] into [after]. Pure. */

@@ -46,6 +46,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01PlayerState
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.NoVoiceNotice
 import io.github.darkcosmos.kosmodarts.ui.format.averageText
 import io.github.darkcosmos.kosmodarts.ui.format.dartText
 import io.github.darkcosmos.kosmodarts.ui.format.dartsText
@@ -61,7 +62,12 @@ private val REMAINING_SIZE = 88.sp
  * is displayed, and system back opens the "Abandon the game?" confirmation.
  */
 @Composable
-fun GameScreen(game: GameScreenState, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
+fun GameScreen(
+    game: GameScreenState,
+    onEvent: (AppEvent) -> Unit,
+    modifier: Modifier = Modifier,
+    noVoiceNotice: NoVoiceNotice? = null,
+) {
     Surface(
         modifier = modifier
             .fillMaxSize()
@@ -87,6 +93,7 @@ fun GameScreen(game: GameScreenState, onEvent: (AppEvent) -> Unit, modifier: Mod
         game.pendingTurn?.takeIf { game.isCheckoutDialogShown }?.let { turn ->
             CheckoutDialog(game.game.state.players[turn.playerIndex].name, turn.darts, onEvent)
         }
+        noVoiceNotice?.let { NoVoiceDialog(it, onEvent) }
     }
 }
 
