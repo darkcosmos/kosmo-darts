@@ -58,14 +58,23 @@ The engine derives one state per player from the game state (configuration and o
   | bust | `BUST` | Last turn: bust | Dernière volée : bust |
 
   `BUST` is the same text in English and French (existing `game_bust` resource). French descriptions use a
-  non-breaking space before the colon.
+  non-breaking space before the colon. The description does not repeat the player name: TalkBack reads the box
+  after the player's name and scores, in the order of the screen (top to bottom, then start to end).
 - VT9. Every player's box is framed and visible at all times during the game, next to his remaining score, for every
-  player. The "Prev." / « Préc. » label and the "BUST" badge of a waiting bust (PR #28) stay unchanged (Q2).
+  player. The "Prev." / « Préc. » label and the "BUST" badge of a waiting bust (PR #28) stay (Q2); only their position
+  may change on narrow lines (VT11).
 - VT10. The highlighted player's box is inside his highlighted card and takes the card's existing colors; the other
   boxes take the existing colors of the player rows. No new color or style is created. Contrast is checked in the
   dark theme (Q1).
-- VT11. Layout: in portrait and in landscape, with 1 to 4 players (X01 rule C4): no box text is truncated, no box
-  pushes the remaining score out of the screen, and a box keeps the same size whether it shows `BUST`, `180`, or any
-  other value. Player names keep their existing behaviour (cut with an ellipsis when too long).
+- VT11. Layout: in portrait and in landscape, with 1 to 4 players (X01 rule C4), at every font size up to the
+  largest one offered by Android (scale 2.0):
+  - the box is right after the remaining score, on its right, or directly below it when the width runs out;
+  - no box text is truncated, and a box keeps the same size whether it shows `BUST`, `180`, or any other value;
+  - the remaining score is never pushed out of the screen, squeezed, wrapped or clipped: it stays complete on one
+    line. In the highlighted card, when the line is too narrow, the BUST badge and the box go on a second line under
+    the remaining score;
+  - a player name always keeps at least the width of six characters of its style. In a player row, when the line is
+    too narrow, the average and "Prev." go on a second line under the name. A name longer than its space is still
+    cut with an ellipsis, as before.
 - VT12. Translating states to texts happens outside composables (UI state mapping); composables only render the
   mapped texts.
