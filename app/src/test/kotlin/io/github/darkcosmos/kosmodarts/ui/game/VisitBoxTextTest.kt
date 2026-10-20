@@ -53,12 +53,27 @@ class VisitBoxTextTest {
     }
 
     @Test
-    fun `VT8 VT6 a waiting bust keeps the next player on his last visit`() {
+    fun `VT13 VT6 a waiting bust hides the thrower box and keeps the next player on his last visit`() {
         // Ann has 121: T20 T20 leaves 1, a bust in double out.
         val waiting = annAt121().triples(20, 20)
         assertTrue(waiting.isBustShown)
-        assertEquals(listOf(bust, lastVisit(3)), visitBoxTexts(waiting))
+        assertEquals(listOf(null, lastVisit(3)), visitBoxTexts(waiting))
         assertEquals(listOf(bust, inProgress(0)), visitBoxTexts(waiting.nextPlayer()))
+    }
+
+    @Test
+    fun `VT13 VT7 undoing the bust dart brings the box back`() {
+        val reopened = annAt121().triples(20, 20).undo()
+        assertEquals(listOf(inProgress(60), lastVisit(3)), visitBoxTexts(reopened))
+    }
+
+    @Test
+    fun `VT13 one player waiting a bust has no box until Next player`() {
+        // Ann alone has 121 after T20 T20 T20 and Next player; T20 T20 leaves 1, a bust.
+        val waiting = start(X01Config(listOf("Ann"), startScore = 301)).triples(20, 20, 20).nextPlayer().triples(20, 20)
+        assertTrue(waiting.isBustShown)
+        assertEquals(listOf(null), visitBoxTexts(waiting))
+        assertEquals(listOf(inProgress(0)), visitBoxTexts(waiting.nextPlayer()))
     }
 
     @Test

@@ -24,7 +24,8 @@ Out of scope (issue): voice announcement of the total, averages or statistics, h
 visual redesign. Out of scope (owner answers): light theme (Q1); removing or changing "Prev." / « Préc. » (Q2).
 
 Not done here, on purpose: `ui/game/LastTurnScore.kt` (the "Prev." label, PR #28) also reads the last completed
-turn. It stays unchanged to keep this PR minimal (see Alternatives).
+turn. It stays unchanged to keep this PR minimal (see Alternatives). *Superseded by PR37-R1: `LastTurnScore.kt` is
+deleted (see the last section).*
 
 ## Approach
 
@@ -154,7 +155,8 @@ The box description does not repeat the player name: the name is read just befor
   `currentTurnDarts` already give, and the issue forbids stored duplicates.
 - **Rebase `LastTurnScore` on `VisitTotals.lastCompleted`** (A1): it would remove a near-duplicate, but it changes
   validated code outside the issue. It is left for a follow-up. In this PR, one test proves that both give the same
-  points for normal and checkout turns (Test plan), so they cannot diverge unnoticed.
+  points for normal and checkout turns (Test plan), so they cannot diverge unnoticed. *Superseded by PR37-R1: the
+  "Prev." label and `LastTurnScore` are removed, so there is no duplicate left.*
 - **Fixed box width in dp**: rejected. It breaks at large font sizes; measuring the reference texts follows the font
   scale.
 - **Shrinking text or hiding "Prev." when the row is narrow** (U1): rejected. Shrinking hurts readability, and Q2
@@ -179,11 +181,13 @@ Changed:
 - `app/src/main/kotlin/io/github/darkcosmos/kosmodarts/ui/game/GameTags.kt`: `visitTotal(playerIndex)`,
   `playerName(playerIndex)`, `remaining(playerIndex)` (layout tests).
 - `app/src/main/res/values/strings.xml`, `app/src/main/res/values-fr/strings.xml`: four descriptions, one value format.
-- `app/src/test/kotlin/io/github/darkcosmos/kosmodarts/ui/game/LastTurnScoreTest.kt`: the A1 consistency test.
+- ~~`app/src/test/kotlin/io/github/darkcosmos/kosmodarts/ui/game/LastTurnScoreTest.kt`: the A1 consistency test.~~
+  Superseded by PR37-R1: the file is deleted.
 - `app/src/test/kotlin/io/github/darkcosmos/kosmodarts/screenshots/X01ScreensScreenshotTest.kt`: one new capture
   (waiting bust, 4 players, font scale 2.0).
 
-Unchanged: the save format and codec, `GameScreenState`, `LastTurnScore.kt`, the theme, the build files. No
+Unchanged: the save format and codec, `GameScreenState`, the theme, the build files (`LastTurnScore.kt` is deleted,
+PR37-R1). No
 dependency is added: Robolectric 4.17 and Roborazzi 1.76.0 are already in the catalog.
 
 Housekeeping: the untracked issue #30 leftover under `app/src/main/kotlin/.../ui/game/.git/` has been deleted, with
@@ -257,8 +261,9 @@ second round, `AppEvent.Rematch` from the end screen, and `NewGame` then Start f
 `visitBoxTexts` on the resulting game screen gives "Current turn: 0" for the new first player and "Not played yet"
 for the others (VT2, VT5).
 
-`LastTurnScoreTest` (A1): for normal turns and a checkout turn, `lastTurnScores` and `VisitTotals.lastCompleted`
-give the same points, and both give bust and none for the same players.
+~~`LastTurnScoreTest` (A1): for normal turns and a checkout turn, `lastTurnScores` and `VisitTotals.lastCompleted`
+give the same points, and both give bust and none for the same players.~~ Superseded by PR37-R1: deleted with
+`LastTurnScore`.
 
 ### Robolectric (`MainActivity`, Compose UI test, as `X01ScreensTest`)
 
@@ -360,7 +365,8 @@ The issue's ten steps (1 to 10), then four steps for the owner answers and the r
 
 - None for the product. U4 (visible label) is listed in Known limitations and asked in step 2 of the phone
   verification; the decision stays with Kosmo.
-- `LastTurnScore` stays unchanged in this PR; a follow-up issue can rebase it on `VisitTotals.lastCompleted` (A1).
+- ~~`LastTurnScore` stays unchanged in this PR; a follow-up issue can rebase it on `VisitTotals.lastCompleted` (A1).~~
+  Superseded by PR37-R1: `LastTurnScore` is deleted, no follow-up needed.
 
 ## Owner review of PR #37 (PR37-R1, PR37-R2, 2026-10-20)
 
@@ -461,3 +467,17 @@ and 13 and from the U8 question, which no longer applies.
 
 - None blocking. One reading to confirm: "supprimer Préc." is applied everywhere, in the player rows **and** in the
   card of the player who throws. Kosmo's text does not say "rows only", so the plan removes both.
+
+### Implementation notes (code phase of PR37-R1, PR37-R2)
+
+- Without "Prev.", a row with the longest test names fits on one line on a Pixel 7 in every case the layout test
+  checks, the largest font in landscape included. The layout test therefore expects one line in its 4 cases (it
+  reads Dan's row). The `OneOrTwoLines` fallback of rows stays: the captures show that it still triggers for some
+  rows at the largest font in landscape (Bob's "Avg. 3.00" goes under his name).
+- Probe, not kept as a test: on a narrow 320 dp phone at the largest font, a name gets less than
+  `NAME_MIN_REFERENCE`, even with the fallback. The remaining score and the box alone take the row. The Pixel 7 is
+  the target phone of the issue; this is reported, not solved here.
+- Layout jump (design review): the layout test checks that the card remaining keeps its position and height in its
+  card before the bust, while it waits and after "Next player".
+- T8: the issue scenario undoes the bust dart while the badge is shown and checks that the box comes back as
+  "Current turn: 60".

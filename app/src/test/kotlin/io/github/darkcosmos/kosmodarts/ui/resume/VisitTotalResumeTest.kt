@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.resume
 
 import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -14,6 +15,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
+import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -48,12 +50,16 @@ class VisitTotalResumeTest {
     private fun bust() =
         Box(process.string(R.string.game_bust), process.string(R.string.game_visit_last_bust_description))
 
-    private fun assertBoxes(expected: List<Box>) {
+    /** One entry per player; `null` means no box (VT13: the thrower of a waiting bust). */
+    private fun assertBoxes(expected: List<Box?>) {
         composeRule.waitForIdle()
         expected.forEachIndexed { player, box ->
-            composeRule.onNodeWithTag(GameTags.visitTotal(player)).performScrollTo()
-                .assertTextEquals(box.text)
-                .assertContentDescriptionEquals(box.description)
+            val node = composeRule.onNodeWithTag(GameTags.visitTotal(player))
+            if (box == null) {
+                node.assertDoesNotExist()
+            } else {
+                node.performScrollTo().assertTextEquals(box.text).assertContentDescriptionEquals(box.description)
+            }
         }
         composeRule.onNodeWithTag(GameTags.visitTotal(expected.size)).assertDoesNotExist()
     }
@@ -91,12 +97,16 @@ class VisitTotalResumeTest {
         val config = X01Config(listOf("Ann", "Bob"), startScore = 301)
         val t20 = Dart.triple(20)
         resume(SavedGame(X01Game(config, listOf(t20, t20, t20) + darts(1, 1, 1) + listOf(t20, t20)), true))
-        val expected = listOf(bust(), lastVisit(3))
+        val expected = listOf(null, lastVisit(3))
         assertBoxes(expected)
+        composeRule.onNodeWithTag(GameTags.CARD_BUST).performScrollTo().assertIsDisplayed()
 
         process.rotate()
 
         assertBoxes(expected)
+        composeRule.onNodeWithTag(GameTags.CARD_BUST).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag(KeypadTags.NEXT_PLAYER).performClick()
+        assertBoxes(listOf(bust(), inProgress(0)))
     }
 
     /** VT6 (Q3): Bob is not shown as throwing while Ann's turn waits, also after process death. */

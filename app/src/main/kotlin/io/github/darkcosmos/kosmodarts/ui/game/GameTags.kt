@@ -10,7 +10,7 @@ object GameTags {
 
     fun dartSlot(index: Int): String = "game_dart_slot_$index"
 
-    fun lastTurnScore(playerIndex: Int): String = "game_last_turn_score_$playerIndex"
+    fun average(playerIndex: Int): String = "game_average_$playerIndex"
 
     fun visitTotal(playerIndex: Int): String = "game_visit_total_$playerIndex"
 

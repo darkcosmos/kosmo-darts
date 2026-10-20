@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.x01
 
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -82,9 +83,15 @@ class VisitTotalScreensTest {
     private fun assertBust(player: Int) =
         assertBox(player, string(R.string.game_bust), string(R.string.game_visit_last_bust_description))
 
+    /** VT13: the card of a waiting bust shows the BUST badge and no box. */
+    private fun assertBadgeOnly(player: Int) {
+        key(GameTags.CARD_BUST).performScrollTo().assertIsDisplayed()
+        key(GameTags.visitTotal(player)).assertDoesNotExist()
+    }
+
     /** VT1 to VT8: the phone scenario of the issue, three players, 301 double out. */
     @Test
-    fun `VT2 to VT8 the issue scenario with three players`() {
+    fun `VT2 to VT13 the issue scenario with three players`() {
         startGame("Ann", "Bob", "Cid")
         assertInProgress(0, 0)
         assertNotPlayed(1)
@@ -120,11 +127,18 @@ class VisitTotalScreensTest {
         single(1, 1, 1)
         nextPlayer()
 
-        // VT4: Bob has 121; T20 T20 leaves 1, a bust in double out. His remaining does not change.
+        // VT4, VT13: Bob has 121; T20 T20 leaves 1, a bust in double out. His remaining does not change, and while
+        // the bust waits only the BUST badge is shown: no box.
         triple(20)
         triple(20)
-        assertBust(1)
+        assertBadgeOnly(1)
         key(GameTags.CURRENT_REMAINING).assertTextEquals("121")
+        // VT13, VT7: undoing the bust dart while the badge is shown brings the box back.
+        undo()
+        assertInProgress(1, 60)
+        key(GameTags.CARD_BUST).assertDoesNotExist()
+        triple(20)
+        assertBadgeOnly(1)
         nextPlayer()
         assertBust(1)
         miss()

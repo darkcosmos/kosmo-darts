@@ -60,11 +60,12 @@ private const val CARD_ORDER_BUST = 2f
 private const val CARD_ORDER_BOX = 3f
 
 /**
- * Remaining score of the highlighted card, then the BUST badge (while a bust waits) and the visit total box (VT9).
- * The remaining keeps the whole first line; the badge and the box go under it when the line is too narrow (VT11).
+ * Remaining score of the highlighted card, then the BUST badge while a bust waits, or else the visit total box (VT9,
+ * VT13). The remaining keeps the whole first line; the badge or the box goes under it when the line is too narrow
+ * (VT11).
  */
 @Composable
-internal fun CardScoreLine(remaining: Int, isBust: Boolean, visitBox: VisitBoxText, index: Int, spacing: Dp) {
+internal fun CardScoreLine(remaining: Int, isBust: Boolean, visitBox: VisitBoxText?, index: Int, spacing: Dp) {
     val remainingStyle = LocalTextStyle.current.merge(
         TextStyle(fontSize = REMAINING_SIZE, lineHeight = REMAINING_SIZE, fontWeight = FontWeight.Bold),
     )
@@ -87,13 +88,16 @@ internal fun CardScoreLine(remaining: Int, isBust: Boolean, visitBox: VisitBoxTe
             if (isBust) {
                 BustBadge(Modifier.semantics { traversalIndex = CARD_ORDER_BUST })
             }
-            VisitTotalBox(
-                text = visitBox,
-                index = index,
-                style = MaterialTheme.typography.titleLarge,
-                borderColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.semantics { traversalIndex = CARD_ORDER_BOX },
-            )
+            // VT13: while a bust waits, the mapping gives no box: the badge alone replaces it.
+            visitBox?.let {
+                VisitTotalBox(
+                    text = it,
+                    index = index,
+                    style = MaterialTheme.typography.titleLarge,
+                    borderColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.semantics { traversalIndex = CARD_ORDER_BOX },
+                )
+            }
         },
     )
 }

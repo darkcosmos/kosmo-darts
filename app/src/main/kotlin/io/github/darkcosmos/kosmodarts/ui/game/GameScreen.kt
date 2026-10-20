@@ -57,7 +57,7 @@ private val SPACING = 12.dp
 
 // TalkBack order inside a player row and inside the highlighted card (VT8); see also ScoreLine.kt.
 private const val ROW_ORDER_NAME = 0f
-private const val ROW_ORDER_STATS = 1f
+private const val ROW_ORDER_AVERAGE = 1f
 private const val ROW_ORDER_REMAINING = 2f
 private const val ROW_ORDER_BOX = 3f
 private const val CARD_ORDER_NAME = 0f
@@ -106,7 +106,6 @@ fun GameScreen(
 @Composable
 private fun Scoreboard(game: GameScreenState, modifier: Modifier) {
     val state = game.game.state
-    val lastTurns = lastTurnScores(state)
     val visitBoxes = visitBoxTexts(game)
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()),
@@ -118,12 +117,11 @@ private fun Scoreboard(game: GameScreenState, modifier: Modifier) {
                     player,
                     index,
                     game.highlightedTurnDarts,
-                    lastTurns[index],
                     visitBoxes[index],
                     game.isBustShown,
                 )
             } else {
-                PlayerRow(player, index, lastTurns[index], visitBoxes[index])
+                PlayerRow(player, index, visitBoxes[index])
             }
         }
     }
@@ -134,8 +132,7 @@ private fun CurrentPlayerCard(
     player: X01PlayerState,
     index: Int,
     turnDarts: List<Dart>,
-    lastTurn: LastTurnScore,
-    visitBox: VisitBoxText,
+    visitBox: VisitBoxText?,
     isBust: Boolean,
 ) {
     val toThrow = stringResource(R.string.game_to_throw, player.name)
@@ -170,7 +167,7 @@ private fun CurrentPlayerCard(
                             contentDescription = toThrow
                         },
                 )
-                PlayerStats(player, index, lastTurn, MaterialTheme.typography.titleMedium)
+                PlayerAverage(player, index, MaterialTheme.typography.titleMedium)
             }
             CardScoreLine(player.remaining, isBust, visitBox, index, SPACING)
             DartSlots(turnDarts, Modifier.semantics { traversalIndex = CARD_ORDER_DARTS })
@@ -212,7 +209,7 @@ private fun DartSlots(darts: List<Dart>, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun PlayerRow(player: X01PlayerState, index: Int, lastTurn: LastTurnScore, visitBox: VisitBoxText) {
+private fun PlayerRow(player: X01PlayerState, index: Int, visitBox: VisitBoxText?) {
     val nameStyle = MaterialTheme.typography.titleMedium
     Row(
         modifier = Modifier
@@ -222,7 +219,7 @@ private fun PlayerRow(player: X01PlayerState, index: Int, lastTurn: LastTurnScor
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(SPACING),
     ) {
-        // VT11: the name keeps at least NAME_MIN_REFERENCE; the stats go under it when the line is too narrow.
+        // VT11: the name keeps at least NAME_MIN_REFERENCE; the average goes under it when the line is too narrow.
         OneOrTwoLines(
             minFirstWidth = measuredWidth(NAME_MIN_REFERENCE, nameStyle),
             secondLineAlignment = Alignment.Start,
@@ -242,12 +239,11 @@ private fun PlayerRow(player: X01PlayerState, index: Int, lastTurn: LastTurnScor
                 )
             },
             trailing = {
-                PlayerStats(
+                PlayerAverage(
                     player,
                     index,
-                    lastTurn,
                     MaterialTheme.typography.bodyMedium,
-                    Modifier.semantics { traversalIndex = ROW_ORDER_STATS },
+                    Modifier.semantics { traversalIndex = ROW_ORDER_AVERAGE },
                     MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             },
@@ -263,46 +259,34 @@ private fun PlayerRow(player: X01PlayerState, index: Int, lastTurn: LastTurnScor
                 .testTag(GameTags.remaining(index))
                 .semantics { traversalIndex = ROW_ORDER_REMAINING },
         )
-        VisitTotalBox(
-            text = visitBox,
-            index = index,
-            style = nameStyle,
-            borderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.semantics { traversalIndex = ROW_ORDER_BOX },
-        )
+        // A row box is never hidden: only the card hides it, while its bust waits (VT13).
+        visitBox?.let {
+            VisitTotalBox(
+                text = it,
+                index = index,
+                style = nameStyle,
+                borderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.semantics { traversalIndex = ROW_ORDER_BOX },
+            )
+        }
     }
 }
 
-/** Three-dart average, and the score of the last completed turn under it. */
+/** Three-dart average of the player. */
 @Composable
-private fun PlayerStats(
+private fun PlayerAverage(
     player: X01PlayerState,
     index: Int,
-    lastTurn: LastTurnScore,
     style: TextStyle,
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
 ) {
-    Column(horizontalAlignment = Alignment.End, modifier = modifier) {
-        Text(
-            text = stringResource(R.string.game_average, averageText(player.threeDartAverage)),
-            style = style,
-            color = color,
-        )
-        Text(
-            text = stringResource(R.string.game_last_turn_score, lastTurnText(lastTurn)),
-            style = style,
-            color = color,
-            modifier = Modifier.testTag(GameTags.lastTurnScore(index)),
-        )
-    }
-}
-
-@Composable
-private fun lastTurnText(lastTurn: LastTurnScore): String = when (lastTurn) {
-    LastTurnScore.None -> stringResource(R.string.game_last_turn_none)
-    LastTurnScore.Bust -> stringResource(R.string.game_bust)
-    is LastTurnScore.Points -> lastTurn.points.toString()
+    Text(
+        text = stringResource(R.string.game_average, averageText(player.threeDartAverage)),
+        style = style,
+        color = color,
+        modifier = modifier.testTag(GameTags.average(index)),
+    )
 }
 
 /**

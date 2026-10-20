@@ -102,49 +102,59 @@ class VisitTotalLayoutTest {
     private fun traversalIndex(matcher: SemanticsMatcher): Float = composeRule.onNode(matcher, useUnmergedTree = true)
         .fetchSemanticsNode().config.getOrNull(SemanticsProperties.TraversalIndex) ?: 0f
 
-    private fun startWaitingBust() = send(*WAITING_BUST)
-
-    private fun checkLayout(expectTwoLineRows: Boolean?) {
-        startWaitingBust()
-        val root = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
+    /** Position of the card remaining inside its card, and its height: they must not move between states (no jump). */
+    private fun remainingPlacement(): List<Float> {
         val card = bounds(GameTags.CURRENT_PLAYER)
+        val remaining = bounds(GameTags.CURRENT_REMAINING)
+        return listOf(remaining.left - card.left, remaining.top - card.top, remaining.height)
+    }
 
-        // U2: the highlighted card while a bust waits: the remaining is complete on one line, badge and box inside.
+    private fun assertRows(players: List<Int>, root: Rect) = players.forEach { player ->
+        assertInsideHorizontally(bounds(GameTags.visitTotal(player)), root, "box $player")
+        assertOneCompleteLine(boxText(player), "box $player text")
+        assertInsideHorizontally(bounds(GameTags.remaining(player)), root, "remaining $player")
+        assertOneCompleteLine(node(GameTags.remaining(player)).fetchSemanticsNode(), "remaining $player")
+        val name = bounds(GameTags.playerName(player))
+        assertTrue("name $player is ${name.width} px", name.width >= nameMinWidthPx() - EPSILON)
+    }
+
+    private fun checkLayout(expectTwoLineRows: Boolean) {
+        // Cid's 180 waits in the card.
+        send(*CID_180_WAITING)
+        val root = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
+        val cardBox180 = bounds(GameTags.visitTotal(CID)).size
+        assertOneCompleteLine(boxText(CID), "card box 180")
+
+        // Ann's first dart of round 2: her card box shows 60.
+        send(*ANN_FIRST_DART)
+        val placementBefore = remainingPlacement()
+        assertEquals("card box size", cardBox180, bounds(GameTags.visitTotal(0)).size)
+
+        // U2, VT13: Ann's T20 T20 leaves 1, a bust waits. The remaining is complete on one line, the badge is inside
+        // the card, there is no box in the card, and the remaining has not moved.
+        send(*triple(20))
+        val card = bounds(GameTags.CURRENT_PLAYER)
         val remaining = bounds(GameTags.CURRENT_REMAINING)
         assertInsideHorizontally(remaining, card, "card remaining")
         assertOneCompleteLine(node(GameTags.CURRENT_REMAINING).fetchSemanticsNode(), "card remaining")
         assertInsideHorizontally(bounds(GameTags.CARD_BUST), card, "BUST badge")
-        assertInsideHorizontally(bounds(GameTags.visitTotal(0)), card, "card box")
-        assertOneCompleteLine(boxText(0), "card box text")
-        val cardBustBox = bounds(GameTags.visitTotal(0)).size
+        node(GameTags.visitTotal(0)).assertDoesNotExist()
+        assertEquals("card remaining moved during the bust", placementBefore, remainingPlacement())
 
-        // Rows: Bob, Cid (180) and Dan.
-        val rowBoxSizes = (1..3).map { player ->
-            val box = bounds(GameTags.visitTotal(player))
-            assertInsideHorizontally(box, root, "box $player")
-            assertOneCompleteLine(boxText(player), "box $player text")
-            val remainingRow = bounds(GameTags.remaining(player))
-            assertInsideHorizontally(remainingRow, root, "remaining $player")
-            assertOneCompleteLine(node(GameTags.remaining(player)).fetchSemanticsNode(), "remaining $player")
-            val name = bounds(GameTags.playerName(player))
-            assertTrue("name $player is ${name.width} px", name.width >= nameMinWidthPx() - EPSILON)
-            box.size
-        }
-        // VT11: a row box has the same size whatever it shows (Cid shows 180, the others 3 and 0).
-        assertEquals(1, rowBoxSizes.distinct().size)
+        // Rows Bob (3), Cid (180) and Dan (0).
+        assertRows(listOf(1, CID, DAN), root)
+        val name = bounds(GameTags.playerName(DAN))
+        val average = bounds(GameTags.average(DAN))
+        assertEquals("average under the name", expectTwoLineRows, average.top >= name.bottom - EPSILON)
 
-        expectTwoLineRows?.let { twoLines ->
-            val name = bounds(GameTags.playerName(DAN))
-            val prev = bounds(GameTags.lastTurnScore(DAN))
-            assertEquals("stats under the name", twoLines, prev.top >= name.bottom - EPSILON)
-        }
-
-        // After "Next player", Ann's BUST box is in a row: same size as the other row boxes. Bob's card box shows 0,
-        // the same size as Ann's card box showing BUST before.
+        // After "Next player": Ann's BUST box is in a row, Bob's card box shows 0. The remaining has not moved.
         send(AppEvent.NextPlayerTapped)
-        assertEquals(rowBoxSizes.first(), bounds(GameTags.visitTotal(0)).size)
-        assertEquals(cardBustBox, bounds(GameTags.visitTotal(1)).size)
-        assertOneCompleteLine(boxText(0), "row BUST text")
+        assertRows(listOf(0, CID, DAN), root)
+        val rowBoxSizes = listOf(0, CID, DAN).map { bounds(GameTags.visitTotal(it)).size }
+        // VT11: a row box has the same size whatever it shows: BUST, 180 or 0.
+        assertEquals(1, rowBoxSizes.distinct().size)
+        assertEquals("card box size", cardBox180, bounds(GameTags.visitTotal(1)).size)
+        assertEquals("card remaining moved after Next player", placementBefore, remainingPlacement())
     }
 
     @Test
@@ -153,51 +163,57 @@ class VisitTotalLayoutTest {
 
     @Test
     @Config(qualifiers = "+en-port", fontScale = LARGEST_FONT_SCALE)
-    fun `VT11 portrait at the largest font scale`() = checkLayout(expectTwoLineRows = null)
+    fun `VT11 portrait at the largest font scale`() = checkLayout(expectTwoLineRows = false)
 
     @Test
     @Config(qualifiers = "+en-land")
-    fun `VT11 landscape at font scale 1`() = checkLayout(expectTwoLineRows = null)
+    fun `VT11 landscape at font scale 1`() = checkLayout(expectTwoLineRows = false)
 
-    /** UX review: the two-line row really happens at the largest font in landscape (half the screen). */
+    /** Without "Prev." (PR37-R1), a row fits on one line on a Pixel 7 even at the largest font in landscape. */
     @Test
     @Config(qualifiers = "+en-land", fontScale = LARGEST_FONT_SCALE)
-    fun `VT11 landscape at the largest font scale`() = checkLayout(expectTwoLineRows = true)
+    fun `VT11 landscape at the largest font scale`() = checkLayout(expectTwoLineRows = false)
 
-    /** VT8: TalkBack reads a row as name, average and "Prev.", remaining, box; the card ends with its dart slots. */
+    /** VT8, VT13: TalkBack reads a row as name, average, remaining, box; the card ends with its dart slots. */
     @Test
     @Config(qualifiers = "+en-port")
     fun `VT8 TalkBack order of a row and of the card`() {
-        startWaitingBust()
+        send(*CID_180_WAITING, *ANN_FIRST_DART, *triple(20))
         val name = traversalIndex(hasTestTag(GameTags.playerName(DAN)))
-        val stats = traversalIndex(
-            hasAnyDescendant(hasTestTag(GameTags.lastTurnScore(DAN)))
-                .and(SemanticsMatcher.keyIsDefined(SemanticsProperties.TraversalIndex)),
-        )
+        val average = traversalIndex(hasTestTag(GameTags.average(DAN)))
         val remaining = traversalIndex(hasTestTag(GameTags.remaining(DAN)))
         val box = traversalIndex(hasTestTag(GameTags.visitTotal(DAN)))
-        assertTrue("row order $name $stats $remaining $box", name < stats && stats < remaining && remaining < box)
+        assertTrue("row order $name $average $remaining $box", name < average && average < remaining && remaining < box)
 
-        val cardRemaining = traversalIndex(hasTestTag(GameTags.CURRENT_REMAINING))
+        // Waiting bust: name, remaining, badge, dart slots (no box).
         val badge = traversalIndex(hasTestTag(GameTags.CARD_BUST))
-        val cardBox = traversalIndex(hasTestTag(GameTags.visitTotal(0)))
+        assertCardOrder(cardPlayer = 0, cardMiddle = badge)
+
+        // After "Next player": name, remaining, box, dart slots.
+        send(AppEvent.NextPlayerTapped)
+        assertCardOrder(cardPlayer = 1, cardMiddle = traversalIndex(hasTestTag(GameTags.visitTotal(1))))
+    }
+
+    private fun assertCardOrder(cardPlayer: Int, cardMiddle: Float) {
+        val cardRemaining = traversalIndex(hasTestTag(GameTags.CURRENT_REMAINING))
         val slots = traversalIndex(
             hasAnyDescendant(hasTestTag(GameTags.dartSlot(0)))
                 .and(SemanticsMatcher.keyIsDefined(SemanticsProperties.TraversalIndex)),
         )
         val cardName = traversalIndex(
-            hasAnyDescendant(hasTestTag(GameTags.playerName(0)))
+            hasAnyDescendant(hasTestTag(GameTags.playerName(cardPlayer)))
                 .and(SemanticsMatcher.keyIsDefined(SemanticsProperties.TraversalIndex)),
         )
         assertTrue(
-            "card order $cardName $cardRemaining $badge $cardBox $slots",
-            cardName < cardRemaining && cardRemaining < badge && badge < cardBox && cardBox < slots,
+            "card order $cardName $cardRemaining $cardMiddle $slots",
+            cardName < cardRemaining && cardRemaining < cardMiddle && cardMiddle < slots,
         )
     }
 
     private companion object {
         const val LARGEST_FONT_SCALE = 2.0f
         const val EPSILON = 0.5f
+        const val CID = 2
         const val DAN = 3
 
         fun names(vararg names: String): Array<AppEvent> =
@@ -209,10 +225,10 @@ class VisitTotalLayoutTest {
         fun singles(vararg numbers: Int): Array<AppEvent> = numbers.map { AppEvent.NumberTapped(it) }.toTypedArray()
 
         /**
-         * 301 double out, four 20-character names. Round 1: Ann 180 (121 left), Bob 3, Cid 180, Dan 0 by misses.
-         * Round 2: Ann's T20 T20 leaves 1, a bust waiting for "Next player".
+         * 301 double out, four 20-character names. Round 1: Ann 180 (121 left), Bob 3, Cid 180, which waits for
+         * "Next player".
          */
-        val WAITING_BUST: Array<AppEvent> = arrayOf(
+        val CID_180_WAITING: Array<AppEvent> = arrayOf(
             AppEvent.NewGame,
             AppEvent.StartScoreSelected(301),
             AppEvent.PlayerAdded,
@@ -221,9 +237,14 @@ class VisitTotalLayoutTest {
             AppEvent.StartRequested,
             *triple(20), *triple(20), *triple(20), AppEvent.NextPlayerTapped,
             *singles(1, 1, 1), AppEvent.NextPlayerTapped,
-            *triple(20), *triple(20), *triple(20), AppEvent.NextPlayerTapped,
+            *triple(20), *triple(20), *triple(20),
+        )
+
+        /** Then Dan scores 0 by misses, and Ann throws T20 (61 left): her next T20 leaves 1, a bust. */
+        val ANN_FIRST_DART: Array<AppEvent> = arrayOf(
+            AppEvent.NextPlayerTapped,
             AppEvent.MissTapped, AppEvent.MissTapped, AppEvent.MissTapped, AppEvent.NextPlayerTapped,
-            *triple(20), *triple(20),
+            *triple(20),
         )
     }
 }

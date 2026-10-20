@@ -75,6 +75,15 @@ class VisitTotalScreenshotTest {
     @Config(qualifiers = "+en-land")
     fun bustLandscape() = capture("visit_total_bust_landscape_en", *BUST)
 
+    /** VT4: after "Next player", the busted player's row box shows BUST. */
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun bustAfterNextPortrait() = capture("visit_total_bust_after_next_portrait_en", *BUST, NEXT)
+
+    @Test
+    @Config(qualifiers = "+en-land")
+    fun bustAfterNextLandscape() = capture("visit_total_bust_after_next_landscape_en", *BUST, NEXT)
+
     @Test
     @Config(qualifiers = "+en-port")
     fun oneEightyPortrait() = capture("visit_total_180_portrait_en", *ONE_EIGHTY)
@@ -135,7 +144,10 @@ class VisitTotalScreenshotTest {
             *triple(19),
         )
 
-        /** 301 double out: Ann leaves 121, Bob scores 3, then Ann's T20 T20 leaves 1, a bust waiting. */
+        /**
+         * 301 double out: Ann leaves 121, Bob scores 3, then Ann's T20 T20 leaves 1: a bust waits, shown by the badge
+         * only (VT13).
+         */
         val BUST: Array<AppEvent> = arrayOf(
             AppEvent.NewGame,
             AppEvent.StartScoreSelected(301),

@@ -38,7 +38,6 @@
     <string name="game_average">Moy. %1$s</string>
     <string name="game_dart_slot">Fléchette %1$d : %2$s</string>
     <string name="game_dart_slot_empty">Fléchette %1$d : pas encore lancée</string>
-    <string name="game_last_turn_score">Préc. %1$s</string>
     <string name="game_bust">BUST</string>
     <!-- \u00A0: non-breaking space, so that the colon never starts a line. -->
     <string name="game_visit_in_progress_description">Volée en cours\u00A0: %1$d</string>

@@ -73,7 +73,10 @@ class VisitTotalFrenchScreensTest {
         triple(20)
         triple(20)
         triple(20)
-        assertBox(0, "BUST", "Dernière volée\u00A0: bust")
+        // VT13: while the bust waits, no box for Ann; Bob keeps his last turn (VT6).
+        key(GameTags.visitTotal(0)).assertDoesNotExist()
         assertBox(1, "3", "Dernière volée\u00A0: 3")
+        tap(KeypadTags.NEXT_PLAYER)
+        assertBox(0, "BUST", "Dernière volée\u00A0: bust")
     }
 }
