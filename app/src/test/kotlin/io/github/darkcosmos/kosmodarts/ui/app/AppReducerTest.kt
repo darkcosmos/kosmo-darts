@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -7,6 +8,8 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01ConfigError
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
+import io.github.darkcosmos.kosmodarts.ui.game.VisitBoxText
+import io.github.darkcosmos.kosmodarts.ui.game.visitBoxTexts
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -218,6 +221,25 @@ class AppReducerTest {
         assertEquals(Screen.Setup(SetupState.prefilled(singleOut301)), state.screen)
     }
 
+    /** VT2, VT5 (T1 of the #36 design review): a rematch starts with every box at 0, through the existing reducer. */
+    @Test
+    fun rematchStartsWithFreshVisitTotals() {
+        val state = inGame(singleOut301, winningDarts).after(*finishEvents, AppEvent.Rematch)
+
+        val screen = (state.screen as Screen.Game).game
+        assertEquals(listOf(inProgressZero, notPlayed, notPlayed), visitBoxTexts(screen))
+    }
+
+    /** VT2, VT5: "New game" from the end screen, then Start: every box at 0. */
+    @Test
+    fun newGameAfterAGameStartsWithFreshVisitTotals() {
+        val state = AppState(lastSetup = singleOut301, screen = inGame(singleOut301, winningDarts).screen)
+            .after(*finishEvents, AppEvent.NewGame, AppEvent.StartRequested)
+
+        val screen = (state.screen as Screen.Game).game
+        assertEquals(listOf(inProgressZero, notPlayed, notPlayed), visitBoxTexts(screen))
+    }
+
     @Test
     fun backFromTheEndScreenReturnsHome() {
         val state = inGame(singleOut301, winningDarts).after(*finishEvents, AppEvent.Back)
@@ -233,6 +255,12 @@ class AppReducerTest {
         assertEquals(home, home.after(AppEvent.NumberTapped(20), AppEvent.StartRequested, AppEvent.Rematch))
         assertEquals(setup, setup.after(AppEvent.UndoTapped, AppEvent.AbandonConfirmed, AppEvent.NewGame))
     }
+
+    private val inProgressZero =
+        VisitBoxText(R.string.game_visit_value, R.string.game_visit_in_progress_description, listOf(0))
+
+    private val notPlayed =
+        VisitBoxText(R.string.game_visit_value, R.string.game_visit_not_played_description, listOf(0))
 
     private companion object {
         const val SEED = 7

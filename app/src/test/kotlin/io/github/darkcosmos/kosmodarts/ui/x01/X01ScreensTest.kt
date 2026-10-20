@@ -124,9 +124,16 @@ class X01ScreensTest {
             .assertContentDescriptionEquals(string(R.string.game_dart_slot, index + 1, dart))
     }
 
-    private fun assertLastTurnScore(playerIndex: Int, score: String) {
-        composeRule.onNodeWithTag(GameTags.lastTurnScore(playerIndex))
-            .assertTextEquals(string(R.string.game_last_turn_score, score))
+    /** VT3, VT4: the visit total box of a player who is not throwing (it replaced "Prev.", PR37-R1). */
+    private fun assertLastTurnBox(playerIndex: Int, points: Int?) {
+        val box = composeRule.onNodeWithTag(GameTags.visitTotal(playerIndex)).performScrollTo()
+        if (points == null) {
+            box.assertTextEquals(string(R.string.game_bust))
+                .assertContentDescriptionEquals(string(R.string.game_visit_last_bust_description))
+        } else {
+            box.assertTextEquals(points.toString())
+                .assertContentDescriptionEquals(string(R.string.game_visit_last_description, points))
+        }
     }
 
     /** 301 double out, Ann against Bob, every turn confirmed: Ann leaves 121, Bob 298, then T20 T19 leaves 4. */
@@ -206,7 +213,7 @@ class X01ScreensTest {
 
         assertCurrentPlayer("Bob", 501)
         keypadTags.forEach { key(it).assertIsEnabled() }
-        assertLastTurnScore(0, "45")
+        assertLastTurnBox(0, 45)
     }
 
     @Test
@@ -227,13 +234,15 @@ class X01ScreensTest {
         assertDartSlot(0, "T20")
         assertDartSlot(1, "T20")
         key(KeypadTags.number(1)).assertIsNotEnabled()
+        // VT13 (PR37-R2): while the bust waits, the badge replaces the box.
+        composeRule.onNodeWithTag(GameTags.visitTotal(0)).assertDoesNotExist()
         key(KeypadTags.NEXT_PLAYER).assertIsEnabled()
 
         nextPlayer()
 
         composeRule.onNodeWithTag(GameTags.CARD_BUST).assertDoesNotExist()
         assertCurrentPlayer("Bob", 121)
-        assertLastTurnScore(0, string(R.string.game_bust))
+        assertLastTurnBox(0, null)
     }
 
     @Test
@@ -268,9 +277,14 @@ class X01ScreensTest {
     }
 
     @Test
-    fun eachPlayerRowShowsTheirPreviousTurnScoreBustOrADash() {
+    fun eachPlayerRowShowsTheTotalOfTheirLastTurnBustOrZero() {
         startGame("Ann", "Bob", "Cid", startScore = 301)
-        listOf(0, 1, 2).forEach { assertLastTurnScore(it, string(R.string.game_last_turn_none)) }
+        composeRule.onNodeWithTag(GameTags.visitTotal(0))
+            .assertContentDescriptionEquals(string(R.string.game_visit_in_progress_description, 0))
+        listOf(1, 2).forEach { player ->
+            composeRule.onNodeWithTag(GameTags.visitTotal(player)).assertTextEquals("0")
+                .assertContentDescriptionEquals(string(R.string.game_visit_not_played_description))
+        }
 
         repeat(3) { triple(20) }
         nextPlayer()
@@ -278,13 +292,16 @@ class X01ScreensTest {
         nextPlayer()
         repeat(3) { triple(20) }
         nextPlayer()
+        assertLastTurnBox(1, 6)
+        assertLastTurnBox(2, 180)
         triple(20)
         triple(20)
         nextPlayer()
 
-        assertLastTurnScore(0, string(R.string.game_bust))
-        assertLastTurnScore(1, "6")
-        assertLastTurnScore(2, "180")
+        assertLastTurnBox(0, null)
+        assertLastTurnBox(2, 180)
+        // PR37-R1: "Prev." is gone.
+        composeRule.onAllNodes(hasText("Prev.", substring = true), useUnmergedTree = true).assertCountEquals(0)
     }
 
     @Test
@@ -422,7 +439,7 @@ class X01ScreensTest {
         assertCurrentPlayer("Bob", 444)
         assertDartSlot(0, "T19")
         key(KeypadTags.DOUBLE).assertIsSelected()
-        assertLastTurnScore(0, "60")
+        assertLastTurnBox(0, 60)
     }
 
     @Test
