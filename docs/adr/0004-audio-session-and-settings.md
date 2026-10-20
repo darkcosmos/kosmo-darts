@@ -1,6 +1,6 @@
 # ADR 0004: Audio session lifecycle and settings storage
 
-- Status: Proposed (design review of issue #32; becomes Accepted when the announcements PR is merged)
+- Status: Accepted (PR #33, merged on 2026-10-20 as 61d80a9; proposed in the design review of issue #32)
 - Date: 2026-10-19
 - Rules: `docs/rules/announcements.md` (AN7, AN13 to AN17, AN19 to AN21). Related: ADR 0002 (save lifecycle),
   ADR 0003 (embedded voice only).

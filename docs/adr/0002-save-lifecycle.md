@@ -1,6 +1,6 @@
 # ADR 0002: When the app loads, saves and deletes the game in progress
 
-- Status: Proposed (design review of issue #30; becomes Accepted when the persistence PR is merged)
+- Status: Accepted (PR #31, merged on 2026-10-18 as 39ad177; proposed in the design review of issue #30)
 - Date: 2026-10-18
 - Rules: `docs/rules/persistence.md` (R1, R2, R3, R6, R9, R10, R12). Format: ADR 0001.
 
