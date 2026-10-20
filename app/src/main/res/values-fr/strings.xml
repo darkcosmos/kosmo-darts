@@ -40,6 +40,11 @@
     <string name="game_dart_slot_empty">Fléchette %1$d : pas encore lancée</string>
     <string name="game_last_turn_score">Préc. %1$s</string>
     <string name="game_bust">BUST</string>
+    <!-- \u00A0: non-breaking space, so that the colon never starts a line. -->
+    <string name="game_visit_in_progress_description">Volée en cours\u00A0: %1$d</string>
+    <string name="game_visit_last_description">Dernière volée\u00A0: %1$d</string>
+    <string name="game_visit_last_bust_description">Dernière volée\u00A0: bust</string>
+    <string name="game_visit_not_played_description">Pas encore joué</string>
     <string name="dart_double">D%1$d</string>
     <string name="dart_triple">T%1$d</string>
     <string name="dart_bull">Bull</string>

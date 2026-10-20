@@ -46,6 +46,11 @@
     <string name="game_last_turn_score">Prev. %1$s</string>
     <string name="game_last_turn_none" translatable="false">–</string>
     <string name="game_bust">BUST</string>
+    <string name="game_visit_value" translatable="false">%1$d</string>
+    <string name="game_visit_in_progress_description">Current turn: %1$d</string>
+    <string name="game_visit_last_description">Last turn: %1$d</string>
+    <string name="game_visit_last_bust_description">Last turn: bust</string>
+    <string name="game_visit_not_played_description">Not played yet</string>
     <string name="dart_single" translatable="false">%1$d</string>
     <string name="dart_double">D%1$d</string>
     <string name="dart_triple">T%1$d</string>
