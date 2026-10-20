@@ -361,3 +361,103 @@ The issue's ten steps (1 to 10), then four steps for the owner answers and the r
 - None for the product. U4 (visible label) is listed in Known limitations and asked in step 2 of the phone
   verification; the decision stays with Kosmo.
 - `LastTurnScore` stays unchanged in this PR; a follow-up issue can rebase it on `VisitTotals.lastCompleted` (A1).
+
+## Owner review of PR #37 (PR37-R1, PR37-R2, 2026-10-20)
+
+Kosmo's review of PR #37 (CHANGES_REQUESTED), recorded in `docs/rules/visit-total.md` as PR37-R1 and PR37-R2 (his
+R1 and R2, renamed so that they never mix with the persistence rules R1 to R12):
+
+- "No readability or visibility problem": U4 is settled. The box keeps no visible label.
+- PR37-R1: remove "Prev." / « Préc. »: it is redundant with the box. This replaces Q2.
+- PR37-R2: while a bust waits for "Next player", only the big BUST badge is shown in the thrower's card: no box. After
+  "Next player", the current behaviour stays: his row box shows `BUST`.
+
+This section prevails over the sections above where they differ.
+
+### PR37-R1: removing "Prev."
+
+- `GameScreen.kt`:
+  - `PlayerStats` shows only the average (one line). It loses its `lastTurn` parameter and becomes `PlayerAverage`.
+  - `Scoreboard` no longer computes `lastTurnScores`. `lastTurnText` is deleted.
+- Deleted:
+  - `ui/game/LastTurnScore.kt` and its test `LastTurnScoreTest.kt`. The A1 consistency test goes with it: the
+    duplicate it guarded no longer exists, which also closes the A1 follow-up.
+  - `GameTags.lastTurnScore`.
+  - The strings `game_last_turn_score` (`values/` and `values-fr/`) and `game_last_turn_none` (`values/`, not
+    translatable). `game_bust` stays: the badge and the box use it.
+- The `OneOrTwoLines` fallback of a row stays, with only the average as its trailing part. At the worst case (4 long
+  names, scale 2.0, landscape), the average goes under the name; the name keeps `NAME_MIN_REFERENCE`.
+- TalkBack order of a row: name, average, remaining, box (`ROW_ORDER_STATS` is renamed `ROW_ORDER_AVERAGE`).
+- `X01ScreensTest`, existing tests that check "Prev.":
+  - `eachPlayerRowShowsTheirPreviousTurnScoreBustOrADash` becomes
+    `eachPlayerRowShowsTheTotalOfTheirLastTurnBustOrZero`. Same game; it now checks the boxes:
+    - before any turn, `0` and "Not played yet" (player 1: "Current turn: 0");
+    - at the end, `BUST`, `6` and `180` with their "Last turn" descriptions;
+    - and that no "Prev." text exists (the `game_last_turn_score` string is deleted, so the check is that no node
+      tagged with the old tag exists).
+  - Its other "Prev." assertions (lines 209, 236 and 425 today) are replaced by the same check on the player's box.
+    The value checked stays the same (45, BUST and 60). Where the BUST is still waiting there (PR37-R2), the test
+    checks the badge and that the box is absent, then the box after "Next player". Nothing is removed without an
+    equivalent check.
+- `VisitTotalLayoutTest`:
+  - the two-line check reads the average node (new tag `GameTags.average(index)`) instead of "Prev.";
+  - the TalkBack order test checks name < average < remaining < box.
+
+### PR37-R2: no box while a bust waits
+
+- Engine: unchanged. The thrower is still in *bust* (VT4); hiding the box is a display rule (VT13).
+- Mapping (`VisitBoxText.kt`, VT12, VT13): `visitBoxTexts(screen)` returns `List<VisitBoxText?>`. The entry is `null`
+  for the thrower of a waiting bust (`screen.isBustShown` and `player == screen.pendingTurn.playerIndex`), otherwise
+  as today. With one player, the same rule applies: no box until "Next player".
+- `CardScoreLine`: the box is drawn only when its text is not `null`. The badge and the box are never shown together
+  any more. The `OneOrTwoLines` fallback of the card stays: at scale 2.0 in landscape, the BUST badge alone may still
+  go under the remaining score. The remaining score keeps the whole first line (U2 unchanged).
+- TalkBack: during a waiting bust, the card reads name, average, remaining, BUST badge (already announced by its
+  live region), dart slots. There is no box description; the badge says BUST.
+- Tests:
+  - `VisitBoxTextTest`:
+    - waiting bust: `[null, lastVisit(3)]`;
+    - after `nextPlayer()`: `[bust, inProgress(0)]`;
+    - undo of the bust dart: `inProgress` of the darts before it;
+    - one player waiting a bust: `[null]`, then `[inProgress(0)]`.
+  - `VisitTotalScreensTest` (issue scenario):
+    - after Bob's bust, his box does not exist and the badge is shown;
+    - after "Next player", his box is `BUST`, "Last turn: bust";
+    - the undo steps are unchanged.
+  - `VisitTotalFrenchScreensTest`: the bust is checked after "Next player" (`BUST`, « Dernière volée : bust »). While
+    it waits, no box.
+  - `VisitTotalResumeTest`, rotation during a waiting bust: box 0 does not exist, the badge is shown, and box 1 is
+    "Last turn: 3", before and after. The VT7 waiting-turn tests and the canary are unchanged.
+  - `VisitTotalLayoutTest`, waiting bust:
+    - remaining complete on one line, badge inside the card, no box in the card;
+    - box size: the row boxes compare `BUST` (after "Next player"), `180`, `3` and `0`;
+    - the card box compares a waiting `180` with an in-progress value;
+    - TalkBack order of the card: name < remaining < badge < dart slots during a waiting bust, and name < remaining <
+      box < dart slots otherwise.
+- Captures (`VisitTotalScreenshotTest`, record only):
+  - `visit_total_bust_*` now shows the card with the badge only;
+  - new `visit_total_bust_after_next_portrait_en` and `_landscape_en`: the busted player's row shows `BUST`;
+  - the `_font200` waiting-bust captures show the badge alone.
+  - Existing captures that show "Prev." all change: every game screen capture of `X01ScreensScreenshotTest`,
+    `PersistenceScreenshotTest` and `AnnouncementsScreenshotTest`.
+
+### Phone verification (replaces steps 4, 12 and 13 above)
+
+4. Second player: bust. While "Joueur suivant" waits, his card shows the big BUST badge and **no** box; his remaining
+   does not change. After "Joueur suivant", his row box shows `BUST`.
+12. « Préc. » is no longer shown anywhere: neither in the rows nor in the card.
+13. Largest font, 4 long names, portrait and landscape:
+    - names readable;
+    - no box or remaining score cut;
+    - when space is short, the average goes under the name;
+    - during a waiting bust, the BUST badge may go under the remaining score.
+
+### Known limitations update
+
+U4 (label) is settled by Kosmo, so it leaves the known limitations. The PR text also drops "Préc." from steps 2, 10
+and 13 and from the U8 question, which no longer applies.
+
+### Open questions for Kosmo
+
+- None blocking. One reading to confirm: "supprimer Préc." is applied everywhere, in the player rows **and** in the
+  card of the player who throws. Kosmo's text does not say "rows only", so the plan removes both.
