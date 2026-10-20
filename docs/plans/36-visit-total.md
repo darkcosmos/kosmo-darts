@@ -470,13 +470,17 @@ and 13 and from the U8 question, which no longer applies.
 
 ### Implementation notes (code phase of PR37-R1, PR37-R2)
 
-- Without "Prev.", a row with the longest test names fits on one line on a Pixel 7 in every case the layout test
-  checks, the largest font in landscape included. The layout test therefore expects one line in its 4 cases (it
-  reads Dan's row). The `OneOrTwoLines` fallback of rows stays: the captures show that it still triggers for some
-  rows at the largest font in landscape (Bob's "Avg. 3.00" goes under his name).
-- Probe, not kept as a test: on a narrow 320 dp phone at the largest font, a name gets less than
-  `NAME_MIN_REFERENCE`, even with the fallback. The remaining score and the box alone take the row. The Pixel 7 is
-  the target phone of the issue; this is reported, not solved here.
+- Row fallback (round 3 fix, T9 and U9): the layout test now scrolls once, then reads the name and the average.
+  The earlier version scrolled between the two reads, which moved the row and gave wrong positions. Measured
+  correctly, the row fallback does trigger on a Pixel 7 at the largest font, in portrait and in landscape: the average
+  goes under the name, and the name keeps `NAME_MIN_REFERENCE`. It stays one line at font scale 1. The previous round
+  wrongly concluded that rows stayed on one line at the largest font.
+- New layout case: a 393 dp wide phone (Pixel 8 width) at the largest font also gets the two-line row, with the
+  name at least `NAME_MIN_REFERENCE` wide.
+- Known limitation (T10, U10), for the PR: below about 380 dp of width at the largest font, a long name gets less
+  than `NAME_MIN_REFERENCE` (6 characters), even on two lines, because the remaining score and the box take the
+  rest of the row (at 376 dp: 436 px for a 446 px minimum). The issue targets the Pixel 7 (412 dp), which is not
+  affected.
 - Layout jump (design review): the layout test checks that the card remaining keeps its position and height in its
   card before the bust, while it waits and after "Next player".
 - T8: the issue scenario undoes the bust dart while the badge is shown and checks that the box comes back as

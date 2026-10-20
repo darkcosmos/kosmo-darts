@@ -143,9 +143,11 @@ class VisitTotalLayoutTest {
 
         // Rows Bob (3), Cid (180) and Dan (0).
         assertRows(listOf(1, CID, DAN), root)
-        val name = bounds(GameTags.playerName(DAN))
-        val average = bounds(GameTags.average(DAN))
-        assertEquals("average under the name", expectTwoLineRows, average.top >= name.bottom - EPSILON)
+        // One scroll, then both positions: scrolling between the two reads would move the row.
+        node(GameTags.average(DAN)).performScrollTo()
+        val name = node(GameTags.playerName(DAN)).fetchSemanticsNode().boundsInRoot
+        val average = node(GameTags.average(DAN)).fetchSemanticsNode().boundsInRoot
+        assertEquals("average under the name: $name, $average", expectTwoLineRows, average.top >= name.bottom - EPSILON)
 
         // After "Next player": Ann's BUST box is in a row, Bob's card box shows 0. The remaining has not moved.
         send(AppEvent.NextPlayerTapped)
@@ -163,16 +165,26 @@ class VisitTotalLayoutTest {
 
     @Test
     @Config(qualifiers = "+en-port", fontScale = LARGEST_FONT_SCALE)
-    fun `VT11 portrait at the largest font scale`() = checkLayout(expectTwoLineRows = false)
+    fun `VT11 portrait at the largest font scale`() = checkLayout(expectTwoLineRows = true)
 
     @Test
     @Config(qualifiers = "+en-land")
     fun `VT11 landscape at font scale 1`() = checkLayout(expectTwoLineRows = false)
 
-    /** Without "Prev." (PR37-R1), a row fits on one line on a Pixel 7 even at the largest font in landscape. */
+    /** UX review: the two-line row really happens at the largest font in landscape (half the screen). */
     @Test
     @Config(qualifiers = "+en-land", fontScale = LARGEST_FONT_SCALE)
-    fun `VT11 landscape at the largest font scale`() = checkLayout(expectTwoLineRows = false)
+    fun `VT11 landscape at the largest font scale`() = checkLayout(expectTwoLineRows = true)
+
+    /**
+     * VT11: on a narrower phone (393 dp wide, as a Pixel 8) at the largest font, the row fallback triggers: the
+     * average goes under the name, which keeps at least NAME_MIN_REFERENCE. Below about 380 dp at this font, the
+     * name gets less than that (known limitation).
+     */
+    @Test
+    @Config(qualifiers = "w393dp-h852dp-port-xxhdpi", fontScale = LARGEST_FONT_SCALE)
+    fun `VT11 narrower phone at the largest font scale puts the average under the name`() =
+        checkLayout(expectTwoLineRows = true)
 
     /** VT8, VT13: TalkBack reads a row as name, average, remaining, box; the card ends with its dart slots. */
     @Test
