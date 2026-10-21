@@ -22,6 +22,21 @@ class X01Game(val config: X01Config, darts: List<Dart> = emptyList()) {
         get() = darts.isNotEmpty()
 
     /**
+     * Suggested checkout route of the engine current player (docs/rules/checkout-suggestions.md, CS4): for their
+     * remaining score, the darts left in their turn and the game's checkout rule. `null` when the leg is finished,
+     * when no route exists, or when the darts left are outside 1 to 3 (never an exception).
+     */
+    val checkoutSuggestion: List<Dart>? by lazy {
+        val player = state.currentPlayerIndex?.takeUnless { state.isFinished }?.let { state.players[it] }
+        val dartsLeft = player?.let { DARTS_PER_TURN - it.currentTurnDarts.size }
+        if (player == null || dartsLeft == null || dartsLeft !in 1..DARTS_PER_TURN) {
+            null
+        } else {
+            CheckoutRoutes.suggest(player.remaining, dartsLeft, config.checkoutRule)
+        }
+    }
+
+    /**
      * Records [dart] for the current player (rules S1 to S5).
      *
      * @throws LegFinishedException if the leg is already won.

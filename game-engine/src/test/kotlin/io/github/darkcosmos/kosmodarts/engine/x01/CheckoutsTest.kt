@@ -48,6 +48,16 @@ class CheckoutsTest {
         }
     }
 
+    /** AN3 and CS2: a checkout is possible exactly when the suggestion search finds a route with three darts. */
+    @Test
+    fun `AN3 matches the checkout suggestion search`() {
+        CheckoutRule.entries.forEach { rule ->
+            (-5..600).forEach {
+                assertEquals(CheckoutRoutes.suggest(it, 3, rule) != null, Checkouts.isPossible(it, rule), "$it $rule")
+            }
+        }
+    }
+
     /** AN3: scores under 1 or over 180, and the start scores, are never possible. */
     @Test
     fun `AN3 out of range scores are never possible`() {
