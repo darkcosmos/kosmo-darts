@@ -50,7 +50,9 @@ Vocabulary: *scoring dart* = any dart of rule D1 except a miss (singles, doubles
   4. at equal value at a position, the easiest dart first: single, then double, then triple (Q1).
   This order is total: two different routes are never equal.
 - CS4. The suggestion of a running leg is computed for the engine current player: their remaining score, 3 minus the
-  darts already thrown in their turn, and the game's checkout rule. A finished leg has no suggestion.
+  darts already thrown in their turn, and the game's checkout rule. A finished leg has no suggestion, and neither
+  has a state where that number of darts left is outside 1 to 3 (defensive: never an exception, e.g. on a
+  restored save).
 - CS5. The suggestion is shown only on the highlighted card, and only when no turn waits: it is hidden while a turn
   waits for "Next player" (after the 3rd dart or a bust) and while the checkout dialog is open. The end screen has no
   suggestion.
@@ -58,9 +60,15 @@ Vocabulary: *scoring dart* = any dart of rule D1 except a miss (singles, doubles
 - CS7. Display: label "Checkout: " / « Sortie : » then the darts separated by ` · `, written like the dart slots:
   `T20`, `D16`, `20` (single), `25`, `Bull` (Q2, Q5).
 - CS8. The suggestion line is always present in the highlighted card, under the remaining score; it is empty and
-  silent for TalkBack when there is no suggestion, so the card never changes height because of it (Q3).
-- CS9. TalkBack reads the label then the darts with the words of the voice announcements, separated by commas:
-  « Sortie : Triple 20, Triple 20, Bull » / "Checkout: Triple 20, Triple 20, Bull" (Q4).
+  silent for TalkBack when there is no suggestion. Its height is reserved for the widest suggestion text at the
+  current width and font scale: one line at the default scale on a Pixel 7, two lines when the widest text needs two
+  (e.g. at 200 %), in every state. The card therefore never changes height because of the suggestion, at any font
+  scale, for every text the engine can produce (Q3). The text is never truncated: it may wrap, between two darts
+  only, never inside a dart or between the label and the first dart.
+- CS9. TalkBack reads the label then the darts with the words of the voice announcements (the same function as
+  `dartCall`), separated by commas. The words are those of `announce_dart_*`, identical in English and French:
+  single `20`, double `Double 16`, triple `Triple 20`, outer bull `25`, bull `Bull`. Examples:
+  « Sortie : Triple 20, Triple 20, Bull », « Sortie : 20, Double 20 » / "Checkout: Triple 20, Triple 20, Bull" (Q4).
 
 Reference table (issue, adapted to Q5; mandatory tests):
 
@@ -96,28 +104,53 @@ I checked each row by hand against CS3: 60 relies on CS3.4 (single 20 before D10
 - `Checkouts.isPossible(remaining, rule)` becomes `CheckoutRoutes.suggest(remaining, DARTS_PER_TURN, rule) != null`
   (one implementation, AN3 doc unchanged in meaning). Its precomputed sets are removed. Existing `CheckoutsTest`
   stays unchanged and must stay green.
-- `X01Game.checkoutSuggestion: List<Dart>?` (CS4): `null` if the leg is finished; else for the engine current player
-  `suggest(remaining, DARTS_PER_TURN - currentTurnDarts.size, config.checkoutRule)`.
+- `X01Game.checkoutSuggestion: List<Dart>?` (CS4): `null` if the leg is finished or there is no current player;
+  else `dartsLeft = DARTS_PER_TURN - currentTurnDarts.size`, `null` if `dartsLeft !in 1..DARTS_PER_TURN` (never
+  passes an out-of-range value to `suggest`, findings S1/A3), else
+  `suggest(remaining, dartsLeft, config.checkoutRule)`.
 
 ### 2. App state (`GameScreenState`, pure JVM)
 
 - `val checkoutSuggestion: List<Dart>?` = `null` if `isAwaitingConfirmation`, else `game.checkoutSuggestion` (CS5).
   When no turn waits the highlighted player is the engine current player, so the engine value is the right one.
   While a turn waits the engine has already moved to the next player: that is why the app must hide it.
+- The search, ordering and filtering all run here or in the engine, never in a composable body (A2/A4). The
+  composable only turns the `List<Dart>` it receives into text with resources.
 
 ### 3. Game screen
 
 - `CurrentPlayerCard` (`GameScreen.kt`) gets a `checkoutSuggestion: List<Dart>?` parameter and a new
   `CheckoutSuggestionLine` between `CardScoreLine` and `DartSlots` (Q2).
-- The line is a single `Text` (`titleMedium`, `maxLines = 1`) whose text is the label + route or an empty string; an
-  empty `Text` with `minLines = 1` keeps the same height (CS8). Test tag `GameTags.CHECKOUT_SUGGESTION`.
+- The line is a single `Text` (`titleMedium`, no `maxLines`, no ellipsis, `softWrap = true`) whose text is the label
+  + route or an empty string. Test tag `GameTags.CHECKOUT_SUGGESTION`.
+- Reserved height (CS8, finding U1): `CheckoutSuggestionLine` wraps the `Text` in a small custom `Layout` (same
+  technique as `OneOrTwoLines` / `measuredWidth` in `ScoreLine.kt`). It measures a reference text, the label + the
+  widest route `T20 · T20 · Bull`, with the same style at the incoming max width, and takes
+  `height = max(reference height, actual text height)`. At the default scale on a Pixel 7 the reference fits one
+  line; at 200 % it needs two, so two lines are reserved in every state. No text is ever clipped: if a device font
+  made a real route taller than the reference, the line grows (it moves, but never hides a dart); the exhaustive
+  measurement test below proves this does not happen with the app's font on the tested widths.
+- Wrapping only between darts: inside the route, the separator is `NBSP · space` (U+00A0, U+00B7, U+0020), so a line
+  break can only fall after a `·`; the label ends with U+00A0 in both languages (`Checkout: `,
+  `Sortie : `) so the first dart stays with the label. Darts like `T20` contain no space.
+- Option chosen among U1 (a)/(b)/(c): a reserved height that adapts to the font scale, not to the route. Compared to
+  (a), the card is not permanently two lines taller at the default scale; compared to (b), nothing ever moves;
+  compared to (c), the text keeps its size. This stays inside Q3, so no new question for Kosmo.
+- Colours (U4): the line uses the card's `contentColor`, i.e. `onPrimaryContainer` (#FFDAD5) on `primaryContainer`
+  (#93000A) from `ui/theme/Theme.kt`, like the name and the remaining score. Contrast ratio computed from the WCAG
+  formula: about 7.2:1 (>= 4.5:1).
 - Semantics: with a suggestion, `clearAndSetSemantics { contentDescription = <CS9 text> }`; without, empty
   `clearAndSetSemantics {}` so TalkBack skips it. Traversal: name 0, remaining 1, bust 2, box 3, suggestion 4, dart
   slots 5 (`CARD_ORDER_DARTS` moves from 4 to 5). No live region: the voice announcements already speak, and a
   live region on every dart would be noisy for TalkBack users.
 - Formatting in `ui/format/DartText.kt`: `checkoutRouteText(darts)` reuses `dartText` (singles already written
-  without "S", Q5) joined by the untranslatable separator; `dartSpokenText(dart)` uses the existing
-  `announce_dart_*` strings (no miss in a route).
+  without "S", Q5) joined by the untranslatable separator.
+- Spoken words, one shared function (finding A1): new `app/src/main/kotlin/.../ui/format/DartWords.kt` with
+  `fun dartWords(resources: Resources, dart: Dart): String?` (not composable). It contains the mapping that is today in
+  `ResourcePhrases.dartCall` (`null` for a miss, then bull, outer bull, double, triple, single over the
+  `announce_dart_*` strings), moved as is. `ResourcePhrases.dartCall(dart)` becomes `dartWords(resources, dart)`.
+  The card's description uses `dartWords(LocalContext.current.resources, it)` for each dart of the route (never a
+  miss, so never `null`). One mapping, two callers; the existing `ResourcePhrasesTest` keeps guarding the voice side.
 
 ### 4. Strings (`values/` and `values-fr/`)
 
@@ -128,7 +161,10 @@ I checked each row by hand against CS3: 60 relies on CS3.4 (single 20 before D10
 | `checkout_route_separator` (`translatable="false"`, `values/` only) | ` · ` | |
 | `checkout_spoken_separator` | `, ` | `, ` |
 
-A non-breaking space before the French colon keeps "Sortie :" on one line.
+The French strings use U+00A0 before the colon in both `game_checkout_suggestion` and
+`game_checkout_suggestion_description` (U6), checked by a test that reads both resources in `fr`. The displayed
+label also uses U+00A0 after the colon in both languages (CS8 wrapping); the description keeps a normal space.
+`checkout_route_separator` is U+00A0, U+00B7, U+0020 (break only after the dot, CS8).
 
 ### Alternatives considered
 
@@ -150,7 +186,10 @@ A non-breaking space before the French colon keeps "Sortie :" on one line.
 - `app/src/main/kotlin/.../ui/game/GameScreenState.kt`: `checkoutSuggestion`.
 - `app/src/main/kotlin/.../ui/game/GameScreen.kt`: card parameter, `CheckoutSuggestionLine`, traversal constants.
 - `app/src/main/kotlin/.../ui/game/GameTags.kt`: `CHECKOUT_SUGGESTION`.
-- `app/src/main/kotlin/.../ui/format/DartText.kt`: `checkoutRouteText`, `dartSpokenText`.
+- `app/src/main/kotlin/.../ui/format/DartText.kt`: `checkoutRouteText`.
+- `app/src/main/kotlin/.../ui/format/DartWords.kt` (new): `dartWords(resources, dart)`, moved from `dartCall`.
+- `app/src/main/kotlin/.../audio/ResourcePhrases.kt`: `dartCall` delegates to `dartWords`.
+- `app/src/test/.../ui/format/DartWordsTest.kt` (new, Robolectric).
 - `app/src/main/res/values/strings.xml`, `app/src/main/res/values-fr/strings.xml`.
 - `app/src/test/.../ui/game/GameScreenStateTest.kt`, `app/src/test/.../ui/x01/X01ScreensTest.kt` (new cases),
   `app/src/test/.../screenshots/CheckoutSuggestionScreenshotTest.kt` (new).
@@ -171,6 +210,11 @@ Highlighted card, both orientations:
 - Turn waiting for "Next player" (3rd dart or bust): empty line (BUST badge unchanged).
 - Checkout dialog open: empty line. End screen: unchanged.
 - Longest texts: "Checkout: T20 · T20 · Bull" (26 characters) and « Sortie : T20 · T20 · Bull » (25).
+- At 200 % font scale: the reserved line is two lines high in every state; the longest route wraps after a `·`.
+- 4 players, portrait (U3): the scoreboard column scrolls (`verticalScroll`, unchanged). The highlighted card is
+  drawn in throwing order, like today; this mission adds one reserved line and does not change scrolling. The
+  4-player portrait capture shows whether the current card stays fully visible; no row may be clipped
+  horizontally.
 
 ## Test plan
 
@@ -182,8 +226,8 @@ Highlighted card, both orientations:
 - CS3.2: preferred double order: 32 with 1 dart = D16; 56 with 2 darts = `16 · D20` (D20 before D16); a case where
   only a non-listed double works (38 with 1 dart = D19); Bull only when no double fits (110 with 2 darts).
 - CS3.3: 167 with 3 darts = `T20 · T19 · Bull` (not `T19 · T20 · Bull`).
-- CS3.4: 60 with 3 darts double out = `20 · D20`; single out 18 with 1 dart = `18`; 30 with 1 dart = `D15`
-  (not T10); 36 with 1 dart = `D18` (not T12).
+- CS3.4: 60 with 3 darts, double out = `20 · D20`; 18 with 1 dart, single out = `18`; 30 with 1 dart, single out
+  = `D15` (not T10); 36 with 1 dart, single out = `D18` (not T12).
 - CS2: `null` for R in {0, -1, 1 (double out), 101/1, 159/3, 181/3}; `dartsLeft = 0` gives `null`;
   `dartsLeft` of -1 and 4 throw.
 - Exhaustive (issue): for each R in 1..180, k in 1..3 and each rule, an independent brute force in the test
@@ -197,13 +241,20 @@ Highlighted card, both orientations:
 
 `X01CheckoutSuggestionTest` (CS4, CS6): 301 double out, 1 player: start has none; after T20, T20 none (181);
 after a 3rd dart and new turn at 170: `T20 · T20 · Bull`; after T20: `T20 · Bull`; after S20 (90, 1 dart): none;
-undo twice restores each step; finished leg: `null`; single out game: 180 at turn start gives `T20 · T20 · T20`;
+undo twice restores each step; finished leg: `null`, without exception (S1/A3), also for a finished leg restored
+with `X01Game(config, darts)`; a game restored mid-turn gives the same suggestion as the same darts thrown one by
+one; single out game: 180 at turn start gives `T20 · T20 · T20`;
 two players: the suggestion follows the engine current player.
 
 ### `:app` pure JVM (`GameScreenStateTest`)
 
 CS5: suggestion present mid-turn; `null` while a normal turn waits, while a bust waits, while the checkout dialog
-is open; back after `nextPlayer()`; back after `undo()` on a waiting turn.
+is open; back after `nextPlayer()`; back after `undo()` on a waiting turn. With 2 players (T4): undo across
+"Next player" (player B has thrown nothing, undo goes back to A's 3rd dart, then once more) gives A's
+suggestion with the right darts left at each step, and `null` while A's turn waits.
+
+CS4, restored game (T3): a `GameScreenState` built from `X01Game(config, darts)` with a mid-turn dart list (as the
+save loader does) gives the same suggestion as the game played dart by dart.
 
 ### Robolectric (`X01ScreensTest`, Compose UI)
 
@@ -212,14 +263,31 @@ is open; back after `nextPlayer()`; back after `undo()` on a waiting turn.
 - Content description "Checkout: Triple 20, Triple 20, Bull" / French equivalent; empty line has no content
   description and no text for TalkBack.
 - CS8: the top of the dart slots (`dartSlot(0)` bounds) and the card height are the same with and without a
-  suggestion.
+  suggestion, at font scale 1 and 2 (`@Config(fontScale = 2f)`), portrait and landscape.
+- CS8 exhaustive measurement, en and fr, font scale 1 and 2, portrait and landscape Pixel 7: for every distinct
+  route the engine produces (R 1..180, k 1..3, both rules), the line height for that text is <= the reserved height
+  (so the card never moves for any route), and the text has no visual overflow.
+- U2: at `fontScale = 2f`, portrait, en and fr, the longest route is displayed in full: the node text equals the
+  whole expected string, `TextLayoutResult.hasVisualOverflow` is false (via `getTextLayoutResult` semantics action),
+  and the line's bounds are inside the card.
+- U6: in `fr`, both `game_checkout_suggestion` and `game_checkout_suggestion_description` contain U+00A0 before the
+  colon.
+- T2: traversal order of the highlighted card (`traversalIndex` of name, remaining, box, suggestion, dart slots) is
+  0, 1, 3, 4, 5, and the suggestion comes after the box and before the first dart slot.
 - Hidden after a bust and after a 3rd dart until "Next player"; the PO scenario steps 1 to 5 end to end.
+
+### Robolectric (`DartWordsTest`)
+
+`dartWords` for single 20 = `20`, double 16 = `Double 16`, triple 20 = `Triple 20`, outer bull = `25`, bull = `Bull`,
+miss = `null`, in en and fr. Existing `ResourcePhrasesTest` stays unchanged and green.
 
 ### Roborazzi captures (record only, as existing captures)
 
 `CheckoutSuggestionScreenshotTest`, Pixel 7: with suggestion (1 player, 301, 170 left) and without (game start),
-portrait and landscape, English and French; plus 4 players in landscape with the longest route, to check that the
-line does not wrap or clip in the narrow scoreboard column. Existing captures will change (taller card): expected.
+portrait and landscape, English and French; plus 4 players in landscape and 4 players in portrait (French, with
+suggestion, U3) with the longest route; plus the longest route at `fontScale = 2f`, portrait, French (U2), and the
+same state without suggestion at 2f to show the reserved two-line height. Existing captures will change (taller
+card): expected.
 
 ### Local checks
 
@@ -235,18 +303,23 @@ The issue's steps, with Q5 notation: 1 player, 301, double out.
 4. Cause a bust: the line empties.
 5. New game, single out: T20, T20, 1, Next player: « Sortie : T20 · T20 · T20 ».
 6. Same checks in landscape. With TalkBack: the card reads « Sortie : Triple 20, Triple 20, Bull ».
+7. Phone settings, largest font size: at 170 left the whole route is visible (it may take two lines); the card does
+   not change height between a turn with and a turn without suggestion.
+8. 4 players, portrait: the current player's card shows the suggestion; the list scrolls, nothing is cut off.
 
 ## Trade-offs and risks
 
 - The highlighted card grows by one line in every state (Q3). In landscape with 4 players, the scoreboard scrolls
   sooner; the 4-player landscape capture checks this.
-- With `maxLines = 1`, a very large font scale could clip the end of the route; the text is at most 26 characters
-  in `titleMedium`, which fits on a Pixel 7 at default scale in both orientations (checked by the captures). Allowing
-  a second line would break Q3 at large font scales; I keep one line and list it as a known limitation.
+- At large font scales (when the widest route needs two lines) the card is two lines taller than before in every
+  state, including turns without suggestion. This is the price of "nothing moves" plus "never clipped"; at the default
+  scale the cost stays one line.
+- The reserved height relies on `T20 · T20 · Bull` being the widest route; the exhaustive measurement test proves it
+  for the app font on the tested widths, and the max() fallback guarantees no clipping elsewhere.
 - CS3.3 ("strongest first") is the owner's deterministic rule, not always what a professional would throw (e.g.
   setup darts that leave a preferred double are not favored beyond CS3.2). This follows the issue on purpose.
 - No live region: TalkBack users hear the route when they move to the card, not after each dart.
 
 ## Open questions
 
-None for Kosmo. Reviewers may challenge the "no live region" choice (UX) and the one-line limit (UX).
+None for Kosmo. Reviewers may challenge the "no live region" choice (UX).
