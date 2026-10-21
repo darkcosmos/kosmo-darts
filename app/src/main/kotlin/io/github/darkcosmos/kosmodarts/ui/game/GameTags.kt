@@ -22,6 +22,18 @@ object GameTags {
 
     fun playerName(playerIndex: Int): String = "game_player_name_$playerIndex"
 
+    /** The indicator line of a player (M14). */
+    fun matchIndicators(playerIndex: Int): String = "game_match_indicators_$playerIndex"
+
+    /** Each drawn set mark of a player (M14). */
+    fun setMark(playerIndex: Int): String = "game_set_mark_$playerIndex"
+
+    /** Each drawn leg mark of a player (M14). */
+    fun legMark(playerIndex: Int): String = "game_leg_mark_$playerIndex"
+
+    /** The scrolling column of player cards and rows (U1). */
+    const val SCOREBOARD: String = "game_scoreboard"
+
     /** Remaining score of a player row; the highlighted card uses [CURRENT_REMAINING]. */
     fun remaining(playerIndex: Int): String = "game_remaining_$playerIndex"
 }

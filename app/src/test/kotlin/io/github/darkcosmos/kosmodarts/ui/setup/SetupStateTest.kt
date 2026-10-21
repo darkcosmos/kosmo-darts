@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.setup
 
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.engine.x01.X01ConfigError
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -25,7 +26,7 @@ class SetupStateTest {
     @Test
     /** R7: the last setup prefills names in order, start score and checkout rule. */
     fun `R7 prefilled keeps names in order, start score and checkout rule`() {
-        val lastSetup = X01Config(listOf("Cid", "Ann", "Bob"), 301, CheckoutRule.SINGLE_OUT)
+        val lastSetup = X01MatchConfig(X01Config(listOf("Cid", "Ann", "Bob"), 301, CheckoutRule.SINGLE_OUT))
 
         assertEquals(
             SetupState(301, CheckoutRule.SINGLE_OUT, listOf("Cid", "Ann", "Bob")),
@@ -85,7 +86,7 @@ class SetupStateTest {
         val result = setup.start()
 
         assertEquals(
-            SetupResult.Valid(X01Config(listOf("Ann", "Bob"), 301, CheckoutRule.SINGLE_OUT)),
+            SetupResult.Valid(X01MatchConfig(X01Config(listOf("Ann", "Bob"), 301, CheckoutRule.SINGLE_OUT))),
             result,
         )
     }

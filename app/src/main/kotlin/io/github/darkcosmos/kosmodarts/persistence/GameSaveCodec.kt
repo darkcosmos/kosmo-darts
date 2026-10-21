@@ -1,11 +1,11 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
-import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.InvalidX01ConfigException
 import io.github.darkcosmos.kosmodarts.engine.x01.LegFinishedException
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 
 /** Outcome of [GameSaveCodec.decode]. */
 sealed interface GameDecodeResult {
@@ -15,27 +15,37 @@ sealed interface GameDecodeResult {
 }
 
 /**
- * Encodes and decodes the saved game file, format version 1 (docs/adr/0001-save-format.md, rules R9, R11, R12).
+ * Encodes the saved game file in format version 2 and decodes versions 1 and 2 (docs/adr/0001-save-format.md,
+ * docs/adr/0005-save-format-v2-match.md; rules R9, R11, R12, R13, R16).
  *
- * Decoding never throws: any content is either a [GameDecodeResult.Valid] game that re-encodes to the same bytes, or
- * a [GameDecodeResult.Invalid] with the first broken check.
+ * Decoding never throws: any content is either a [GameDecodeResult.Valid] game, which re-encodes to the same bytes
+ * when it was read from version 2, or a [GameDecodeResult.Invalid] with the first broken check.
  *
- * @param gameFactory builds the leg from its configuration and every dart, in one replay. Injected so that tests can
- *   check that a save is replayed once, never dart by dart.
+ * @param gameFactory builds the current leg from its configuration, every dart and its starting player, in one
+ *   replay. Injected so that tests can check that a save is replayed once, never dart by dart.
  */
 class GameSaveCodec(
-    private val gameFactory: (X01Config, List<Dart>) -> X01Game = ::X01Game,
+    private val gameFactory: (X01Config, List<Dart>, Int) -> X01Game = ::X01Game,
 ) {
 
-    /** The file content of [saved], or `null` if it has more than [MAX_DARTS] darts (rule R12). */
+    /**
+     * The file content of [saved], or `null` if the current leg or a confirmed leg has more than [MAX_DARTS] darts
+     * (rule R12): the previous file is then kept.
+     */
     fun encode(saved: SavedGame): ByteArray? {
-        val game = saved.game
-        if (game.darts.size > MAX_DARTS) return null
-        val body = configLines(game.config) + listOf(
-            DARTS_KEY to game.darts.joinToString(" ") { DartTokens.tokenOf(it) },
-            AWAITING_KEY to saved.isAwaitingNextPlayer.toString(),
+        val match = saved.match
+        val tooLong = match.currentLeg.darts.size > MAX_DARTS ||
+            match.completedLegs.any { leg -> leg.dartsThrown.any { it > MAX_DARTS } }
+        if (tooLong) return null
+        val body = SaveBody(
+            config = match.config,
+            format = match.format,
+            legs = match.completedLegs,
+            darts = match.currentLeg.darts,
+            isAwaitingNextPlayer = saved.isAwaitingNextPlayer,
+            isBetweenLegs = saved.isBetweenLegs,
         )
-        return SaveFormat.encode(KIND, body)
+        return SaveFormat.encode(KIND, writeBody(V2_LAYOUT, body))
     }
 
     fun decode(bytes: ByteArray): GameDecodeResult = try {
@@ -46,81 +56,63 @@ class GameSaveCodec(
 
     private fun decodeOrThrow(bytes: ByteArray): SavedGame {
         ensure(bytes.size <= MAX_FILE_BYTES, InvalidSaveReason.TOO_LARGE)
-        val reader = SaveFormat.decode(bytes, KIND)
-        val config = readConfig(reader)
-        val darts = parseDarts(reader.value(DARTS_KEY))
-        val isAwaiting = parseBoolean(reader.value(AWAITING_KEY))
-        reader.finish()
-        val game = try {
-            gameFactory(config, darts)
+        val file = SaveFormat.decode(bytes, KIND, LAYOUTS.keys)
+        val body = readBody(file.reader, LAYOUTS.getValue(file.version))
+        file.reader.finish()
+        val match = try {
+            val currentLeg = gameFactory(body.config, body.darts, body.legs.size % body.config.players.size)
+            X01Match(X01MatchConfig(body.config, body.format), body.legs, currentLeg)
         } catch (e: LegFinishedException) {
             reject(InvalidSaveReason.REJECTED_BY_ENGINE, e)
+        } catch (e: IllegalArgumentException) {
+            // The confirmed legs go on after the match is decided, or decide it (docs/rules/match.md, M4).
+            reject(InvalidSaveReason.REJECTED_BY_ENGINE, e)
         }
-        ensure(SavedGame.isConsistent(game, isAwaiting), InvalidSaveReason.INCONSISTENT_WAITING_FLAG)
-        return SavedGame(game, isAwaiting)
-    }
-
-    private fun parseDarts(value: String): List<Dart> {
-        if (value.isEmpty()) return emptyList()
-        // Count before splitting, so that an oversized list is rejected without building it.
-        ensure(value.count { it == ' ' } < MAX_DARTS, InvalidSaveReason.OUT_OF_RANGE)
-        return value.split(' ').map { token ->
-            ensure(token.isNotEmpty(), InvalidSaveReason.MALFORMED)
-            DartTokens.dartOf(token) ?: reject(InvalidSaveReason.OUT_OF_RANGE)
-        }
-    }
-
-    private fun parseBoolean(value: String): Boolean = when (value) {
-        "true" -> true
-        "false" -> false
-        else -> reject(InvalidSaveReason.OUT_OF_RANGE)
+        val saved = SavedGame(match, body.isAwaitingNextPlayer, body.isBetweenLegs)
+        ensure(saved.isConsistent, InvalidSaveReason.INCONSISTENT_WAITING_FLAG)
+        return saved
     }
 
     companion object {
-        /** Largest number of darts that is saved (rule R12). */
-        const val MAX_DARTS: Int = 10_000
+        /** Largest number of darts that is saved, in the current leg and in each confirmed leg (rule R12). */
+        const val MAX_DARTS: Int = MAX_SAVED_DARTS
 
-        /** Larger files are rejected before parsing (rule R9). A valid save is always under 41 KB. */
-        const val MAX_FILE_BYTES: Int = 65_536
+        /**
+         * Larger files are rejected before parsing (rule R9). A valid save is always under 92 KB: see ADR 0005,
+         * "Size limit".
+         */
+        const val MAX_FILE_BYTES: Int = 131_072
 
         private const val KIND = "saved-game"
-        private const val DARTS_KEY = "darts"
-        private const val AWAITING_KEY = "awaiting-next-player"
-    }
-}
 
-private const val GAME_KEY = "game"
-private const val GAME_X01 = "x01"
-private const val START_SCORE_KEY = "start-score"
-private const val CHECKOUT_KEY = "checkout"
-private const val PLAYERS_KEY = "players"
-private const val PLAYER_KEY = "player"
+        /** Version 1 (ADR 0001): a single game. */
+        private val V1_LAYOUT = listOf(
+            SaveKey.GAME,
+            SaveKey.START_SCORE,
+            SaveKey.CHECKOUT,
+            SaveKey.PLAYERS,
+            SaveKey.PLAYER,
+            SaveKey.DARTS,
+            SaveKey.AWAITING,
+        )
 
-private val CHECKOUT_TOKENS = mapOf(CheckoutRule.DOUBLE_OUT to "double-out", CheckoutRule.SINGLE_OUT to "single-out")
+        /** Version 2 (ADR 0005): the match format, the confirmed legs and the between-legs flag. */
+        private val V2_LAYOUT = listOf(
+            SaveKey.GAME,
+            SaveKey.START_SCORE,
+            SaveKey.CHECKOUT,
+            SaveKey.LEGS_PER_SET,
+            SaveKey.SETS,
+            SaveKey.PLAYERS,
+            SaveKey.PLAYER,
+            SaveKey.LEGS,
+            SaveKey.LEG,
+            SaveKey.DARTS,
+            SaveKey.AWAITING,
+            SaveKey.BETWEEN_LEGS,
+        )
 
-/** The configuration lines shared by the saved game and the last setup. */
-internal fun configLines(config: X01Config): List<Pair<String, String>> = listOf(
-    GAME_KEY to GAME_X01,
-    START_SCORE_KEY to config.startScore.toString(),
-    CHECKOUT_KEY to CHECKOUT_TOKENS.getValue(config.checkoutRule),
-    PLAYERS_KEY to config.players.size.toString(),
-) + config.players.map { PLAYER_KEY to SaveFormat.encodeName(it) }
-
-/** Reads the lines written by [configLines] and validates them with the engine rules (C1 to C5). */
-internal fun readConfig(reader: BodyReader): X01Config {
-    ensure(reader.value(GAME_KEY) == GAME_X01, InvalidSaveReason.OUT_OF_RANGE)
-    val startScore = SaveFormat.parseInteger(reader.value(START_SCORE_KEY))
-    ensure(startScore in X01Config.START_SCORES, InvalidSaveReason.OUT_OF_RANGE)
-    val checkoutToken = reader.value(CHECKOUT_KEY)
-    val checkoutRule = CHECKOUT_TOKENS.entries.firstOrNull { it.value == checkoutToken }?.key
-        ?: reject(InvalidSaveReason.OUT_OF_RANGE)
-    val playerCount = SaveFormat.parseInteger(reader.value(PLAYERS_KEY))
-    ensure(playerCount in 1..X01Config.MAX_PLAYERS, InvalidSaveReason.OUT_OF_RANGE)
-    val names = List(playerCount) { SaveFormat.decodeName(reader.value(PLAYER_KEY)) }
-    return try {
-        X01Config(names, startScore, checkoutRule)
-    } catch (e: InvalidX01ConfigException) {
-        reject(InvalidSaveReason.INVALID_CONFIG, e)
+        private val LAYOUTS = mapOf(SaveFormat.VERSION_1 to V1_LAYOUT, SaveFormat.VERSION_2 to V2_LAYOUT)
     }
 }
 

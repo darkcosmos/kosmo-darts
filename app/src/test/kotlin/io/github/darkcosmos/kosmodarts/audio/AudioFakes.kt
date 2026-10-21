@@ -172,6 +172,8 @@ object TestPhrases : Phrases {
     override fun turnScore(points: Int) = "score $points"
     override fun noScore() = "no score"
     override fun win(name: String) = "win $name"
+    override fun legWon(name: String) = "leg $name"
+    override fun setWon(name: String) = "set $name"
     override fun dartCall(dart: io.github.darkcosmos.kosmodarts.engine.x01.Dart) =
         if (dart.value == 0) null else "call ${dart.value}"
     override fun announcementsOn() = "announcements on"

@@ -57,7 +57,7 @@ class VisitTotalScreensTest {
         composeRule.onNodeWithText("301").performClick()
         if (singleOut) clickInScroll(R.string.setup_single_out)
         repeat(names.size - 2) {
-            composeRule.onNodeWithContentDescription(string(R.string.setup_add_player)).performClick()
+            composeRule.onNodeWithContentDescription(string(R.string.setup_add_player)).performScrollTo().performClick()
         }
         names.forEachIndexed { index, name ->
             composeRule.onNodeWithTag(SetupTags.nameField(index)).performScrollTo().performTextReplacement(name)

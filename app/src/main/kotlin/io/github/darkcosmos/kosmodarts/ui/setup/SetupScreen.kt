@@ -142,10 +142,11 @@ private fun GameSettings(setup: SetupState, onEvent: (AppEvent) -> Unit) {
         label = { checkoutRuleText(it) },
         onSelect = { onEvent(AppEvent.CheckoutRuleSelected(it)) },
     )
+    MatchSettings(setup, onEvent)
 }
 
 @Composable
-private fun SectionLabel(text: String) {
+internal fun SectionLabel(text: String) {
     Text(text = text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
 }
 
@@ -252,6 +253,6 @@ private fun SetupScreenPreview() {
 
 /** The button content description already says what the symbol means, so the symbol itself is not read. */
 @Composable
-private fun SymbolText(symbol: String) {
+internal fun SymbolText(symbol: String) {
     Text(text = symbol, style = MaterialTheme.typography.titleLarge, modifier = Modifier.clearAndSetSemantics {})
 }

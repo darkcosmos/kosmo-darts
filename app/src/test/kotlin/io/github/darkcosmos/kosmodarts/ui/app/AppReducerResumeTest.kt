@@ -3,6 +3,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
@@ -17,7 +18,7 @@ class AppReducerResumeTest {
 
     private fun AppState.after(vararg events: AppEvent): AppState = events.fold(this, reducer::reduce)
 
-    private val lastSetup = X01Config(listOf("Cid", "Ann"), 301, CheckoutRule.SINGLE_OUT)
+    private val lastSetup = X01MatchConfig(X01Config(listOf("Cid", "Ann"), 301, CheckoutRule.SINGLE_OUT))
     private val saved = SaveFixtures.WAITING_BUST
     private val home = AppState(screen = Screen.Home(resumableGame = saved), lastSetup = lastSetup)
 
@@ -93,7 +94,9 @@ class AppReducerResumeTest {
         val ended = checkout.after(AppEvent.ResumeTapped, AppEvent.FinishGameTapped)
         val rematch = ended.after(AppEvent.Rematch)
         val config = SaveFixtures.WAITING_CHECKOUT.game.config
-        val rotated = X01Config(config.players.drop(1) + config.players.first(), config.startScore, config.checkoutRule)
+        val rotated = X01MatchConfig(
+            X01Config(config.players.drop(1) + config.players.first(), config.startScore, config.checkoutRule),
+        )
 
         assertEquals(rotated, rematch.lastSetup)
         val next = rematch.after(AppEvent.Back, AppEvent.AbandonConfirmed, AppEvent.NewGame)

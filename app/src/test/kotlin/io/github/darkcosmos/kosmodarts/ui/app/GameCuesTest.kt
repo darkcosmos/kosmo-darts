@@ -3,6 +3,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cues
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
@@ -57,7 +58,7 @@ class GameCuesTest {
     /** AN4: Start opens the game and announces the first player. */
     @Test
     fun `AN4 start announces the first player`() {
-        val setup = AppState(screen = Screen.Setup(SetupState.prefilled(config)))
+        val setup = AppState(screen = Screen.Setup(SetupState.prefilled(X01MatchConfig(config))))
         assertEquals(
             listOf(X01Cue.TurnStart(0, "Ann", null, isGameStart = true)),
             cuesOf(setup, AppEvent.StartRequested),

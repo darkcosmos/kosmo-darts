@@ -103,10 +103,12 @@ class X01ScreensTest {
         composeRule.onNodeWithText(startScore.toString()).performClick()
         if (singleOut) clickInScroll(R.string.setup_single_out)
         repeat(names.size - 2) {
-            composeRule.onNodeWithContentDescription(string(R.string.setup_add_player)).performClick()
+            composeRule.onNodeWithContentDescription(string(R.string.setup_add_player)).performScrollTo().performClick()
         }
         if (names.size == 1) {
-            composeRule.onNodeWithContentDescription(string(R.string.setup_remove_player)).performClick()
+            composeRule.onNodeWithContentDescription(string(R.string.setup_remove_player))
+                .performScrollTo()
+                .performClick()
         }
         names.forEachIndexed { index, name ->
             composeRule.onNodeWithTag(SetupTags.nameField(index)).performScrollTo().performTextReplacement(name)
@@ -411,7 +413,7 @@ class X01ScreensTest {
     @Test
     fun setupErrorsAreShownUnderTheConcernedFields() {
         click(R.string.home_new_game)
-        composeRule.onNodeWithContentDescription(string(R.string.setup_add_player)).performClick()
+        composeRule.onNodeWithContentDescription(string(R.string.setup_add_player)).performScrollTo().performClick()
         composeRule.onNodeWithTag(SetupTags.nameField(0)).performTextReplacement("Ann")
         composeRule.onNodeWithTag(SetupTags.nameField(2)).performTextReplacement("ann")
 

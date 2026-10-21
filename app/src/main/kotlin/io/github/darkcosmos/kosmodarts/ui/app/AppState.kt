@@ -2,8 +2,9 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
-import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
@@ -32,18 +33,34 @@ sealed interface Screen {
     /** The "Settings" screen (AN13); Back returns to [home], with its saved game summary. */
     data class Settings(val home: Home) : Screen
 
-    /** End of a finished leg. */
-    data class End(val game: X01Game) : Screen
+    /**
+     * Between two legs of a match, after "Finish leg" or "Finish set" (docs/rules/match.md, M16). [match] already has
+     * the leg confirmed and its next leg started, with no dart.
+     *
+     * @property isAbandonDialogShown whether the "Abandon the game?" confirmation is open (owner Q6 i).
+     */
+    data class BetweenLegs(val match: X01Match, val isAbandonDialogShown: Boolean = false) : Screen
+
+    /** End of a finished match (M17); a single game is a match of one leg. */
+    data class End(val match: X01Match) : Screen {
+        /** The end of a single game (M5): [game] is its only, finished, leg. */
+        constructor(game: X01Game) : this(X01Match(X01MatchConfig(game.config), emptyList(), game))
+
+        /** The last leg, the one that decided the match. */
+        val game: X01Game
+            get() = match.currentLeg
+    }
 }
 
 /**
  * Whole UI state of the app.
  *
- * @property lastSetup configuration of the last game started (Start or Rematch), to prefill the next setup (rule R7).
+ * @property lastSetup configuration and match format of the last game started (Start or Rematch), to prefill the
+ *   next setup (rules R7, R13).
  */
 data class AppState(
     val screen: Screen = Screen.Home(),
-    val lastSetup: X01Config? = null,
+    val lastSetup: X01MatchConfig? = null,
 )
 
 /** Everything the user can do. An event that does not apply to the current screen is ignored. */
@@ -78,6 +95,12 @@ sealed interface AppEvent {
 
     data object PlayersShuffled : AppEvent
 
+    /** − (delta -1) or + (delta 1) of "Legs per set" (M13). */
+    data class LegsPerSetChanged(val delta: Int) : AppEvent
+
+    /** − (delta -1) or + (delta 1) of "Sets" (M13). */
+    data class SetsChanged(val delta: Int) : AppEvent
+
     data object StartRequested : AppEvent
 
     data class NumberTapped(val number: Int) : AppEvent
@@ -97,8 +120,11 @@ sealed interface AppEvent {
     /** "Next player", next to the Undo key. */
     data object NextPlayerTapped : AppEvent
 
-    /** "Finish game" in the checkout dialog. */
+    /** "Finish leg", "Finish set" or "Finish game" in the checkout dialog (M15). */
     data object FinishGameTapped : AppEvent
+
+    /** "Next leg" on the between-legs screen (M16). */
+    data object NextLegTapped : AppEvent
 
     data object AbandonConfirmed : AppEvent
 

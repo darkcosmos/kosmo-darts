@@ -40,8 +40,12 @@ internal fun ensure(condition: Boolean, reason: InvalidSaveReason) {
     if (!condition) reject(reason)
 }
 
+/** A decoded file: the version it declares, and a reader over its body lines. */
+internal class DecodedFile(val version: Int, val reader: BodyReader)
+
 /**
- * Line-based text format shared by the saved game and the last setup, version 1 (docs/adr/0001-save-format.md).
+ * Line-based text format shared by the saved game and the last setup (docs/adr/0001-save-format.md; version 2:
+ * docs/adr/0005-save-format-v2-match.md).
  *
  * A file is: a kind line, a version line, body lines in a fixed order, a CRC-32 line covering every byte before it,
  * and an end line. Every value has a single canonical form, so that `decode(encode(x)) == x` and any other content is
@@ -49,7 +53,14 @@ internal fun ensure(condition: Boolean, reason: InvalidSaveReason) {
  */
 internal object SaveFormat {
 
-    const val VERSION: Int = 1
+    /** Version 1: the format of ADR 0001, still decoded (rule R16). */
+    const val VERSION_1: Int = 1
+
+    /** Version 2: adds the match format and the confirmed legs (ADR 0005). Every write uses it. */
+    const val VERSION_2: Int = 2
+
+    /** The version every write uses. */
+    const val VERSION: Int = VERSION_2
 
     private const val KIND_KEY = "kosmodarts"
     private const val VERSION_KEY = "version"
@@ -76,19 +87,21 @@ internal object SaveFormat {
     }
 
     /**
-     * Checks the encoding, the kind, the version, the trailer and the checksum of [bytes], then returns a reader over
-     * the body lines.
+     * Checks the encoding, the kind, the version, the trailer and the checksum of [bytes], then returns the version
+     * read and a reader over the body lines.
      *
+     * @param versions the versions this kind of file accepts; any other one is [InvalidSaveReason.UNSUPPORTED_VERSION].
      * @throws InvalidSaveException if any of these checks fails.
      */
-    fun decode(bytes: ByteArray, kind: String): BodyReader {
+    fun decode(bytes: ByteArray, kind: String, versions: Set<Int>): DecodedFile {
         val text = strictUtf8(bytes, InvalidSaveReason.MALFORMED)
         ensure('\r' !in text, InvalidSaveReason.MALFORMED)
         val lines = text.split('\n')
         ensure(lines.first() == "$KIND_KEY=$kind", InvalidSaveReason.MALFORMED)
         val versionLine = lines.getOrNull(1).orEmpty()
         ensure(versionLine.startsWith("$VERSION_KEY="), InvalidSaveReason.MALFORMED)
-        ensure(versionLine == "$VERSION_KEY=$VERSION", InvalidSaveReason.UNSUPPORTED_VERSION)
+        val version = versions.firstOrNull { versionLine == "$VERSION_KEY=$it" }
+            ?: reject(InvalidSaveReason.UNSUPPORTED_VERSION)
         // ..., crc line, end line, then the empty string after the final line feed.
         val crcLine = lines.getOrNull(lines.size - TRAILER_LINES).orEmpty()
         val hasTrailer = lines.size >= HEADER_LINES + TRAILER_LINES &&
@@ -100,7 +113,7 @@ internal object SaveFormat {
         val trailerBytes = crcLine.length + 1 + END_LINE.length + 1
         val covered = bytes.copyOfRange(0, bytes.size - trailerBytes)
         ensure(crc32Hex(covered) == crcLine.substringAfter('='), InvalidSaveReason.CHECKSUM_MISMATCH)
-        return BodyReader(lines.subList(HEADER_LINES, lines.size - TRAILER_LINES))
+        return DecodedFile(version, BodyReader(lines.subList(HEADER_LINES, lines.size - TRAILER_LINES)))
     }
 
     /** Canonical decimal: digits only, no sign, no leading zero, at most [MAX_INTEGER_DIGITS] digits. */

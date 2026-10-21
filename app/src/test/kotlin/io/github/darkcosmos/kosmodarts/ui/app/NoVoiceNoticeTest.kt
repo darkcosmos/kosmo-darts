@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.persistence.GameLoad
 import io.github.darkcosmos.kosmodarts.persistence.LoadResult
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
@@ -40,7 +41,7 @@ class NoVoiceNoticeTest {
         get() = (state.value.screen as? Screen.Game)?.noVoiceNotice
 
     private fun started(settings: AudioSettings = AudioSettings()): KosmoDartsViewModel =
-        viewModel(AppState(screen = Screen.Setup(SetupState.prefilled(config))), settings).apply {
+        viewModel(AppState(screen = Screen.Setup(SetupState.prefilled(X01MatchConfig(config)))), settings).apply {
             onEvent(AppEvent.StartRequested)
         }
 

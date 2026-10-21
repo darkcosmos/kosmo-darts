@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.audio
 
+import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 
 /** One step of an announcement, played after the previous one has ended (AN10). */
@@ -29,7 +30,8 @@ sealed interface AudioAction {
 
 /**
  * Renders a cue as sounds and speech (AN8, AN9, AN25). Pure. Bust and 180 are their sound only: the sound replaces
- * the score (E2, A.1). A win is the victory sound and the win phrase together (A.2).
+ * the score (E2, A.1). A match win is the victory sound and the win phrase together (A.2); a leg or set win is its
+ * phrase alone (AN27).
  */
 object CueScript {
 
@@ -41,9 +43,19 @@ object CueScript {
         X01Cue.NoScore -> speech(phrases.noScore())
         X01Cue.OneEighty -> sound(SoundEffect.ONE_EIGHTY)
         X01Cue.Bust -> sound(SoundEffect.BUST)
-        is X01Cue.GameShot -> victory(phrases.win(cue.name))
-        is X01Cue.BigFish -> victory(phrases.win(cue.name))
+        is X01Cue.GameShot -> win(cue, phrases)
+        is X01Cue.BigFish -> win(cue, phrases)
         is X01Cue.TurnStart -> speech(turnStart(cue, phrases))
+    }
+
+    /**
+     * AN27 (owner O1): the victory sound with the victory phrase only when the match is won (a single game included).
+     * A leg or a set is its own phrase alone, with no victory sound: with the voice off, nothing follows the dart.
+     */
+    private fun win(cue: X01Cue.Win, phrases: Phrases): AudioAction = when (cue.outcome) {
+        LegOutcome.LEG -> speech(phrases.legWon(cue.name))
+        LegOutcome.SET -> speech(phrases.setWon(cue.name))
+        LegOutcome.MATCH -> victory(phrases.win(cue.name))
     }
 
     /** E1: the turn start phrase, then the remaining score when a checkout is possible. */
