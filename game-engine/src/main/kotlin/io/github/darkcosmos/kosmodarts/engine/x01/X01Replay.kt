@@ -6,10 +6,14 @@ internal const val DARTS_PER_TURN = 3
 /** Result of a single dart under rules S2 and S3. */
 private enum class DartOutcome { SCORED, BUST, CHECKOUT }
 
-/** Derives an [X01State] from a configuration and an ordered list of darts (rule P1). */
-internal class X01Replay(private val config: X01Config) {
+/**
+ * Derives an [X01State] from a configuration and an ordered list of darts (rule P1). The leg starts with the player at
+ * [startingPlayerIndex] (rule T1; docs/rules/match.md, M6).
+ */
+internal class X01Replay(private val config: X01Config, private val startingPlayerIndex: Int = 0) {
 
-    fun replay(darts: List<Dart>): X01State = darts.fold(Progress.start(config), ::record).toState()
+    fun replay(darts: List<Dart>): X01State =
+        darts.fold(Progress.start(config, startingPlayerIndex), ::record).toState()
 
     private fun record(progress: Progress, dart: Dart): Progress {
         val player = progress.currentPlayer ?: throw LegFinishedException()
@@ -101,10 +105,10 @@ internal class X01Replay(private val config: X01Config) {
         }
 
         companion object {
-            fun start(config: X01Config): Progress = Progress(
+            fun start(config: X01Config, startingPlayerIndex: Int): Progress = Progress(
                 remaining = config.players.map { config.startScore },
                 dartsThrown = config.players.map { 0 },
-                currentPlayer = 0,
+                currentPlayer = startingPlayerIndex,
                 turnDarts = emptyList(),
                 completedTurns = emptyList(),
                 winner = null,

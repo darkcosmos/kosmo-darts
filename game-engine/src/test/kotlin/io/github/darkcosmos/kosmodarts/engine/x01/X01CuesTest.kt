@@ -1,5 +1,7 @@
 package io.github.darkcosmos.kosmodarts.engine.x01
 
+import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
+import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -204,6 +206,65 @@ class X01CuesTest {
             assertEquals(it, game.player(0).remaining)
             assertEquals(0, game.darts.size % 3)
         }
+    }
+
+    /** AN27, M7: the win cue of a match tells whether the leg, a set or the match is won. */
+    @Test
+    fun `AN27 win cue outcome LEG SET MATCH`() {
+        val leg = gameAtRemaining(100).throwing("T20")
+        mapOf(
+            MatchFormat(2, 2) to LegOutcome.LEG,
+            MatchFormat(1, 2) to LegOutcome.SET,
+            MatchFormat(2, 1) to LegOutcome.LEG,
+            MatchFormat(1, 1) to LegOutcome.MATCH,
+        ).forEach { (format, outcome) ->
+            val before = X01Match(X01MatchConfig(leg.config, format), emptyList(), leg)
+            assertEquals(
+                listOf(X01Cue.DartHit(dart("D20")), X01Cue.GameShot(0, "Alice", outcome)),
+                X01Cues.afterDart(before, before.throwing("D20")),
+                format.toString(),
+            )
+        }
+    }
+
+    /** AN5, AN27: a big fish keeps its kind and carries the outcome. */
+    @Test
+    fun `AN27 big fish keeps its kind`() {
+        val leg = gameAtRemaining(170).throwing("T20", "T20")
+        val before = X01Match(X01MatchConfig(leg.config, MatchFormat(1, 2)), emptyList(), leg)
+
+        assertEquals(
+            X01Cue.BigFish(0, "Alice", LegOutcome.SET),
+            X01Cues.afterDart(before, before.throwing("BULL")).last(),
+        )
+    }
+
+    /** AN27: darts that win nothing are the same cues as for a single leg. */
+    @Test
+    fun `AN27 other cues are unchanged in a match`() {
+        val before = newMatch("Ann", "Bob", legsPerSet = 2).throwing("T20", "T20")
+
+        assertEquals(
+            X01Cues.afterDart(before.currentLeg, before.currentLeg.throwing("T20")),
+            X01Cues.afterDart(before, before.throwing("T20")),
+        )
+    }
+
+    /** AN4, AN28: the first turn of a new leg is a game start for the leg's starter. */
+    @Test
+    fun `AN28 turn start of a new leg`() {
+        val next = newMatch("Ann", "Bob", legsPerSet = 2).confirmLegsWonBy(0)
+
+        assertEquals(X01Cue.TurnStart(1, "Bob", null, isGameStart = true), X01Cues.turnStart(next.currentLeg))
+    }
+
+    /** afterDart on matches only accepts the same leg plus one dart. */
+    @Test
+    fun `afterDart on matches rejects another leg`() {
+        val won = newMatch("Ann", "Bob", legsPerSet = 2).playLegWonBy(0)
+        val next = won.confirmLeg()
+
+        assertThrows<IllegalArgumentException> { X01Cues.afterDart(won, next.throwing("1")) }
     }
 
     private fun finishedFrom170(): X01Game = gameAtRemaining(170).throwing("T20", "T20", "BULL")
