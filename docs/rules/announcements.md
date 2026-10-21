@@ -42,7 +42,9 @@ They complete or replace the issue body; in case of contradiction they prevail.
   being a double or the bull in double out, or any scoring dart in single out. It is computed by enumerating the
   darts of the board (X01 rules D1 to D3); there is no table of values in the code. Examples: in double out, 170 and
   2 are possible, 169, 168, 166, 165, 163, 162, 159 and 1 are not; in single out, 180, 2 and 1 are possible, 179 is
-  not. Scores under 1 or over 180 are never possible.
+  not. Scores under 1 or over 180 are never possible. Since issue #38 it uses the route search of the checkout
+  suggestion: a checkout is possible exactly when a suggestion exists with three darts left
+  (`docs/rules/checkout-suggestions.md`, CS2).
 - AN4. A *turn start* cue names the player who throws next, with their remaining score when a checkout is possible
   for it (AN3) under the game's checkout rule, and whether it is the first turn of the game. It is produced:
   - when a game is started with "Start" or "Rematch" (first player);

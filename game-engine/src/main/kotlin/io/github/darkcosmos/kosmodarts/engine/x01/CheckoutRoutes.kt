@@ -20,7 +20,9 @@ object CheckoutRoutes {
 
     /** Setup darts placed before the finishing dart: index n holds every sequence of n scoring darts. */
     private val setupsBySize: List<List<List<Dart>>> =
-        generateSequence(listOf(emptyList<Dart>())) { setups -> setups.flatMap { setup -> scoringDarts.map(setup::plus) } }
+        generateSequence(listOf(emptyList<Dart>())) { setups ->
+            setups.flatMap { setup -> scoringDarts.map(setup::plus) }
+        }
             .take(DARTS_PER_TURN)
             .toList()
 
@@ -51,7 +53,8 @@ object CheckoutRoutes {
     /** CS3.2 to CS3.4 for routes of the same length. */
     private fun routeOrder(rule: CheckoutRule): Comparator<List<Dart>> = when (rule) {
         CheckoutRule.DOUBLE_OUT ->
-            compareBy<List<Dart>> { finishingPreference(it.last()) }.then { a, b -> compareDarts(a.dropLast(1), b.dropLast(1)) }
+            compareBy<List<Dart>> { finishingPreference(it.last()) }
+                .then { a, b -> compareDarts(a.dropLast(1), b.dropLast(1)) }
         CheckoutRule.SINGLE_OUT -> Comparator(::compareDarts)
     }
 
@@ -62,7 +65,7 @@ object CheckoutRoutes {
         else -> preferredDoubles.size + Dart.NUMBERS.last - dart.segment
     }
 
-    /** CS3.3 and CS3.4: position by position, the highest value first, then the easiest dart (single, double, triple). */
+    /** CS3.3, CS3.4: position by position, the highest value first, then the easiest dart (single, double, triple). */
     private fun compareDarts(first: List<Dart>, second: List<Dart>): Int =
         first.zip(second).firstNotNullOfOrNull { (a, b) -> dartOrder.compare(a, b).takeIf { it != 0 } }
             ?: first.size.compareTo(second.size)

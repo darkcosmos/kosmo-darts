@@ -55,6 +55,12 @@
     <string name="dart_outer_bull" translatable="false">25</string>
     <string name="dart_bull">Bull</string>
     <string name="dart_miss">Miss</string>
+    <!-- Checkout suggestion (docs/rules/checkout-suggestions.md, CS7 to CS9). \u00A0 after the colon keeps the
+         first dart with the label; the route separator only allows a line break after its dot. -->
+    <string name="game_checkout_suggestion">Checkout:\u00A0%1$s</string>
+    <string name="game_checkout_suggestion_description">Checkout: %1$s</string>
+    <string name="checkout_route_separator" translatable="false">"\u00A0· "</string>
+    <string name="checkout_spoken_separator" translatable="false">", "</string>
     <string name="key_double">Double</string>
     <string name="key_triple">Triple</string>
     <string name="key_undo">Undo</string>

@@ -55,6 +55,14 @@ data class GameScreenState(
     val highlightedPlayerIndex: Int?
         get() = pendingTurn?.playerIndex ?: game.state.currentPlayerIndex
 
+    /**
+     * Checkout route shown on the highlighted card (docs/rules/checkout-suggestions.md, CS5): `null` while a turn
+     * waits (the engine has already moved to the next player), else the engine suggestion, which is then for the
+     * highlighted player.
+     */
+    val checkoutSuggestion: List<Dart>?
+        get() = if (isAwaitingConfirmation) null else game.checkoutSuggestion
+
     /** Darts of the highlighted player's turn: the pending turn, else the turn in progress. */
     val highlightedTurnDarts: List<Dart>
         get() = pendingTurn?.darts

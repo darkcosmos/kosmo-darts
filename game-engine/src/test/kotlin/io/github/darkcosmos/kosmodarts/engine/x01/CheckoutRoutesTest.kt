@@ -118,7 +118,12 @@ class CheckoutRoutesTest {
     }
 
     /** [sequences] are all the sequences of 1 to 3 darts that total [remaining]. */
-    private fun checkAgainstBruteForce(sequences: List<List<Dart>>, remaining: Int, dartsLeft: Int, rule: CheckoutRule) {
+    private fun checkAgainstBruteForce(
+        sequences: List<List<Dart>>,
+        remaining: Int,
+        dartsLeft: Int,
+        rule: CheckoutRule,
+    ) {
         val label = "$remaining with $dartsLeft darts, $rule"
         val valid = sequences.filter { it.size <= dartsLeft && finishes(it, rule) }
         val suggestion = suggest(remaining, dartsLeft, rule)

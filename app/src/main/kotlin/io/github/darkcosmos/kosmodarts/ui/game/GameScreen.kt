@@ -61,7 +61,8 @@ private const val ROW_ORDER_AVERAGE = 1f
 private const val ROW_ORDER_REMAINING = 2f
 private const val ROW_ORDER_BOX = 3f
 private const val CARD_ORDER_NAME = 0f
-private const val CARD_ORDER_DARTS = 4f
+private const val CARD_ORDER_SUGGESTION = 4f
+private const val CARD_ORDER_DARTS = 5f
 
 /**
  * Game screen. Portrait: scores above the keypad. Landscape: keypad beside the scores. The screen stays on while it
@@ -119,6 +120,7 @@ private fun Scoreboard(game: GameScreenState, modifier: Modifier) {
                     game.highlightedTurnDarts,
                     visitBoxes[index],
                     game.isBustShown,
+                    game.checkoutSuggestion,
                 )
             } else {
                 PlayerRow(player, index, visitBoxes[index])
@@ -134,6 +136,7 @@ private fun CurrentPlayerCard(
     turnDarts: List<Dart>,
     visitBox: VisitBoxText?,
     isBust: Boolean,
+    checkoutSuggestion: List<Dart>?,
 ) {
     val toThrow = stringResource(R.string.game_to_throw, player.name)
     Surface(
@@ -170,6 +173,7 @@ private fun CurrentPlayerCard(
                 PlayerAverage(player, index, MaterialTheme.typography.titleMedium)
             }
             CardScoreLine(player.remaining, isBust, visitBox, index, SPACING)
+            CheckoutSuggestionLine(checkoutSuggestion, CARD_ORDER_SUGGESTION)
             DartSlots(turnDarts, Modifier.semantics { traversalIndex = CARD_ORDER_DARTS })
         }
     }

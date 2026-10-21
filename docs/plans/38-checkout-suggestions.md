@@ -323,3 +323,28 @@ The issue's steps, with Q5 notation: 1 player, 301, double out.
 ## Open questions
 
 None for Kosmo. Reviewers may challenge the "no live region" choice (UX).
+
+## Implementation notes (code phase)
+
+Differences from the plan above, and why:
+- A5: `dartWords` lives in a neutral package, `app/src/main/kotlin/.../text/DartWords.kt`
+  (`io.github.darkcosmos.kosmodarts.text`), so `audio` does not depend on `ui` for it. `DartWordsTest` is in the
+  same package.
+- Engine file name: `CheckoutRoutes.kt` (detekt `MatchingDeclarationName`).
+- CS8 reference line: the exhaustive measurement test showed that `T20 · T20 · Bull` is *not* the widest route
+  (`Sortie : T20 · D11 · D20` needed more height at some widths, because "D" is wider than "T"). The reference is now
+  the label followed by three times the widest dart text of the board, measured in the line's style. A route only
+  wraps after a separator, so each of its pieces is never wider than the same piece of the reference.
+- Measured widths of the suggestion line on a Pixel 7: about 354 dp in portrait and 406 dp in landscape. The
+  exhaustive measurement test covers 320 to 420 dp, every 4 dp. At font scale 2 on a Pixel 7, Android's non-linear
+  font scaling keeps the whole route on one line in both orientations, so the card is one line taller, not two (see
+  the `_font200` captures). Below about 320 dp at font scale 2 it is not checked: at 200 dp the label and the first
+  dart alone no longer fit on one line.
+- `hasVisualOverflow` cannot be used for a wrap-content text (Compose reports it as overflowing its paragraph
+  width); the tests check the equivalent: every character laid out, every line inside the text width, no vertical
+  overflow (same approach as `VisitTotalLayoutTest`).
+- The exhaustive measurement test (`CheckoutSuggestionMeasureTest`) uses a plain `TextMeasurer` with the app's
+  context (density and font scale), the `titleMedium` style and the same string resources as the screen; the exact
+  displayed notation is checked on the real screen by `CheckoutSuggestionScreenTest`.
+- Both separators (`checkout_route_separator`, `checkout_spoken_separator`) are `translatable="false"` in `values/`
+  only, since they are the same in both languages.
