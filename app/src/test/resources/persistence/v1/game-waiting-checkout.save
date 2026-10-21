@@ -1,0 +1,12 @@
+kosmodarts=saved-game
+version=1
+game=x01
+start-score=301
+checkout=single-out
+players=2
+player=QW5u
+player=Qm9i
+darts=T20 T20 T20 0 0 0 T20 T20 1
+awaiting-next-player=true
+crc32=497ab16c
+end
