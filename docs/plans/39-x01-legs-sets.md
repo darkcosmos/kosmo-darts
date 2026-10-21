@@ -317,9 +317,16 @@ New persistence rules (`docs/rules/persistence.md`):
 
 - AN27. The win voice depends on M7: "Leg for {name}" (« Manche pour {nom} ») for LEG, "Set for {name}" (« Set pour
   {nom} ») for SET, today's "Game shot! {name} wins" (« Victoire de {nom} ») for MATCH and for a single game (owner
-  Q4). Sound and timing as AN9 and AN10 (see Open questions about the victory sound).
+  Q4).
+  - `sfx_victory` plays only for MATCH and for a single game (owner O1). A LEG or SET win plays the winning dart's
+    sound, its dart call when that setting is on, then the voice line alone, with no victory sound. With the voice off,
+    a LEG or SET win makes no sound after the dart.
+  - For MATCH, AN9 and AN10 are unchanged: the victory sound and the voice start together, and the next step waits
+    for both. For LEG and SET, the next step waits for the voice only.
+  - The big fish rules (AN5) do not change: a leg won from 170 still carries the big-fish cue, and that cue follows
+    the same LEG / SET / MATCH rules for the sound.
 - AN28. "Next leg" produces a turn start cue for the new leg's starter, with the "throws first" line (AN4, owner
-  Q5). AN4's list of hooks gains this one.
+  Q5). AN4's list of hooks gains this one. Its voice waits for the end of any announcement in progress (AN10).
 
 ### 7. Strings (`values/` and `values-fr/`)
 
@@ -476,6 +483,14 @@ No new dependency, no build change.
 - `GameScreenStateTest`: `checkoutDialogOutcome`, match average, `indicators` null for 1/1.
 - `EndRowsTest`, `ResumeSummaryTest`, `SetupStateTest`: match columns, summary match score, prefill of the format.
 - `CueScriptTest` / `ResourcePhrasesTest`: leg, set and match phrases (AN27).
+- Victory sound only for the match (AN27, owner O1), in `CueScriptTest` and in `AnnouncementPlayerTest` with the
+  fake sound player:
+  - A LEG win and a SET win, big fish included, play no `sfx_victory`; their voice line is spoken, and the next step
+    waits for the voice only.
+  - A MATCH win and a single game play `sfx_victory` together with the victory voice, as today.
+  - With the voice off and sounds on, a LEG win plays nothing after the dart sound, and a MATCH win plays
+    `sfx_victory`.
+  - The existing AN9 and AN10 tests for a single game are unchanged.
 
 ### Robolectric (Compose UI)
 - Setup: steppers, labels "Legs" vs "Legs per set" (M13), disabled bounds and their TalkBack values (U5).
@@ -514,8 +529,9 @@ The PR description will hold the step-by-step scenario. Outline:
    "throws first" voice, empty visit boxes, average still over the match.
 3. 3 players, 2 sets of 2 legs: starters rotate A, B, C, A across the set change. The indicators read "Sets ●" and
    "Legs ○○", and legs go back to zero after a set. Then "Finish set" with the voice "Set for …", the between-legs
-   screen "Set won by …", and a final "Finish game" with the victory voice. The end screen ranks by sets, legs and
-   averages. The victory sound behavior follows Kosmo's answer to O1.
+   screen "Set won by …". Winning a leg or a set plays no victory sound, only its voice line ("Leg for …",
+   "Set for …"). The final match dart plays the victory sound together with the victory voice, then "Finish game".
+   The end screen ranks by sets, legs and averages.
 4. Kill the app mid-leg, mid-set and on the between-legs screen: each comes back exactly (R14); back on the
    between-legs screen opens "Abandon the game?".
 5. Rematch: same format, the second player starts the first leg.
@@ -541,6 +557,7 @@ Owner answers (relayed by main, 2026-10-21: "tout A"):
 | Q9 | Cards keep the configuration order; only the highlight moves. | M6 |
 | Q10 | "Legs per set" reads "Legs" when Sets = 1. | M13 |
 | Q11 | The home summary adds the match score for a match. | M18 |
+| O1 | "Uniquement sur la victoire": the victory sound (`sfx_victory`) plays only on the match win (and in a single game), never on a leg or set win. The distinct voice lines of Q4 stay. | AN27 |
 
 Design decisions (proposed in this plan, to be confirmed by the design review):
 - D1. Generic `MatchScore` on leg winners plus an X01 binding (Approach 2, option A).
@@ -568,11 +585,9 @@ Design review round 1 (2026-10-21; architecture, security, test APPROVE; UX CHAN
 | S2 strict keys per version | section 5; codec and fuzz tests |
 | S3 v2 file in an older app | section 5 and ADR 0005: deleted (R9 message for the game, silent for the setup) |
 | T1, T2, T3, T4, T5, T7 | test plan |
-| T6 O1 pending | Open questions; verification step 3; AN27 to be pinned once answered |
+| T6 O1 pending | answered (O1 below); AN27, cue and sound tests, verification step 3 |
 | Architecture notes | indicator, between-legs and end-screen columns decided in state (`MatchIndicator`, `BetweenLegsState`, `EndRow`); scroll target is `highlightedPlayerIndex`; Robolectric visibility check |
 
 ## Open questions
 
-- O1 (product, for Kosmo through main, still open): does the victory sound (`sfx_victory`) play on every leg and set
-  win, or only on the match win? Proposed default: on every win, with the AN27 voice line, as today's single game.
-  Once answered, AN27 and verification step 3 state the answer.
+None. O1 was answered by Kosmo (see Decisions).
