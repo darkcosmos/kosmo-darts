@@ -48,6 +48,9 @@
     <string name="dart_triple">T%1$d</string>
     <string name="dart_bull">Bull</string>
     <string name="dart_miss">Raté</string>
+    <!-- Checkout suggestion. \u00A0 before the colon (French typography) and after it in the visible label. -->
+    <string name="game_checkout_suggestion">Sortie\u00A0:\u00A0%1$s</string>
+    <string name="game_checkout_suggestion_description">Sortie\u00A0: %1$s</string>
     <string name="key_double">Double</string>
     <string name="key_triple">Triple</string>
     <string name="key_undo">Annuler</string>

@@ -59,6 +59,13 @@ data class Dart(val segment: Int, val multiplier: Multiplier = Multiplier.SINGLE
         /** The bull (50). */
         val BULL: Dart = Dart(BULL_SEGMENT)
 
+        /**
+         * Every dart that scores (rule D1 without the miss): singles, doubles and triples of 1 to 20, then the outer
+         * bull and the bull. The darts a checkout route can contain (docs/rules/checkout-suggestions.md, CS1).
+         */
+        val SCORING: List<Dart> =
+            NUMBERS.flatMap { number -> Multiplier.entries.map { Dart(number, it) } } + OUTER_BULL + BULL
+
         /** Single of [number], which must be in [NUMBERS]. */
         fun single(number: Int): Dart = numbered(number, Multiplier.SINGLE)
 

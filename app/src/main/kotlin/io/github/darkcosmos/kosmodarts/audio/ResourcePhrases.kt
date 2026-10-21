@@ -3,7 +3,7 @@ package io.github.darkcosmos.kosmodarts.audio
 import android.content.res.Resources
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
+import io.github.darkcosmos.kosmodarts.text.dartWords
 
 /** [Phrases] from the app's string resources, in the app language (AN8, AN11, AN25, AN26). */
 class ResourcePhrases(
@@ -26,14 +26,7 @@ class ResourcePhrases(
 
     override fun win(name: String) = resources.getString(R.string.announce_win, name)
 
-    override fun dartCall(dart: Dart): String? = when {
-        dart.value == 0 -> null
-        dart == Dart.BULL -> resources.getString(R.string.announce_dart_bull)
-        dart == Dart.OUTER_BULL -> resources.getString(R.string.announce_dart_outer_bull)
-        dart.multiplier == Multiplier.DOUBLE -> resources.getString(R.string.announce_dart_double, dart.segment)
-        dart.multiplier == Multiplier.TRIPLE -> resources.getString(R.string.announce_dart_triple, dart.segment)
-        else -> resources.getString(R.string.announce_dart_single, dart.segment)
-    }
+    override fun dartCall(dart: Dart): String? = dartWords(resources, dart)
 
     override fun announcementsOn() = resources.getString(R.string.announce_announcements_on)
 }
