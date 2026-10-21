@@ -70,8 +70,9 @@ App:
   disabled at 1, + at 9. When Sets = 1, the first label reads "Legs" (owner Q10). Legs and sets are allowed with a
   single player (owner Q8).
 - M14. Indicators: with a format other than 1 and 1, every player card and row shows the sets won and the legs won
-  in the current set (design below). Nothing is shown in a single game. With Sets = 1, no set indicator is shown, and
-  no text anywhere mentions sets.
+  in the current set, each group with a visible label (design below). Nothing is shown in a single game. With
+  Sets = 1, no set indicator is shown, and no text anywhere mentions sets. The current player's card is always
+  scrolled fully into view.
 - M15. Checkout dialog: the confirm button reads "Finish leg" (« Terminer la manche ») for LEG, "Finish set"
   (« Terminer le set ») for SET, "Finish game" (« Terminer la partie ») for MATCH. Title and "Undo" are unchanged.
   A single game always shows "Finish game".
@@ -161,30 +162,68 @@ Alternatives considered for the match structure:
 
 ### 4. Screens
 
-- Setup (`SetupScreen.kt`): a "Match" block under the finish rule: two rows `label · − · "First to N" · +`, 48 dp
-  touch targets, content descriptions on − and + ("Fewer legs per set", ...), the value read by TalkBack as
-  "Legs per set: first to 3".
-- Game screen indicators (M14, design submitted to the UX reviewer):
+- Setup (`SetupScreen.kt`): a "Match" heading under the finish rule, then two stepper rows. Each row is the label
+  above the controls `− · "First to N" · +`, so a long French label at 200 % never squeezes the buttons (U4). The
+  touch targets are 48 dp. The bounds come only from `MatchFormat.MIN` and `MatchFormat.MAX`: `SetupState` clamps
+  with them and exposes `canDecreaseLegs`, `canIncreaseLegs`, `canDecreaseSets` and `canIncreaseSets`, which drive
+  the disabled − and + states. `SetupScreen` holds no literal (A1).
+  - TalkBack (U5, one set of keys): the value reads "Legs per set: first to 3" (`setup_legs_per_set_value`), or
+    "Legs: first to 3" (`setup_legs_value`) when Sets = 1, and "Sets: first to 2" (`setup_sets_value`). The buttons
+    read "Fewer legs" / "More legs" / "Fewer sets" / "More sets". A disabled button is announced as disabled by the
+    standard `Modifier.clickable(enabled = false)` semantics, so no extra text is needed.
+- Game screen indicators (M14):
+  - Model: `MatchIndicator(setsWon: Int?, legsWon: Int)`, built in `GameScreenState.indicators` (`null` for 1 and 1;
+    `setsWon` is `null` when S = 1). The composable `MatchIndicators` only draws it (architecture note).
   - One indicator line under the player name, in the highlighted card and in every other row, only when the format
-    is not 1 and 1. The line height is fixed, even with nothing won yet, so nothing moves when a pip appears.
-  - Sets won: filled discs (●), one per set won. Legs won in the current set: rings (○, outline only), one per leg.
-    The two groups are separated by a 12 dp gap and a thin vertical rule. With S = 1, only rings.
-  - The kind is carried by the shape (filled vs outline), never by color alone. Pips are 10 dp, 4 dp apart, in the
-    row's text color (`onBackground` in rows, `onPrimaryContainer` in the card), which keeps today's dark theme
-    contrast. At most 8 + 8 pips (a 9th set or leg ends the set or match): about 230 dp, which fits under the name
-    on a Pixel 7 in portrait (412 dp wide) and in landscape (scoreboard half, about 440 dp), 2 to 4 players. The
-    scoreboard already scrolls vertically if 4 players do not fit.
+    is not 1 and 1. The line height does not change with the counts, so nothing moves when a pip appears.
+  - Each group has a visible text label, then its marks (U2): "Sets ●●" and "Legs ○○○" (« Sets ●● »,
+    « Manches ○○○ »). Sets are filled discs and legs are rings. The label names the group, so the shapes need no
+    legend, and color never carries the meaning. With S = 1, only the "Legs" group is shown.
+  - Up to 4 marks are drawn one per item. From 5, a group shows one mark followed by "×N" (for example "Legs ○ ×5").
+    So a group is never wider than its label plus 4 marks (U3). Marks are 12 dp, 4 dp apart. The ring stroke is 2 dp,
+    in the row's text color (`onBackground` in rows, `onPrimaryContainer` in the card), which keeps today's dark theme
+    contrast.
+  - Width: label plus at most 4 marks is about 110 dp per group at 100 %. When both groups do not fit on one line
+    (4 players in landscape, or 200 % font scale), the line wraps into two lines, one group per line (`FlowRow`). It
+    never truncates.
   - TalkBack: one description per line, after the name: "1 set won, 2 legs won" (« 1 set gagné, 2 manches
-    gagnées »), plurals, set part omitted when S = 1.
+    gagnées »), plurals, set part omitted when S = 1. The visual labels are hidden from TalkBack, so they are not
+    read twice.
+- The current player's card always stays visible (U1):
+  - Today the scoreboard is a `verticalScroll` column and nothing scrolls to the highlighted card. With 4 players in
+    portrait, the indicator line can push the current card out of view.
+  - The scoreboard scrolls the highlighted card fully into view each time `GameScreenState.highlightedPlayerIndex`
+    changes, and on first display, including after a resume (`BringIntoViewRequester` in a keyed effect). The choice
+    of card is already state (`highlightedPlayerIndex`); the composable only carries out the scroll (architecture
+    note).
+  - The highlighted card keeps its current content order. Its height grows by one indicator line (two at 200 % when
+    they wrap). On a Pixel 7 in portrait at 200 %, the card is the tallest item and stays shorter than the scoreboard
+    viewport. A Robolectric test proves this (see the test plan).
+  - Alternative rejected: moving the indicators onto the name line when space is short. The name line already gives
+    way to the average under VT11 (`OneOrTwoLines`), so a third element there would truncate long names first.
 - Checkout dialog: the confirm label follows `checkoutDialogOutcome` (M15).
-- Between-legs screen (new `ui/between/BetweenLegsScreen.kt`): title "Match score" (« Score du match »), one row per
-  player in configuration order with name, sets (when S > 1) and legs of the current set as numbers and with the
-  same pips, the line "{name} starts the next leg" (« {nom} commence la manche suivante »), and a full-width "Next
-  leg" button. Portrait and landscape, scrollable. Back opens the existing abandon dialog.
-- End screen: `EndRow` gets `setsWon`, `legsWon` (total) and `showsMatchScore`; average and darts from the match
-  (M9, M17).
-- Home summary: `ResumeSummary.PlayerScore` gets an optional match score text (M18); for a saved match between legs,
-  the highlighted player is the starter of the next leg.
+- Between-legs screen (new `ui/between/BetweenLegsScreen.kt`, model `BetweenLegsState` built from the match in pure
+  JVM code):
+  - First line: who won the leg or set that just ended, "Leg won by {name}" or "Set won by {name}" (« Manche gagnée
+    par {nom} », « Set gagné par {nom} ») (U7).
+  - Title "Match score" (« Score du match »).
+  - A table with column headers "Sets" (only when S > 1) and "Legs" (« Manches »), one row per player in
+    configuration order: name, then the numbers. Names take the remaining width and wrap on two lines at most, then
+    ellipsize (U2).
+  - The line "{name} starts the next leg" (« {nom} commence la manche suivante »), then a full-width "Next leg"
+    button.
+  - Scrollable column with `safeDrawingPadding` (insets) in portrait and landscape; the button stays at the end of
+    the content (U7). Back opens the existing abandon dialog.
+- End screen (M17, U8):
+  - `EndRow` gets `setsWon: Int?` and `legsWon: Int?` (total over the match). Both are `null` in a single game, and
+    `setsWon` is `null` when S = 1; the composable shows a column only when its value is not `null` (architecture
+    note). Average and darts come from the match (M9).
+  - Each row is the rank and the name on the first line, then the figures on a second line, each with its label:
+    "Sets 2 · Legs 5 · 3-dart avg. 45.3 · 39 darts" (« Sets 2 · Manches 5 · Moy. 3 fléchettes 45,3 · 39 fléchettes »).
+    The figures line wraps at 200 %, and the column scrolls. A long name wraps on two lines at most, so nothing is cut.
+- Home summary (M18): `ResumeSummary.PlayerScore` gets `setsWon: Int?` and `legsWon: Int?` (null as above). The
+  player line adds "Sets 1 · Legs 2" (« Sets 1 · Manches 2 ») before the remaining score, with the same labels as the
+  cards. For a saved match between legs, the highlighted player is the starter of the next leg.
 
 ### 5. Persistence (format version 2, new ADR 0005)
 
@@ -218,9 +257,14 @@ end
 
 - `legs`: number of confirmed legs, 0 to `maxLegs` (M12), followed by exactly that many `leg` lines in play order.
   A `leg` line is the winner index, then for each player in configuration order `points/darts` (canonical integers).
-  Checks (`OUT_OF_RANGE`): winner in range; points 0 to start score, equal to the start score exactly for the
-  winner; darts 0 to `MAX_DARTS`; points at most 60 x darts. The winner sequence is replayed by `MatchScore`: a leg
-  after the match is decided is `REJECTED_BY_ENGINE`.
+  Checks (`OUT_OF_RANGE`): winner in range; the winner's points equal the start score; every other player's points
+  are from 0 to start score − 1, strictly below the start score (S1); darts 0 to `MAX_DARTS`, at least 1 for the
+  winner; points at most 60 x darts. These range rules live in the engine, in the `X01LegSummary` constructor
+  (`IllegalArgumentException`). The codec maps that exception to `OUT_OF_RANGE` and holds no copy of the rules. The
+  winner sequence is replayed by `MatchScore`: a leg after the match is decided is `REJECTED_BY_ENGINE`.
+- Strict keys (S2): for each version, the ordered list of keys is defined once in `GameSaveCodec`
+  (`V1_LAYOUT`, `V2_LAYOUT`) and in `LastSetupCodec`, and read through the existing strict `BodyReader`. Any missing,
+  extra, duplicated or out-of-order key is `MALFORMED`, and so is a version 1 file that carries version 2 keys.
 - `darts`: the current leg only, as in version 1, replayed with the starter `legs mod players` (M6).
 - `between-legs`: `true` only when the current leg has no dart, at least one leg is confirmed, the match is not
   finished and `awaiting-next-player` is `false` (`INCONSISTENT_WAITING_FLAG` otherwise).
@@ -230,6 +274,12 @@ Dart storage vs size (the structural choice):
   and M9 and M10 only need their winner, points and darts. `MAX_DARTS` (10,000) keeps applying to the current leg,
   as in R12; a match is never cut off by its length. Largest file: 1,089 leg lines of at most 46 bytes (about 50 KB)
   plus today's 41 KB: `MAX_FILE_BYTES` goes from 65,536 to 131,072.
+  - Arithmetic, written in ADR 0005 (A2). A `leg` line is at most `leg=` (4) + winner (1) + 4 × ` 501/10000` (10)
+    + LF (1) = 46 bytes, so 1,089 lines take at most 50,094 bytes. The new header lines (`legs-per-set=9`, `sets=9`,
+    `legs=1089`, `between-legs=false`) add under 64 bytes, and version 1 content is under 41 KB. The total stays
+    under 92 KB, below 131,072.
+  - `MAX_FILE_BYTES` stays one named constant in `GameSaveCodec`. The tests use it (a maximum-size valid file is
+    accepted, `MAX_FILE_BYTES + 1` is rejected) and never repeat the number.
 - B. Keep every dart of every leg (one `darts` line per leg): needed only for history, which is out of scope; a long
   match (up to 1,089 legs) would pass 10,000 darts and stop being saved (R12), and the file limit would have to grow
   far more.
@@ -244,7 +294,11 @@ Last setup file, version 2: version 1 lines plus `legs-per-set` and `sets` after
 Version 1 files (both kinds) are still decoded: a v1 game is a single game (format 1 and 1, no confirmed leg,
 `between-legs=false`), a v1 setup has the format 1 and 1, without any message (R16). Every write uses version 2.
 `SaveFormat.decode` takes the set of versions the kind accepts and returns the version read; anything else stays
-`UNSUPPORTED_VERSION`. An older app that finds version 2 rejects it with the R9 message (ADR 0001, accepted).
+`UNSUPPORTED_VERSION`. An older app that finds version 2 rejects it with the R9 message (ADR 0001, accepted). ADR 0005
+states the effect (S3): under ADR 0002 decision 5, today's app deletes every rejected file. A version 2 game file is
+deleted, with the R9 message shown once. A version 2 last setup is deleted silently (R10). Nothing is kept for a
+later upgrade. This is accepted for the same reason as in ADR 0001: there is only one user, who installs builds from
+PRs.
 
 `SavedGame(match: X01Match, isAwaitingNextPlayer: Boolean, isBetweenLegs: Boolean)`; `isConsistent` covers the new
 flag. `SaveLoader`, `Persistence` and `PersistenceEffect` keep their structure.
@@ -271,26 +325,52 @@ New persistence rules (`docs/rules/persistence.md`):
 
 | Key | English | Français |
 |---|---|---|
-| `setup_match_label` | Match | Match |
+Setup:
+
+| Key | English | Français |
+|---|---|---|
+| `setup_match_label` (heading) | Match | Match |
 | `setup_legs_per_set` | Legs per set | Manches par set |
 | `setup_legs` | Legs | Manches |
 | `setup_sets` | Sets | Sets |
 | `setup_first_to` | First to %1$d | Premier à %1$d |
+| `setup_legs_per_set_value` (TalkBack) | Legs per set: first to %1$d | Manches par set : premier à %1$d |
+| `setup_legs_value` (TalkBack) | Legs: first to %1$d | Manches : premier à %1$d |
+| `setup_sets_value` (TalkBack) | Sets: first to %1$d | Sets : premier à %1$d |
 | `setup_fewer_legs` / `setup_more_legs` | Fewer legs / More legs | Moins de manches / Plus de manches |
 | `setup_fewer_sets` / `setup_more_sets` | Fewer sets / More sets | Moins de sets / Plus de sets |
+
+Shared match labels (cards, between-legs headers, end screen, home summary):
+
+| Key | English | Français |
+|---|---|---|
+| `match_sets_label` | Sets | Sets |
+| `match_legs_label` | Legs | Manches |
+| `match_count_overflow` | ×%1$d | ×%1$d |
+| `match_score_sets` | Sets %1$d | Sets %1$d |
+| `match_score_legs` | Legs %1$d | Manches %1$d |
+| `match_score_separator` (not translatable) | ` · ` | ` · ` |
+| plurals `match_sets_won` (TalkBack) | one: %d set won; other: %d sets won | one: %d set gagné; other: %d sets gagnés |
+| plurals `match_legs_won` (TalkBack) | one: %d leg won; other: %d legs won | one: %d manche gagnée; other: %d manches gagnées |
+| `match_indicators_description` (TalkBack) | %1$s, %2$s | %1$s, %2$s |
+
+Checkout dialog, between-legs screen and voice:
+
+| Key | English | Français |
+|---|---|---|
 | `checkout_finish_leg` | Finish leg | Terminer la manche |
 | `checkout_finish_set` | Finish set | Terminer le set |
+| `between_leg_won_by` | Leg won by %1$s | Manche gagnée par %1$s |
+| `between_set_won_by` | Set won by %1$s | Set gagné par %1$s |
 | `between_title` | Match score | Score du match |
 | `between_next_starter` | %1$s starts the next leg | %1$s commence la manche suivante |
 | `between_next_leg` | Next leg | Manche suivante |
-| plurals `match_sets_won` | %d set won / %d sets won | %d set gagné / %d sets gagnés |
-| plurals `match_legs_won` | %d leg won / %d legs won | %d manche gagnée / %d manches gagnées |
-| `match_indicators_description` | %1$s, %2$s | %1$s, %2$s |
 | `announce_leg_won` | Leg for %1$s | Manche pour %1$s |
 | `announce_set_won` | Set for %1$s | Set pour %1$s |
 
-Existing `checkout_finish` ("Finish game" / « Terminer la partie ») and `announce_win` are reused for MATCH.
-`FrenchStringsTest` covers the new keys.
+These are reused as they are: `checkout_finish` ("Finish game" / « Terminer la partie ») and `announce_win` for
+MATCH, plus `end_average` and the plural `end_darts_thrown` on the end screen's figures line. Plurals are `<plurals>`
+resources. `FrenchStringsTest` covers every new key.
 
 ## Files and types added or changed
 
@@ -308,8 +388,8 @@ Existing `checkout_finish` ("Finish game" / « Terminer la partie ») and `annou
   `SavedGameScreen.kt`; `ui/setup/SetupState.kt`, `SetupScreen.kt`, `SetupTags.kt`; `ui/end/EndRow.kt`,
   `EndScreen.kt`; `ui/home/ResumeSummary.kt`, `HomeScreen.kt`; `ui/KosmoDartsApp.kt`; `audio/CueScript.kt`,
   `Phrases.kt`, `ResourcePhrases.kt`.
-- Added `ui/game/MatchIndicators.kt` (composable + `MatchIndicator` model), `ui/between/BetweenLegsScreen.kt`,
-  `BetweenLegsTags.kt`.
+- Added `ui/game/MatchIndicators.kt` (composable + `MatchIndicator` model), `ui/between/BetweenLegsState.kt`
+  (pure model), `BetweenLegsScreen.kt`, `BetweenLegsTags.kt`.
 - Persistence: `SaveFormat.kt` (accepted versions), `GameSaveCodec.kt` (v1 and v2 decoders, v2 encoder, new limit),
   `LastSetupCodec.kt`, `SavedGame.kt`, `Persistence.kt`, `SaveLoader.kt` (types only).
 - Resources: `values/strings.xml`, `values-fr/strings.xml`.
@@ -348,14 +428,25 @@ No new dependency, no build change.
 - `MatchFormatTest` (M1): bounds 1 and 9 accepted, 0 and 10 rejected for both fields; `maxLegs` (M12).
 - `MatchScoreTest`: first to 3 legs (M2, M4); 2 sets of 2 legs with reset of legs (M3); `outcomeIfWonBy` LEG, SET,
   MATCH including S = 1 (M7); `withLegWonBy` after the match throws; winners out of range rejected.
-- Rotation (M6): 3 players A, B, C over a set change (2 sets of 2 legs): starters A, B, C, A, B; a single player
-  always starts; "Shuffle" only sets the first starter (setup order C, A, B → starters C, A, B, C).
+- `MatchFormatTest` / `MatchScoreTest` (M12, T7): `maxLegs` is a true upper bound. For 2 players, first to 2 legs
+  and 2 sets, the longest winner sequence (each set at its longest, `A B A` then `B A B`, …) is accepted up to the
+  decisive leg, and one more winner is rejected. A sequence longer than `maxLegs` cannot be built.
+- Rotation (M6): 3 players A, B, C over a set change (2 sets of 2 legs): starters A, B, C, A, B. 2 players: A, B, A,
+  B. 4 players over 5 legs, wrapping past n: A, B, C, D, A (T2). A single player always starts. "Shuffle" only sets
+  the first starter (setup order C, A, B gives starters C, A, B, C).
 - `X01StartingPlayerTest` (T1): a leg started at index 2 gives the first turn to player 2 and wraps; undo back to empty
   keeps the starter.
 - `X01MatchTest`: `confirmLeg` appends the summary and starts the next leg with the next starter; a MATCH leg cannot
   be confirmed; undo never crosses a leg (M8); undoing the winning dart reopens the leg and clears `pendingOutcome`.
-- `X01MatchStatisticsTest` (M9): average over two legs equals total points / total darts x 3 (bust darts counted);
-  visit box state (VT rules) is "not played" for everyone at the start of leg 2.
+  - Constructor invariants (A3): a current leg with the wrong starter, a current leg with a different `X01Config`, and
+    completed legs that continue after the match is decided each throw `IllegalArgumentException`.
+  - `X01LegSummary` (S1): a non-winner with points equal to the start score, a winner below it, or points above
+    60 x darts throw `IllegalArgumentException`.
+  - Edge cases (T1): in single out, a win reaching LEG, SET and MATCH in turn; in double out, a bust on the last dart
+    of a turn (remaining 2, single 2) gives no `pendingOutcome`. At least one match is played in 501 and one in 301
+    (T2).
+- `X01MatchStatisticsTest` (M9): average over two legs equals total points / total darts x 3, with bust darts in both
+  legs counted in the darts total (T1); visit box state (VT rules) is "not played" for everyone at the start of leg 2.
 - `X01MatchRankingTest` (M10): sets first, then total legs (not legs of the last set: a case where they disagree),
   then remaining; full tie shares the rank and skips the next (1, 2, 2, 4); 2 players.
 - `X01CuesTest` (AN27): win cue outcome LEG, SET, MATCH; big fish keeps its kind; turn start of a new leg has
@@ -364,31 +455,51 @@ No new dependency, no build change.
 ### `:app` pure JVM
 - `GameSaveCodecTest`: golden bytes v2 (single game and match); round trip; v1 golden files decode as 1/1 (R16) and
   re-encode as v2; resume in the middle of a leg and in the middle of a set (R14); `between-legs` consistency;
-  every new `OUT_OF_RANGE` and `REJECTED_BY_ENGINE` case; `legs` above `maxLegs`; a file of the maximum size is
-  accepted, one byte over the limit rejected.
-- `LastSetupCodecTest`: v2 round trip, v1 → 1/1, out-of-range format.
-- `SaveFuzzTest`: seeded mutations of a v2 match file never throw (R11).
+  every new `OUT_OF_RANGE` and `REJECTED_BY_ENGINE` case, including a non-winner at the start score (S1); `legs`
+  above `maxLegs`; a valid file of the maximum size is accepted, and `MAX_FILE_BYTES + 1` is rejected (A2).
+  - v1 fixtures are real encoder output (T4): they are generated with the version 1 encoder of `main` (db65670) and
+    committed as test fixtures before the codec changes. The existing v1 golden test becomes a decode test on those
+    exact bytes.
+  - A 1/1 game encodes to exactly its v1 content, with `version=2` and the new keys inserted at their places
+    (`legs-per-set=1`, `sets=1`, `legs=0`, `between-legs=false`), and nothing else changed (T4).
+  - Strict keys (S2): v1 with any v2 key, and v2 with a missing, duplicated or out-of-order key, are `MALFORMED`.
+- `LastSetupCodecTest`: v2 round trip, v1 → 1/1, out-of-range format, strict keys as above.
+- `SaveFuzzTest`: seeded mutations of a v2 match file never throw (R11). The seeds include the S2 key cases.
 - `PersistenceEffectsTest`: written on "Finish leg", "Finish set", "Next leg" (R15); not deleted on the between-legs
-  screen; deleted only on "Finish game" of the match and on abandon (R14, R6).
+  screen; deleted only on "Finish game" of the match and on abandon (R14, R6). No effect is produced when a game is
+  resumed on the between-legs screen (R15, T3).
 - `AppReducerTest`: the three dialog outcomes; between-legs back/abandon; rematch keeps the format and rotates the
-  order (M17); setup steppers clamp at 1 and 9 (M13).
-- `InitialStateTest`: resume on the between-legs screen after a kill (owner Q6 ii).
+  order (M17); setup steppers clamp at `MatchFormat.MIN` and `MatchFormat.MAX` (M13, A1).
+- `InitialStateTest`: resume on the between-legs screen after a kill (owner Q6 ii). A resume on a finished, unconfirmed
+  leg restores the checkout dialog with the right label, for LEG, SET and MATCH (R14, T3).
 - `GameCuesTest`: "Next leg" gives the new starter's turn start; resume gives nothing (AN7, AN28).
 - `GameScreenStateTest`: `checkoutDialogOutcome`, match average, `indicators` null for 1/1.
 - `EndRowsTest`, `ResumeSummaryTest`, `SetupStateTest`: match columns, summary match score, prefill of the format.
 - `CueScriptTest` / `ResourcePhrasesTest`: leg, set and match phrases (AN27).
 
 ### Robolectric (Compose UI)
-- Setup: steppers, labels "Legs" vs "Legs per set" (M13), disabled bounds.
-- Game: no indicator line in a single game; pips counts and TalkBack description in a match (M14).
+- Setup: steppers, labels "Legs" vs "Legs per set" (M13), disabled bounds and their TalkBack values (U5).
+- Game: no indicator line in a single game. In a match: the counts of marks, the "×N" form from 5, the visible group
+  labels "Sets" / "Legs" in English and « Sets » / « Manches » in French (U2), and the TalkBack description (M14).
+- Current card always visible (U1): 4-player match in portrait at font scale 2.0, with long names (20 characters).
+  After each "Next player" through a full round, the last player included, `CURRENT_PLAYER` is displayed in full
+  (`assertIsDisplayed` plus its bounds inside the scoreboard viewport). The same check runs after a resume.
 - Dialog labels in the 3 variants, English and French (M15).
-- Between-legs screen content and back → abandon dialog (M16).
-- End screen match columns (M17); home summary (M18).
+- Between-legs screen: the winner line, the column headers in English and French (U2, U7), the next starter, and back
+  opening the abandon dialog (M16).
+- End screen match columns (M17) with labels in English and French; home summary match score (M18).
 
 ### Roborazzi captures (record only, Pixel 7, as the existing tests)
-New `MatchScreenshotTest`: setup (format 1/1 and 2 sets of 3, en and fr); cards with indicators for 2 and 4 players,
-portrait and landscape; checkout dialog LEG, SET, MATCH; between-legs screen (portrait and landscape); end screen of
-a 4-player match. Existing captures unchanged.
+New `MatchScreenshotTest`:
+- Setup: format 1/1 and 2 sets of 3, in English and in French; the French one also at font scale 2.0 (U4).
+- Cards with indicators: 2 and 4 players, portrait and landscape. Also 4 players in portrait at font scale 2.0 with
+  long names, the last player highlighted (U1). Also a card with a "×5" group (U3).
+- Checkout dialog: LEG, SET and MATCH.
+- Between-legs screen: portrait and landscape with 3 sets or more, plus French at font scale 2.0 (T5).
+- End screen: 4-player match in portrait, with long names, at font scale 1.0 and 2.0 (U8).
+- Home summary of a saved match, in English and in French at font scale 2.0 (T5).
+
+Existing captures are unchanged.
 
 ### Local checks
 `./gradlew :game-engine:test`, `./gradlew :app:testDebugUnitTest`, `./gradlew build`, then `kosmo-detekt`.
@@ -401,13 +512,16 @@ The PR description will hold the step-by-step scenario. Outline:
 2. Setup with Sets 1, Legs "First to 2": label "Legs", no "set" anywhere during the game; win a leg: "Finish leg",
    voice "Leg for …", between-legs screen with the score and the next starter; "Next leg": the other player starts,
    "throws first" voice, empty visit boxes, average still over the match.
-3. 3 players, 2 sets of 2 legs: starters rotate A, B, C, A across the set change; pips: discs for sets, rings for
-   legs, legs back to zero after a set; "Finish set" and voice "Set for …"; final "Finish game" and "Victory"
-   voice; end screen ranking with sets, legs, averages.
+3. 3 players, 2 sets of 2 legs: starters rotate A, B, C, A across the set change. The indicators read "Sets ●" and
+   "Legs ○○", and legs go back to zero after a set. Then "Finish set" with the voice "Set for …", the between-legs
+   screen "Set won by …", and a final "Finish game" with the victory voice. The end screen ranks by sets, legs and
+   averages. The victory sound behavior follows Kosmo's answer to O1.
 4. Kill the app mid-leg, mid-set and on the between-legs screen: each comes back exactly (R14); back on the
    between-legs screen opens "Abandon the game?".
 5. Rematch: same format, the second player starts the first leg.
-6. Landscape with 4 players: pips readable.
+6. 4 players with long names, in portrait then in landscape, then with the phone's largest font size: the current
+   player's card is always fully visible after every "Next player", and the indicators are readable with their
+   labels.
 7. Update over the previous version with a game in progress: it resumes as a single game, no message (R16).
 
 ## Decisions
@@ -432,9 +546,33 @@ Design decisions (proposed in this plan, to be confirmed by the design review):
 - D1. Generic `MatchScore` on leg winners plus an X01 binding (Approach 2, option A).
 - D2. Save format version 2 with a summary per confirmed leg and the current leg's darts; `MAX_FILE_BYTES` 131,072;
   version 1 decoders kept (Approach 5, option A); new ADR 0005.
-- D3. Indicators: filled discs for sets, rings for legs, on a fixed-height line under the name (Approach 4).
+- D3. Indicators: labelled groups "Sets ●●" / "Legs ○○○" (filled discs, 2 dp rings, "×N" from 5) on a line under the
+  name that wraps per group when space is short. The scoreboard scrolls the highlighted card into view (Approach 4).
+
+Design review round 1 (2026-10-21; architecture, security, test APPROVE; UX CHANGES_REQUESTED):
+
+| Finding | Where it is addressed |
+|---|---|
+| U1 current card hidden at 4 players portrait | Approach 4 "The current player's card always stays visible"; Robolectric check and 200 % capture; verification step 6 |
+| U2 shapes without labels | Approach 4: text label per group, column headers on the between-legs screen, labelled figures on the end screen and the home summary; en/fr assertions |
+| U3 ring stroke, large counts | 12 dp marks, 2 dp stroke, "×N" from 5 |
+| U4 setup label at 200 % French | label above the controls; French 200 % capture |
+| U5 content descriptions | one set of keys (Approach 4, strings table) |
+| U6 strings table | complete table in section 7 |
+| U7 between-legs winner line, insets | Approach 4, between-legs screen |
+| U8 end screen at 200 % | two-line rows; captures at 1.0 and 2.0 |
+| A1 stepper bounds | `MatchFormat.MIN/MAX`, `canDecrease…`/`canIncrease…` in `SetupState` |
+| A2 file size arithmetic | section 5 and ADR 0005; one named constant used by tests |
+| A3 constructor invariants | `X01MatchTest` |
+| S1 non-winner points | `X01LegSummary` constructor; codec test `OUT_OF_RANGE` |
+| S2 strict keys per version | section 5; codec and fuzz tests |
+| S3 v2 file in an older app | section 5 and ADR 0005: deleted (R9 message for the game, silent for the setup) |
+| T1, T2, T3, T4, T5, T7 | test plan |
+| T6 O1 pending | Open questions; verification step 3; AN27 to be pinned once answered |
+| Architecture notes | indicator, between-legs and end-screen columns decided in state (`MatchIndicator`, `BetweenLegsState`, `EndRow`); scroll target is `highlightedPlayerIndex`; Robolectric visibility check |
 
 ## Open questions
 
-- O1 (product, for Kosmo through main): does the victory sound (`sfx_victory`) play on every leg and set win, or only
-  on the match win? Proposed default: on every win, with the AN27 voice line, as today's single game.
+- O1 (product, for Kosmo through main, still open): does the victory sound (`sfx_victory`) play on every leg and set
+  win, or only on the match win? Proposed default: on every win, with the AN27 voice line, as today's single game.
+  Once answered, AN27 and verification step 3 state the answer.
