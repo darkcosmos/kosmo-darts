@@ -192,6 +192,12 @@ class CheckoutSuggestionScreenTest {
         assertEquals("card with a suggestion", withoutSuggestion, cardPlacement())
         send(*triple(20), *triple(20), *triple(20))
         assertEquals("card while a bust waits", withoutSuggestion, cardPlacement())
+        // CS5: undo the bust dart (50 left, "Bull"), then the bull opens the checkout dialog: no suggestion.
+        send(AppEvent.UndoTapped, AppEvent.BullTapped)
+        composeRule.onNode(hasTestTag(GameTags.CHECKOUT_DIALOG)).assertExists()
+        assertNull("checkout dialog open", shownText())
+        assertNull(description())
+        assertEquals("card while the checkout dialog is open", withoutSuggestion, cardPlacement())
     }
 
     /** CS8: the card does not move when the suggestion appears or disappears. */

@@ -6,9 +6,8 @@ package io.github.darkcosmos.kosmodarts.engine.x01
  */
 object CheckoutRoutes {
 
-    /** Every scoring dart: singles, doubles and triples of 1 to 20, the outer bull and the bull (CS1, rule D1). */
-    private val scoringDarts: List<Dart> =
-        Dart.NUMBERS.flatMap { number -> Multiplier.entries.map { Dart(number, it) } } + Dart.OUTER_BULL + Dart.BULL
+    /** Every scoring dart (CS1, rule D1). */
+    private val scoringDarts: List<Dart> = Dart.SCORING
 
     private val highestDartValue: Int = scoringDarts.maxOf { it.value }
 

@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.game
 
+import android.content.res.Resources
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
@@ -8,27 +9,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.traversalIndex
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Constraints
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.format.checkoutRouteText
 import io.github.darkcosmos.kosmodarts.ui.format.checkoutSpokenText
 import io.github.darkcosmos.kosmodarts.ui.format.dartText
-
-// Every dart a route can contain (CS1): the widest of their texts builds the reference line (CS8).
-private val SCORING_DARTS: List<Dart> =
-    Dart.NUMBERS.flatMap { number -> Multiplier.entries.map { Dart(number, it) } } + Dart.OUTER_BULL + Dart.BULL
 
 private const val MAX_ROUTE_DARTS = 3
 
@@ -78,11 +76,19 @@ internal fun CheckoutSuggestionLine(route: List<Dart>?, traversal: Float, modifi
  */
 @Composable
 private fun referenceText(style: TextStyle, measurer: TextMeasurer): String {
-    val dartTexts = SCORING_DARTS.map { dartText(it) }
+    val resources = LocalResources.current
+    val configuration = LocalConfiguration.current
     val density = LocalDensity.current
-    val widest = remember(dartTexts, style, density, measurer) {
-        dartTexts.maxBy { measurer.measure(it, style, softWrap = false, maxLines = 1).size.width }
+    return remember(resources, configuration, style, density, measurer) {
+        checkoutReferenceText(resources, style, measurer)
     }
-    val separator = stringResource(R.string.checkout_route_separator)
-    return stringResource(R.string.game_checkout_suggestion, List(MAX_ROUTE_DARTS) { widest }.joinToString(separator))
+}
+
+/** [referenceText] outside composition, so that tests measure exactly the same line. */
+internal fun checkoutReferenceText(resources: Resources, style: TextStyle, measurer: TextMeasurer): String {
+    val widest = Dart.SCORING
+        .map { dartText(resources, it) }
+        .maxBy { measurer.measure(it, style, softWrap = false, maxLines = 1).size.width }
+    val route = List(MAX_ROUTE_DARTS) { widest }.joinToString(resources.getString(R.string.checkout_route_separator))
+    return resources.getString(R.string.game_checkout_suggestion, route)
 }

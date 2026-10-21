@@ -348,3 +348,8 @@ Differences from the plan above, and why:
   displayed notation is checked on the real screen by `CheckoutSuggestionScreenTest`.
 - Both separators (`checkout_route_separator`, `checkout_spoken_separator`) are `translatable="false"` in `values/`
   only, since they are the same in both languages.
+- Code review round 1: the list of scoring darts is exposed once by the engine (`Dart.SCORING`, rule D1, CS1) and
+  used by `CheckoutRoutes` and the reference line (A6); `CheckoutRoutesTest` keeps its own board as an independent
+  oracle. The reference line is computed outside composition (`checkoutReferenceText`) and remembered per resources,
+  configuration, style and density (A7); the measurement test calls the same production formatters (T7). The card
+  placement test also covers the open checkout dialog (T5).

@@ -78,4 +78,14 @@ class DartTest {
         assertFalse(Dart.triple(20).countsAsDouble)
         assertFalse(Dart.MISS.countsAsDouble)
     }
+
+    /** D1, CS1: the scoring darts are the 62 darts of the board that score, each once, and never the miss. */
+    @Test
+    fun `D1 scoring darts are every dart of the board except the miss`() {
+        val expected = (1..20).flatMap { listOf(Dart.single(it), Dart.double(it), Dart.triple(it)) }.toSet() +
+            Dart.OUTER_BULL + Dart.BULL
+        assertEquals(62, Dart.SCORING.size)
+        assertEquals(expected, Dart.SCORING.toSet())
+        assertFalse(Dart.MISS in Dart.SCORING)
+    }
 }

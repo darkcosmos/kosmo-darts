@@ -16,7 +16,8 @@ import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRoutes
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
+import io.github.darkcosmos.kosmodarts.ui.format.checkoutRouteText
+import io.github.darkcosmos.kosmodarts.ui.game.checkoutReferenceText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -30,8 +31,8 @@ import org.robolectric.annotation.GraphicsMode
  * is never cut and only wraps after a dot, at every width from 320 dp to 420 dp (the card line of a Pixel 7 is about
  * 354 dp wide in portrait and 406 dp in landscape), in English and French, at font scale 1 and 2. Not checked
  * below 320 dp: at 200 dp and font scale 2, the label and the first dart alone no longer fit on one line.
- * The texts are built from the same string resources as the screen; [CheckoutSuggestionScreenTest] checks that the
- * screen shows exactly this notation.
+ * The texts and the reference line come from the production formatters (`checkoutRouteText`,
+ * `checkoutReferenceText`); [CheckoutSuggestionScreenTest] checks that the screen shows exactly this notation.
  */
 @RunWith(AndroidJUnit4::class)
 // Real text measurement: without native graphics, Robolectric measures text as almost zero wide.
@@ -44,18 +45,9 @@ class CheckoutSuggestionMeasureTest {
     // The style of CheckoutSuggestionLine: titleMedium of the default Material 3 typography (as the app theme).
     private val style = Typography().titleMedium
 
-    private fun dartText(dart: Dart): String = when {
-        dart == Dart.BULL -> context.getString(R.string.dart_bull)
-        dart == Dart.OUTER_BULL -> context.getString(R.string.dart_outer_bull)
-        dart.multiplier == Multiplier.DOUBLE -> context.getString(R.string.dart_double, dart.segment)
-        dart.multiplier == Multiplier.TRIPLE -> context.getString(R.string.dart_triple, dart.segment)
-        else -> context.getString(R.string.dart_single, dart.segment)
-    }
-
-    private fun lineText(route: List<Dart>): String = context.getString(
-        R.string.game_checkout_suggestion,
-        route.joinToString(context.getString(R.string.checkout_route_separator), transform = ::dartText),
-    )
+    // The production formatter, as CheckoutSuggestionLine.
+    private fun lineText(route: List<Dart>): String =
+        context.getString(R.string.game_checkout_suggestion, checkoutRouteText(context.resources, route))
 
     private fun allRoutes(): List<List<Dart>> = CheckoutRule.entries.flatMap { rule ->
         (1..3).flatMap { dartsLeft -> (1..MAX_SCORE).mapNotNull { CheckoutRoutes.suggest(it, dartsLeft, rule) } }
@@ -76,9 +68,8 @@ class CheckoutSuggestionMeasureTest {
         val texts = allRoutes().map(::lineText)
         val density = Density(context)
         val measurer = TextMeasurer(createFontFamilyResolver(context), density, LayoutDirection.Ltr)
-        // The reference of CheckoutSuggestionLine: three times the widest dart text.
-        val widest = SCORING_DARTS.maxBy { measurer.measure(dartText(it), style, softWrap = false).size.width }
-        val reference = lineText(List(3) { widest })
+        // The reference line of CheckoutSuggestionLine: the label, then three times the widest dart text.
+        val reference = checkoutReferenceText(context.resources, style, measurer)
         (MIN_WIDTH_DP..MAX_WIDTH_DP step WIDTH_STEP_DP).forEach { widthDp ->
             val constraints = Constraints(maxWidth = with(density) { widthDp.dp.roundToPx() })
             val reserved = measurer.measure(reference, style, constraints = constraints)
@@ -119,7 +110,5 @@ class CheckoutSuggestionMeasureTest {
         const val MIN_WIDTH_DP = 320
         const val MAX_WIDTH_DP = 420
         const val WIDTH_STEP_DP = 4
-        val SCORING_DARTS: List<Dart> =
-            Dart.NUMBERS.flatMap { n -> Multiplier.entries.map { Dart(n, it) } } + Dart.OUTER_BULL + Dart.BULL
     }
 }
