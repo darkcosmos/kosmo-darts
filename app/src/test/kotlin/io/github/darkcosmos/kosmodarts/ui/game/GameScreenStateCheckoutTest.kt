@@ -43,7 +43,7 @@ class GameScreenStateCheckoutTest {
     fun hiddenWhileABustWaitsThenBackAfterNextPlayerOrUndo() {
         val bust = at170().throwing(t20, t20, t20)
 
-        assertTrue(bust.isBustShown)
+        assertTrue(bust.isBustPending)
         assertNull(bust.checkoutSuggestion)
         assertEquals(listOf(t20, t20, bull), bust.nextPlayer().checkoutSuggestion)
         assertEquals(listOf(bull), bust.undo().checkoutSuggestion)
@@ -53,7 +53,7 @@ class GameScreenStateCheckoutTest {
     fun hiddenWhileTheCheckoutDialogIsOpen() {
         val won = at170().throwing(t20, t20, bull)
 
-        assertTrue(won.isCheckoutDialogShown)
+        assertTrue(won.isCheckoutPending)
         assertNull(won.checkoutSuggestion)
         assertEquals(listOf(bull), won.undo().checkoutSuggestion)
     }

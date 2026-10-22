@@ -487,3 +487,62 @@ Design review of c0493b0 (ux-reviewer changes requested; test, architecture, sec
 ## Open questions
 
 None.
+
+## Implementation notes
+
+Where the main pieces live:
+- Engine: `engine/player/ColorSlot.kt` (slots, `requireValidColorSlots`), `engine/player/Roster.kt`,
+  `X01MatchConfig.colorSlots`, `X01Match.colorSlots`, `MatchScore.currentSetNumber`, `currentLegNumber`,
+  `lastLegSetNumber`, `lastLegNumber` (M19). Rules in `docs/rules/players.md` (PC1 to PC9).
+- Persistence: `SaveKey.COLORS`, `V3_LAYOUT` in both codecs, `SaveFormat.VERSION_3`; ADR 0006; tests in
+  `SaveColorsCodecTest` plus the v3 goldens; the v1 fixtures and v2 golden literals are unchanged and decode only.
+- Theme: `ui/theme` (`KosmoColors`, `KosmoTypography` with `sairaFont`, `FixedSp`, `KosmoShapes` / `Spacing` /
+  `States`, `PlayerPalette`, `AnimationSettings`, `Theme.kt` with `KosmoTheme`); ADR 0007.
+- Layout: `ui/layout/GameLayoutPolicy.kt`, `ScreenLayoutPolicy.kt` (pure); `ui/game/FillColumn.kt` applies them.
+- Components: `ui/components` (one file per component, small models in `ComponentModels.kt`); the keypad stays in
+  `ui/game/Keypad.kt`. Screens: `GameScreen`, `HomeScreen`, `SetupScreen`, `BetweenLegsScreen`, `EndScreen`,
+  `SettingsScreen`. Texts: `ui/format/MatchText.kt`, `GameText.kt`.
+- State: `GameScreenState.zoneMode`, `tileOrder`, `colorSlotOf`, `headerPosition`, `checkoutSummary`,
+  `nextDartIndex`; `MatchPosition`, `CheckoutSummary`, `ZoneMode`; `SetupState.roster`;
+  `BetweenLegsState` rows with slots, averages and positions; `EndRow.slot`; `ResumeSummary` without
+  `isCheckoutToConfirm`.
+
+Deviations from the plan, to review:
+1. Names in the code: the plan's `confirmLabel` is `checkoutOutcome` (it was `checkoutDialogOutcome`), `routeDarts`
+   is the existing `checkoutSuggestion`, `isCheckoutDialogShown` / `isBustShown` became `isCheckoutPending` /
+   `isBustPending`. `AppEvent.PlayerRemoved` now carries the row index.
+2. Layout policy input: instead of the raw font scale, the screen passes the effective text scale (the dp height of a
+   24 sp text divided by 24), because Android 14 enlarges large text less than the setting. The policy chooses sizes
+   and steps; `FillColumn` measures the real heights of the other parts and gives the zone the rest, never less than
+   the policy's least zone height, and scrolls when the parts do not fit (so the estimates never clip anything). The
+   policy's `isScrolling` is therefore an estimate. The score is fitted to its area for "888" (no jump with the
+   digits). Plan claim "Pixel 7 at font scale 2.0 reaches no step": not kept. On the Pixel 7 mockup frame, scale
+   1.0 reaches no step; at the largest font size with Android 14 scaling the screen does not scroll but reaches the
+   size steps (keys 48, score smaller); with a linear 2.0 scale (Android 13 and older) the portrait screen with 4
+   players may scroll. `GameLayoutPolicyTest` states this.
+3. Between legs: the winning checkout line ("CHECKOUT 141 · T20 T19 D12") is carried by the screen state after
+   "Confirm leg"; it is not saved (ADR 0005 keeps leg summaries), so after a resume on the between-legs screen the
+   line is absent (tested in `MatchResumeScreensTest`).
+4. Rules wording amended beyond the plan's list, to stay true: `persistence.md` R2, R4 and R12 (no checkout dialog,
+   card text), `visit-total.md` VT11 (tiles instead of rows: the box may go under the score on a narrow tile at a
+   large font size), `checkout-suggestions.md` CS9 (TalkBack reads in screen order, the traversal indices are gone).
+5. The zone hides the average before the player's first dart (the plan said "as today"; the old card showed "–").
+6. Name errors of the setup are the supporting text of the name field, inside its row; they are not red (red is for
+   BUST only): accent underline and words.
+7. Display labels are upper case in the string resources (as the plan's table); player names are upper-cased in code
+   for display (`displayName`), TalkBack descriptions keep the typed name.
+8. Captures with the keyboard open: Robolectric opens no keyboard. `RedesignScreensTest` and the capture
+   `ds_setup_4p_focused_small_360x640_fr_font200` check the focused 4th field above the pinned "Start" at 360 × 640
+   and 200 %, without keyboard insets.
+9. Tests that run on Robolectric's default 320 × 470 screen now reveal nodes before touching them
+   (`ui/RevealNode.kt`): the game screen scrolls there. `X01ScreensTest` runs on a Pixel 7 like the other screen
+   tests. `VisitTotalLayoutTest` allows one pixel of rounding on the score placement.
+10. The tiles of one line share the height of the tallest one (a two-line name in landscape at 4 players, a box
+   under the score at a large font size), so the line reads as one band (seen on the captures).
+
+Known limitations found while building:
+- Robolectric honours the Saira width axis (`SairaWidthSpikeTest`: "501" at width 75 is about 75 % of width 100) but
+  ignores the line height of the styles: in the captures the score is drawn smaller than on the phone (its box is the
+  font's natural height). The phone shows the real size.
+- The between-legs checkout line is lost after a resume on that screen (deviation 3).
+- Going back to an older app version deletes a version 3 saved game and last setup (ADR 0006).

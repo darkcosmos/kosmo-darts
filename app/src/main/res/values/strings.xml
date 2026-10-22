@@ -2,12 +2,16 @@
 <resources>
     <string name="app_name" translatable="false">Kosmo Darts</string>
     <string name="home_title" translatable="false">Kosmo Darts</string>
-    <string name="home_welcome">Keep score of your darts games with friends.</string>
-    <string name="home_new_game">New game</string>
-    <string name="home_resume_game">Resume game</string>
-    <string name="home_saved_game_title">Game in progress</string>
-    <string name="home_saved_game_mode">%1$d · %2$s</string>
-    <string name="home_saved_game_checkout">Checkout to confirm: %1$s</string>
+    <!-- The visible title: the first word in white, the second in accent (mockup 06). -->
+    <string name="home_title_first" translatable="false">KOSMO</string>
+    <string name="home_title_second" translatable="false">DARTS</string>
+    <string name="home_new_game">NEW GAME</string>
+    <string name="home_new_game_section">NEW GAME</string>
+    <!-- M18, owner Q11 of issue #49: always the player to throw. -->
+    <string name="home_resume">RESUME · %1$s TO THROW</string>
+    <string name="home_saved_game_title">GAME IN PROGRESS</string>
+    <string name="mode_x01_title" translatable="false">X01</string>
+    <string name="mode_x01_description">501 or 301, double or single out</string>
     <string name="new_game_confirm_title">A game is in progress</string>
     <string name="new_game_confirm_text">Delete it and start a new one?</string>
     <string name="new_game_confirm_delete">Delete</string>
@@ -15,21 +19,33 @@
     <string name="restore_failed_message">The saved game could not be resumed and was deleted</string>
     <string name="restore_failed_ok">OK</string>
 
+    <!-- Format lines: "501 · DOUBLE OUT", "501 · FIRST TO 2 SETS · FIRST TO 3 LEGS". -->
+    <string name="format_start_score" translatable="false">%1$d</string>
+    <string name="format_separator" translatable="false">" · "</string>
+    <plurals name="format_first_to_sets">
+        <item quantity="one">FIRST TO %d SET</item>
+        <item quantity="other">FIRST TO %d SETS</item>
+    </plurals>
+    <plurals name="format_first_to_legs">
+        <item quantity="one">FIRST TO %d LEG</item>
+        <item quantity="other">FIRST TO %d LEGS</item>
+    </plurals>
+
     <!-- Setup screen -->
-    <string name="setup_title">New game</string>
-    <string name="setup_game_label">Game</string>
-    <string name="setup_start_score" translatable="false">%1$d</string>
-    <string name="setup_finish_label">Finish</string>
-    <string name="setup_double_out">Double out</string>
-    <string name="setup_single_out">Single out</string>
-    <string name="setup_players_label">Players</string>
+    <string name="setup_title">NEW GAME</string>
+    <string name="setup_title_mode" translatable="false">X01</string>
+    <string name="setup_game_label">GAME</string>
+    <string name="setup_double_out">DOUBLE OUT</string>
+    <string name="setup_single_out">SINGLE OUT</string>
+    <string name="setup_players_label">PLAYERS · THROWING ORDER</string>
     <string name="setup_player_name">Player %1$d</string>
+    <string name="setup_player_placeholder">Player %1$d name</string>
     <string name="setup_add_symbol" translatable="false">+</string>
-    <string name="setup_remove_symbol" translatable="false">−</string>
-    <string name="setup_add_player">Add a player</string>
-    <string name="setup_remove_player">Remove the last player</string>
-    <string name="setup_shuffle">Shuffle</string>
-    <string name="setup_start">Start</string>
+    <string name="setup_minus_symbol" translatable="false">−</string>
+    <string name="setup_add_player">ADD A PLAYER</string>
+    <string name="setup_remove_player">Remove %1$s</string>
+    <string name="setup_shuffle">SHUFFLE</string>
+    <string name="setup_start">START</string>
     <string name="setup_error_blank_name">Enter a name</string>
     <string name="setup_error_name_too_long">%1$d characters maximum</string>
     <string name="setup_error_duplicate_name">Another player has the same name</string>
@@ -38,12 +54,9 @@
     <string name="setup_error_too_many_players">%1$d players maximum</string>
 
     <!-- Match format (docs/rules/match.md, M13) -->
-    <string name="setup_match_label">Match</string>
-    <string name="setup_legs_per_set">Legs per set</string>
-    <string name="setup_legs">Legs</string>
-    <string name="setup_sets">Sets</string>
-    <string name="setup_first_to">First to %1$d</string>
-    <string name="setup_legs_per_set_value">Legs per set: first to %1$d</string>
+    <string name="setup_match_label">MATCH</string>
+    <string name="setup_sets_first_to">Sets · first to</string>
+    <string name="setup_legs_first_to">Legs · first to</string>
     <string name="setup_legs_value">Legs: first to %1$d</string>
     <string name="setup_sets_value">Sets: first to %1$d</string>
     <string name="setup_fewer_legs">Fewer legs</string>
@@ -51,13 +64,14 @@
     <string name="setup_fewer_sets">Fewer sets</string>
     <string name="setup_more_sets">More sets</string>
 
-    <!-- Match score (docs/rules/match.md, M14, M16, M17, M18) -->
-    <string name="match_sets_label">Sets</string>
-    <string name="match_legs_label">Legs</string>
-    <string name="match_count_overflow">×%1$d</string>
+    <!-- Match score (docs/rules/match.md, M14, M16, M17, M18, M19) -->
+    <string name="match_sets_label">SETS</string>
+    <string name="match_legs_label">LEGS</string>
+    <string name="match_legs_short">LEGS</string>
+    <string name="match_player_header">PLAYER</string>
+    <string name="match_average_header">MATCH AVG</string>
     <string name="match_score_sets">Sets %1$d</string>
     <string name="match_score_legs">Legs %1$d</string>
-    <string name="match_score_separator" translatable="false">" · "</string>
     <plurals name="match_sets_won">
         <item quantity="one">%d set won</item>
         <item quantity="other">%d sets won</item>
@@ -67,10 +81,15 @@
         <item quantity="other">%d legs won</item>
     </plurals>
     <string name="match_indicators_description">%1$s, %2$s</string>
+    <string name="chip_sets">S%1$d</string>
+    <string name="chip_legs">L%1$d</string>
+    <string name="tile_score_sets_legs">S%1$d · L%2$d</string>
+    <string name="match_position_set_leg">SET %1$d · LEG %2$d</string>
+    <string name="match_position_leg">LEG %1$d</string>
 
     <!-- Game screen -->
     <string name="game_to_throw">%1$s to throw</string>
-    <string name="game_average">Avg. %1$s</string>
+    <string name="game_average">AVG %1$s</string>
     <string name="game_average_none" translatable="false">–</string>
     <string name="game_dart_slot">Dart %1$d: %2$s</string>
     <string name="game_dart_slot_empty">Dart %1$d: not thrown yet</string>
@@ -80,52 +99,69 @@
     <string name="game_visit_last_description">Last turn: %1$d</string>
     <string name="game_visit_last_bust_description">Last turn: bust</string>
     <string name="game_visit_not_played_description">Not played yet</string>
+    <plurals name="next_player_tile_description">
+        <item quantity="one">Next player: %1$s, %2$d point left</item>
+        <item quantity="other">Next player: %1$s, %2$d points left</item>
+    </plurals>
     <string name="dart_single" translatable="false">%1$d</string>
     <string name="dart_double">D%1$d</string>
     <string name="dart_triple">T%1$d</string>
     <string name="dart_outer_bull" translatable="false">25</string>
-    <string name="dart_bull">Bull</string>
-    <string name="dart_miss">Miss</string>
-    <!-- Checkout suggestion (docs/rules/checkout-suggestions.md, CS7 to CS9). \u00A0 after the colon keeps the
-         first dart with the label; the route separator only allows a line break after its dot. -->
-    <string name="game_checkout_suggestion">Checkout:\u00A0%1$s</string>
+    <string name="dart_bull">BULL</string>
+    <string name="dart_miss">MISS</string>
+    <!-- Checkout route (docs/rules/checkout-suggestions.md, CS7 to CS9): the label chip, then the darts separated by
+         an em space, which allows a line break between two darts only. -->
+    <string name="checkout_route_label">CHECKOUT</string>
     <string name="game_checkout_suggestion_description">Checkout: %1$s</string>
-    <string name="checkout_route_separator" translatable="false">"\u00A0· "</string>
+    <string name="checkout_route_separator" translatable="false">"\u2003"</string>
     <string name="checkout_spoken_separator" translatable="false">", "</string>
-    <string name="key_double">Double</string>
-    <string name="key_triple">Triple</string>
-    <string name="key_undo">Undo</string>
-    <string name="checkout_title">Checkout!</string>
-    <string name="checkout_finish">Finish game</string>
-    <string name="checkout_finish_leg">Finish leg</string>
-    <string name="checkout_finish_set">Finish set</string>
-    <string name="key_next_player">Next player</string>
+    <!-- Pending checkout (design system 6.3, M15). -->
+    <string name="checkout_banner" translatable="false">CHECKOUT</string>
+    <plurals name="checkout_darts">
+        <item quantity="one">%1$d IN %2$d DART</item>
+        <item quantity="other">%1$d IN %2$d DARTS</item>
+    </plurals>
+    <plurals name="checkout_darts_spoken">
+        <item quantity="one">%1$d in %2$d dart</item>
+        <item quantity="other">%1$d in %2$d darts</item>
+    </plurals>
+    <string name="checkout_live">Checkout, %1$s</string>
+    <string name="key_double">DOUBLE</string>
+    <string name="key_triple">TRIPLE</string>
+    <string name="key_selected_mark" translatable="false">✓</string>
+    <string name="key_undo">UNDO</string>
+    <string name="key_next_player">NEXT PLAYER</string>
+    <string name="checkout_confirm_leg">CONFIRM LEG</string>
+    <string name="checkout_confirm_set">CONFIRM SET</string>
+    <string name="checkout_confirm_match">CONFIRM MATCH</string>
     <string name="game_abandon_title">Abandon the game?</string>
     <string name="game_abandon_text">The current game will be lost.</string>
     <string name="game_abandon_confirm">Abandon</string>
     <string name="game_abandon_cancel">Keep playing</string>
 
-    <!-- End screen -->
-    <string name="end_winner">%1$s wins!</string>
-    <string name="end_rank">%1$d.</string>
+    <!-- End screen (docs/rules/match.md, M17) -->
+    <string name="end_match_winner">MATCH WINNER</string>
     <string name="end_average">3-dart avg. %1$s</string>
     <plurals name="end_darts_thrown">
         <item quantity="one">%1$d dart</item>
         <item quantity="other">%1$d darts</item>
     </plurals>
-    <string name="end_rematch">Rematch</string>
+    <string name="end_darts_header">DARTS</string>
+    <string name="end_rematch">REMATCH</string>
 
-    <!-- Between legs (docs/rules/match.md, M16) -->
-    <string name="between_leg_won_by">Leg won by %1$s</string>
-    <string name="between_set_won_by">Set won by %1$s</string>
-    <string name="between_title">Match score</string>
-    <string name="between_next_starter">%1$s starts the next leg</string>
-    <string name="between_next_leg">Next leg</string>
+    <!-- Between legs (docs/rules/match.md, M16, M19) -->
+    <string name="between_leg_won">SET %1$d · LEG %2$d WON</string>
+    <string name="between_leg_won_no_set">LEG %1$d WON</string>
+    <string name="between_set_won">SET %1$d WON</string>
+    <string name="between_checkout" translatable="false">CHECKOUT %1$d · %2$s</string>
+    <string name="between_starts">%1$s STARTS</string>
+    <string name="between_next_leg">NEXT LEG</string>
 
     <!-- Settings (docs/rules/announcements.md, AN13 to AN17) -->
     <string name="home_settings">Settings</string>
-    <string name="settings_title">Settings</string>
+    <string name="settings_title">SETTINGS</string>
     <string name="settings_back">Back</string>
+    <string name="settings_section_sound">SOUND AND VOICE</string>
     <string name="settings_voice">Voice</string>
     <string name="settings_call_each_dart">Call each dart</string>
     <string name="settings_call_each_dart_needs_voice">Needs the voice</string>
@@ -134,7 +170,9 @@
     <string name="settings_voice_available">Offline voice available</string>
     <string name="settings_voice_missing">No offline voice for the app language. Games play sounds only.</string>
     <string name="settings_voice_no_engine">No speech engine on this phone. Games play sounds only.</string>
+    <string name="settings_credits">CREDITS</string>
     <string name="settings_sound_credits">Sound effects generated with elevenlabs.io</string>
+    <string name="settings_font_credit">Saira font, SIL Open Font License 1.1</string>
     <string name="voice_install">Install a voice</string>
     <string name="no_voice_title">No offline voice</string>
     <string name="no_voice_text">Announcements need an offline voice for the app language. The game goes on with sounds only.</string>

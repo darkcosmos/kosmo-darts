@@ -8,9 +8,9 @@ Les dimensions sont en dp (les maquettes sont dessinées à 412 × 915 dp, la ta
 
 1. **Lisible de loin.** Le téléphone est posé sur un trépied près de la cible : le score restant du joueur courant doit se lire depuis la ligne de tir (environ 2,5 m).
 2. **Une zone fixe pour le joueur courant.** Elle reste au même endroit quel que soit le joueur ; seule sa couleur change.
-3. **La couleur ne porte jamais seule l'information.** Nom toujours affiché, repère ▸ pour le joueur suivant, mot « BUST » écrit.
+3. **La couleur ne porte jamais seule l'information.** Nom toujours affiché, mot « BUST » écrit, coche sur Double/Triple actif. Le joueur suivant est la première tuile (ordre de jeu), sans repère visible ; TalkBack l'annonce « Prochain joueur » (décision du propriétaire, issue #49).
 4. **Le rouge est réservé à BUST.** Aucune autre utilisation, ni pour un joueur, ni pour la décoration.
-5. **Pas de pop-up.** Les confirmations se font dans l'écran (exemple : checkout, section 6.3).
+5. **Pas de pop-up pour le jeu.** Le checkout se confirme dans l'écran (section 6.3). Les quatre autres confirmations (abandon, nouvelle partie, voix absente, partie illisible) restent des boîtes de dialogue, restylées : fond `surface`, rayon 8, bouton de confirmation sur `accent`, l'autre sur `surfaceHigh` (issue #49, Q4).
 6. **Thème toujours sombre**, palette fixe (pas de couleur dynamique Android).
 
 ## 2. Couleurs
@@ -75,8 +75,9 @@ Règles :
 
 - Rayons : **4** pour les contrôles, touches, tuiles et lignes ; **8** pour la zone du joueur courant et les cartes. Aucune forme en pilule.
 - Espacements : 4, 6, 8, 10, 12, 14, 16. Marges d'écran : 12 horizontal, 16 vertical.
-- Cibles tactiles : au moins **48** ; touches du pavé **54** de haut ; boutons d'action **58–60**.
+- Cibles tactiles : au moins **48** ; touches du pavé **54** de haut ; boutons d'action **58–60**. Les boutons − et + des compteurs sont dessinés à 44 dans une zone tactile de 48. Les boutons ont une hauteur minimale : un libellé sur deux lignes à 200 % agrandit le bouton.
 - États : désactivé = opacité 40 % (pavé entier à 35 % quand il est verrouillé) ; focus et sélection = contour `accent` de 2.
+- Écrans courts (issue #49, politique de mise en page) : dans cet ordre, et seulement si le pas précédent ne suffit pas, touches du pavé de 54 à 48 et barre d'action de 58 à 48 ; marges verticales de 16 à 8 et écarts de 6 à 4 ; le score rétrécit jusqu'à son plancher (96 en portrait, 72 en paysage) ; sous ce plancher l'écran (ou la colonne en paysage) défile. Rien n'est jamais coupé.
 
 ## 5. Composants
 
@@ -87,12 +88,12 @@ Règles :
 | `CheckoutRouteBar` | Étiquette « SORTIE » (`accent` / `onAccent`) suivie des segments de la route en `accent` sur `background`. Absente quand aucune route n'existe. |
 | `DartSlots` | Trois cases `background`. Case de la prochaine fléchette : soulignée de 4 en `accent`. Fléchette finale d'un checkout : texte `accent`. |
 | `VisitBox` | Score de la volée, sans libellé. **Plein** (fond blanc, texte `background`) pour la volée en cours ; **contour** (bordure `onBackgroundMuted`) pour la dernière volée des autres joueurs. |
-| `PlayerTile` | Autres joueurs, dans l'ordre de jeu à partir du suivant. Liseré haut de 4 en `playerN`, nom (▸ en `accent` devant le suivant), `tileScore`, `VisitBox` contour, ligne « S n · M n ». 2 tuiles par ligne jusqu'à 3 joueurs, 3 tuiles à 4 joueurs. |
-| `Keypad` | Grille de 5 colonnes : 1 à 20, puis Double, Triple, 25, Bull, Raté. Double et Triple sont des **bascules** (contour `accent`, texte `accent` ; état actif à définir sur le même principe, fond `accent`). Raté : contour `outline`, texte secondaire. |
+| `PlayerTile` | Autres joueurs, dans l'ordre de jeu à partir du suivant (le premier est le suivant, sans repère visible ; TalkBack : « Prochain joueur : Anna, 301 restants »). Liseré de 4 en `playerN` (en haut en portrait, à gauche en paysage), nom, `tileScore`, `VisitBox` contour, ligne « S n · M n ». 2 tuiles par ligne jusqu'à 3 joueurs, 3 tuiles à 4 joueurs ; en paysage à 4 joueurs, le nom seul sur sa ligne (2 lignes au plus), puis le score et l'encadré. |
+| `Keypad` | Grille de 5 colonnes : 1 à 20, puis Double, Triple, 25, Bull, Raté. Double et Triple sont des **bascules**, une seule active à la fois : inactive comme les autres touches (`surfaceHigh`, texte `onBackground`) ; active sur `accent`, texte `onAccent`, bordure intérieure `onBackground` de 2 et coche « ✓ » devant le libellé, « sélectionnée » pour TalkBack. Raté : contour `outline`, texte secondaire. |
 | `ActionBar` | Deux boutons : secondaire à gauche (`surfaceHigh`), principal à droite (`accent`). |
-| `Scoreboard` | Tableau façon retransmission : liseré `playerN`, nom, colonnes (sets, manches, moyenne du match), en-tête en `label`. Gagnant mis en avant (rang sur fond `accent`). |
+| `Scoreboard` | Tableau façon retransmission : liseré `playerN` (manche suivante) ou cellule de rang et carré `playerN` (fin), nom, colonnes, en-tête en `label`. Manche suivante : SETS (plus d'un set), MAN., MOY MATCH, chiffres du gagnant de la manche en `accent`. Fin : SETS (MANCHES avec un seul set, aucune en partie simple), MOY MATCH, puis FLÉCH. (fléchettes du match) ; rang 1 sur `accent` ; pas de ligne « 2 SETS À 0 ». |
 | `ModeCard` | Carte de mode de l'accueil : vignette 64 × 64, nom du mode, description, chevron. |
-| `ResumeCard` | Carte « PARTIE EN COURS » : mini-tuiles des joueurs (suivant entouré d'`accent`) et bouton « REPRENDRE · À X DE LANCER ». |
+| `ResumeCard` | Carte « PARTIE EN COURS » : ligne de format, mini-tuiles des joueurs (liseré, nom, score, « S n · M n ») sans repère ▸ ni contour `accent`, et bouton « REPRENDRE · À X DE LANCER » dans tous les cas. |
 | `SegmentedChoice` | Choix exclusif (501/301, sortie double/simple) : option active en `accent`. |
 | `Stepper` | Libellé, boutons − et + de 44 sur `surfaceHigher`, valeur au centre. |
 | `PlayerNameRow` | Liseré `playerN`, numéro d'ordre, champ du nom. |
@@ -106,10 +107,10 @@ Référence : images de `docs/design/mockups/`.
 Portrait, de haut en bas : `MatchHeader`, `CurrentPlayerZone` (prend toute la hauteur restante), `PlayerTile`s, `Keypad`, `ActionBar` (« ANNULER » / « JOUEUR SUIVANT »). Paysage : zone du joueur et tuiles à gauche (480 de large), pavé et barre d'action à droite ; la route de sortie se place à droite du score.
 
 ### 6.2 BUST
-Toute la `CurrentPlayerZone` passe en `danger`. Un carré de la couleur du joueur, bordé de blanc, reste devant son nom. La barre de sortie est remplacée par un bandeau blanc « BUST » en `danger`. Le score revient à sa valeur du début de volée, `VisitBox` affiche 0. Le pavé est verrouillé ; seul « JOUEUR SUIVANT » est actif.
+Toute la `CurrentPlayerZone` passe en `danger`. Un carré de la couleur du joueur, bordé de blanc, reste devant son nom. La barre de sortie est remplacée par un bandeau blanc « BUST » en `danger`. Le score revient à sa valeur du début de volée, `VisitBox` affiche 0. Le pavé est verrouillé ; « JOUEUR SUIVANT » et « ANNULER » restent actifs (décision du propriétaire, issue #49, Q3). TalkBack annonce « BUST » à son apparition.
 
 ### 6.3 Checkout (sans pop-up)
-La zone garde la couleur du joueur. Le score est remplacé par un bandeau `accent` « CHECKOUT » et la ligne « 141 EN 3 FLÉCHETTES ». La fléchette finale est en `accent`. Le pavé est verrouillé et l'`ActionBar` devient « ANNULER » (annule la dernière fléchette) / « VALIDER LA MANCHE » (ou le libellé de fin de partie pour la dernière manche).
+La zone garde la couleur du joueur. Le score est remplacé par un bandeau `accent` « CHECKOUT » et la ligne « 141 EN 3 FLÉCHETTES ». La fléchette finale est en `accent`. Le pavé est verrouillé et l'`ActionBar` devient « ANNULER » (annule la dernière fléchette) / « VALIDER LA MANCHE », « VALIDER LE SET » ou « VALIDER LA PARTIE » (partie simple et dernière manche). La ligne dit « 141 EN 1 FLÉCHETTE » au singulier. Le bandeau et sa ligne sont annoncés par TalkBack (« Checkout, 141 en 3 fléchettes »). Le retour système ouvre « Abandonner la partie ? » comme ailleurs dans la partie ; le refermer laisse le checkout en attente (issue #49, O1).
 
 ### 6.4 Autres écrans
 Accueil (`ResumeCard`, puis les `ModeCard`s ; seule la carte X01 existe pour l'instant), configuration X01, manche suivante, fin de partie, réglages : voir les maquettes.
@@ -120,7 +121,8 @@ Seul mouvement : fondu de la couleur de la zone au changement de joueur, 200 ms.
 
 ## 8. Accessibilité
 
-- Tout élément interactif a un libellé lisible par TalkBack (le ▸ « suivant », les boutons − et +, l'icône des réglages).
+- Tout élément interactif a un libellé lisible par TalkBack (les boutons − et +, la croix « Retirer … », l'icône des réglages). La première tuile est lue « Prochain joueur : … » ; Double et Triple actifs sont « sélectionnés ».
+- Les bandeaux BUST et CHECKOUT sont des zones annoncées (live regions polies).
 - Contrastes indiqués en sections 2 ; toute nouvelle couleur doit atteindre 4,5:1 pour le texte courant et 3:1 pour le texte d'au moins 24 en gras.
 - Les captures Roborazzi couvrent le portrait, le paysage, 4 joueurs aux noms longs et la police à 200 %.
 
@@ -140,3 +142,5 @@ Seul mouvement : fondu de la couleur de la zone au changement de joueur, 200 ms.
 | `mockups/10-settings.png` | Réglages |
 
 Les indicateurs de manches et de sets (« S n · M n ») de ces maquettes remplacent la forme livrée par la mission « Manches et sets ».
+
+Écarts retenus par le propriétaire (issue #49) : les repères ▸ « SUIVANT » des tuiles et le contour `accent` de la carte de reprise ne sont pas repris (Q10) ; la carte de reprise dit toujours « REPRENDRE · À X DE LANCER » (Q11) ; la fin de match n'a pas de ligne « 2 SETS À 0 » et garde la colonne des fléchettes (Q8, O2) ; la carte Cricket de la maquette 06 viendra avec ce mode. Les valeurs et les décisions sont reprises ci-dessus ; les choix techniques sont dans `docs/adr/0007-ui-design-tokens.md`.

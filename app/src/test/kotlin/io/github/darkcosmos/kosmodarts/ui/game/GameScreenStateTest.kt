@@ -102,7 +102,7 @@ class GameScreenStateTest {
 
         assertTrue(game.isAwaitingConfirmation)
         assertTrue(game.canGoToNextPlayer)
-        assertFalse(game.isCheckoutDialogShown)
+        assertFalse(game.isCheckoutPending)
         assertEquals(TurnOutcome.NORMAL, game.pendingTurn?.outcome)
         assertEquals(listOf(Dart.single(1), Dart.single(2), Dart.single(3)), game.pendingTurn?.darts)
         assertEquals(295, game.pendingTurn?.remainingAfter)
@@ -157,7 +157,7 @@ class GameScreenStateTest {
         val won = almost.throwNumber(1)
 
         assertTrue(won.isAwaitingConfirmation)
-        assertTrue(won.isCheckoutDialogShown)
+        assertTrue(won.isCheckoutPending)
         assertFalse(won.canGoToNextPlayer)
         assertEquals(won, won.nextPlayer())
         assertEquals(TurnOutcome.CHECKOUT, won.pendingTurn?.outcome)
@@ -203,7 +203,7 @@ class GameScreenStateTest {
 
         val reopened = won.undo()
 
-        assertFalse(reopened.isCheckoutDialogShown)
+        assertFalse(reopened.isCheckoutPending)
         assertFalse(reopened.game.state.isFinished)
         assertEquals(listOf(Dart.triple(20), Dart.triple(20)), reopened.highlightedTurnDarts)
         assertTrue(reopened.isKeypadEnabled)

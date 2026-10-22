@@ -1,10 +1,12 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
@@ -119,11 +121,13 @@ class PersistenceEffectsTest {
         val three = X01Config(listOf("Ann", "Bob", "Cid"))
         val end = AppState(screen = Screen.End(X01Game(three, emptyList())), lastSetup = X01MatchConfig(three))
         val rotated = X01Config(listOf("Bob", "Cid", "Ann"))
+        // PC7: each player keeps his color slot through the rotation.
+        val setup = X01MatchConfig(rotated, colorSlots = listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_3, ColorSlot.SLOT_1))
 
         assertEquals(
             listOf(
-                PersistenceEffect.SaveLastSetup(X01MatchConfig(rotated)),
-                PersistenceEffect.SaveGame(SavedGame(X01Game(rotated), isAwaitingNextPlayer = false)),
+                PersistenceEffect.SaveLastSetup(setup),
+                PersistenceEffect.SaveGame(SavedGame(X01Match.start(setup), isAwaitingNextPlayer = false)),
             ),
             effectsOf(end, AppEvent.Rematch),
         )

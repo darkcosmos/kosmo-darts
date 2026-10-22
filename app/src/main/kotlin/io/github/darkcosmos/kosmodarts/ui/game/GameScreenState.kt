@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.game
 
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.TurnOutcome
@@ -14,9 +15,9 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Turn
  * Immutable.
  *
  * When a dart completes a turn (third dart, bust or checkout), play does not move on for the players: the turn waits
- * for a human action, with the dart entry keys disabled: [nextPlayer] after a normal turn or a bust, "Finish …" or
- * [undo] in the checkout dialog. The engine has already passed the turn to the next player; the screen keeps showing
- * the player who threw until then.
+ * for a human action, with the dart entry keys disabled: [nextPlayer] after a normal turn or a bust, the confirm
+ * button (M15) or [undo] in the CHECKOUT zone. The engine has already passed the turn to the next player; the screen
+ * keeps showing the player who threw until then.
  *
  * @property match the match; its current leg is [game] (docs/rules/match.md).
  * @property multiplier one-shot modifier for the next number: [Multiplier.SINGLE] when no modifier is active.
@@ -49,16 +50,16 @@ data class GameScreenState(
     val canUndo: Boolean
         get() = game.canUndo
 
-    /** M15: what "Finish …" decides while the checkout dialog is shown, else `null`. */
-    val checkoutDialogOutcome: LegOutcome?
-        get() = if (isCheckoutDialogShown) match.pendingOutcome else null
+    /** M15: what the confirm button of a pending checkout decides (its label), else `null`. */
+    val checkoutOutcome: LegOutcome?
+        get() = if (isCheckoutPending) match.pendingOutcome else null
 
     /** M9: three-dart average of the player at [index] over the whole match, or `null` before their first dart. */
     fun averageOf(index: Int): Double? = match.playerStats[index].threeDartAverage
 
     /**
      * M14: sets and legs won by each player, in configuration order, or `null` in a single game. Only confirmed legs
-     * count: a leg waiting in the checkout dialog is not won yet.
+     * count: a pending checkout is not won yet.
      */
     val indicators: List<MatchIndicator>?
         get() = if (match.format.isSingleGame) {
@@ -77,17 +78,47 @@ data class GameScreenState(
     val pendingTurn: X01Turn?
         get() = if (isAwaitingConfirmation) game.state.completedTurns.lastOrNull() else null
 
-    /** "Next player" is enabled while a normal or bust turn waits; a checkout waits in its own dialog. */
+    /** "Next player" is enabled while a normal or bust turn waits; a checkout waits for its confirm button (M15). */
     val canGoToNextPlayer: Boolean
         get() = isAwaitingConfirmation && pendingTurn?.outcome != TurnOutcome.CHECKOUT
 
-    /** The winning dart waits in a modal dialog: "Finish game" or Undo. */
-    val isCheckoutDialogShown: Boolean
+    /** The winning dart waits in the CHECKOUT zone: the confirm button (M15) or Undo. */
+    val isCheckoutPending: Boolean
         get() = pendingTurn?.outcome == TurnOutcome.CHECKOUT
 
-    /** BUST is shown in the card of the player who threw while their bust turn waits. */
-    val isBustShown: Boolean
+    /** The bust turn of the highlighted player waits for "Next player" (VT13). */
+    val isBustPending: Boolean
         get() = pendingTurn?.outcome == TurnOutcome.BUST
+
+    /** What the current player's zone shows (design system 6.1 to 6.3), derived from the pending turn. */
+    val zoneMode: ZoneMode
+        get() = when {
+            isCheckoutPending -> ZoneMode.CHECKOUT
+            isBustPending -> ZoneMode.BUST
+            else -> ZoneMode.NORMAL
+        }
+
+    /** Color slot of the player at [index] (docs/rules/players.md, PC6, PC9). */
+    fun colorSlotOf(index: Int): ColorSlot = match.colorSlots[index]
+
+    /**
+     * M6: the other players' tiles, in play order starting from the player after the highlighted one. Empty with one
+     * player or once the leg has no highlighted player.
+     */
+    val tileOrder: List<Int>
+        get() {
+            val highlighted = highlightedPlayerIndex ?: return emptyList()
+            val count = game.config.players.size
+            return (1 until count).map { (highlighted + it) % count }
+        }
+
+    /** M14, M19: the position shown in the header, read from the engine (never counted here). */
+    val headerPosition: MatchPosition
+        get() = MatchPosition.current(match)
+
+    /** The pending checkout (design system 6.3), or `null`: points scored by the turn and its darts. */
+    val checkoutSummary: CheckoutSummary?
+        get() = pendingTurn?.takeIf { isCheckoutPending }?.let { CheckoutSummary(it.remainingBefore, it.darts) }
 
     /** Numbers, Double, Triple, 25, Bull and Miss are disabled while a turn waits for confirmation. */
     val isKeypadEnabled: Boolean
@@ -102,9 +133,9 @@ data class GameScreenState(
         get() = pendingTurn?.playerIndex ?: game.state.currentPlayerIndex
 
     /**
-     * Checkout route shown on the highlighted card (docs/rules/checkout-suggestions.md, CS5): `null` while a turn
-     * waits (the engine has already moved to the next player), else the engine suggestion, which is then for the
-     * highlighted player.
+     * Checkout route shown in the current player's zone (docs/rules/checkout-suggestions.md, CS5, CS8): `null` while
+     * a turn waits (BUST and CHECKOUT modes included; the engine has already moved to the next player) or when no
+     * route exists, else the engine suggestion, which is then for the highlighted player.
      */
     val checkoutSuggestion: List<Dart>?
         get() = if (isAwaitingConfirmation) null else game.checkoutSuggestion
@@ -113,6 +144,10 @@ data class GameScreenState(
     val highlightedTurnDarts: List<Dart>
         get() = pendingTurn?.darts
             ?: game.state.currentPlayerIndex?.let { game.state.players[it].currentTurnDarts }.orEmpty()
+
+    /** The dart slot of the next dart (underlined in `accent`), or `null` while a turn waits. */
+    val nextDartIndex: Int?
+        get() = if (isKeypadEnabled) highlightedTurnDarts.size else null
 
     /** Activates [modifier], or cancels it if it is already active. */
     fun toggleMultiplier(modifier: Multiplier): GameScreenState = if (isKeypadEnabled) {
@@ -151,10 +186,55 @@ data class GameScreenState(
 }
 
 /**
- * Sets and legs won by one player, shown on the game screen (docs/rules/match.md, M14). Built in pure code
- * ([GameScreenState.indicators]); the composable `MatchIndicators` only draws it.
+ * Sets and legs won by one player, shown as the chips "S n" and "M n" of the zone and the line "S n · M n" of the
+ * tiles (docs/rules/match.md, M14). Built in pure code ([GameScreenState.indicators]); composables only draw it.
  *
  * @property setsWon sets won, or `null` when the match has a single set (no set mention anywhere).
  * @property legsWon legs won in the current set.
  */
 data class MatchIndicator(val setsWon: Int?, val legsWon: Int)
+
+/** What the current player's zone shows (docs/design/design-system.md, 6.1 to 6.3). */
+enum class ZoneMode {
+    /** The remaining score, the checkout route and the turn in progress. */
+    NORMAL,
+
+    /** A bust waits for "Next player": the zone turns `danger` with the BUST banner (VT13). */
+    BUST,
+
+    /** The winning dart waits for its confirm button (M15): the CHECKOUT banner replaces the score. */
+    CHECKOUT,
+}
+
+/**
+ * A position in the match, as numbers read from the engine (M14, M19): [setNumber] only when the match has more than
+ * one set, [legNumber] only outside a single game. Composables turn it into "SET 2 · MANCHE 3", "MANCHE 3" or nothing.
+ */
+data class MatchPosition(val setNumber: Int?, val legNumber: Int?) {
+    companion object {
+        /** The leg in progress of [match]. */
+        fun current(match: X01Match): MatchPosition =
+            of(match, match.score.currentSetNumber, match.score.currentLegNumber)
+
+        /** The last confirmed leg of [match], or `null` before the first one (between legs, M16). */
+        fun lastLeg(match: X01Match): MatchPosition? {
+            val set = match.score.lastLegSetNumber
+            val leg = match.score.lastLegNumber
+            return if (set == null || leg == null) null else of(match, set, leg)
+        }
+
+        private fun of(match: X01Match, set: Int, leg: Int): MatchPosition = when {
+            match.format.isSingleGame -> MatchPosition(null, null)
+            match.format.hasSets -> MatchPosition(set, leg)
+            else -> MatchPosition(null, leg)
+        }
+    }
+}
+
+/**
+ * A pending checkout (design system 6.3, U2): "141 EN 3 FLÉCHETTES".
+ *
+ * @property points the remaining score at the start of the winning turn, scored by it.
+ * @property darts the darts of the winning turn; the last one is the final dart.
+ */
+data class CheckoutSummary(val points: Int, val darts: List<Dart>)

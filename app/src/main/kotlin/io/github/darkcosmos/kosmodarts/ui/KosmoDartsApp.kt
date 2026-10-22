@@ -31,7 +31,12 @@ fun KosmoDartsApp(
         is Screen.Setup -> SetupScreen(screen.setup, onEvent, isRestoreFailedShown = screen.isRestoreFailedShown)
         is Screen.Game -> GameScreen(screen.game, onEvent, noVoiceNotice = screen.noVoiceNotice)
         is Screen.BetweenLegs ->
-            BetweenLegsScreen(screen.match, onEvent, isAbandonDialogShown = screen.isAbandonDialogShown)
+            BetweenLegsScreen(
+                screen.match,
+                onEvent,
+                isAbandonDialogShown = screen.isAbandonDialogShown,
+                checkout = screen.checkout,
+            )
         is Screen.End -> EndScreen(screen.match, onEvent)
         is Screen.Settings -> SettingsScreen(settings, onSettingsEvent, onBack = { onEvent(AppEvent.Back) })
     }

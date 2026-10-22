@@ -6,6 +6,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.ui.game.CheckoutSummary
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 
@@ -38,8 +39,14 @@ sealed interface Screen {
      * the leg confirmed and its next leg started, with no dart.
      *
      * @property isAbandonDialogShown whether the "Abandon the game?" confirmation is open (owner Q6 i).
+     * @property checkout the winning visit of the leg just confirmed, shown in the winner's zone; `null` after a resume
+     *   on this screen (not saved).
      */
-    data class BetweenLegs(val match: X01Match, val isAbandonDialogShown: Boolean = false) : Screen
+    data class BetweenLegs(
+        val match: X01Match,
+        val isAbandonDialogShown: Boolean = false,
+        val checkout: CheckoutSummary? = null,
+    ) : Screen
 
     /** End of a finished match (M17); a single game is a match of one leg. */
     data class End(val match: X01Match) : Screen {
@@ -91,7 +98,8 @@ sealed interface AppEvent {
 
     data object PlayerAdded : AppEvent
 
-    data object PlayerRemoved : AppEvent
+    /** The remove cross of the row at [index] (M13, PC3). */
+    data class PlayerRemoved(val index: Int) : AppEvent
 
     data object PlayersShuffled : AppEvent
 
@@ -114,13 +122,13 @@ sealed interface AppEvent {
 
     data object MissTapped : AppEvent
 
-    /** Undo key of the game screen, or Undo in the checkout dialog. */
+    /** "Undo" of the action bar, in every zone mode (VT13, M15). */
     data object UndoTapped : AppEvent
 
-    /** "Next player", next to the Undo key. */
+    /** "Next player" of the action bar. */
     data object NextPlayerTapped : AppEvent
 
-    /** "Finish leg", "Finish set" or "Finish game" in the checkout dialog (M15). */
+    /** "Confirm leg", "Confirm set" or "Confirm match" of the action bar, in the CHECKOUT zone (M15). */
     data object FinishGameTapped : AppEvent
 
     /** "Next leg" on the between-legs screen (M16). */

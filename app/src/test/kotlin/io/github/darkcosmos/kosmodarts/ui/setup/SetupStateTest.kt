@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.setup
 
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
@@ -61,13 +62,73 @@ class SetupStateTest {
         assertEquals(four, four.withPlayerAdded())
     }
 
+    /** M13, PC3: the cross removes any row, down to one player, and frees its color slot. */
     @Test
-    fun removingAPlayerRemovesTheLastFieldDownToOne() {
-        val one = SetupState(names = listOf("Ann", "Bob")).withLastPlayerRemoved()
+    fun `M13 PC3 removing a player at any position down to one`() {
+        val three = SetupState(names = listOf("Ann", "Bob", "Cid"))
 
-        assertEquals(listOf("Ann"), one.names)
+        val withoutBob = three.withPlayerRemoved(1)
+        assertEquals(listOf("Ann", "Cid"), withoutBob.names)
+        assertEquals(listOf(ColorSlot.SLOT_1, ColorSlot.SLOT_3), withoutBob.roster.slots)
+
+        val one = withoutBob.withPlayerRemoved(0)
+        assertEquals(listOf("Cid"), one.names)
+        assertEquals(listOf(ColorSlot.SLOT_3), one.roster.slots)
         assertFalse(one.canRemovePlayer)
-        assertEquals(one, one.withLastPlayerRemoved())
+        assertEquals(one, one.withPlayerRemoved(0))
+    }
+
+    /** PC2, PC3: a player added after a removal gets the freed slot, with an empty name. */
+    @Test
+    fun `PC2 a player added after a removal gets the freed slot`() {
+        val readded = SetupState(names = listOf("Ann", "Bob", "Cid")).withPlayerRemoved(1).withPlayerAdded()
+
+        assertEquals(listOf("Ann", "Cid", ""), readded.names)
+        assertEquals(listOf(ColorSlot.SLOT_1, ColorSlot.SLOT_3, ColorSlot.SLOT_2), readded.roster.slots)
+    }
+
+    /** M13: after a removal, the errors of the last start no longer point at moved fields: they are cleared. */
+    @Test
+    fun `M13 a removal clears the name errors so none points at a moved field`() {
+        val invalid = (SetupState(names = listOf("Ann", " ", "ann")).start() as SetupResult.Invalid).setup
+        assertEquals(listOf(X01ConfigError.BLANK_NAME), invalid.errorsFor(1))
+
+        val removed = invalid.withPlayerRemoved(1)
+
+        assertEquals(listOf("Ann", "ann"), removed.names)
+        assertTrue(removed.names.indices.all { removed.errorsFor(it).isEmpty() })
+        // The next start reports the remaining duplicate at the new positions.
+        val again = removed.start() as SetupResult.Invalid
+        assertEquals(listOf(X01ConfigError.DUPLICATE_NAME), again.setup.errorsFor(0))
+        assertEquals(listOf(X01ConfigError.DUPLICATE_NAME), again.setup.errorsFor(1))
+    }
+
+    /** PC8: the setup prefilled from the last setup restores each player's slot. */
+    @Test
+    fun `PC8 prefilled restores the color slots`() {
+        val lastSetup = X01MatchConfig(
+            X01Config(listOf("Cid", "Ann")),
+            colorSlots = listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_2),
+        )
+
+        val setup = SetupState.prefilled(lastSetup)
+
+        assertEquals(listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_2), setup.roster.slots)
+        assertEquals(listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_2), (setup.start() as SetupResult.Valid).config.colorSlots)
+    }
+
+    /** PC4: shuffle keeps each name with its slot, and Start passes the slots to the match. */
+    @Test
+    fun `PC4 PC5 shuffled names keep their slots up to the match configuration`() {
+        val setup = SetupState(names = listOf("Ann", "Bob", "Cid", "Dan")).shuffled(Random(SEED))
+        val bySlot = mapOf("Ann" to ColorSlot.SLOT_1, "Bob" to ColorSlot.SLOT_2, "Cid" to ColorSlot.SLOT_3)
+
+        val config = (setup.start() as SetupResult.Valid).config
+
+        config.config.players.zip(config.colorSlots).forEach { (name, slot) ->
+            bySlot[name]?.let { assertEquals(name, it, slot) }
+        }
+        assertEquals(setup.roster.slots, config.colorSlots)
     }
 
     @Test
@@ -129,7 +190,7 @@ class SetupStateTest {
             { it.withStartScore(301) },
             { it.withCheckoutRule(CheckoutRule.SINGLE_OUT) },
             { it.withPlayerAdded() },
-            { it.withLastPlayerRemoved() },
+            { it.withPlayerRemoved(0) },
             { it.shuffled(Random(SEED)) },
         )
 

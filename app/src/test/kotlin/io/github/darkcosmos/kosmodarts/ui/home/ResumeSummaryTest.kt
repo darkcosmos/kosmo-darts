@@ -1,6 +1,8 @@
 package io.github.darkcosmos.kosmodarts.ui.home
 
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
+import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
@@ -19,7 +21,7 @@ class ResumeSummaryTest {
         val highlighted = saved.game.state.players[checkNotNull(screen.highlightedPlayerIndex)].name
 
         assertEquals(highlighted, summary.highlightedPlayer)
-        assertEquals(screen.isCheckoutDialogShown, summary.isCheckoutToConfirm)
+        assertEquals(saved.match.format, summary.format)
     }
 
     @Test
@@ -29,7 +31,10 @@ class ResumeSummaryTest {
         assertEquals(301, summary.startScore)
         assertEquals(CheckoutRule.DOUBLE_OUT, summary.checkoutRule)
         // Ann's bust restored her 121; Bob missed everything.
-        val expected = listOf(ResumeSummary.PlayerScore("Ann", 121), ResumeSummary.PlayerScore("Bob", 301))
+        val expected = listOf(
+            ResumeSummary.PlayerScore("Ann", 121, ColorSlot.SLOT_1),
+            ResumeSummary.PlayerScore("Bob", 301, ColorSlot.SLOT_2),
+        )
         assertEquals(expected, summary.players)
     }
 
@@ -57,12 +62,27 @@ class ResumeSummaryTest {
         assertEquals("Bob", ResumeSummary.of(SaveFixtures.AFTER_NEXT_PLAYER).highlightedPlayer)
     }
 
+    /**
+     * M18, owner Q11 of issue #49: a pending checkout shows the winner as the player to throw, like any other case;
+     * there is no "checkout to confirm" mention any more.
+     */
     @Test
-    fun `R2 an open checkout shows the winner with the checkout mention`() {
+    fun `M18 a pending checkout names the winner as the player to throw`() {
         val summary = ResumeSummary.of(SaveFixtures.WAITING_CHECKOUT)
 
         assertEquals("Ann", summary.highlightedPlayer)
-        assertTrue(summary.isCheckoutToConfirm)
-        assertFalse(ResumeSummary.of(SaveFixtures.WAITING_NORMAL).isCheckoutToConfirm)
+        assertTrue(SaveFixtures.WAITING_CHECKOUT.toGameScreenState().isCheckoutPending)
+    }
+
+    /** PC9, R17: the summary gives each player his own color slot. */
+    @Test
+    fun `R17 the summary carries the saved color slots`() {
+        val saved = SavedGame(
+            MatchFixtures.match("Ann", "Bob", colorSlots = listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_1)),
+            isAwaitingNextPlayer = false,
+        )
+
+        assertEquals(listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_1), ResumeSummary.of(saved).players.map { it.slot })
+        assertFalse(ResumeSummary.of(saved).players.isEmpty())
     }
 }

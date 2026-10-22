@@ -1,6 +1,5 @@
 package io.github.darkcosmos.kosmodarts.ui.x01
 
-import androidx.compose.material3.Typography
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
@@ -8,26 +7,22 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.hasAnyAncestor
-import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.text.TextMeasurer
-import androidx.compose.ui.text.font.createFontFamilyResolver
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
-import io.github.darkcosmos.kosmodarts.ui.game.NAME_MIN_REFERENCE
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -37,9 +32,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Layout of the visit total boxes at the worst case (docs/rules/visit-total.md, VT11): 4 players with 20-character
- * names, on a Pixel 7 in portrait and landscape, at font scale 1.0 and 2.0 (the largest one Android offers). Also the
- * TalkBack order of a row and of the highlighted card (VT8).
+ * Layout of the visit total boxes at the worst case (docs/rules/visit-total.md, VT9 to VT13 as amended by issue #49):
+ * 4 players with 20-character names, on a Pixel 7 in portrait and landscape, at font scale 1.0 and 2.0 (the largest
+ * one Android offers). The filled box of the zone and the outlined boxes of the tiles are complete on one line and
+ * keep their size whatever they show; the zone does not move during a bust. Also the TalkBack (screen) order.
  */
 @RunWith(AndroidJUnit4::class)
 // Real text measurement: without native graphics, Robolectric measures text as almost zero wide.
@@ -56,12 +52,17 @@ class VisitTotalLayoutTest {
         composeRule.waitForIdle()
     }
 
-    private fun node(tag: String): SemanticsNodeInteraction = composeRule.onNodeWithTagUnmerged(tag)
+    private fun node(tag: String): SemanticsNodeInteraction =
+        composeRule.onNode(hasTestTag(tag), useUnmergedTree = true)
 
-    private fun androidx.compose.ui.test.junit4.ComposeTestRule.onNodeWithTagUnmerged(tag: String) =
-        onNode(hasTestTag(tag), useUnmergedTree = true)
-
-    private fun bounds(tag: String): Rect = node(tag).performScrollTo().fetchSemanticsNode().boundsInRoot
+    /** Bounds of [tag], scrolled into view first when the screen scrolls (layout policy, last step). */
+    private fun bounds(tag: String): Rect {
+        val scrollable = hasTestTag(tag).and(hasAnyAncestor(SemanticsMatcher.keyIsDefined(SemanticsActions.ScrollBy)))
+        if (composeRule.onAllNodes(scrollable, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()) {
+            node(tag).performScrollTo()
+        }
+        return node(tag).fetchSemanticsNode().boundsInRoot
+    }
 
     private fun textLayout(node: SemanticsNode): TextLayoutResult {
         val results = mutableListOf<TextLayoutResult>()
@@ -87,144 +88,126 @@ class VisitTotalLayoutTest {
         assertTrue("$what is cut vertically", !layout.didOverflowHeight)
     }
 
-    private fun assertInsideHorizontally(inner: Rect, outer: Rect, what: String) {
+    private fun assertInside(inner: Rect, outer: Rect, what: String) {
         assertTrue("$what starts outside: $inner in $outer", inner.left >= outer.left - EPSILON)
         assertTrue("$what ends outside: $inner in $outer", inner.right <= outer.right + EPSILON)
+        assertTrue("$what is above: $inner in $outer", inner.top >= outer.top - EPSILON)
+        assertTrue("$what is below: $inner in $outer", inner.bottom <= outer.bottom + EPSILON)
     }
 
-    /** Minimum width of a name in a player row, in pixels: NAME_MIN_REFERENCE in titleMedium (the row name style). */
-    private fun nameMinWidthPx(): Int {
-        val context = composeRule.activity
-        val measurer = TextMeasurer(createFontFamilyResolver(context), Density(context), LayoutDirection.Ltr)
-        return measurer.measure(NAME_MIN_REFERENCE, Typography().titleMedium).size.width
+    /** The score of the zone: centered, so its center, top and height must not move between states (no jump). */
+    private fun scorePlacement(): List<Float> {
+        val zone = bounds(GameTags.CURRENT_PLAYER)
+        val score = bounds(GameTags.CURRENT_REMAINING)
+        return listOf(score.center.x - zone.left, score.top - zone.top, score.height, zone.height)
     }
 
-    private fun traversalIndex(matcher: SemanticsMatcher): Float = composeRule.onNode(matcher, useUnmergedTree = true)
-        .fetchSemanticsNode().config.getOrNull(SemanticsProperties.TraversalIndex) ?: 0f
-
-    /** Position of the card remaining inside its card, and its height: they must not move between states (no jump). */
-    private fun remainingPlacement(): List<Float> {
-        val card = bounds(GameTags.CURRENT_PLAYER)
-        val remaining = bounds(GameTags.CURRENT_REMAINING)
-        return listOf(remaining.left - card.left, remaining.top - card.top, remaining.height)
+    /** Same placement, to the pixel: a one pixel difference comes from rounding the measured lines, not a jump. */
+    private fun assertSamePlacement(what: String, expected: List<Float>, actual: List<Float>) {
+        assertEquals(what, expected.size, actual.size)
+        expected.zip(actual).forEach { (e, a) ->
+            assertTrue("$what: $expected, $actual", kotlin.math.abs(e - a) <= PIXEL)
+        }
     }
 
-    private fun assertRows(players: List<Int>, root: Rect) = players.forEach { player ->
-        assertInsideHorizontally(bounds(GameTags.visitTotal(player)), root, "box $player")
+    private fun assertTiles(players: List<Int>, root: Rect) = players.forEach { player ->
+        val tile = bounds(GameTags.tile(player))
+        assertInside(tile, root, "tile $player")
+        assertInside(bounds(GameTags.visitTotal(player)), tile, "box $player")
         assertOneCompleteLine(boxText(player), "box $player text")
-        assertInsideHorizontally(bounds(GameTags.remaining(player)), root, "remaining $player")
+        assertInside(bounds(GameTags.remaining(player)), tile, "remaining $player")
         assertOneCompleteLine(node(GameTags.remaining(player)).fetchSemanticsNode(), "remaining $player")
-        val name = bounds(GameTags.playerName(player))
-        assertTrue("name $player is ${name.width} px", name.width >= nameMinWidthPx() - EPSILON)
     }
 
-    private fun checkLayout(expectTwoLineRows: Boolean) {
-        // Cid's 180 waits in the card.
+    private fun checkLayout() {
+        // Cid's 180 waits in the zone.
         send(*CID_180_WAITING)
         val root = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
-        val cardBox180 = bounds(GameTags.visitTotal(CID)).size
-        assertOneCompleteLine(boxText(CID), "card box 180")
+        val zoneBox180 = bounds(GameTags.visitTotal(CID)).size
+        assertOneCompleteLine(boxText(CID), "zone box 180")
 
-        // Ann's first dart of round 2: her card box shows 60.
+        // Ann's first dart of round 2: her zone box shows 60.
         send(*ANN_FIRST_DART)
-        val placementBefore = remainingPlacement()
-        assertEquals("card box size", cardBox180, bounds(GameTags.visitTotal(0)).size)
+        val placementBefore = scorePlacement()
+        assertEquals("zone box size", zoneBox180, bounds(GameTags.visitTotal(0)).size)
 
-        // U2, VT13: Ann's T20 T20 leaves 1, a bust waits. The remaining is complete on one line, the badge is inside
-        // the card, there is no box in the card, and the remaining has not moved.
+        // VT13: Ann's T20 T20 leaves 1, a bust waits. The score is complete, the banner is inside the zone, the box
+        // shows 0 with the same size, and the score has not moved.
         send(*triple(20))
-        val card = bounds(GameTags.CURRENT_PLAYER)
-        val remaining = bounds(GameTags.CURRENT_REMAINING)
-        assertInsideHorizontally(remaining, card, "card remaining")
-        assertOneCompleteLine(node(GameTags.CURRENT_REMAINING).fetchSemanticsNode(), "card remaining")
-        assertInsideHorizontally(bounds(GameTags.CARD_BUST), card, "BUST badge")
-        node(GameTags.visitTotal(0)).assertDoesNotExist()
-        assertEquals("card remaining moved during the bust", placementBefore, remainingPlacement())
+        val zone = bounds(GameTags.CURRENT_PLAYER)
+        assertInside(bounds(GameTags.CURRENT_REMAINING), zone, "zone score")
+        assertOneCompleteLine(node(GameTags.CURRENT_REMAINING).fetchSemanticsNode(), "zone score")
+        assertInside(bounds(GameTags.CARD_BUST), zone, "BUST banner")
+        assertEquals("0", textLayout(boxText(0)).layoutInput.text.text)
+        assertEquals("zone box size during the bust", zoneBox180, bounds(GameTags.visitTotal(0)).size)
+        assertSamePlacement("zone score moved during the bust", placementBefore, scorePlacement())
 
-        // Rows Bob (3), Cid (180) and Dan (0).
-        assertRows(listOf(1, CID, DAN), root)
-        // One scroll, then both positions: scrolling between the two reads would move the row.
-        node(GameTags.average(DAN)).performScrollTo()
-        val name = node(GameTags.playerName(DAN)).fetchSemanticsNode().boundsInRoot
-        val average = node(GameTags.average(DAN)).fetchSemanticsNode().boundsInRoot
-        assertEquals("average under the name: $name, $average", expectTwoLineRows, average.top >= name.bottom - EPSILON)
+        // Tiles Bob (3), Cid (180) and Dan (0).
+        assertTiles(listOf(1, CID, DAN), root)
 
-        // After "Next player": Ann's BUST box is in a row, Bob's card box shows 0. The remaining has not moved.
+        // After "Next player": Ann's BUST box is on a tile, Bob's zone box shows 0. The score has not moved.
         send(AppEvent.NextPlayerTapped)
-        assertRows(listOf(0, CID, DAN), root)
-        val rowBoxSizes = listOf(0, CID, DAN).map { bounds(GameTags.visitTotal(it)).size }
-        // VT11: a row box has the same size whatever it shows: BUST, 180 or 0.
-        assertEquals(1, rowBoxSizes.distinct().size)
-        assertEquals("card box size", cardBox180, bounds(GameTags.visitTotal(1)).size)
-        assertEquals("card remaining moved after Next player", placementBefore, remainingPlacement())
+        assertTiles(listOf(0, CID, DAN), root)
+        val tileBoxSizes = listOf(0, CID, DAN).map { bounds(GameTags.visitTotal(it)).size }
+        // VT11: a tile box has the same size whatever it shows: BUST, 180 or 0.
+        assertEquals(1, tileBoxSizes.distinct().size)
+        assertEquals("zone box size", zoneBox180, bounds(GameTags.visitTotal(1)).size)
+        assertSamePlacement("zone score moved after Next player", placementBefore.drop(1), scorePlacement().drop(1))
     }
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun `VT11 portrait at font scale 1`() = checkLayout(expectTwoLineRows = false)
+    fun `VT11 portrait at font scale 1`() = checkLayout()
 
     @Test
     @Config(qualifiers = "+en-port", fontScale = LARGEST_FONT_SCALE)
-    fun `VT11 portrait at the largest font scale`() = checkLayout(expectTwoLineRows = true)
+    fun `VT11 portrait at the largest font scale`() = checkLayout()
 
     @Test
     @Config(qualifiers = "+en-land")
-    fun `VT11 landscape at font scale 1`() = checkLayout(expectTwoLineRows = false)
+    fun `VT11 landscape at font scale 1`() = checkLayout()
 
-    /** UX review: the two-line row really happens at the largest font in landscape (half the screen). */
     @Test
     @Config(qualifiers = "+en-land", fontScale = LARGEST_FONT_SCALE)
-    fun `VT11 landscape at the largest font scale`() = checkLayout(expectTwoLineRows = true)
+    fun `VT11 landscape at the largest font scale`() = checkLayout()
 
-    /**
-     * VT11: on a narrower phone (393 dp wide, as a Pixel 8) at the largest font, the row fallback triggers: the
-     * average goes under the name, which keeps at least NAME_MIN_REFERENCE. Below about 380 dp at this font, the
-     * name gets less than that (known limitation).
-     */
     @Test
     @Config(qualifiers = "w393dp-h852dp-port-xxhdpi", fontScale = LARGEST_FONT_SCALE)
-    fun `VT11 narrower phone at the largest font scale puts the average under the name`() =
-        checkLayout(expectTwoLineRows = true)
+    fun `VT11 narrower phone at the largest font scale`() = checkLayout()
 
-    /** VT8, VT13: TalkBack reads a row as name, average, remaining, box; the card ends with its dart slots. */
+    /**
+     * VT8, VT13: TalkBack reads in screen order (no traversal index): in the zone, the name, the score, the BUST
+     * banner, then the dart slots and the box; on a tile, the name, then the score and the box. The zone box of a
+     * waiting bust is read "Last turn: bust".
+     */
     @Test
     @Config(qualifiers = "+en-port")
-    fun `VT8 TalkBack order of a row and of the card`() {
+    fun `VT8 TalkBack order of a tile and of the zone`() {
         send(*CID_180_WAITING, *ANN_FIRST_DART, *triple(20))
-        val name = traversalIndex(hasTestTag(GameTags.playerName(DAN)))
-        val average = traversalIndex(hasTestTag(GameTags.average(DAN)))
-        val remaining = traversalIndex(hasTestTag(GameTags.remaining(DAN)))
-        val box = traversalIndex(hasTestTag(GameTags.visitTotal(DAN)))
-        assertTrue("row order $name $average $remaining $box", name < average && average < remaining && remaining < box)
+        val name = bounds(GameTags.playerName(DAN))
+        val remaining = bounds(GameTags.remaining(DAN))
+        val box = bounds(GameTags.visitTotal(DAN))
+        assertTrue("tile order $name $remaining $box", name.bottom <= remaining.top + EPSILON)
+        assertTrue("tile order $remaining $box", box.left > remaining.left)
 
-        // Waiting bust: name, remaining, badge, dart slots (no box).
-        val badge = traversalIndex(hasTestTag(GameTags.CARD_BUST))
-        assertCardOrder(cardPlayer = 0, cardMiddle = badge)
-
-        // After "Next player": name, remaining, box, dart slots.
-        send(AppEvent.NextPlayerTapped)
-        assertCardOrder(cardPlayer = 1, cardMiddle = traversalIndex(hasTestTag(GameTags.visitTotal(1))))
-    }
-
-    private fun assertCardOrder(cardPlayer: Int, cardMiddle: Float) {
-        val cardRemaining = traversalIndex(hasTestTag(GameTags.CURRENT_REMAINING))
-        val slots = traversalIndex(
-            hasAnyDescendant(hasTestTag(GameTags.dartSlot(0)))
-                .and(SemanticsMatcher.keyIsDefined(SemanticsProperties.TraversalIndex)),
-        )
-        val cardName = traversalIndex(
-            hasAnyDescendant(hasTestTag(GameTags.playerName(cardPlayer)))
-                .and(SemanticsMatcher.keyIsDefined(SemanticsProperties.TraversalIndex)),
-        )
-        assertTrue(
-            "card order $cardName $cardRemaining $cardMiddle $slots",
-            cardName < cardRemaining && cardRemaining < cardMiddle && cardMiddle < slots,
-        )
+        val zoneName = bounds(GameTags.playerName(0))
+        val score = bounds(GameTags.CURRENT_REMAINING)
+        val banner = bounds(GameTags.CARD_BUST)
+        val slot = bounds(GameTags.dartSlot(0))
+        val zoneBox = bounds(GameTags.visitTotal(0))
+        assertTrue(zoneName.bottom <= score.top + EPSILON && score.bottom <= banner.top + EPSILON)
+        assertTrue(banner.bottom <= slot.top + EPSILON && zoneBox.left >= slot.right)
+        composeRule.onNode(hasTestTag(GameTags.visitTotal(0)))
+            .assertContentDescriptionEquals(composeRule.activity.getString(R.string.game_visit_last_bust_description))
+        val indices = composeRule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.TraversalIndex), true)
+            .fetchSemanticsNodes()
+        assertTrue("no traversal index left", indices.isEmpty())
     }
 
     private companion object {
         const val LARGEST_FONT_SCALE = 2.0f
         const val EPSILON = 0.5f
+        const val PIXEL = 1f
         const val CID = 2
         const val DAN = 3
 

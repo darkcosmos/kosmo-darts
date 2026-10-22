@@ -2,18 +2,29 @@ package io.github.darkcosmos.kosmodarts.ui.setup
 
 /** Test tags of the setup screen. */
 object SetupTags {
-    /** Prefix of the "Legs per set" (or "Legs") stepper (M13). */
+    /** Prefix of the "Legs · first to" stepper (M13). */
     const val LEGS: String = "setup_legs"
 
-    /** Prefix of the "Sets" stepper (M13). */
+    /** Prefix of the "Sets · first to" stepper (M13). */
     const val SETS: String = "setup_sets"
 
+    const val BACK: String = "setup_back"
+    const val SHUFFLE: String = "setup_shuffle"
+    const val ADD_PLAYER: String = "setup_add_player"
+    const val START: String = "setup_start"
+
+    /** The scrolling content above the pinned "Start" (U7). */
+    const val CONTENT: String = "setup_content"
+
     fun nameField(index: Int): String = "setup_name_$index"
+
+    /** The remove cross of the row at [index] (M13, PC3). */
+    fun remove(index: Int): String = "setup_remove_$index"
 
     /** Visible label of the stepper [prefix]. */
     fun label(prefix: String): String = "${prefix}_label"
 
-    /** "First to N" of the stepper [prefix]. */
+    /** The value of the stepper [prefix]. */
     fun value(prefix: String): String = "${prefix}_value"
 
     /** − of the stepper [prefix]. */

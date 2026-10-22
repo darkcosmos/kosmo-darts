@@ -7,10 +7,9 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
-import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -22,6 +21,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
+import io.github.darkcosmos.kosmodarts.ui.revealIfScrolled
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -54,7 +54,7 @@ class CheckoutSuggestionScreenTest {
     private fun node(tag: String): SemanticsNodeInteraction =
         composeRule.onNode(hasTestTag(tag), useUnmergedTree = true)
 
-    private fun bounds(tag: String): Rect = node(tag).performScrollTo().fetchSemanticsNode().boundsInRoot
+    private fun bounds(tag: String): Rect = node(tag).revealIfScrolled().fetchSemanticsNode().boundsInRoot
 
     private fun string(id: Int, vararg args: Any): String = composeRule.activity.getString(id, *args)
 
@@ -106,17 +106,17 @@ class CheckoutSuggestionScreenTest {
         send(*ANN_301)
         assertNull(shownText())
         send(*ANN_AT_170)
-        assertEquals("Checkout:${NBSP}T20$SEP T20$SEP Bull", shownText())
+        assertEquals("T20${SEP}T20${SEP}BULL", shownText())
         assertEquals("Checkout: Triple 20, Triple 20, Bull", description())
         send(*triple(20))
-        assertEquals("Checkout:${NBSP}T20$SEP Bull", shownText())
+        assertEquals("T20${SEP}BULL", shownText())
         send(AppEvent.NumberTapped(20))
         assertNull(shownText())
         assertNull(description())
         send(AppEvent.UndoTapped)
-        assertEquals("Checkout:${NBSP}T20$SEP Bull", shownText())
+        assertEquals("T20${SEP}BULL", shownText())
         send(AppEvent.UndoTapped)
-        assertEquals("Checkout:${NBSP}T20$SEP T20$SEP Bull", shownText())
+        assertEquals("T20${SEP}T20${SEP}BULL", shownText())
     }
 
     /** CS7, CS9: French label with non-breaking spaces, and a single written without "S". */
@@ -124,18 +124,22 @@ class CheckoutSuggestionScreenTest {
     @Config(qualifiers = "+fr-port")
     fun `CS7 CS9 French text and description, single without S`() {
         send(*ANN_301, *ANN_AT_170)
-        assertEquals("Sortie$NBSP:${NBSP}T20$SEP T20$SEP Bull", shownText())
+        assertEquals("T20${SEP}T20${SEP}BULL", shownText())
         assertEquals("Sortie$NBSP: Triple 20, Triple 20, Bull", description())
         send(*ANN_AT_60_FROM_170)
-        assertEquals("Sortie$NBSP:${NBSP}20$SEP D20", shownText())
+        assertEquals("20${SEP}D20", shownText())
         assertEquals("Sortie$NBSP: 20, Double 20", description())
     }
 
-    /** U6: both French strings put a non-breaking space before the colon. */
+    /** CS7: the label chip reads "SORTIE"; the French description puts a non-breaking space before the colon. */
     @Test
     @Config(qualifiers = "+fr-port")
-    fun `CS7 French strings use a non-breaking space before the colon`() {
-        assertTrue(string(R.string.game_checkout_suggestion, "x").startsWith("Sortie$NBSP:"))
+    fun `CS7 French label chip and description`() {
+        send(*ANN_301, *ANN_AT_170)
+        assertEquals("SORTIE", string(R.string.checkout_route_label))
+        val label = SemanticsMatcher.expectValue(SemanticsProperties.Text, listOf(AnnotatedString("SORTIE")))
+        composeRule.onNode(label, useUnmergedTree = true)
+            .assertExists()
         assertTrue(string(R.string.game_checkout_suggestion_description, "x").startsWith("Sortie$NBSP:"))
     }
 
@@ -149,7 +153,7 @@ class CheckoutSuggestionScreenTest {
         assertNull("bust waits", shownText())
         assertNull(description())
         send(AppEvent.NextPlayerTapped)
-        assertEquals("Checkout:${NBSP}T20$SEP T20$SEP Bull", shownText())
+        assertEquals("T20${SEP}T20${SEP}BULL", shownText())
     }
 
     /** CS4, CS7: single out (issue #38, step 5). */
@@ -158,31 +162,32 @@ class CheckoutSuggestionScreenTest {
     fun `CS4 single out`() {
         send(
             AppEvent.NewGame, AppEvent.StartScoreSelected(301), AppEvent.CheckoutRuleSelected(CheckoutRule.SINGLE_OUT),
-            AppEvent.PlayerRemoved, AppEvent.NameChanged(0, "Ann"), AppEvent.StartRequested,
+            AppEvent.PlayerRemoved(1), AppEvent.NameChanged(0, "Ann"), AppEvent.StartRequested,
             *triple(20), *triple(20), AppEvent.NumberTapped(1), AppEvent.NextPlayerTapped,
         )
-        assertEquals("Checkout:${NBSP}T20$SEP T20$SEP T20", shownText())
+        assertEquals("T20${SEP}T20${SEP}T20", shownText())
     }
 
-    /** CS9: TalkBack reads the suggestion after the visit total box and before the dart slots. */
+    /**
+     * CS9 (as amended by issue #49): TalkBack reads the zone in screen order, with no traversal index: the name, the
+     * score, the suggestion, then the dart slots and the visit box of the bottom line.
+     */
     @Test
     @Config(qualifiers = "+en-port")
-    fun `CS9 TalkBack order in the card`() {
+    fun `CS9 TalkBack order in the zone`() {
         send(*ANN_301, *ANN_AT_170)
-        fun index(matcher: SemanticsMatcher): Float = composeRule.onNode(matcher, useUnmergedTree = true)
-            .fetchSemanticsNode().config.getOrNull(SemanticsProperties.TraversalIndex) ?: 0f
-        val name = index(
-            hasAnyDescendant(hasTestTag(GameTags.playerName(0)))
-                .and(SemanticsMatcher.keyIsDefined(SemanticsProperties.TraversalIndex)),
-        )
-        val remaining = index(hasTestTag(GameTags.CURRENT_REMAINING))
-        val box = index(hasTestTag(GameTags.visitTotal(0)))
-        val suggestion = index(hasTestTag(GameTags.CHECKOUT_SUGGESTION_LINE))
-        val slots = index(
-            hasAnyDescendant(hasTestTag(GameTags.dartSlot(0)))
-                .and(SemanticsMatcher.keyIsDefined(SemanticsProperties.TraversalIndex)),
-        )
-        assertEquals(listOf(0f, 1f, 3f, 4f, 5f), listOf(name, remaining, box, suggestion, slots))
+        val name = bounds(GameTags.playerName(0))
+        val remaining = bounds(GameTags.CURRENT_REMAINING)
+        val suggestion = bounds(GameTags.CHECKOUT_SUGGESTION_LINE)
+        val slot = bounds(GameTags.dartSlot(0))
+        val box = bounds(GameTags.visitTotal(0))
+        assertTrue(name.bottom <= remaining.top + EPSILON)
+        assertTrue(remaining.bottom <= suggestion.top + EPSILON)
+        assertTrue(suggestion.bottom <= slot.top + EPSILON)
+        assertTrue("box after the slots on the same line", box.left >= slot.right && box.top < slot.bottom)
+        val indices = composeRule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.TraversalIndex), true)
+            .fetchSemanticsNodes()
+        assertTrue("no traversal index left", indices.isEmpty())
     }
 
     private fun checkCardNeverMoves() {
@@ -192,12 +197,12 @@ class CheckoutSuggestionScreenTest {
         assertEquals("card with a suggestion", withoutSuggestion, cardPlacement())
         send(*triple(20), *triple(20), *triple(20))
         assertEquals("card while a bust waits", withoutSuggestion, cardPlacement())
-        // CS5: undo the bust dart (50 left, "Bull"), then the bull opens the checkout dialog: no suggestion.
+        // CS5: undo the bust dart (50 left, "Bull"), then the bull waits in the CHECKOUT zone: no suggestion.
         send(AppEvent.UndoTapped, AppEvent.BullTapped)
-        composeRule.onNode(hasTestTag(GameTags.CHECKOUT_DIALOG)).assertExists()
-        assertNull("checkout dialog open", shownText())
+        composeRule.onNode(hasTestTag(GameTags.CHECKOUT_BANNER)).assertExists()
+        assertNull("checkout pending", shownText())
         assertNull(description())
-        assertEquals("card while the checkout dialog is open", withoutSuggestion, cardPlacement())
+        assertEquals("card while the checkout waits", withoutSuggestion, cardPlacement())
     }
 
     /** CS8: the card does not move when the suggestion appears or disappears. */
@@ -234,18 +239,18 @@ class CheckoutSuggestionScreenTest {
     @Test
     @Config(qualifiers = "+en-port", fontScale = LARGEST_FONT_SCALE)
     fun `CS8 longest route complete at the largest font scale, English`() =
-        checkLongestRouteComplete("Checkout:${NBSP}T20$SEP T20$SEP Bull")
+        checkLongestRouteComplete("T20${SEP}T20${SEP}BULL")
 
     @Test
     @Config(qualifiers = "+fr-port", fontScale = LARGEST_FONT_SCALE)
     fun `CS8 longest route complete at the largest font scale, French`() =
-        checkLongestRouteComplete("Sortie$NBSP:${NBSP}T20$SEP T20$SEP Bull")
+        checkLongestRouteComplete("T20${SEP}T20${SEP}BULL")
 
     private companion object {
         const val LARGEST_FONT_SCALE = 2.0f
         const val EPSILON = 0.5f
         const val NBSP = "\u00A0"
-        const val SEP = "\u00A0\u00B7"
+        const val SEP = "\u2003"
 
         fun triple(number: Int): Array<AppEvent> =
             arrayOf(AppEvent.MultiplierTapped(Multiplier.TRIPLE), AppEvent.NumberTapped(number))
@@ -254,7 +259,7 @@ class CheckoutSuggestionScreenTest {
         val ANN_301: Array<AppEvent> = arrayOf(
             AppEvent.NewGame,
             AppEvent.StartScoreSelected(301),
-            AppEvent.PlayerRemoved,
+            AppEvent.PlayerRemoved(1),
             AppEvent.NameChanged(0, "Ann"),
             AppEvent.StartRequested,
         )

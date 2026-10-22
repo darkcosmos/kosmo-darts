@@ -1,6 +1,8 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -8,6 +10,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.engine.x01.X01ConfigError
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.game.VisitBoxText
 import io.github.darkcosmos.kosmodarts.ui.game.visitBoxTexts
@@ -62,7 +65,7 @@ class AppReducerTest {
             AppEvent.CheckoutRuleSelected(CheckoutRule.SINGLE_OUT),
             AppEvent.PlayerAdded,
             AppEvent.PlayerAdded,
-            AppEvent.PlayerRemoved,
+            AppEvent.PlayerRemoved(3),
             AppEvent.NameChanged(0, "Ann"),
             AppEvent.NameChanged(1, "Bob"),
             AppEvent.NameChanged(2, "Cid"),
@@ -162,11 +165,20 @@ class AppReducerTest {
         assertTrue(game.game.state.isFinished)
     }
 
+    /** M15, owner O1: "Next player" is ignored while a checkout waits; back opens the abandon dialog, and dismissing it
+     * keeps the checkout pending. */
     @Test
-    fun nextPlayerAndBackAreIgnoredWhileTheCheckoutDialogIsShown() {
-        val dialog = inGame(singleOut301, winningDarts).after(lastWinningEvent)
+    fun `M15 O1 back on a pending checkout opens the abandon dialog`() {
+        val pending = inGame(singleOut301, winningDarts).after(lastWinningEvent)
+        assertEquals(pending, pending.after(AppEvent.NextPlayerTapped))
 
-        assertEquals(dialog, dialog.after(AppEvent.NextPlayerTapped, AppEvent.Back))
+        val dialog = pending.after(AppEvent.Back)
+        val game = (dialog.screen as Screen.Game).game
+        assertTrue(game.isAbandonDialogShown)
+        assertTrue(game.isCheckoutPending)
+
+        assertEquals(pending, dialog.after(AppEvent.AbandonDismissed))
+        assertEquals(Screen.Home(), dialog.after(AppEvent.AbandonConfirmed).screen)
     }
 
     @Test
@@ -211,7 +223,10 @@ class AppReducerTest {
         val state = inGame(singleOut301, winningDarts).after(*finishEvents, AppEvent.Rematch)
 
         val rotated = X01Config(listOf("Bob", "Cid", "Ann"), 301, CheckoutRule.SINGLE_OUT)
-        assertEquals(Screen.Game(GameScreenState(X01Game(rotated)), isNewGame = true), state.screen)
+        // PC7: each player keeps his color slot through the rotation.
+        val slots = listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_3, ColorSlot.SLOT_1)
+        val expected = GameScreenState(X01Match.start(X01MatchConfig(rotated, MatchFormat(), slots)))
+        assertEquals(Screen.Game(expected, isNewGame = true), state.screen)
     }
 
     @Test

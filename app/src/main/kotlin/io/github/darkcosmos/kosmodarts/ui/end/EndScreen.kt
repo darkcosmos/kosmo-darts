@@ -1,35 +1,12 @@
 package io.github.darkcosmos.kosmodarts.ui.end
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
@@ -40,133 +17,121 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.components.ButtonKind
+import io.github.darkcosmos.kosmodarts.ui.components.KosmoButton
+import io.github.darkcosmos.kosmodarts.ui.components.ScoreCell
+import io.github.darkcosmos.kosmodarts.ui.components.Scoreboard
+import io.github.darkcosmos.kosmodarts.ui.components.ScoreboardRow
+import io.github.darkcosmos.kosmodarts.ui.components.ScrollingScreen
+import io.github.darkcosmos.kosmodarts.ui.components.WinnerZone
+import io.github.darkcosmos.kosmodarts.ui.components.WinnerZoneTags
 import io.github.darkcosmos.kosmodarts.ui.format.averageText
+import io.github.darkcosmos.kosmodarts.ui.format.displayName
+import io.github.darkcosmos.kosmodarts.ui.format.formatText
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
+import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 
-private val CONTENT_MAX_WIDTH = 560.dp
-private val MIN_TOUCH_TARGET = 48.dp
-private val PADDING = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
-private const val NAME_MAX_LINES = 2
+private val AVERAGE_WIDTH = 84.dp
+private val DARTS_WIDTH = 60.dp
+private val BUTTON_MIN_HEIGHT = 58.dp
 
-/** End of a match (M17), a single game included: ranking (ties share a rank), then rematch and new game. */
+/**
+ * End of a match (mockup 09; M17), a single game included: the format line, the winner's zone with "MATCH WINNER"
+ * (no "2 SETS TO 0" line, owner Q8), the ranking (ties share a rank) with the sets column, the legs column with one
+ * set, no score column in a single game, then the match average and the darts thrown over the match (owner O2), and
+ * "REMATCH" then "NEW GAME".
+ */
 @Composable
 fun EndScreen(match: X01Match, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
     val rows = endRows(match)
-    Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        BoxWithConstraints(modifier = Modifier.safeDrawingPadding()) {
-            if (maxWidth > maxHeight) {
-                // Landscape: ranking beside the buttons, so that the buttons stay visible.
-                Row(horizontalArrangement = Arrangement.spacedBy(24.dp), modifier = Modifier.padding(PADDING)) {
-                    ScrollingColumn(Modifier.weight(1f)) { Ranking(rows) }
-                    ScrollingColumn(Modifier.weight(1f)) { Actions(onEvent) }
-                }
-            } else {
-                Box(contentAlignment = Alignment.TopCenter, modifier = Modifier.fillMaxWidth()) {
-                    ScrollingColumn(Modifier.widthIn(max = CONTENT_MAX_WIDTH).padding(PADDING)) {
-                        Ranking(rows)
-                        Actions(onEvent)
-                    }
-                }
+    ScrollingScreen(
+        buttonCount = 2,
+        modifier = modifier,
+        content = {
+            Text(
+                text = formatText(match.config.startScore, match.config.checkoutRule, match.format),
+                style = KosmoTheme.typography.label,
+                color = KosmoTheme.colors.onBackgroundMuted,
+            )
+            rows.firstOrNull { it.isWinner }?.let { winner ->
+                WinnerZone(
+                    chip = stringResource(R.string.end_match_winner),
+                    name = winner.name,
+                    slot = winner.slot,
+                    tags = WinnerZoneTags(EndTags.TITLE, EndTags.WINNER, EndTags.DETAIL),
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
-        }
-    }
-}
-
-@Composable
-private fun ScrollingColumn(modifier: Modifier, content: @Composable ColumnScope.() -> Unit) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        content = content,
+            Ranking(rows)
+        },
+        buttons = {
+            KosmoButton(
+                text = stringResource(R.string.end_rematch),
+                onClick = { onEvent(AppEvent.Rematch) },
+                minHeight = BUTTON_MIN_HEIGHT,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(EndTags.REMATCH),
+            )
+            KosmoButton(
+                text = stringResource(R.string.home_new_game),
+                onClick = { onEvent(AppEvent.NewGame) },
+                kind = ButtonKind.SECONDARY,
+                minHeight = BUTTON_MIN_HEIGHT,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(EndTags.NEW_GAME),
+            )
+        },
     )
 }
 
+/** M17, owner Q8: SETS (more than one set), else LEGS (one set), else none; then MATCH AVG and DARTS (owner O2). */
 @Composable
 private fun Ranking(rows: List<EndRow>) {
-    rows.firstOrNull { it.isWinner }?.let { winner ->
-        Text(
-            text = stringResource(R.string.end_winner, winner.name),
-            style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.semantics { heading() },
+    val showsSets = rows.any { it.setsWon != null }
+    val showsLegs = !showsSets && rows.any { it.legsWon != null }
+    val scoreHeader = when {
+        showsSets -> stringResource(R.string.match_sets_label)
+        showsLegs -> stringResource(R.string.match_legs_label)
+        else -> null
+    }
+    val headers = listOfNotNull(
+        scoreHeader?.let { ScoreCell(it, tag = EndTags.SCORE_HEADER) },
+        ScoreCell(stringResource(R.string.match_average_header), width = AVERAGE_WIDTH),
+        ScoreCell(stringResource(R.string.end_darts_header), tag = EndTags.DARTS_HEADER, width = DARTS_WIDTH),
+    )
+    val separator = stringResource(R.string.checkout_spoken_separator)
+    val scoreboardRows = rows.mapIndexed { position, row ->
+        val score = if (showsSets) row.setsWon else row.legsWon.takeIf { showsLegs }
+        val average = averageText(row.threeDartAverage)
+        val darts = pluralStringResource(R.plurals.end_darts_thrown, row.dartsThrown, row.dartsThrown)
+        val description = listOfNotNull(
+            row.rank.toString(),
+            displayName(row.name),
+            score?.let {
+                stringResource(if (showsSets) R.string.match_score_sets else R.string.match_score_legs, it)
+            },
+            stringResource(R.string.end_average, average),
+            darts,
+        ).joinToString(separator)
+        ScoreboardRow(
+            name = row.name,
+            slot = row.slot,
+            rank = row.rank,
+            cells = listOfNotNull(
+                score?.let { ScoreCell(it.toString(), tag = EndTags.score(position)) },
+                ScoreCell(average, tag = EndTags.average(position), width = AVERAGE_WIDTH),
+                ScoreCell(row.dartsThrown.toString(), tag = EndTags.darts(position), width = DARTS_WIDTH),
+            ),
+            description = description,
+            tag = EndTags.row(position),
         )
     }
-    rows.forEachIndexed { position, row -> RankingRow(row, position) }
+    Scoreboard(headers, stringResource(R.string.match_player_header), scoreboardRows, Modifier.fillMaxWidth())
 }
 
-@Composable
-private fun Actions(onEvent: (AppEvent) -> Unit) {
-    val buttonModifier = Modifier
-        .fillMaxWidth()
-        .sizeIn(minHeight = MIN_TOUCH_TARGET)
-    Button(onClick = { onEvent(AppEvent.Rematch) }, modifier = buttonModifier) {
-        Text(stringResource(R.string.end_rematch))
-    }
-    FilledTonalButton(onClick = { onEvent(AppEvent.NewGame) }, modifier = buttonModifier) {
-        Text(stringResource(R.string.home_new_game))
-    }
-}
-
-@Composable
-private fun RankingRow(row: EndRow, position: Int) {
-    Surface(
-        color = if (row.isWinner) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHigh
-        },
-        shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.end_rank, row.rank),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-            )
-            val average = stringResource(R.string.end_average, averageText(row.threeDartAverage))
-            val darts = pluralStringResource(R.plurals.end_darts_thrown, row.dartsThrown, row.dartsThrown)
-            Column(modifier = Modifier.weight(1f)) {
-                if (row.legsWon == null) {
-                    // A single game: exactly as before matches (M5).
-                    Text(text = row.name, style = MaterialTheme.typography.titleMedium)
-                    Text(text = average, style = MaterialTheme.typography.bodyMedium)
-                    Text(text = darts, style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    // M17, U8: the name on two lines at most, then every figure with its label on one wrapping line.
-                    Text(
-                        text = row.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = NAME_MAX_LINES,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = matchFigures(row, average, darts),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.testTag(EndTags.figures(position)),
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** "Sets 2 · Legs 5 · 3-dart avg. 45.3 · 39 darts", the sets only with more than one set (M17). */
-@Composable
-private fun matchFigures(row: EndRow, average: String, darts: String): String = listOfNotNull(
-    row.setsWon?.let { stringResource(R.string.match_score_sets, it) },
-    row.legsWon?.let { stringResource(R.string.match_score_legs, it) },
-    average,
-    darts,
-).joinToString(stringResource(R.string.match_score_separator))
-
-@Preview
+@Preview(widthDp = 412, heightDp = 915)
 @Composable
 private fun EndScreenPreview() {
     val config = X01Config(listOf("Ann", "Bob"), startScore = 301, checkoutRule = CheckoutRule.SINGLE_OUT)

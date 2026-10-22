@@ -119,7 +119,8 @@ class LastSetupCodecTest {
     @Test
     fun `R10 keys must follow the layout of their version`() {
         val colorsLine = validBody.first { it.startsWith("colors=") }
-        val v1Body = validBody.filterNot { it.startsWith("legs-per-set=") || it.startsWith("sets=") || it == colorsLine }
+        val v1Body = validBody
+            .filterNot { it.startsWith("legs-per-set=") || it.startsWith("sets=") || it == colorsLine }
             .map { if (it == "version=3") "version=1" else it }
         assertEquals(SaveFixtures.setup(), codec.decode(withChecksum(v1Body)))
         val legsLine = validBody.first { it.startsWith("legs-per-set=") }

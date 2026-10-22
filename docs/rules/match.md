@@ -26,7 +26,9 @@ Vocabulary:
   the format version (R13).
 - M6. Starting player: legs are numbered from 0 over the whole match, sets ignored. Leg k starts with the player at
   position k mod n in the configuration order (n players). The setup "Shuffle" only fixes the configuration order,
-  hence the starter of the first leg. Cards keep the configuration order; only the highlight moves (owner Q9).
+  hence the starter of the first leg. Since issue #49, the current player is always shown in the same fixed zone,
+  and the other players' tiles are in play order starting from the next player (the order moves with each "Next
+  player"); the first tile is read by TalkBack as the next player.
 - M7. When the winning dart of a leg is thrown, the match tells what confirming it would decide: LEG (neither a set
   nor the match), SET (a set but not the match) or MATCH. With S = 1, a leg that reaches L legs decides the match.
 - M8. A confirmed leg is final: undo never goes back into a previous leg. Inside the current leg, U1 to U3 apply,
@@ -43,30 +45,46 @@ Vocabulary:
   tie-break value of each player.
 - M12. A match has at most (n(L-1)+1) x (n(S-1)+1) legs (1,089 for 4 players, 9 and 9): this bound is used to
   validate saves.
+- M19. Match position (issue #49): the next leg belongs to set number "sets completed + 1" and is leg number "legs
+  played in the current set + 1" of its set. The last confirmed leg has the set and leg numbers it had while it was
+  played. The app shows these numbers as given by the engine and never counts legs or sets itself.
 
 ## App
 
-- M13. Setup: two settings, "Legs per set" and "Sets", each with − and + buttons, value shown as "First to N". − is
-  disabled at 1, + at 9. When Sets = 1, the first label reads "Legs" (owner Q10). Legs and sets are allowed with a
-  single player (owner Q8).
-- M14. Indicators: with a format other than 1 and 1, every player card and row shows the sets won and the legs won
-  in the current set, each group with a visible label ("Sets ●●", "Legs ○○○"). Nothing is shown in a single game.
-  With Sets = 1, no set indicator is shown, and no text anywhere mentions sets. The current player's card is always
-  scrolled fully into view.
-- M15. Checkout dialog: the confirm button reads "Finish leg" (« Terminer la manche ») for LEG, "Finish set"
-  (« Terminer le set ») for SET, "Finish game" (« Terminer la partie ») for MATCH. Title and "Undo" are unchanged.
-  A single game always shows "Finish game".
-- M16. Between legs: after "Finish leg" or "Finish set", a screen shows who won the leg or the set, the match score
-  (each player's sets, when S > 1, and legs of the current set) and the player who starts the next leg, with one
-  button "Next leg" (« Manche suivante »). System back opens "Abandon the game?" (owner Q6 i).
-- M17. End screen: the match winner, then the M10 ranking with today's columns (average and darts over the match,
-  owner Q2) plus each player's match score when the format is not 1 and 1. "Rematch" starts a match with the same
-  format; its order follows today's rule (first player moved to the end, owner Q3). "New game" is unchanged.
-- M18. Home summary of a saved match: today's content plus each player's match score (owner Q11). Between legs, the
-  highlighted player is the starter of the next leg.
+Rewritten by issue #49 (design system, owner answers Q1 to Q13, O1 and O2, `docs/plans/49-design-system.md`).
+
+- M13. Setup: "MATCH" with two steppers, "Sets · first to" then "Legs · first to" (« Sets · premier à »,
+  « Manches · premier à »), with these labels in every format, each with − and +; − is disabled at 1, + at 9. Legs
+  and sets are allowed with a single player (owner Q8 of #39). "PLAYERS · THROWING ORDER": one row per player with
+  his color strip, order number and name field, and a remove cross on each row (any player, while more than one is
+  left; it removes the player and his name at once, owner Q2), then "+ ADD A PLAYER" while fewer than 4 players.
+- M14. Match texts: with a format other than 1 and 1, the current player's zone shows the chips "S n" and "M n"
+  (English "S n", "L n"), each tile the line "S n · M n", the home card the same line; the header reads
+  "SET 2 · MANCHE 3" (English "SET 2 · LEG 3"). With Sets = 1, no set is mentioned anywhere: "M n", "MANCHE 3"
+  (owner Q1). Nothing is shown in a single game. Numbers come from the engine (M19).
+- M15. Pending checkout: no dialog. The zone shows the CHECKOUT banner (design system 6.3) and the action bar reads
+  "ANNULER" / "VALIDER LA MANCHE" for LEG, "VALIDER LE SET" for SET, "VALIDER LA PARTIE" for MATCH (English
+  "UNDO" / "CONFIRM LEG", "CONFIRM SET", "CONFIRM MATCH"; owner Q5). A single game always shows "VALIDER LA PARTIE".
+  "ANNULER" undoes the winning dart. System back opens "Abandon the game?" like anywhere else in a game; dismissing it
+  leaves the checkout pending (owner O1).
+- M16. Between legs: after confirming a leg or a set, a screen shows the format line, the winner's zone in his color
+  with the chip "SET 2 · MANCHE 3 GAGNÉE" ("MANCHE 3 GAGNÉE" with one set, "SET 2 GAGNÉ" on a set win), his name and
+  the winning checkout ("CHECKOUT 141 · T20 T19 D12", not shown after a resume on this screen), the scoreboard (SETS
+  when S > 1, MAN. for the legs of the set, MOY MATCH; the leg winner's figures in accent), the bar "SET 2 · MANCHE 4
+  ▌ CID COMMENCE" and the button "MANCHE SUIVANTE". System back opens "Abandon the game?" (owner Q6 i of #39).
+- M17. End screen: the format line, the winner's zone with "VAINQUEUR DU MATCH" and his name (no "2 SETS À 0" line,
+  owner Q8), then the M10 ranking: rank cell (rank 1 on accent), color square, name, the SETS column (MANCHES with one
+  set, no score column in a single game), MOY MATCH, and the darts thrown over the match (owner O2, header « FLÉCH. »).
+  "REVANCHE" starts a match with the same format; its order follows today's rule (first player moved to the end,
+  owner Q3 of #39), each player keeping his color (PC7). "NOUVELLE PARTIE" is unchanged.
+- M18. Home card of a saved game: "PARTIE EN COURS", the format line, one mini tile per player (color strip, name,
+  score, "S n · M n" in a match), and the button "REPRENDRE · À <joueur> DE LANCER" always (owner Q11), the player
+  being the one the game screen shows as throwing after resuming. Between legs, it is the starter of the next leg.
 
 ## Related rules
 
-- Persistence: R13 to R16 (`docs/rules/persistence.md`), format version 2 (`docs/adr/0005-save-format-v2-match.md`).
+- Persistence: R13 to R19 (`docs/rules/persistence.md`), format versions 2 and 3 (`docs/adr/0005-save-format-v2-match.md`,
+  `docs/adr/0006-save-format-v3-colors.md`).
+- Player colors: PC1 to PC9 (`docs/rules/players.md`).
 - Announcements: AN27 (win voice and victory sound by outcome) and AN28 (turn start of a new leg)
   (`docs/rules/announcements.md`).

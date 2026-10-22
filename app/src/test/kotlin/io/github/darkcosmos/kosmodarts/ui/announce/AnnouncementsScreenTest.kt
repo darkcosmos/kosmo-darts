@@ -23,6 +23,7 @@ import io.github.darkcosmos.kosmodarts.audio.TtsTestSupport
 import io.github.darkcosmos.kosmodarts.audio.TtsTestSupport.initLastEngine
 import io.github.darkcosmos.kosmodarts.audio.TtsTestSupport.lastEngine
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
+import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import io.github.darkcosmos.kosmodarts.ui.resume.AppProcess
@@ -287,7 +288,7 @@ internal class AnnouncementsScreenTest : AnnouncementsScreenTestBase() {
             process.finish()
             process.writeGame(saved)
             process.launchFresh()
-            composeRule.onNodeWithText(string(R.string.home_resume_game)).performScrollTo().performClick()
+            composeRule.onNodeWithTag(HomeTags.RESUME).performScrollTo().performClick()
             composeRule.waitForIdle()
             initLastEngine()
             playEverything()

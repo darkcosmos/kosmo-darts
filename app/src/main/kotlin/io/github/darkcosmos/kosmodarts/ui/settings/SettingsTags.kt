@@ -8,5 +8,8 @@ object SettingsTags {
     const val VOICE_STATUS = "settings_voice_status"
     const val INSTALL_VOICE = "settings_install_voice"
     const val CREDITS = "settings_credits"
+
+    /** "Saira font, SIL Open Font License 1.1" (owner Q7 of issue #49). */
+    const val FONT_CREDIT = "settings_font_credit"
     const val BACK = "settings_back"
 }

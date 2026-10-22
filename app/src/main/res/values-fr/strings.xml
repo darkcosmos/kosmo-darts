@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="home_welcome">Comptez les points de vos parties de fléchettes entre amis.</string>
-    <string name="home_new_game">Nouvelle partie</string>
-    <string name="home_resume_game">Reprendre la partie</string>
-    <string name="home_saved_game_title">Partie en cours</string>
-    <string name="home_saved_game_mode">%1$d · %2$s</string>
-    <!-- \u00A0: non-breaking space, so that the colon never starts a line. -->
-    <string name="home_saved_game_checkout">Checkout à confirmer\u00A0: %1$s</string>
+    <string name="home_new_game">NOUVELLE PARTIE</string>
+    <string name="home_new_game_section">NOUVELLE PARTIE</string>
+    <!-- M18, owner Q11 of issue #49: always the player to throw. -->
+    <string name="home_resume">REPRENDRE · À %1$s DE LANCER</string>
+    <string name="home_saved_game_title">PARTIE EN COURS</string>
+    <string name="mode_x01_description">501 ou 301, sortie double ou simple</string>
     <string name="new_game_confirm_title">Une partie est en cours</string>
     <string name="new_game_confirm_text">La supprimer et en commencer une nouvelle ?</string>
     <string name="new_game_confirm_delete">Supprimer</string>
@@ -14,18 +13,30 @@
     <string name="restore_failed_message">La partie enregistrée n\'a pas pu être reprise et a été effacée</string>
     <string name="restore_failed_ok">OK</string>
 
+    <!-- Format lines: "501 · SORTIE DOUBLE", "501 · 1ER À 2 SETS · 1ER À 3 MANCHES". -->
+    <plurals name="format_first_to_sets">
+        <item quantity="one">1ER À %d SET</item>
+        <item quantity="many">1ER À %d SETS</item>
+        <item quantity="other">1ER À %d SETS</item>
+    </plurals>
+    <plurals name="format_first_to_legs">
+        <item quantity="one">1ER À %d MANCHE</item>
+        <item quantity="many">1ER À %d MANCHES</item>
+        <item quantity="other">1ER À %d MANCHES</item>
+    </plurals>
+
     <!-- Setup screen -->
-    <string name="setup_title">Nouvelle partie</string>
-    <string name="setup_game_label">Jeu</string>
-    <string name="setup_finish_label">Fin de partie</string>
-    <string name="setup_double_out">Sortie double</string>
-    <string name="setup_single_out">Sortie simple</string>
-    <string name="setup_players_label">Joueurs</string>
+    <string name="setup_title">NOUVELLE PARTIE</string>
+    <string name="setup_game_label">JEU</string>
+    <string name="setup_double_out">SORTIE DOUBLE</string>
+    <string name="setup_single_out">SORTIE SIMPLE</string>
+    <string name="setup_players_label">JOUEURS · ORDRE DE JEU</string>
     <string name="setup_player_name">Joueur %1$d</string>
-    <string name="setup_add_player">Ajouter un joueur</string>
-    <string name="setup_remove_player">Retirer le dernier joueur</string>
-    <string name="setup_shuffle">Mélanger</string>
-    <string name="setup_start">Commencer</string>
+    <string name="setup_player_placeholder">Nom du joueur %1$d</string>
+    <string name="setup_add_player">AJOUTER UN JOUEUR</string>
+    <string name="setup_remove_player">Retirer %1$s</string>
+    <string name="setup_shuffle">MÉLANGER</string>
+    <string name="setup_start">COMMENCER</string>
     <string name="setup_error_blank_name">Saisissez un nom</string>
     <string name="setup_error_name_too_long">%1$d caractères maximum</string>
     <string name="setup_error_duplicate_name">Un autre joueur porte le même nom</string>
@@ -34,12 +45,9 @@
     <string name="setup_error_too_many_players">%1$d joueurs maximum</string>
 
     <!-- Match format (docs/rules/match.md, M13) -->
-    <string name="setup_match_label">Match</string>
-    <string name="setup_legs_per_set">Manches par set</string>
-    <string name="setup_legs">Manches</string>
-    <string name="setup_sets">Sets</string>
-    <string name="setup_first_to">Premier à %1$d</string>
-    <string name="setup_legs_per_set_value">Manches par set\u00A0: premier à %1$d</string>
+    <string name="setup_match_label">MATCH</string>
+    <string name="setup_sets_first_to">Sets · premier à</string>
+    <string name="setup_legs_first_to">Manches · premier à</string>
     <string name="setup_legs_value">Manches\u00A0: premier à %1$d</string>
     <string name="setup_sets_value">Sets\u00A0: premier à %1$d</string>
     <string name="setup_fewer_legs">Moins de manches</string>
@@ -47,10 +55,12 @@
     <string name="setup_fewer_sets">Moins de sets</string>
     <string name="setup_more_sets">Plus de sets</string>
 
-    <!-- Match score (docs/rules/match.md, M14, M16, M17, M18) -->
-    <string name="match_sets_label">Sets</string>
-    <string name="match_legs_label">Manches</string>
-    <string name="match_count_overflow">×%1$d</string>
+    <!-- Match score (docs/rules/match.md, M14, M16, M17, M18, M19) -->
+    <string name="match_sets_label">SETS</string>
+    <string name="match_legs_label">MANCHES</string>
+    <string name="match_legs_short">MAN.</string>
+    <string name="match_player_header">JOUEUR</string>
+    <string name="match_average_header">MOY MATCH</string>
     <string name="match_score_sets">Sets %1$d</string>
     <string name="match_score_legs">Manches %1$d</string>
     <plurals name="match_sets_won">
@@ -64,60 +74,81 @@
         <item quantity="other">%d manches gagnées</item>
     </plurals>
     <string name="match_indicators_description">%1$s, %2$s</string>
+    <string name="chip_sets">S%1$d</string>
+    <string name="chip_legs">M%1$d</string>
+    <string name="tile_score_sets_legs">S%1$d · M%2$d</string>
+    <string name="match_position_set_leg">SET %1$d · MANCHE %2$d</string>
+    <string name="match_position_leg">MANCHE %1$d</string>
 
     <!-- Game screen -->
     <string name="game_to_throw">À %1$s de lancer</string>
-    <string name="game_average">Moy. %1$s</string>
-    <string name="game_dart_slot">Fléchette %1$d : %2$s</string>
-    <string name="game_dart_slot_empty">Fléchette %1$d : pas encore lancée</string>
+    <string name="game_average">MOY %1$s</string>
+    <string name="game_dart_slot">Fléchette %1$d : %2$s</string>
+    <string name="game_dart_slot_empty">Fléchette %1$d : pas encore lancée</string>
     <string name="game_bust">BUST</string>
     <!-- \u00A0: non-breaking space, so that the colon never starts a line. -->
     <string name="game_visit_in_progress_description">Volée en cours\u00A0: %1$d</string>
     <string name="game_visit_last_description">Dernière volée\u00A0: %1$d</string>
     <string name="game_visit_last_bust_description">Dernière volée\u00A0: bust</string>
     <string name="game_visit_not_played_description">Pas encore joué</string>
+    <plurals name="next_player_tile_description">
+        <item quantity="one">Prochain joueur\u00A0: %1$s, %2$d restant</item>
+        <item quantity="many">Prochain joueur\u00A0: %1$s, %2$d restants</item>
+        <item quantity="other">Prochain joueur\u00A0: %1$s, %2$d restants</item>
+    </plurals>
     <string name="dart_double">D%1$d</string>
     <string name="dart_triple">T%1$d</string>
-    <string name="dart_bull">Bull</string>
-    <string name="dart_miss">Raté</string>
-    <!-- Checkout suggestion. \u00A0 before the colon (French typography) and after it in the visible label. -->
-    <string name="game_checkout_suggestion">Sortie\u00A0:\u00A0%1$s</string>
+    <string name="dart_bull">BULL</string>
+    <string name="dart_miss">RATÉ</string>
+    <!-- Checkout route. \u00A0 before the colon (French typography). -->
+    <string name="checkout_route_label">SORTIE</string>
     <string name="game_checkout_suggestion_description">Sortie\u00A0: %1$s</string>
-    <string name="key_double">Double</string>
-    <string name="key_triple">Triple</string>
-    <string name="key_undo">Annuler</string>
-    <string name="checkout_title">Checkout !</string>
-    <string name="checkout_finish">Terminer la partie</string>
-    <string name="checkout_finish_leg">Terminer la manche</string>
-    <string name="checkout_finish_set">Terminer le set</string>
-    <string name="key_next_player">Joueur suivant</string>
-    <string name="game_abandon_title">Abandonner la partie ?</string>
+    <plurals name="checkout_darts">
+        <item quantity="one">%1$d EN %2$d FLÉCHETTE</item>
+        <item quantity="many">%1$d EN %2$d FLÉCHETTES</item>
+        <item quantity="other">%1$d EN %2$d FLÉCHETTES</item>
+    </plurals>
+    <plurals name="checkout_darts_spoken">
+        <item quantity="one">%1$d en %2$d fléchette</item>
+        <item quantity="many">%1$d en %2$d fléchettes</item>
+        <item quantity="other">%1$d en %2$d fléchettes</item>
+    </plurals>
+    <string name="checkout_live">Checkout, %1$s</string>
+    <string name="key_double">DOUBLE</string>
+    <string name="key_triple">TRIPLE</string>
+    <string name="key_undo">ANNULER</string>
+    <string name="key_next_player">JOUEUR SUIVANT</string>
+    <string name="checkout_confirm_leg">VALIDER LA MANCHE</string>
+    <string name="checkout_confirm_set">VALIDER LE SET</string>
+    <string name="checkout_confirm_match">VALIDER LA PARTIE</string>
+    <string name="game_abandon_title">Abandonner la partie ?</string>
     <string name="game_abandon_text">La partie en cours sera perdue.</string>
     <string name="game_abandon_confirm">Abandonner</string>
     <string name="game_abandon_cancel">Continuer</string>
 
-    <!-- End screen -->
-    <string name="end_winner">%1$s gagne !</string>
-    <string name="end_rank">%1$d.</string>
+    <!-- End screen (docs/rules/match.md, M17) -->
+    <string name="end_match_winner">VAINQUEUR DU MATCH</string>
     <string name="end_average">Moy. 3 fléchettes %1$s</string>
     <plurals name="end_darts_thrown">
         <item quantity="one">%1$d fléchette</item>
         <item quantity="many">%1$d fléchettes</item>
         <item quantity="other">%1$d fléchettes</item>
     </plurals>
-    <string name="end_rematch">Revanche</string>
+    <string name="end_darts_header">FLÉCH.</string>
+    <string name="end_rematch">REVANCHE</string>
 
-    <!-- Between legs (docs/rules/match.md, M16) -->
-    <string name="between_leg_won_by">Manche gagnée par %1$s</string>
-    <string name="between_set_won_by">Set gagné par %1$s</string>
-    <string name="between_title">Score du match</string>
-    <string name="between_next_starter">%1$s commence la manche suivante</string>
-    <string name="between_next_leg">Manche suivante</string>
+    <!-- Between legs (docs/rules/match.md, M16, M19) -->
+    <string name="between_leg_won">SET %1$d · MANCHE %2$d GAGNÉE</string>
+    <string name="between_leg_won_no_set">MANCHE %1$d GAGNÉE</string>
+    <string name="between_set_won">SET %1$d GAGNÉ</string>
+    <string name="between_starts">%1$s COMMENCE</string>
+    <string name="between_next_leg">MANCHE SUIVANTE</string>
 
     <!-- Settings (docs/rules/announcements.md, AN13 to AN17) -->
     <string name="home_settings">Réglages</string>
-    <string name="settings_title">Réglages</string>
+    <string name="settings_title">RÉGLAGES</string>
     <string name="settings_back">Retour</string>
+    <string name="settings_section_sound">SON ET VOIX</string>
     <string name="settings_voice">Voix</string>
     <string name="settings_call_each_dart">Annoncer chaque fléchette</string>
     <string name="settings_call_each_dart_needs_voice">Nécessite la voix</string>
@@ -126,7 +157,9 @@
     <string name="settings_voice_available">Voix hors ligne disponible</string>
     <string name="settings_voice_missing">Aucune voix hors ligne pour la langue de l\'appli. Les parties n\'ont que les sons.</string>
     <string name="settings_voice_no_engine">Aucun moteur de synthèse vocale sur ce téléphone. Les parties n\'ont que les sons.</string>
+    <string name="settings_credits">CRÉDITS</string>
     <string name="settings_sound_credits">Effets sonores générés avec elevenlabs.io</string>
+    <string name="settings_font_credit">Police Saira, licence SIL Open Font License 1.1</string>
     <string name="voice_install">Installer une voix</string>
     <string name="no_voice_title">Aucune voix hors ligne</string>
     <string name="no_voice_text">Les annonces ont besoin d\'une voix hors ligne dans la langue de l\'appli. La partie continue avec les sons seuls.</string>

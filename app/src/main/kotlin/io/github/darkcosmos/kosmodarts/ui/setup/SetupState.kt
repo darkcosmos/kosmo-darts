@@ -1,6 +1,8 @@
 package io.github.darkcosmos.kosmodarts.ui.setup
 
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.Roster
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.InvalidX01ConfigException
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
@@ -10,9 +12,10 @@ import kotlin.random.Random
 
 /**
  * Content of the setup screen. Immutable: every change returns a new state, and any change clears the errors of the
- * last [start] attempt.
+ * last [start] attempt, so errors never point at a field that moved.
  *
- * @property names one entry per name field, in throwing order (1 to [X01Config.MAX_PLAYERS] fields).
+ * @property roster one entry per name field, in throwing order, each with its color slot (1 to
+ *   [X01Config.MAX_PLAYERS] fields; docs/rules/players.md, PC1 to PC4).
  * @property nameErrors errors of the last [start] attempt, by field position.
  * @property screenErrors errors of the last [start] attempt that are not about a name.
  * @property legsPerSet legs a player must win to win a set, from [MatchFormat.MIN] to [MatchFormat.MAX] (M13).
@@ -21,12 +24,31 @@ import kotlin.random.Random
 data class SetupState(
     val startScore: Int = X01Config.DEFAULT_START_SCORE,
     val checkoutRule: CheckoutRule = CheckoutRule.DOUBLE_OUT,
-    val names: List<String> = List(DEFAULT_PLAYER_COUNT) { "" },
+    val roster: Roster = Roster.initial(DEFAULT_PLAYER_COUNT),
     val nameErrors: Map<Int, List<X01ConfigError>> = emptyMap(),
     val screenErrors: List<X01ConfigError> = emptyList(),
     val legsPerSet: Int = MatchFormat.MIN,
     val sets: Int = MatchFormat.MIN,
 ) {
+    /** [names] with the color slots of their positions (PC5), for a setup typed in one go. */
+    constructor(
+        startScore: Int = X01Config.DEFAULT_START_SCORE,
+        checkoutRule: CheckoutRule = CheckoutRule.DOUBLE_OUT,
+        names: List<String>,
+        legsPerSet: Int = MatchFormat.MIN,
+        sets: Int = MatchFormat.MIN,
+    ) : this(
+        startScore = startScore,
+        checkoutRule = checkoutRule,
+        roster = Roster.of(names, ColorSlot.byPosition(names.size)),
+        legsPerSet = legsPerSet,
+        sets = sets,
+    )
+
+    /** Names, in throwing order. */
+    val names: List<String>
+        get() = roster.names
+
     /** M13: − of "Legs per set" is disabled at [MatchFormat.MIN]. */
     val canDecreaseLegs: Boolean
         get() = legsPerSet > MatchFormat.MIN
@@ -43,7 +65,7 @@ data class SetupState(
     val canIncreaseSets: Boolean
         get() = sets < MatchFormat.MAX
 
-    /** M13: with one set, "Legs per set" reads "Legs" (owner Q10). */
+    /** Whether the match has more than one set. */
     val hasSets: Boolean
         get() = sets > MatchFormat.MIN
 
@@ -52,11 +74,14 @@ data class SetupState(
 
     /** M13: [value] clamped to [MatchFormat.MIN] to [MatchFormat.MAX]. */
     fun withSets(value: Int): SetupState = edited(copy(sets = value.coerceIn(FORMAT_RANGE)))
-    val canAddPlayer: Boolean
-        get() = names.size < X01Config.MAX_PLAYERS
 
+    /** M13: "+ Add a player" is shown while a color slot is free. */
+    val canAddPlayer: Boolean
+        get() = roster.canAdd
+
+    /** M13: each row's remove cross is shown while there is more than one player. */
     val canRemovePlayer: Boolean
-        get() = names.size > MIN_PLAYER_COUNT
+        get() = roster.canRemove
 
     /** Errors to show under the name field at [index], in the engine order. */
     fun errorsFor(index: Int): List<X01ConfigError> = nameErrors[index].orEmpty()
@@ -65,19 +90,26 @@ data class SetupState(
 
     fun withCheckoutRule(rule: CheckoutRule): SetupState = edited(copy(checkoutRule = rule))
 
-    fun withName(index: Int, name: String): SetupState =
-        edited(copy(names = names.mapIndexed { i, old -> if (i == index) name else old }))
+    fun withName(index: Int, name: String): SetupState = edited(copy(roster = roster.withName(index, name)))
 
-    fun withPlayerAdded(): SetupState = if (canAddPlayer) edited(copy(names = names + "")) else this
+    /** PC2: a new empty row with the first free color slot. */
+    fun withPlayerAdded(): SetupState = if (canAddPlayer) edited(copy(roster = roster.withPlayerAdded())) else this
 
-    fun withLastPlayerRemoved(): SetupState = if (canRemovePlayer) edited(copy(names = names.dropLast(1))) else this
+    /** PC3, M13: removes the row at [index] and its typed name at once; its color slot becomes free. */
+    fun withPlayerRemoved(index: Int): SetupState =
+        if (canRemovePlayer && index in roster.entries.indices) {
+            edited(copy(roster = roster.withPlayerRemoved(index)))
+        } else {
+            this
+        }
 
-    /** Shuffles the throwing order with [random], injected so that tests are deterministic. */
-    fun shuffled(random: Random): SetupState = edited(copy(names = names.shuffled(random)))
+    /** PC4: shuffles the throwing order with [random], injected so that tests are deterministic. */
+    fun shuffled(random: Random): SetupState = edited(copy(roster = roster.shuffled(random)))
 
-    /** Validates the setup with the engine rules (rules C5, M1). */
+    /** Validates the setup with the engine rules (rules C5, M1); the slots go with the names (PC5). */
     fun start(): SetupResult = try {
-        SetupResult.Valid(X01MatchConfig(X01Config(names, startScore, checkoutRule), MatchFormat(legsPerSet, sets)))
+        val config = X01Config(roster.names, startScore, checkoutRule)
+        SetupResult.Valid(X01MatchConfig(config, MatchFormat(legsPerSet, sets), roster.slots))
     } catch (e: InvalidX01ConfigException) {
         val byField = e.violations
             .flatMap { violation -> violation.playerIndices.map { it to violation.error } }
@@ -91,19 +123,18 @@ data class SetupState(
 
     companion object {
         private const val DEFAULT_PLAYER_COUNT = 2
-        private const val MIN_PLAYER_COUNT = 1
         private val FORMAT_RANGE = MatchFormat.MIN..MatchFormat.MAX
 
         /**
-         * The setup of [lastSetup] (names in order, start score, checkout rule, match format), or the default setup
-         * (rules R7, R13).
+         * The setup of [lastSetup] (names in order with their color slots, start score, checkout rule, match format),
+         * or the default setup (rules R7, R13; PC8).
          */
         fun prefilled(lastSetup: X01MatchConfig?): SetupState = lastSetup
             ?.let {
                 SetupState(
                     startScore = it.config.startScore,
                     checkoutRule = it.config.checkoutRule,
-                    names = it.config.players,
+                    roster = Roster.of(it.config.players, it.colorSlots),
                     legsPerSet = it.format.legsPerSet,
                     sets = it.format.sets,
                 )

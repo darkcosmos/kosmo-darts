@@ -67,13 +67,18 @@ class MatchResumeScreensTest {
     fun `R14 a kill on the between-legs screen comes back to it`() {
         process.launchFresh()
         send(MatchScript().start("Ann", "Bob", legsPerSet = 2, sets = 2).playLegWonBy(1).finish().events)
-        tag(BetweenLegsTags.WINNER).assertTextEquals("Leg won by Bob")
+        tag(BetweenLegsTags.TITLE).assertTextEquals("SET 1 · LEG 1 WON")
+        tag(BetweenLegsTags.WINNER).assertTextEquals("BOB")
+        tag(BetweenLegsTags.CHECKOUT).assertExists()
 
         process.killInBackgroundAndReturn()
         composeRule.waitForIdle()
 
-        tag(BetweenLegsTags.WINNER).assertTextEquals("Leg won by Bob")
-        tag(BetweenLegsTags.NEXT_STARTER).assertTextEquals("Bob starts the next leg")
+        tag(BetweenLegsTags.TITLE).assertTextEquals("SET 1 · LEG 1 WON")
+        tag(BetweenLegsTags.WINNER).assertTextEquals("BOB")
+        // Known limitation: the winning visit is not saved (ADR 0005 keeps leg summaries only).
+        tag(BetweenLegsTags.CHECKOUT).assertDoesNotExist()
+        composeRule.onNodeWithTag(BetweenLegsTags.NEXT_STARTER).assertTextEquals("SET 1 · LEG 2", "BOB STARTS")
         process.pressBack()
         composeRule.waitForIdle()
         composeRule.onNodeWithText(string(R.string.game_abandon_title)).assertIsDisplayed()
@@ -89,7 +94,7 @@ class MatchResumeScreensTest {
         process.killInBackgroundAndReturn()
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithTag(GameTags.CURRENT_PLAYER).assert(hasAnyDescendant(hasText("Bob")))
+        composeRule.onNodeWithTag(GameTags.CURRENT_PLAYER).assert(hasAnyDescendant(hasText("Bob", ignoreCase = true)))
         composeRule.onNodeWithTag(GameTags.matchIndicators(0))
             .assert(hasContentDescription("1 leg won"))
     }
@@ -103,12 +108,12 @@ class MatchResumeScreensTest {
         process.launchFresh()
 
         composeRule.onNodeWithTag(HomeTags.SUMMARY).performScrollTo().assertIsDisplayed()
-        tag(HomeTags.matchScore(0)).assertTextEquals("Sets 1 · Legs 0")
-        tag(HomeTags.matchScore(2)).assertTextEquals("Sets 0 · Legs 1")
-        composeRule.onNodeWithText(string(R.string.game_to_throw, "Ann")).assertIsDisplayed()
+        tag(HomeTags.matchScore(0)).assertTextEquals("S1 · L0")
+        tag(HomeTags.matchScore(2)).assertTextEquals("S0 · L1")
+        composeRule.onNodeWithTag(HomeTags.RESUME).assertTextEquals(string(R.string.home_resume, "ANN"))
 
-        composeRule.onNodeWithText(string(R.string.home_resume_game)).performScrollTo().performClick()
-        tag(BetweenLegsTags.NEXT_STARTER).assertTextEquals("Ann starts the next leg")
+        composeRule.onNodeWithTag(HomeTags.RESUME).performScrollTo().performClick()
+        composeRule.onNodeWithTag(BetweenLegsTags.NEXT_STARTER).assertTextEquals("SET 2 · LEG 2", "ANN STARTS")
     }
 
     @Test
@@ -118,7 +123,7 @@ class MatchResumeScreensTest {
         process.writeGame(saved)
         process.launchFresh()
 
-        tag(HomeTags.matchScore(1)).performScrollTo().assertTextEquals("Manches 1")
+        tag(HomeTags.matchScore(1)).performScrollTo().assertTextEquals("M1")
     }
 
     /** R16: a game saved by the previous version resumes as a single game, without any message. */
@@ -131,7 +136,7 @@ class MatchResumeScreensTest {
         composeRule.onNodeWithTag(HomeTags.SUMMARY).performScrollTo().assertIsDisplayed()
         composeRule.onNodeWithText(string(R.string.restore_failed_message)).assertDoesNotExist()
         composeRule.onNodeWithTag(HomeTags.matchScore(0), useUnmergedTree = true).assertDoesNotExist()
-        composeRule.onNodeWithText(string(R.string.home_resume_game)).performScrollTo().performClick()
+        composeRule.onNodeWithTag(HomeTags.RESUME).performScrollTo().performClick()
         composeRule.onNodeWithTag(GameTags.matchIndicators(0), useUnmergedTree = true).assertDoesNotExist()
     }
 
@@ -149,7 +154,7 @@ class MatchResumeScreensTest {
         val card = composeRule.onNodeWithTag(GameTags.CURRENT_PLAYER)
         card.assertIsDisplayed()
         val bounds = card.getUnclippedBoundsInRoot()
-        val viewport = composeRule.onNodeWithTag(GameTags.SCOREBOARD).getUnclippedBoundsInRoot()
+        val viewport = composeRule.onNodeWithTag(GameTags.SCREEN).getUnclippedBoundsInRoot()
         assertTrue("$bounds outside $viewport", bounds.top >= viewport.top && bounds.bottom <= viewport.bottom)
     }
 }

@@ -5,7 +5,6 @@ import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -14,7 +13,10 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.ui.end.EndTags
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
+import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
+import io.github.darkcosmos.kosmodarts.ui.revealIfScrolled
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
 import org.junit.Rule
@@ -39,7 +41,7 @@ class VisitTotalScreensTest {
 
     private fun key(tag: String): SemanticsNodeInteraction = composeRule.onNodeWithTag(tag)
 
-    private fun tap(vararg tags: String) = tags.forEach { key(it).performClick() }
+    private fun tap(vararg tags: String) = tags.forEach { key(it).revealIfScrolled().performClick() }
 
     private fun single(vararg numbers: Int) = numbers.forEach { tap(KeypadTags.number(it)) }
 
@@ -53,20 +55,20 @@ class VisitTotalScreensTest {
 
     /** From home: 301, the given names, and the given checkout rule. */
     private fun startGame(vararg names: String, singleOut: Boolean = false) {
-        clickInScroll(R.string.home_new_game)
+        composeRule.onNodeWithTag(HomeTags.MODE_X01).performScrollTo().performClick()
         composeRule.onNodeWithText("301").performClick()
         if (singleOut) clickInScroll(R.string.setup_single_out)
         repeat(names.size - 2) {
-            composeRule.onNodeWithContentDescription(string(R.string.setup_add_player)).performScrollTo().performClick()
+            composeRule.onNodeWithTag(SetupTags.ADD_PLAYER).performScrollTo().performClick()
         }
         names.forEachIndexed { index, name ->
             composeRule.onNodeWithTag(SetupTags.nameField(index)).performScrollTo().performTextReplacement(name)
         }
-        clickInScroll(R.string.setup_start)
+        composeRule.onNodeWithTag(SetupTags.START).performClick()
     }
 
     private fun assertBox(player: Int, text: String, description: String) {
-        key(GameTags.visitTotal(player)).performScrollTo()
+        key(GameTags.visitTotal(player)).revealIfScrolled()
             .assertTextEquals(text)
             .assertContentDescriptionEquals(description)
     }
@@ -83,10 +85,10 @@ class VisitTotalScreensTest {
     private fun assertBust(player: Int) =
         assertBox(player, string(R.string.game_bust), string(R.string.game_visit_last_bust_description))
 
-    /** VT13: the card of a waiting bust shows the BUST badge and no box. */
+    /** VT13 (as amended by issue #49): the zone of a waiting bust shows the BUST banner and a box at 0. */
     private fun assertBadgeOnly(player: Int) {
-        key(GameTags.CARD_BUST).performScrollTo().assertIsDisplayed()
-        key(GameTags.visitTotal(player)).assertDoesNotExist()
+        key(GameTags.CARD_BUST).revealIfScrolled().assertIsDisplayed()
+        assertBox(player, "0", string(R.string.game_visit_last_bust_description))
     }
 
     /** VT1 to VT8: the phone scenario of the issue, three players, 301 double out. */
@@ -200,8 +202,8 @@ class VisitTotalScreensTest {
         assertLastVisit(0, 121)
         assertLastVisit(1, 60)
 
-        composeRule.onNodeWithText(string(R.string.checkout_finish)).performClick()
-        clickInScroll(R.string.end_rematch)
+        key(GameTags.CONFIRM).revealIfScrolled().performClick()
+        key(EndTags.REMATCH).performClick()
 
         // The rematch rotates the order: Bob throws first.
         assertInProgress(0, 0)

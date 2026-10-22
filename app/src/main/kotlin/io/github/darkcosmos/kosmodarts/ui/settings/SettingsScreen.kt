@@ -1,50 +1,42 @@
 package io.github.darkcosmos.kosmodarts.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.audio.VoiceStatus
+import io.github.darkcosmos.kosmodarts.ui.components.ButtonKind
+import io.github.darkcosmos.kosmodarts.ui.components.KosmoButton
+import io.github.darkcosmos.kosmodarts.ui.components.ScreenTopBar
+import io.github.darkcosmos.kosmodarts.ui.components.SectionLabel
+import io.github.darkcosmos.kosmodarts.ui.components.SettingsSwitch
+import io.github.darkcosmos.kosmodarts.ui.layout.ScreenLayoutPolicy
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
-
-private val CONTENT_MAX_WIDTH = 560.dp
-private val MIN_TOUCH_TARGET = 48.dp
-private val SWITCH_ROW_MIN_HEIGHT = 56.dp
+import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 
 /**
- * The "Settings" screen (AN13): Voice and Sounds switches, the voice status with "Install a voice" when needed, and
- * the sound credits at the bottom. Back (arrow or system) returns to the home screen.
+ * The "Settings" screen (mockup 10; AN13): "SOUND AND VOICE" with the Voice switch (its status line and "Install a
+ * voice" when needed), "Call each dart" and "Sounds", then "CREDITS": the sound credit and the Saira font credit
+ * (owner Q7 of issue #49). Back (arrow or system) returns to the home screen.
  */
 @Composable
 fun SettingsScreen(
@@ -53,143 +45,90 @@ fun SettingsScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    val colors = KosmoTheme.colors
+    Box(
+        contentAlignment = Alignment.TopCenter,
+        modifier = modifier
+            .fillMaxSize()
+            .background(colors.background),
+    ) {
         Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
                 .safeDrawingPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .widthIn(max = ScreenLayoutPolicy.CONTENT_MAX_WIDTH.dp)
+                .fillMaxWidth()
+                .padding(
+                    horizontal = ScreenLayoutPolicy.HORIZONTAL_MARGIN.dp,
+                    vertical = ScreenLayoutPolicy.VERTICAL_MARGIN.dp,
+                ),
         ) {
-            Column(modifier = Modifier.widthIn(max = CONTENT_MAX_WIDTH).fillMaxWidth()) {
-                TopBar(onBack)
-                Spacer(modifier = Modifier.height(16.dp))
-                SwitchRow(
-                    label = stringResource(R.string.settings_voice),
-                    checked = state.voiceEnabled,
-                    tag = SettingsTags.VOICE_SWITCH,
-                    onToggle = { onEvent(SettingsEvent.VoiceToggled(it)) },
-                )
-                VoiceStatusLine(state, onInstall = { onEvent(SettingsEvent.InstallVoiceTapped) })
-                Spacer(modifier = Modifier.height(8.dp))
-                SwitchRow(
-                    label = stringResource(R.string.settings_call_each_dart),
-                    checked = state.callEachDart,
-                    tag = SettingsTags.CALL_EACH_DART_SWITCH,
-                    onToggle = { onEvent(SettingsEvent.CallEachDartToggled(it)) },
-                    enabled = state.voiceEnabled,
-                    supportingText = if (state.voiceEnabled) {
-                        null
-                    } else {
-                        stringResource(R.string.settings_call_each_dart_needs_voice)
-                    },
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                SwitchRow(
-                    label = stringResource(R.string.settings_sounds),
-                    checked = state.soundsEnabled,
-                    tag = SettingsTags.SOUNDS_SWITCH,
-                    onToggle = { onEvent(SettingsEvent.SoundsToggled(it)) },
-                )
-                Spacer(modifier = Modifier.height(40.dp))
-                Text(
-                    text = stringResource(R.string.settings_sound_credits),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .padding(horizontal = 8.dp)
-                        .testTag(SettingsTags.CREDITS),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun TopBar(onBack: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier.sizeIn(minWidth = MIN_TOUCH_TARGET, minHeight = MIN_TOUCH_TARGET)
-                .testTag(SettingsTags.BACK),
-        ) {
-            Icon(
-                painter = painterResource(R.drawable.ic_arrow_back),
-                contentDescription = stringResource(R.string.settings_back),
+            ScreenTopBar(stringResource(R.string.settings_title), onBack = onBack, backTag = SettingsTags.BACK)
+            SectionLabel(stringResource(R.string.settings_section_sound), Modifier.padding(top = 8.dp))
+            SettingsSwitch(
+                label = stringResource(R.string.settings_voice),
+                checked = state.voiceEnabled,
+                tag = SettingsTags.VOICE_SWITCH,
+                onToggle = { onEvent(SettingsEvent.VoiceToggled(it)) },
+                below = { VoiceStatusLine(state, onInstall = { onEvent(SettingsEvent.InstallVoiceTapped) }) },
             )
+            SettingsSwitch(
+                label = stringResource(R.string.settings_call_each_dart),
+                checked = state.callEachDart,
+                tag = SettingsTags.CALL_EACH_DART_SWITCH,
+                onToggle = { onEvent(SettingsEvent.CallEachDartToggled(it)) },
+                enabled = state.voiceEnabled,
+                supportingText = if (state.voiceEnabled) {
+                    null
+                } else {
+                    stringResource(R.string.settings_call_each_dart_needs_voice)
+                },
+            )
+            SettingsSwitch(
+                label = stringResource(R.string.settings_sounds),
+                checked = state.soundsEnabled,
+                tag = SettingsTags.SOUNDS_SWITCH,
+                onToggle = { onEvent(SettingsEvent.SoundsToggled(it)) },
+            )
+            SectionLabel(stringResource(R.string.settings_credits), Modifier.padding(top = 16.dp))
+            Credit(stringResource(R.string.settings_sound_credits), SettingsTags.CREDITS)
+            Credit(stringResource(R.string.settings_font_credit), SettingsTags.FONT_CREDIT)
         }
-        Text(
-            text = stringResource(R.string.settings_title),
-            style = MaterialTheme.typography.headlineSmall,
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier
-                .padding(start = 8.dp)
-                .semantics { heading() },
-        )
     }
 }
 
-/**
- * The whole row toggles; TalkBack reads it as one switch with its label and [supportingText]. A disabled row keeps its
- * value and ignores taps (AN25: greyed while the voice is off).
- */
 @Composable
-private fun SwitchRow(
-    label: String,
-    checked: Boolean,
-    tag: String,
-    onToggle: (Boolean) -> Unit,
-    enabled: Boolean = true,
-    supportingText: String? = null,
-) {
-    val labelColor = if (enabled) {
-        MaterialTheme.colorScheme.onBackground
-    } else {
-        MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+private fun Credit(text: String, tag: String) {
+    Text(
+        text = text,
+        style = KosmoTheme.typography.body,
+        color = KosmoTheme.colors.onBackgroundMuted,
         modifier = Modifier
-            .fillMaxWidth()
-            .sizeIn(minHeight = SWITCH_ROW_MIN_HEIGHT)
-            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onToggle)
-            .testTag(tag)
-            .padding(horizontal = 8.dp),
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = label, style = MaterialTheme.typography.titleMedium, color = labelColor)
-            supportingText?.let {
-                Text(text = it, style = MaterialTheme.typography.bodyMedium, color = labelColor)
-            }
-        }
-        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
-    }
+            .padding(horizontal = 8.dp)
+            .testTag(tag),
+    )
 }
 
 /** AN13, AN17: the reason the voice is or is not available. A live region, so TalkBack reads changes (U1, U2). */
 @Composable
 private fun VoiceStatusLine(state: SettingsUiState, onInstall: () -> Unit) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(horizontal = 8.dp),
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = stringResource(statusText(state.voiceStatus)),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = KosmoTheme.typography.body,
+            color = KosmoTheme.colors.onBackgroundMuted,
             modifier = Modifier
                 .testTag(SettingsTags.VOICE_STATUS)
                 .semantics { liveRegion = LiveRegionMode.Polite },
         )
         if (state.canInstall) {
-            OutlinedButton(
+            KosmoButton(
+                text = stringResource(R.string.voice_install),
                 onClick = onInstall,
-                modifier = Modifier
-                    .sizeIn(minHeight = MIN_TOUCH_TARGET)
-                    .testTag(SettingsTags.INSTALL_VOICE),
-            ) {
-                Text(stringResource(R.string.voice_install))
-            }
+                kind = ButtonKind.OUTLINED_ACCENT,
+                modifier = Modifier.testTag(SettingsTags.INSTALL_VOICE),
+            )
         }
     }
 }
@@ -201,7 +140,7 @@ private fun statusText(status: VoiceStatus): Int = when (status) {
     VoiceStatus.NO_ENGINE -> R.string.settings_voice_no_engine
 }
 
-@Preview
+@Preview(widthDp = 412, heightDp = 915)
 @Composable
 private fun SettingsScreenPreview() {
     KosmoDartsTheme {

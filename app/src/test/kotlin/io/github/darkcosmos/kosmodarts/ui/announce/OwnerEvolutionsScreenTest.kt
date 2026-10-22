@@ -23,7 +23,9 @@ import io.github.darkcosmos.kosmodarts.audio.TtsTestSupport
 import io.github.darkcosmos.kosmodarts.audio.TtsTestSupport.initLastEngine
 import io.github.darkcosmos.kosmodarts.audio.TtsTestSupport.lastEngine
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
+import io.github.darkcosmos.kosmodarts.ui.end.EndTags
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
+import io.github.darkcosmos.kosmodarts.ui.revealIfScrolled
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import io.github.darkcosmos.kosmodarts.ui.resume.AppProcess
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
@@ -101,7 +103,7 @@ internal class OwnerEvolutionsScreenTest : AnnouncementsScreenTestBase() {
         audio.timeline.heard.clear()
 
         double(20)
-        composeRule.onNodeWithTag(GameTags.CHECKOUT_DIALOG).assertExists()
+        composeRule.onNodeWithTag(GameTags.CHECKOUT_BANNER).assertExists()
         playEverything()
         assertEquals(listOf("DART_HIT", "VICTORY", "Game shot! Ann wins"), heardAsText())
         // A.2: the victory sound and the win voice start together.
@@ -129,7 +131,7 @@ internal class OwnerEvolutionsScreenTest : AnnouncementsScreenTestBase() {
         assertTrue("the win voice is not stopped", !engine.isStopped)
         playEverything()
 
-        composeRule.onNodeWithText(string(R.string.end_rematch)).performScrollTo().performClick()
+        composeRule.onNodeWithTag(EndTags.REMATCH).revealIfScrolled().performClick()
         playEverything()
 
         assertEquals(1, audio.timeline.speech.count { it == "Game shot! Ann wins" })
@@ -154,7 +156,7 @@ internal class OwnerEvolutionsScreenTest : AnnouncementsScreenTestBase() {
         playEverything()
 
         assertEquals(listOf("DART_HIT", "DART_CANCEL"), heardAsText())
-        key(GameTags.CHECKOUT_DIALOG).assertDoesNotExist()
+        key(GameTags.CHECKOUT_BANNER).assertDoesNotExist()
     }
 
     /** AN6, E3: the winning dart undone then entered again gives the win again. */
@@ -358,7 +360,7 @@ internal class OwnerEvolutionsScreenTest : AnnouncementsScreenTestBase() {
 
         playAnnToWin()
         finishGame()
-        composeRule.onNodeWithText(string(R.string.end_rematch)).performScrollTo().performClick()
+        composeRule.onNodeWithTag(EndTags.REMATCH).revealIfScrolled().performClick()
         playEverything()
         key(GameTags.NO_VOICE_DIALOG).assertDoesNotExist()
     }

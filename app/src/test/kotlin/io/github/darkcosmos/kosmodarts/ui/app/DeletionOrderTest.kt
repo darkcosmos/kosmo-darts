@@ -39,7 +39,7 @@ class DeletionOrderTest {
         val viewModel = viewModel(AppState(screen = Screen.Game(beforeWin)))
 
         viewModel.onEvent(AppEvent.NumberTapped(1)) // The winning dart: a write is queued.
-        assertTrue((viewModel.state.value.screen as Screen.Game).game.isCheckoutDialogShown)
+        assertTrue((viewModel.state.value.screen as Screen.Game).game.isCheckoutPending)
         viewModel.onEvent(AppEvent.FinishGameTapped)
         executor.runAll()
 

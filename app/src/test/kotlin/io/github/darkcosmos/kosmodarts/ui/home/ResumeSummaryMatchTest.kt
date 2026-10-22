@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.home
 
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures.match
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
@@ -22,8 +23,8 @@ class ResumeSummaryMatchTest {
 
         assertEquals(
             listOf(
-                ResumeSummary.PlayerScore("Ann", 301, setsWon = 1, legsWon = 0),
-                ResumeSummary.PlayerScore("Bob", 241, setsWon = 0, legsWon = 1),
+                ResumeSummary.PlayerScore("Ann", 301, ColorSlot.SLOT_1, setsWon = 1, legsWon = 0),
+                ResumeSummary.PlayerScore("Bob", 241, ColorSlot.SLOT_2, setsWon = 0, legsWon = 1),
             ),
             ResumeSummary.of(saved).players,
         )
@@ -46,7 +47,6 @@ class ResumeSummaryMatchTest {
         val summary = ResumeSummary.of(SavedGame(next, isAwaitingNextPlayer = false, isBetweenLegs = true))
 
         assertEquals("Bob", summary.highlightedPlayer)
-        assertEquals(false, summary.isCheckoutToConfirm)
     }
 
     /** M5: a single game has no match score. */

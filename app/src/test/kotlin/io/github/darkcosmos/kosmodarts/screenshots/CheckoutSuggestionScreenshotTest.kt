@@ -107,7 +107,7 @@ class CheckoutSuggestionScreenshotTest {
         val START: Array<AppEvent> = arrayOf(
             AppEvent.NewGame,
             AppEvent.StartScoreSelected(301),
-            AppEvent.PlayerRemoved,
+            AppEvent.PlayerRemoved(1),
             AppEvent.NameChanged(0, "Ann"),
             AppEvent.StartRequested,
         )
