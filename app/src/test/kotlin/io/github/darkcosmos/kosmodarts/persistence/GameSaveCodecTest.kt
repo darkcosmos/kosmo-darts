@@ -1,9 +1,13 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures.config
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures.savedAfter
 import org.junit.Assert.assertArrayEquals
@@ -119,7 +123,10 @@ class GameSaveCodecTest {
         assertEquals(GameDecodeResult.Valid(saved), codec.decode(golden))
     }
 
-    /** ADR 0005: format version 2 of a single game, exact bytes. */
+    /**
+     * ADR 0005, R18: format version 2 of a single game, exact bytes written by the version 2 encoder. Frozen since
+     * version 3 (ADR 0006): it must keep decoding the same, with the color slots of the player positions.
+     */
     @Test
     fun `format v2 golden file of a single game`() {
         val darts = listOf(Dart.triple(20), Dart.single(20), Dart.double(5))
@@ -140,6 +147,42 @@ class GameSaveCodecTest {
             awaiting-next-player=true
             between-legs=false
             crc32=83195349
+            end
+
+        """.trimIndent().toByteArray(Charsets.UTF_8)
+
+        assertEquals(GameDecodeResult.Valid(saved), codec.decode(golden))
+        assertEquals(ColorSlot.byPosition(2), saved.match.colorSlots)
+    }
+
+    /** ADR 0006, R17: format version 3 of a single game whose players hold slots 2 and 1, exact bytes. */
+    @Test
+    fun `format v3 golden file of a single game`() {
+        val darts = listOf(Dart.triple(20), Dart.single(20), Dart.double(5))
+        val config = X01Config(listOf("Ann", "Clément"))
+        val match = X01Match(
+            X01MatchConfig(config, MatchFormat(), listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_1)),
+            emptyList(),
+            X01Game(config, darts),
+        )
+        val saved = SavedGame(match, isAwaitingNextPlayer = true)
+        val golden = """
+            kosmodarts=saved-game
+            version=3
+            game=x01
+            start-score=501
+            checkout=double-out
+            legs-per-set=1
+            sets=1
+            players=2
+            player=QW5u
+            player=Q2zDqW1lbnQ=
+            colors=2 1
+            legs=0
+            darts=T20 20 D5
+            awaiting-next-player=true
+            between-legs=false
+            crc32=58d3f295
             end
 
         """.trimIndent().toByteArray(Charsets.UTF_8)

@@ -16,8 +16,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Save format version 2 of a match (docs/adr/0005-save-format-v2-match.md; rules R9, R12, R13, R14, R16; S1, S2 of
- * the design review).
+ * Save format of a match: version 2 (docs/adr/0005-save-format-v2-match.md) and its version 3 successor
+ * (docs/adr/0006-save-format-v3-colors.md); rules R9, R12, R13, R14, R16, R18; S1, S2 of the design review of #39.
  */
 class GameSaveMatchCodecTest {
 
@@ -56,7 +56,10 @@ class GameSaveMatchCodecTest {
         return validBody.toMutableList().apply { set(index, line) }
     }
 
-    /** ADR 0005: the exact bytes of a match in the middle of a leg. */
+    /**
+     * ADR 0005: the exact bytes of a match in the middle of a leg, as the version 2 encoder wrote them. Frozen since
+     * version 3 (ADR 0006, R18): it keeps decoding the same, with the color slots of the player positions.
+     */
     @Test
     fun `format v2 golden file of a match`() {
         val golden = """
@@ -81,6 +84,35 @@ class GameSaveMatchCodecTest {
 
         """.trimIndent().toByteArray(Charsets.UTF_8)
 
+        assertEquals(GameDecodeResult.Valid(midLeg), codec.decode(golden))
+    }
+
+    /** ADR 0006: the exact bytes of the same match in version 3, the color slots after the player lines. */
+    @Test
+    fun `format v3 golden file of a match`() {
+        val golden = """
+            kosmodarts=saved-game
+            version=3
+            game=x01
+            start-score=301
+            checkout=single-out
+            legs-per-set=2
+            sets=2
+            players=2
+            player=QW5u
+            player=Qm9i
+            colors=1 2
+            legs=2
+            leg=0 301/9 120/6
+            leg=1 200/9 301/9
+            darts=T20 20
+            awaiting-next-player=false
+            between-legs=false
+            crc32=551cd129
+            end
+
+        """.trimIndent().toByteArray(Charsets.UTF_8)
+
         assertArrayEquals(golden, codec.encode(midLeg))
         assertEquals(GameDecodeResult.Valid(midLeg), codec.decode(golden))
     }
@@ -100,18 +132,21 @@ class GameSaveMatchCodecTest {
     }
 
     /**
-     * T4: a single game re-encodes to exactly its version 1 content, with `version=2` and the new keys inserted at
-     * their places (legs-per-set and sets after checkout, legs before darts, between-legs after the waiting flag).
+     * T4: a single game re-encodes to exactly its version 1 content, with `version=3` and the new keys inserted at
+     * their places (legs-per-set and sets after checkout, colors by position and legs before darts, between-legs after
+     * the waiting flag; R18).
      */
     @Test
     fun `R13 a single game is its version 1 content plus the new keys`() {
         V1Fixtures.GAMES.keys.forEach { name ->
             val v1 = coveredLines(V1Fixtures.bytes(name))
+            val players = v1.first { it.startsWith("players=") }.substringAfter('=').toInt()
+            val colors = "colors=" + (1..players).joinToString(" ")
             val expected = v1.flatMap { line ->
                 when {
-                    line == "version=1" -> listOf("version=2")
+                    line == "version=1" -> listOf("version=3")
                     line.startsWith("checkout=") -> listOf(line, "legs-per-set=1", "sets=1")
-                    line.startsWith("darts=") -> listOf("legs=0", line)
+                    line.startsWith("darts=") -> listOf(colors, "legs=0", line)
                     line.startsWith("awaiting-next-player=") -> listOf(line, "between-legs=false")
                     else -> listOf(line)
                 }
@@ -224,7 +259,7 @@ class GameSaveMatchCodecTest {
             // Version 1 with a version 2 key.
             v1Single.take(checkoutAt + 1) + "legs-per-set=1" + v1Single.drop(checkoutAt + 1),
             v1Single + "between-legs=false",
-            // Version 2 with a missing, duplicated or out-of-order key.
+            // Version 3 with a missing, duplicated or out-of-order key.
             validBody - betweenLine,
             validBody.filterNot { it.startsWith("sets=") },
             validBody + betweenLine,

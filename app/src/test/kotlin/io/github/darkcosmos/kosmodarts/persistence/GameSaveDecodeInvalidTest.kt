@@ -68,10 +68,10 @@ class GameSaveDecodeInvalidTest {
         assertInvalid(InvalidSaveReason.MALFORMED, valid.replaceFirst("kosmodarts=saved-game", "kosmodarts=last-setup"))
     }
 
-    /** R9, R16: any version but 1 and 2 is rejected, even when the rest of the file is a valid version 2 file. */
+    /** R9, R16, R18: any version but 1 to 3 is rejected, even when the rest of the file is a valid version 3 file. */
     @Test
     fun `R9 unknown, older and newer versions are unsupported`() {
-        listOf("0", "3", "99", "01", "02", "x", "").forEach { version ->
+        listOf("0", "4", "99", "01", "03", "x", "").forEach { version ->
             assertInvalid(InvalidSaveReason.UNSUPPORTED_VERSION, withValue("version", version))
         }
     }

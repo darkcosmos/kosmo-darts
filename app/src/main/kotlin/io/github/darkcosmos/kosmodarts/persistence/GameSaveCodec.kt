@@ -15,11 +15,11 @@ sealed interface GameDecodeResult {
 }
 
 /**
- * Encodes the saved game file in format version 2 and decodes versions 1 and 2 (docs/adr/0001-save-format.md,
- * docs/adr/0005-save-format-v2-match.md; rules R9, R11, R12, R13, R16).
+ * Encodes the saved game file in format version 3 and decodes versions 1 to 3 (docs/adr/0001-save-format.md,
+ * docs/adr/0005-save-format-v2-match.md, docs/adr/0006-save-format-v3-colors.md; rules R9, R11, R12, R13, R16 to R18).
  *
  * Decoding never throws: any content is either a [GameDecodeResult.Valid] game, which re-encodes to the same bytes
- * when it was read from version 2, or a [GameDecodeResult.Invalid] with the first broken check.
+ * when it was read from version 3, or a [GameDecodeResult.Invalid] with the first broken check.
  *
  * @param gameFactory builds the current leg from its configuration, every dart and its starting player, in one
  *   replay. Injected so that tests can check that a save is replayed once, never dart by dart.
@@ -44,8 +44,9 @@ class GameSaveCodec(
             darts = match.currentLeg.darts,
             isAwaitingNextPlayer = saved.isAwaitingNextPlayer,
             isBetweenLegs = saved.isBetweenLegs,
+            colorSlots = match.colorSlots,
         )
-        return SaveFormat.encode(KIND, writeBody(V2_LAYOUT, body))
+        return SaveFormat.encode(KIND, writeBody(V3_LAYOUT, body))
     }
 
     fun decode(bytes: ByteArray): GameDecodeResult = try {
@@ -61,7 +62,7 @@ class GameSaveCodec(
         file.reader.finish()
         val match = try {
             val currentLeg = gameFactory(body.config, body.darts, body.legs.size % body.config.players.size)
-            X01Match(X01MatchConfig(body.config, body.format), body.legs, currentLeg)
+            X01Match(X01MatchConfig(body.config, body.format, body.colorSlots), body.legs, currentLeg)
         } catch (e: LegFinishedException) {
             reject(InvalidSaveReason.REJECTED_BY_ENGINE, e)
         } catch (e: IllegalArgumentException) {
@@ -112,7 +113,28 @@ class GameSaveCodec(
             SaveKey.BETWEEN_LEGS,
         )
 
-        private val LAYOUTS = mapOf(SaveFormat.VERSION_1 to V1_LAYOUT, SaveFormat.VERSION_2 to V2_LAYOUT)
+        /** Version 3 (ADR 0006): version 2 plus the color slots right after the player lines (R17). */
+        private val V3_LAYOUT = listOf(
+            SaveKey.GAME,
+            SaveKey.START_SCORE,
+            SaveKey.CHECKOUT,
+            SaveKey.LEGS_PER_SET,
+            SaveKey.SETS,
+            SaveKey.PLAYERS,
+            SaveKey.PLAYER,
+            SaveKey.COLORS,
+            SaveKey.LEGS,
+            SaveKey.LEG,
+            SaveKey.DARTS,
+            SaveKey.AWAITING,
+            SaveKey.BETWEEN_LEGS,
+        )
+
+        private val LAYOUTS = mapOf(
+            SaveFormat.VERSION_1 to V1_LAYOUT,
+            SaveFormat.VERSION_2 to V2_LAYOUT,
+            SaveFormat.VERSION_3 to V3_LAYOUT,
+        )
     }
 }
 

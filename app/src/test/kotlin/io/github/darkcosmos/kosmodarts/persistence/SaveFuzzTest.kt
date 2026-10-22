@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -26,11 +27,19 @@ class SaveFuzzTest {
     ).map { checkNotNull(gameCodec.encode(it)) } + matchSeeds() + V1Fixtures.GAMES.keys.map(V1Fixtures::bytes)
 
     /**
-     * Version 2 matches (R11, ADR 0005): in a leg, between legs and in a pending checkout, plus the strict key cases
-     * of S2 (a version 1 file with a version 2 key, a version 2 file with a missing or swapped key).
+     * Version 3 matches (R11, ADR 0005, ADR 0006) with non-positional color slots: in a leg, between legs and in a
+     * pending checkout, plus the strict key cases of S2 (a version 1 file with a version 2 key, a version 3 file with
+     * a missing or swapped key).
      */
     private fun matchSeeds(): List<ByteArray> {
-        val start = MatchFixtures.match("Ann", "Bob", "Cid", legsPerSet = 2, sets = 3)
+        val start = MatchFixtures.match(
+            "Ann",
+            "Bob",
+            "Cid",
+            legsPerSet = 2,
+            sets = 3,
+            colorSlots = listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_1, ColorSlot.SLOT_2),
+        )
         val valid = listOf(
             SavedGame(start.confirmLegsWonBy(0, 1, 1).throwing(Dart.triple(20)), isAwaitingNextPlayer = false),
             SavedGame(start.confirmLegsWonBy(2, 2), isAwaitingNextPlayer = false, isBetweenLegs = true),
@@ -41,6 +50,7 @@ class SaveFuzzTest {
         val keyCases = listOf(
             v1.take(5) + "legs-per-set=1" + v1.drop(5),
             body.filterNot { it.startsWith("between-legs=") },
+            body.filterNot { it.startsWith("colors=") },
             body.map { if (it.startsWith("legs-per-set=")) "sets=3" else if (it == "sets=3") "legs-per-set=2" else it },
         ).map(::withChecksum)
         return valid + keyCases
@@ -51,8 +61,8 @@ class SaveFuzzTest {
     @Test
     fun `R11 mutated saved games never crash the decoder`() = fuzz(validGames) { input ->
         when (val result = gameCodec.decode(input)) {
-            // A version 2 file is canonical; a version 1 file re-encodes as version 2 and decodes to the same game.
-            is GameDecodeResult.Valid -> if (String(input, Charsets.UTF_8).lines().getOrNull(1) == "version=1") {
+            // A version 3 file is canonical; an older file re-encodes as version 3 and decodes to the same game.
+            is GameDecodeResult.Valid -> if (String(input, Charsets.UTF_8).lines().getOrNull(1) != "version=3") {
                 assertEquals(result, gameCodec.decode(checkNotNull(gameCodec.encode(result.saved))))
             } else {
                 assertArrayEquals(input, gameCodec.encode(result.saved))

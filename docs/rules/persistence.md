@@ -35,23 +35,26 @@ Vocabulary:
   game, the home screen shows a summary of the saved game and two buttons: "New game", then "Resume game" right
   under it. The summary gives the start score (501/301), the checkout rule, each player's name and remaining score
   in throwing order, and the player shown as throwing on the game screen after resuming: the player whose turn waits
-  for "Next player" if any, else the player to throw. When the checkout dialog was open, the summary shows the
-  winner with "Checkout to confirm" instead. "Resume game" opens the game screen as described in R4. Without a saved
-  game, the home screen is unchanged (no summary, no "Resume game").
+  for "Next player" if any, else the player to throw; with a pending checkout, the winner. Since issue #49 (M18,
+  owner Q11), the summary always reads "Resume · <player> to throw", without a "Checkout to confirm" line. "Resume
+  game" opens the game screen as described in R4. Without a saved game, the home screen is unchanged (no summary,
+  no "Resume game").
 - R3. "New game" on the home screen while a game is saved opens a confirmation dialog. "Cancel" (or system back)
   closes the dialog and keeps the saved game. "Delete" deletes the saved game at once and opens the setup screen;
   going back from the setup screen then leads to a home screen with nothing to resume. Without a saved game, "New
   game" opens the setup screen directly, as before.
 - R4. A resumed game is exactly as it was: every dart of the game, the darts of the current turn, the player shown
   as throwing, a turn waiting for "Next player" (BUST shown after a bust, dart entry keys disabled, "Next player"
-  enabled), and the checkout dialog if it was open, with "Finish game" and "Undo" behaving as before. Not restored
+  enabled), and a pending checkout (the CHECKOUT zone since issue #49, R19), with its confirm button and "Undo"
+  behaving as before. Not restored
   (Q5): an active Double or Triple modifier, and an open "Abandon the game?" dialog. Resuming never announces a
   completed turn again (the turn-completed signal is not fired).
 - R5. Undo after a resume works back to the first dart of the game.
 
 ## End of game
 
-- R6. The saved game is deleted when the win is confirmed ("Finish game" in the checkout dialog) and when the game
+- R6. The saved game is deleted when the win is confirmed ("Confirm match", « Valider la partie », in the action bar
+  of the checkout zone since issue #49; "Finish game" in the checkout dialog before) and when the game
   is abandoned ("Abandon" in the "Abandon the game?" dialog). If the app is killed on the end screen, it reopens on
   the home screen with no "Resume game". A rematch starts a new saved game.
 
@@ -93,7 +96,8 @@ Vocabulary:
   - a dart;
   - an undo;
   - "Next player";
-  - the checkout dialog, shown by the winning dart or dismissed with Undo.
+  - the checkout state (the dialog before issue #49, the CHECKOUT zone since), shown by the winning dart or left
+    with Undo.
 
   Resume writes nothing, since it changes nothing. The saved game is deleted as described in R3, R6 and R9, and the
   last setup is written as described in R7.
@@ -119,3 +123,12 @@ Vocabulary:
   writes nothing.
 - R16. A saved game or last setup written by the previous version (format 1) is read as a single game (1 leg and
   1 set), without any message.
+
+## Player colors (issue #49, `docs/rules/players.md`, ADR 0006)
+
+- R17. Each player's color slot is saved with the game and with the last setup (format version 3), so a resume, a
+  rematch (PC7) and the next setup (PC8) keep every player's color.
+- R18. A saved game or last setup written by an older version (format 1 or 2) gives each player the slot of his
+  position (1 to n), without any message.
+- R19. A resumed game whose checkout waited for confirmation shows the CHECKOUT zone (score replaced by the CHECKOUT
+  banner, keypad locked, "Undo" and the M15 confirm button in the action bar), exactly as before the app was closed.

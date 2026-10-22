@@ -45,7 +45,7 @@ internal class DecodedFile(val version: Int, val reader: BodyReader)
 
 /**
  * Line-based text format shared by the saved game and the last setup (docs/adr/0001-save-format.md; version 2:
- * docs/adr/0005-save-format-v2-match.md).
+ * docs/adr/0005-save-format-v2-match.md; version 3: docs/adr/0006-save-format-v3-colors.md).
  *
  * A file is: a kind line, a version line, body lines in a fixed order, a CRC-32 line covering every byte before it,
  * and an end line. Every value has a single canonical form, so that `decode(encode(x)) == x` and any other content is
@@ -56,11 +56,14 @@ internal object SaveFormat {
     /** Version 1: the format of ADR 0001, still decoded (rule R16). */
     const val VERSION_1: Int = 1
 
-    /** Version 2: adds the match format and the confirmed legs (ADR 0005). Every write uses it. */
+    /** Version 2: adds the match format and the confirmed legs (ADR 0005), still decoded. */
     const val VERSION_2: Int = 2
 
+    /** Version 3: adds the players' color slots (ADR 0006). Every write uses it. */
+    const val VERSION_3: Int = 3
+
     /** The version every write uses. */
-    const val VERSION: Int = VERSION_2
+    const val VERSION: Int = VERSION_3
 
     private const val KIND_KEY = "kosmodarts"
     private const val VERSION_KEY = "version"
