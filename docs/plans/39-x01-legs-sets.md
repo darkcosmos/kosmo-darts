@@ -591,3 +591,40 @@ Design review round 1 (2026-10-21; architecture, security, test APPROVE; UX CHAN
 ## Open questions
 
 None. O1 was answered by Kosmo (see Decisions).
+
+## Implementation notes
+
+Where the main pieces live:
+- Engine: `engine/match/` (`MatchFormat`, `MatchScore`, `LegOutcome`, `MatchRanking`); `engine/x01/X01Match.kt`
+  (with `X01MatchPlayerStats`), `X01MatchConfig.kt`, `X01LegSummary.kt`; `X01Game.startingPlayerIndex`;
+  `X01Cue.Win` (common interface of `GameShot` and `BigFish`, with `outcome`) and `X01Cues.afterDart(X01Match, X01Match)`.
+- Persistence: `persistence/SaveBody.kt` holds the `SaveKey` list and the shared write and read of a body, following
+  the per-version layouts declared in `GameSaveCodec` and `LastSetupCodec`. v1 fixtures:
+  `app/src/test/resources/persistence/v1/` (committed in 7ac2391, before any codec change).
+- App: `ui/app/SetupTransitions.kt` (setup edits, match start, rematch setup), `ui/between/`,
+  `ui/game/MatchIndicators.kt`, `ui/setup/MatchSettings.kt` (steppers), `ui/end/EndTags.kt`.
+
+Deviations from the plan (none changes a product behavior):
+- `audio/AudioBinder.kt` (not listed): the between-legs screen keeps the game audio session open, like the end
+  screen, so that the leg or set voice is not cut by "Finish leg" and "Next leg" can speak (AN27, AN28).
+- `MatchIndicator` is declared in `GameScreenState.kt` rather than `MatchIndicators.kt` (detekt
+  `MatchingDeclarationName`); the reducer's setup and start helpers moved to `SetupTransitions.kt` and the steppers to
+  `MatchSettings.kt` (detekt `TooManyFunctions`).
+- Single-game convenience constructors (M5): `SavedGame(X01Game, Boolean)`, `GameScreenState(X01Game, …)`,
+  `Screen.End(X01Game)` and `endRows(X01Game)` wrap the leg in a 1 and 1 match. They keep the existing tests and
+  previews unchanged.
+- `X01LegSummary` keeps its `X01Config` (its ranges need the start score and the player count). The codec adds the
+  R12 storage limit (at most 10,000 darts in a confirmed leg) on top of the engine ranges.
+- `X01Match.finalScore`: the score with the deciding leg counted, used by the ranking and the end screen.
+- French TalkBack values use a non-breaking space before the colon (« Manches par set : premier à 3 »), as the other
+  French texts of the app.
+- Home summary: the match score is a second line under the player's name, still before the remaining score, so that
+  it wraps at 200 % without pushing the score out.
+- TalkBack order: in the highlighted card the indicator line is read right after the name; in the other rows it is
+  read after the row line (name, average, remaining, visit box).
+- New tests went to new classes (`*MatchTest`, `MatchSideEffectsTest`, `AppReducerMatchTest`,
+  `GameSaveMatchCodecTest`, `MatchScreensTest`, `MatchResumeScreensTest`, `MatchScreenshotTest`) rather than into the
+  existing ones. Existing tests were only adapted to the new types and layout: the last setup is an
+  `X01MatchConfig`; the v1 golden test now decodes the frozen fixture bytes; version 2 is no longer an unsupported
+  version; the injected game factory takes the starter; the setup tests scroll to "Add a player" (the match section
+  pushes it down); `TestPhrases` implements the two new phrases.
