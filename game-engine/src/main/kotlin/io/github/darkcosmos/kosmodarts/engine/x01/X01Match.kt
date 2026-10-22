@@ -63,10 +63,6 @@ class X01Match(
         currentLeg.state.winnerIndex?.takeIf { isFinished }?.let(score::withLegWonBy)
     }
 
-    /** The score to show: [finalScore] once the match is finished, else [score]. */
-    val displayedScore: MatchScore
-        get() = finalScore ?: score
-
     /** Per player figures over the whole match, in configuration order (M9). */
     val playerStats: List<X01MatchPlayerStats> by lazy {
         currentLeg.state.players.mapIndexed { player, current ->

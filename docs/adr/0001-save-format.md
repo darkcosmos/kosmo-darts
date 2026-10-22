@@ -1,6 +1,7 @@
 # ADR 0001: Save format of the game in progress and of the last setup
 
 - Status: Accepted (PR #31, merged on 2026-10-18 as 39ad177; proposed in the design review of issue #30)
+- Extended by ADR 0005 (save format version 2 for matches in legs and sets, issue #39); version 1 stays decoded.
 - Date: 2026-10-18
 - Rules: `docs/rules/persistence.md` (R8, R9, R10, R11, R12), `docs/rules/x01.md` (P1)
 

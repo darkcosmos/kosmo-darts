@@ -111,7 +111,8 @@ Residual risks, accepted after the code review (security-reviewer S4, S5):
 - Every future `Screen` must state whether it carries the saved game (compile-time, Decision 2).
 - Every future storage effect goes through `persistenceEffects` (`ui/app/PersistenceEffect.kt`), never through a
   direct call from a screen.
-- Process death restores only the game screen. Other screens restart on home (R1).
+- Process death restores only the game screen. Other screens restart on home (R1). The between-legs screen of a
+  match counts as the game screen (issue #39, R14, ADR 0005).
 - Dependencies go one way only: `ui` uses `persistence`, and `persistence` uses the engine only, tests included. The
   conversions between the game screen and the saved game (`GameScreenState.toSavedGame`,
   `SavedGame.toGameScreenState`) live in `ui/game/SavedGameScreen.kt`. Resolved (architecture-reviewer A7): at

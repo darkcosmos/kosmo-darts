@@ -49,6 +49,7 @@ They complete or replace the issue body; in case of contradiction they prevail.
   for it (AN3) under the game's checkout rule, and whether it is the first turn of the game. It is produced:
   - when a game is started with "Start" or "Rematch" (first player);
   - when "Next player" moves play on after a normal turn or a bust.
+  - when "Next leg" starts the next leg of a match (AN28, docs/rules/match.md, M16).
 - AN5. The winning dart produces a *win* cue after its dart cue, as the checkout dialog opens (E3): *big fish* when
   the winning turn started at 170, else *game shot*. "Finish game" produces nothing. The checkout dialog's Undo is
   an undo (AN6, AN23).
@@ -197,3 +198,18 @@ They complete or replace the issue body; in case of contradiction they prevail.
   spoken. A call waits only for its impact sound and for an announcement already being spoken.
 - AN26. A phrase with variants (AN8) is drawn at random, never the same as the last one drawn from the same line in
   the same game session. The draw goes through an injectable interface; tests use a fixed draw.
+
+## Matches in legs and sets (issue #39, `docs/rules/match.md`)
+
+- AN27. The win voice depends on what confirming the leg decides (M7): "Leg for {name}" (« Manche pour {nom} ») for
+  a leg, "Set for {name}" (« Set pour {nom} ») for a set, today's "Game shot! {name} wins" (« Victoire de {nom} »)
+  for the match and for a single game (owner Q4).
+  - `sfx_victory` plays only for the match and for a single game (owner O1). A leg or set win plays the winning
+    dart's sound, its dart call when that setting is on, then the voice line alone, with no victory sound. With the
+    voice off, a leg or set win makes no sound after the dart.
+  - For the match, AN9 and AN10 are unchanged: the victory sound and the voice start together, and the next step
+    waits for both. For a leg or a set, the next step waits for the voice only.
+  - The big fish rules (AN5) do not change: a leg won from 170 still carries the big-fish cue, and that cue follows
+    the same leg, set and match rules for the sound.
+- AN28. "Next leg" produces a turn start cue for the new leg's starter, with the "throws first" line (AN4, owner
+  Q5). Its voice waits for the end of any announcement in progress (AN10).
