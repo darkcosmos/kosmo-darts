@@ -115,8 +115,8 @@ Composables only render state and forward events. Screens are described below un
 - `match.md`: M6 (tiles in play order from the next player; zone fixed), M13 (setup: "Sets · first to" then
   "Legs · first to", label "Legs" whatever the sets; player list with a remove cross and "+ Add a player"), M14
   (notation "S n · M n" / "S n · L n", sets part only when Sets > 1, nothing in a single game), M15 (checkout in the
-  zone, buttons "VALIDER LA MANCHE / LE SET / LA PARTIE", undo = "ANNULER"), M16 (between-legs layout), M17 (end
-  screen columns, "2 SETS À 0" removed), M18 (home card), new M19 (match position).
+  zone, buttons "VALIDER LA MANCHE / LE SET / LA PARTIE", undo = "ANNULER", system back opens the abandon
+  dialog), M16 (between-legs layout), M17 (end screen columns, darts thrown kept, "2 SETS À 0" removed), M18 (home card), new M19 (match position).
 - `visit-total.md`: VT9/VT10 (box styles: filled for the current visit, outlined on tiles), VT13 (during a bust the
   zone shows the BUST banner and the box shows `0`, section 6.2).
 - `checkout-suggestions.md`: CS5 (hidden in BUST and CHECKOUT modes), CS7 (label "SORTIE"/"CHECKOUT" chip, darts
@@ -185,7 +185,7 @@ All texts below are the French version; English is in the strings table.
 - **Checkout** (mockup 04): zone keeps the player's color, score replaced by the accent "CHECKOUT" banner and
   "141 EN 3 FLÉCHETTES", final dart in accent, keypad locked; `ActionBar` "ANNULER" (undo the winning dart) /
   "VALIDER LA MANCHE", "VALIDER LE SET" or "VALIDER LA PARTIE" (owner Q5; a single game says "VALIDER LA PARTIE").
-  System back: see open question O1.
+  System back opens "Abandonner la partie ?" (owner O1); dismissing it returns to the pending checkout.
 - **Home** (mockup 06): "KOSMO DARTS" title ("DARTS" in accent), settings icon button (48 dp, TalkBack
   "Réglages"); `ResumeCard` when a game is saved: "PARTIE EN COURS", format line, mini-tiles in play order with
   color strip, score and "S n · M n" (M14), no ▸ and no accent outline (owner Q10), button "REPRENDRE · À <joueur>
@@ -202,7 +202,7 @@ All texts below are the French version; English is in the strings table.
   MANCHE 4 ▌<joueur> COMMENCE"; button "MANCHE SUIVANTE". Back opens the abandon dialog (M16, unchanged).
 - **End** (mockup 09): format line; zone in the winner's color, chip "VAINQUEUR DU MATCH", winner name; no "2 SETS À
   0" line (owner Q8); `Scoreboard` with rank cell (rank 1 on `accent`), color square, name, SETS column (MANCHES with
-  Sets = 1, no score column in a single game) and MOY MATCH (darts column: open question O2); "REVANCHE"
+  Sets = 1, no score column in a single game) and MOY MATCH, then the darts thrown over the match (owner O2, header "FLÉCH." / "DARTS"); "REVANCHE"
   (primary) and "NOUVELLE PARTIE" (secondary).
 - **Settings** (mockup 10): back arrow, "RÉGLAGES"; "SON ET VOIX": Voix (with its status line and the existing
   "Installer une voix" button when needed), Annoncer chaque fléchette, Sons, with `SettingsSwitch`; new section
@@ -259,7 +259,9 @@ files in sync.
   line, extra line) rejected (R9/R10); `SaveFuzzTest` over v3.
 - `SetupStateTest`: remove any player re-indexes errors and frees the slot; prefill restores slots (PC8).
 - `AppReducerTest` / `AppReducerResumeTest`: rematch keeps slots with rotation (PC7); resume restores slots and a
-  pending checkout shows the CHECKOUT zone (R19); Back in checkout mode per O1.
+  pending checkout shows the CHECKOUT zone (R19); Back in checkout mode opens the abandon dialog, and dismissing it
+  keeps the checkout pending (M15, owner O1).
+- `EndRowsTest`: the darts-thrown column is still mapped for every format (M17, owner O2).
 - `GameScreenStateTest` additions: `zoneMode` NORMAL/BUST/CHECKOUT; `tileOrder` from the next player for 1 to 4
   players and after each "Next player" (M6); `confirmLabel` LEG/SET/MATCH (M15); header position per format
   (M14/M19); checkout summary points and dart count; at most one multiplier active (toggle Double then Triple, then
@@ -343,11 +345,9 @@ Owner answers to the intake questions (issue #49 comments, relayed by main):
 | D3 | (plan) Stepper − and + drawn 44 dp in a 48 dp touch area. | - |
 | D4 | (plan) Fade 200 ms, snapped when Android animations are off. | - |
 | D5 | (plan) Setup steppers in the mockup order: sets first, then legs, label "Manches · premier à" in every format. | M13 |
+| O1 | (owner, after the plan) System back while a checkout waits opens "Abandonner la partie ?", like anywhere else in a game (today it does nothing because of the modal dialog). | M15, R6 |
+| O2 | (owner, after the plan) The end screen keeps the darts-thrown column (M17, owner Q2 of #39), restyled, after MOY MATCH. | M17 |
 
 ## Open questions
 
-- O1. System back while the checkout waits: today it does nothing (the modal dialog blocked it). Without a dialog,
-  proposed: open "Abandonner la partie ?" like anywhere else in a game; alternative: keep doing nothing. Owner to
-  confirm through main.
-- O2. End screen darts column: today the end screen shows the darts thrown (M17, owner Q2 of #39); the design system
-  and mockup 09 only show SETS and MOY MATCH. Keep the darts column or drop it? Owner to confirm through main.
+None.
