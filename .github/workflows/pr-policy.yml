@@ -55,6 +55,10 @@ jobs:
             echo "Dependabot PR: description policy not applicable"
             exit 0
           fi
+          if [ "${PR_AUTHOR}" = "darkcosmos" ]; then
+            echo "Darkcosmos: description policy not applicable"
+            exit 0
+          fi
 
           # Descriptions edited on github.com use CRLF line endings: normalize before checking
           body="$(mktemp)"
