@@ -5,6 +5,7 @@ import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.match.MatchRank
 import io.github.darkcosmos.kosmodarts.engine.match.MatchRanking
 import io.github.darkcosmos.kosmodarts.engine.match.MatchScore
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 
 /**
  * Figures of a player over a whole match (docs/rules/match.md, M9).
@@ -50,6 +51,10 @@ class X01Match(
     /** Format of the match. */
     val format: MatchFormat
         get() = matchConfig.format
+
+    /** Color slot of each player, in configuration order; the same in every leg (docs/rules/players.md, PC6). */
+    val colorSlots: List<ColorSlot>
+        get() = matchConfig.colorSlots
 
     /** What confirming the current leg decides once it is won (M7), or `null` while it is in progress. */
     val pendingOutcome: LegOutcome? = currentLeg.state.winnerIndex?.let(score::outcomeIfWonBy)
