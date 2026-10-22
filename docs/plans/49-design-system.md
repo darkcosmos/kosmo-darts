@@ -106,7 +106,9 @@ Sizes that depend on the available space are decided outside composables by `Gam
 `ScreenLayoutPolicy` for the other screens), a pure function of the available width and height in dp (after
 insets), the font scale, the orientation and the player count. It returns a `GameLayout` value: score size, key
 height, tile variant, vertical margins, and whether a column scrolls. Composables read it from a
-`BoxWithConstraints` and only apply it (U1, A).
+`BoxWithConstraints` and only apply it (U1, A). The policies use no Compose types: inputs and outputs are plain
+`Float` values in dp (and enums), converted to `Dp` only in the composables (architecture-reviewer note on the
+approved plan).
 
 - **Insets** (edge-to-edge is already enabled in `MainActivity`): every screen root applies
   `safeDrawingPadding()` (status and navigation bars, display cutout in both orientations, IME). Setup also keeps
