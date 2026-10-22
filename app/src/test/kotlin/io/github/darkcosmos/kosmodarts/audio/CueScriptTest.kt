@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.audio
 
+import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 import org.junit.Assert.assertEquals
@@ -49,6 +50,23 @@ class CueScriptTest {
             steps(AudioStep.SoundWithSpeech(SoundEffect.VICTORY, "win Ann")),
             of(X01Cue.BigFish(0, "Ann")),
         )
+    }
+
+    /** AN27 (owner O1): a leg or set win is its own phrase alone, with no victory sound, big fish included. */
+    @Test
+    fun `AN27 a leg or set win is its phrase alone`() {
+        assertEquals(steps(AudioStep.Speech("leg Ann")), of(X01Cue.GameShot(0, "Ann", LegOutcome.LEG)))
+        assertEquals(steps(AudioStep.Speech("leg Ann")), of(X01Cue.BigFish(0, "Ann", LegOutcome.LEG)))
+        assertEquals(steps(AudioStep.Speech("set Bob")), of(X01Cue.GameShot(1, "Bob", LegOutcome.SET)))
+        assertEquals(steps(AudioStep.Speech("set Bob")), of(X01Cue.BigFish(1, "Bob", LegOutcome.SET)))
+    }
+
+    /** AN27: the match win, a single game included, keeps the victory sound with the victory phrase (A2). */
+    @Test
+    fun `AN27 the match win is the victory sound with the win phrase`() {
+        listOf(X01Cue.GameShot(0, "Ann", LegOutcome.MATCH), X01Cue.BigFish(0, "Ann", LegOutcome.MATCH)).forEach {
+            assertEquals(steps(AudioStep.SoundWithSpeech(SoundEffect.VICTORY, "win Ann")), of(it))
+        }
     }
 
     @Test

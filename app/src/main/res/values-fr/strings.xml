@@ -39,9 +39,9 @@
     <string name="setup_legs">Manches</string>
     <string name="setup_sets">Sets</string>
     <string name="setup_first_to">Premier à %1$d</string>
-    <string name="setup_legs_per_set_value">Manches par set : premier à %1$d</string>
-    <string name="setup_legs_value">Manches : premier à %1$d</string>
-    <string name="setup_sets_value">Sets : premier à %1$d</string>
+    <string name="setup_legs_per_set_value">Manches par set\u00A0: premier à %1$d</string>
+    <string name="setup_legs_value">Manches\u00A0: premier à %1$d</string>
+    <string name="setup_sets_value">Sets\u00A0: premier à %1$d</string>
     <string name="setup_fewer_legs">Moins de manches</string>
     <string name="setup_more_legs">Plus de manches</string>
     <string name="setup_fewer_sets">Moins de sets</string>
