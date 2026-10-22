@@ -11,7 +11,10 @@ import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Cues and storage of the match flow (docs/rules/announcements.md, AN27, AN28; docs/rules/persistence.md, R14, R15). */
+/**
+ * Cues and storage of the match flow (docs/rules/announcements.md, AN27, AN28; docs/rules/persistence.md, R14,
+ * R15).
+ */
 class MatchSideEffectsTest {
 
     private val events = MatchEvents()
@@ -57,7 +60,8 @@ class MatchSideEffectsTest {
     /** AN28: "Next leg" announces the starter of the new leg with the "throws first" line. */
     @Test
     fun `AN28 Next leg announces the new starter`() {
-        val between = AppState(screen = Screen.BetweenLegs(match("Ann", "Bob", "Cid", legsPerSet = 2).confirmLegsWonBy(0)))
+        val next = match("Ann", "Bob", "Cid", legsPerSet = 2).confirmLegsWonBy(0)
+        val between = AppState(screen = Screen.BetweenLegs(next))
 
         assertEquals(
             listOf(X01Cue.TurnStart(1, "Bob", null, isGameStart = true)),
@@ -133,6 +137,8 @@ class MatchSideEffectsTest {
         val saved = SavedGame(match("Ann", "Bob", legsPerSet = 2).confirmLegsWonBy(0), false, isBetweenLegs = true)
         val home = AppState(screen = Screen.Home(resumableGame = saved))
 
-        assertEquals(emptyList<PersistenceEffect>(), persistenceEffects(home, events.after(home, AppEvent.ResumeTapped)))
+        val resumed = events.after(home, AppEvent.ResumeTapped)
+
+        assertEquals(emptyList<PersistenceEffect>(), persistenceEffects(home, resumed))
     }
 }
