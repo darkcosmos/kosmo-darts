@@ -107,3 +107,15 @@ Vocabulary:
 
   A game of more than 10,000 darts is no longer saved after its 10,000th dart (the size limit of R9); saving
   resumes when undo brings it back to 10,000 darts or fewer.
+
+## Matches in legs and sets (issue #39, `docs/rules/match.md`, ADR 0005)
+
+- R13. The match format is saved with the game and with the last setup (with the names, the start score and the
+  finish rule).
+- R14. Resuming a match restores the sets and legs won, the current leg with its darts and its starter, a turn
+  waiting for "Next player", the checkout dialog with its M15 label, and the between-legs screen if it was shown. The
+  saved match is deleted only when the match win is confirmed ("Finish game") or on abandon (owner Q7, R6).
+- R15. Writes (R12) also happen on "Finish leg", "Finish set" and "Next leg"; resuming on the between-legs screen
+  writes nothing.
+- R16. A saved game or last setup written by the previous version (format 1) is read as a single game (1 leg and
+  1 set), without any message.

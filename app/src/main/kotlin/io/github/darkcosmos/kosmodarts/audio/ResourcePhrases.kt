@@ -26,6 +26,10 @@ class ResourcePhrases(
 
     override fun win(name: String) = resources.getString(R.string.announce_win, name)
 
+    override fun legWon(name: String) = resources.getString(R.string.announce_leg_won, name)
+
+    override fun setWon(name: String) = resources.getString(R.string.announce_set_won, name)
+
     override fun dartCall(dart: Dart): String? = dartWords(resources, dart)
 
     override fun announcementsOn() = resources.getString(R.string.announce_announcements_on)

@@ -37,6 +37,37 @@
     <string name="setup_error_no_players">Add at least one player</string>
     <string name="setup_error_too_many_players">%1$d players maximum</string>
 
+    <!-- Match format (docs/rules/match.md, M13) -->
+    <string name="setup_match_label">Match</string>
+    <string name="setup_legs_per_set">Legs per set</string>
+    <string name="setup_legs">Legs</string>
+    <string name="setup_sets">Sets</string>
+    <string name="setup_first_to">First to %1$d</string>
+    <string name="setup_legs_per_set_value">Legs per set: first to %1$d</string>
+    <string name="setup_legs_value">Legs: first to %1$d</string>
+    <string name="setup_sets_value">Sets: first to %1$d</string>
+    <string name="setup_fewer_legs">Fewer legs</string>
+    <string name="setup_more_legs">More legs</string>
+    <string name="setup_fewer_sets">Fewer sets</string>
+    <string name="setup_more_sets">More sets</string>
+
+    <!-- Match score (docs/rules/match.md, M14, M16, M17, M18) -->
+    <string name="match_sets_label">Sets</string>
+    <string name="match_legs_label">Legs</string>
+    <string name="match_count_overflow">×%1$d</string>
+    <string name="match_score_sets">Sets %1$d</string>
+    <string name="match_score_legs">Legs %1$d</string>
+    <string name="match_score_separator" translatable="false">" · "</string>
+    <plurals name="match_sets_won">
+        <item quantity="one">%d set won</item>
+        <item quantity="other">%d sets won</item>
+    </plurals>
+    <plurals name="match_legs_won">
+        <item quantity="one">%d leg won</item>
+        <item quantity="other">%d legs won</item>
+    </plurals>
+    <string name="match_indicators_description">%1$s, %2$s</string>
+
     <!-- Game screen -->
     <string name="game_to_throw">%1$s to throw</string>
     <string name="game_average">Avg. %1$s</string>
@@ -66,6 +97,8 @@
     <string name="key_undo">Undo</string>
     <string name="checkout_title">Checkout!</string>
     <string name="checkout_finish">Finish game</string>
+    <string name="checkout_finish_leg">Finish leg</string>
+    <string name="checkout_finish_set">Finish set</string>
     <string name="key_next_player">Next player</string>
     <string name="game_abandon_title">Abandon the game?</string>
     <string name="game_abandon_text">The current game will be lost.</string>
@@ -81,6 +114,13 @@
         <item quantity="other">%1$d darts</item>
     </plurals>
     <string name="end_rematch">Rematch</string>
+
+    <!-- Between legs (docs/rules/match.md, M16) -->
+    <string name="between_leg_won_by">Leg won by %1$s</string>
+    <string name="between_set_won_by">Set won by %1$s</string>
+    <string name="between_title">Match score</string>
+    <string name="between_next_starter">%1$s starts the next leg</string>
+    <string name="between_next_leg">Next leg</string>
 
     <!-- Settings (docs/rules/announcements.md, AN13 to AN17) -->
     <string name="home_settings">Settings</string>
@@ -118,6 +158,9 @@
     </string-array>
     <string name="announce_checkout_suffix">You require %1$d.</string>
     <string name="announce_win">Game shot! %1$s wins</string>
+    <!-- AN27: a leg or a set won, without the victory sound. -->
+    <string name="announce_leg_won">Leg for %1$s</string>
+    <string name="announce_set_won">Set for %1$s</string>
     <!-- AN25: dart calls. -->
     <string name="announce_dart_single">%1$d</string>
     <string name="announce_dart_double">Double %1$d</string>

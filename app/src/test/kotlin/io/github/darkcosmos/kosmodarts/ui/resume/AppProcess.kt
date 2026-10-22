@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import io.github.darkcosmos.kosmodarts.KosmoDartsApplication
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.persistence.AtomicFileStore
 import io.github.darkcosmos.kosmodarts.persistence.ByteStore
 import io.github.darkcosmos.kosmodarts.persistence.GameSaveCodec
@@ -58,7 +59,8 @@ internal class AppProcess {
 
     fun writeRawGame(bytes: ByteArray) = AtomicFileStore(gameFile).write(bytes)
 
-    fun writeSetup(config: X01Config) = AtomicFileStore(setupFile).write(LastSetupCodec().encode(config))
+    fun writeSetup(config: X01Config) =
+        AtomicFileStore(setupFile).write(LastSetupCodec().encode(X01MatchConfig(config)))
 
     fun writeRawSetup(bytes: ByteArray) = AtomicFileStore(setupFile).write(bytes)
 

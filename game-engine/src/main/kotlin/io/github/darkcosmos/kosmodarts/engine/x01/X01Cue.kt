@@ -1,5 +1,7 @@
 package io.github.darkcosmos.kosmodarts.engine.x01
 
+import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
+
 /**
  * What to announce or play after a game action, without any text or sound (docs/rules/announcements.md). The app
  * turns cues into localized speech and sound effects.
@@ -37,11 +39,29 @@ sealed interface X01Cue {
         val isGameStart: Boolean,
     ) : X01Cue
 
+    /**
+     * AN5, AN27: a winning dart. [outcome] tells what confirming the leg decides (docs/rules/match.md, M7); a single
+     * game always decides the match.
+     */
+    sealed interface Win : X01Cue {
+        val playerIndex: Int
+        val name: String
+        val outcome: LegOutcome
+    }
+
     /** AN5: a win, from any remaining score but [X01Cues.BIG_FISH_REMAINING]. */
-    data class GameShot(val playerIndex: Int, val name: String) : X01Cue
+    data class GameShot(
+        override val playerIndex: Int,
+        override val name: String,
+        override val outcome: LegOutcome = LegOutcome.MATCH,
+    ) : Win
 
     /** AN5: a win whose turn started at [X01Cues.BIG_FISH_REMAINING]. */
-    data class BigFish(val playerIndex: Int, val name: String) : X01Cue
+    data class BigFish(
+        override val playerIndex: Int,
+        override val name: String,
+        override val outcome: LegOutcome = LegOutcome.MATCH,
+    ) : Win
 }
 
 /** Decides which cues a game action produces (docs/rules/announcements.md, AN1 to AN6, AN25). Pure. */
@@ -71,6 +91,27 @@ object X01Cues {
         val dartCue = if (dart.value == 0) X01Cue.DartMiss else X01Cue.DartHit(dart)
         val completedTurn = after.state.completedTurns.drop(before.state.completedTurns.size).singleOrNull()
         return listOfNotNull(dartCue, completedTurn?.let { endOfTurnCue(after, it) })
+    }
+
+    /**
+     * AN1, AN2, AN5, AN27: cues of the dart that changed the current leg of [before] into that of [after]. The win
+     * cue carries what confirming the leg decides (docs/rules/match.md, M7).
+     *
+     * @throws IllegalArgumentException if [after] is not [before] plus exactly one dart in the same leg.
+     */
+    fun afterDart(before: X01Match, after: X01Match): List<X01Cue> {
+        require(after.matchConfig == before.matchConfig && after.completedLegs == before.completedLegs) {
+            "afterDart expects the same leg"
+        }
+        val outcome = after.pendingOutcome
+        return afterDart(before.currentLeg, after.currentLeg).map { cue ->
+            when {
+                outcome == null -> cue
+                cue is X01Cue.GameShot -> cue.copy(outcome = outcome)
+                cue is X01Cue.BigFish -> cue.copy(outcome = outcome)
+                else -> cue
+            }
+        }
     }
 
     /** AN4: the player who throws next in [game], or `null` once the leg is finished. */

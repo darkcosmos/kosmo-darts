@@ -63,7 +63,8 @@ class AudioBinder(
 
     private fun update() {
         val screen = game.state.value.screen
-        val isGameShown = screen is Screen.Game || screen is Screen.End
+        // The between-legs screen keeps the session: a leg or set voice ends there, and "Next leg" speaks (AN27, AN28).
+        val isGameShown = screen is Screen.Game || screen is Screen.BetweenLegs || screen is Screen.End
         activity.volumeControlStream =
             if (isGameShown) AudioManager.STREAM_MUSIC else AudioManager.USE_DEFAULT_STREAM_TYPE
         // A.4: the session already exists on the setup screen, so the speech engine is ready when "Start" is tapped.

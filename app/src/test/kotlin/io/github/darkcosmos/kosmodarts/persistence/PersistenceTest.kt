@@ -24,7 +24,7 @@ class PersistenceTest {
 
     @Test
     fun `R12 a saved game and last setup load back`() {
-        val setup = SaveFixtures.config(players = 3, startScore = 301, rule = CheckoutRule.SINGLE_OUT)
+        val setup = SaveFixtures.setup(players = 3, startScore = 301, rule = CheckoutRule.SINGLE_OUT)
         direct.saveGame(SaveFixtures.WAITING_BUST)
         direct.saveLastSetup(setup)
 
@@ -34,10 +34,10 @@ class PersistenceTest {
     @Test
     fun `R12 delete removes the saved game only`() {
         direct.saveGame(SaveFixtures.MID_TURN)
-        direct.saveLastSetup(SaveFixtures.config())
+        direct.saveLastSetup(SaveFixtures.setup())
         direct.deleteGame()
 
-        assertEquals(LoadResult(GameLoad.Absent, SaveFixtures.config()), direct.load())
+        assertEquals(LoadResult(GameLoad.Absent, SaveFixtures.setup()), direct.load())
     }
 
     /** R12: over the limit the previous file stays; a later delete still deletes it; undo resumes saving. */
@@ -114,9 +114,9 @@ class PersistenceTest {
     /** R11: an unforeseen loader failure deletes both files, so the app cannot fail the same way at every launch. */
     @Test
     fun `R11 an unexpected loader failure deletes both files instead of crashing`() {
-        val failing = GameSaveCodec { _, _ -> throw IllegalStateException("unforeseen") }
+        val failing = GameSaveCodec { _, _, _ -> throw IllegalStateException("unforeseen") }
         gameStore.content = codec.encode(SaveFixtures.MID_TURN)
-        setupStore.content = LastSetupCodec().encode(SaveFixtures.config())
+        setupStore.content = LastSetupCodec().encode(SaveFixtures.setup())
         val persistence = Persistence(gameStore, setupStore, Runnable::run, gameCodec = failing)
 
         assertEquals(LoadResult(GameLoad.Invalid(InvalidSaveReason.UNEXPECTED_ERROR), null), persistence.load())

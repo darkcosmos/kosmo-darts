@@ -3,6 +3,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
@@ -18,7 +19,7 @@ import kotlin.random.Random
 class PersistenceEffectsTest {
 
     private val reducer = AppReducer(Random(0))
-    private val config = SaveFixtures.config()
+    private val config = SaveFixtures.setup()
 
     private fun effectsOf(before: AppState, event: AppEvent): List<PersistenceEffect> =
         persistenceEffects(before, reducer.reduce(before, event))
@@ -99,7 +100,7 @@ class PersistenceEffectsTest {
 
         assertEquals(
             listOf(
-                PersistenceEffect.SaveLastSetup(started),
+                PersistenceEffect.SaveLastSetup(X01MatchConfig(started)),
                 PersistenceEffect.SaveGame(SavedGame(X01Game(started), isAwaitingNextPlayer = false)),
             ),
             effectsOf(setup, AppEvent.StartRequested),
@@ -116,12 +117,12 @@ class PersistenceEffectsTest {
     @Test
     fun `R7 Rematch saves the rotated setup and the new game`() {
         val three = X01Config(listOf("Ann", "Bob", "Cid"))
-        val end = AppState(screen = Screen.End(X01Game(three, emptyList())), lastSetup = three)
+        val end = AppState(screen = Screen.End(X01Game(three, emptyList())), lastSetup = X01MatchConfig(three))
         val rotated = X01Config(listOf("Bob", "Cid", "Ann"))
 
         assertEquals(
             listOf(
-                PersistenceEffect.SaveLastSetup(rotated),
+                PersistenceEffect.SaveLastSetup(X01MatchConfig(rotated)),
                 PersistenceEffect.SaveGame(SavedGame(X01Game(rotated), isAwaitingNextPlayer = false)),
             ),
             effectsOf(end, AppEvent.Rematch),

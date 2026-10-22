@@ -1,20 +1,24 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
-import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 
 /**
- * Encodes and decodes the last setup file, format version 1 (docs/adr/0001-save-format.md, rules R7, R10, R11): the
- * player names in throwing order, the start score and the checkout rule of the last game started.
+ * Encodes the last setup file in format version 2 and decodes versions 1 and 2 (docs/adr/0001-save-format.md,
+ * docs/adr/0005-save-format-v2-match.md; rules R7, R10, R11, R13, R16): the player names in throwing order, the start
+ * score, the checkout rule and the match format of the last game started. A version 1 file has the format 1 and 1.
  */
 class LastSetupCodec {
 
-    fun encode(config: X01Config): ByteArray = SaveFormat.encode(KIND, configLines(config))
+    fun encode(setup: X01MatchConfig): ByteArray =
+        SaveFormat.encode(KIND, writeBody(V2_LAYOUT, SaveBody(setup.config, setup.format)))
 
     /** The last setup, or `null` for any invalid content (rule R10). Never throws. */
-    fun decode(bytes: ByteArray): X01Config? = try {
+    fun decode(bytes: ByteArray): X01MatchConfig? = try {
         ensure(bytes.size <= MAX_FILE_BYTES, InvalidSaveReason.TOO_LARGE)
-        val reader = SaveFormat.decode(bytes, KIND)
-        readConfig(reader).also { reader.finish() }
+        val file = SaveFormat.decode(bytes, KIND, LAYOUTS.keys)
+        val body = readBody(file.reader, LAYOUTS.getValue(file.version))
+        file.reader.finish()
+        X01MatchConfig(body.config, body.format)
     } catch (ignored: InvalidSaveException) {
         null
     }
@@ -24,5 +28,27 @@ class LastSetupCodec {
         const val MAX_FILE_BYTES: Int = 4_096
 
         private const val KIND = "last-setup"
+
+        /** Version 1 (ADR 0001). */
+        private val V1_LAYOUT = listOf(
+            SaveKey.GAME,
+            SaveKey.START_SCORE,
+            SaveKey.CHECKOUT,
+            SaveKey.PLAYERS,
+            SaveKey.PLAYER,
+        )
+
+        /** Version 2 (ADR 0005): version 1 plus the match format after the checkout rule. */
+        private val V2_LAYOUT = listOf(
+            SaveKey.GAME,
+            SaveKey.START_SCORE,
+            SaveKey.CHECKOUT,
+            SaveKey.LEGS_PER_SET,
+            SaveKey.SETS,
+            SaveKey.PLAYERS,
+            SaveKey.PLAYER,
+        )
+
+        private val LAYOUTS = mapOf(SaveFormat.VERSION_1 to V1_LAYOUT, SaveFormat.VERSION_2 to V2_LAYOUT)
     }
 }

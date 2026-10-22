@@ -91,7 +91,10 @@ class GameSaveCodecTest {
         assertNull(codec.encode(tooLong))
     }
 
-    /** ADR 0001: format version 1 is frozen; this file must keep decoding the same in every later version. */
+    /**
+     * ADR 0001, R16: format version 1 is frozen; the file written by the version 1 encoder (fixture generated before
+     * version 2) must keep decoding the same in every later version.
+     */
     @Test
     fun `format v1 golden file`() {
         val darts = listOf(Dart.triple(20), Dart.single(20), Dart.double(5))
@@ -112,6 +115,35 @@ class GameSaveCodecTest {
 
         """.trimIndent().toByteArray(Charsets.UTF_8)
 
+        assertArrayEquals(golden, V1Fixtures.bytes("game-golden.save"))
+        assertEquals(GameDecodeResult.Valid(saved), codec.decode(golden))
+    }
+
+    /** ADR 0005: format version 2 of a single game, exact bytes. */
+    @Test
+    fun `format v2 golden file of a single game`() {
+        val darts = listOf(Dart.triple(20), Dart.single(20), Dart.double(5))
+        val saved = savedAfter(X01Config(listOf("Ann", "Clément")), darts)
+        val golden = """
+            kosmodarts=saved-game
+            version=2
+            game=x01
+            start-score=501
+            checkout=double-out
+            legs-per-set=1
+            sets=1
+            players=2
+            player=QW5u
+            player=Q2zDqW1lbnQ=
+            legs=0
+            darts=T20 20 D5
+            awaiting-next-player=true
+            between-legs=false
+            crc32=83195349
+            end
+
+        """.trimIndent().toByteArray(Charsets.UTF_8)
+
         assertArrayEquals(golden, codec.encode(saved))
         assertEquals(GameDecodeResult.Valid(saved), codec.decode(golden))
     }
@@ -120,7 +152,7 @@ class GameSaveCodecTest {
     @Test
     fun `R12 decoding 10,000 darts builds the game once`() {
         var builds = 0
-        val counting = GameSaveCodec { config, darts -> builds++; X01Game(config, darts) }
+        val counting = GameSaveCodec { config, darts, starter -> builds++; X01Game(config, darts, starter) }
         val bytes = checkNotNull(counting.encode(SaveFixtures.LONGEST))
 
         counting.decode(bytes)

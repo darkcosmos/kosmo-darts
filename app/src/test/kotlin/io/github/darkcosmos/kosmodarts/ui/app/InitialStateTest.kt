@@ -21,7 +21,7 @@ class InitialStateTest {
         SaveFixtures.WAITING_CHECKOUT,
     )
     private val lastSetups =
-        listOf(null, SaveFixtures.config(players = 3, startScore = 301, rule = CheckoutRule.SINGLE_OUT))
+        listOf(null, SaveFixtures.setup(players = 3, startScore = 301, rule = CheckoutRule.SINGLE_OUT))
 
     @Test
     fun `R1 back on the game screen after process death`() {

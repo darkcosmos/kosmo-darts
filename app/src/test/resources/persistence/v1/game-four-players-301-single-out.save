@@ -1,0 +1,14 @@
+kosmodarts=saved-game
+version=1
+game=x01
+start-score=301
+checkout=single-out
+players=4
+player=QW5u
+player=Qm9i
+player=Q2lk
+player=RGFu
+darts=T20 50 0 25
+awaiting-next-player=false
+crc32=29146619
+end

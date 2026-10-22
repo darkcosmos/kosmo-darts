@@ -1,6 +1,8 @@
 package io.github.darkcosmos.kosmodarts.ui.game
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.keepScreenOn
@@ -40,6 +45,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
@@ -61,6 +67,9 @@ private const val ROW_ORDER_AVERAGE = 1f
 private const val ROW_ORDER_REMAINING = 2f
 private const val ROW_ORDER_BOX = 3f
 private const val CARD_ORDER_NAME = 0f
+// M14: the indicator line is read after the name in the card, and after the row line in a row.
+private const val ORDER_INDICATORS = 0.5f
+private const val ROW_ORDER_INDICATORS = 1f
 private const val CARD_ORDER_SUGGESTION = 4f
 private const val CARD_ORDER_DARTS = 5f
 
@@ -98,52 +107,84 @@ fun GameScreen(
             AbandonDialog(onEvent)
         }
         game.pendingTurn?.takeIf { game.isCheckoutDialogShown }?.let { turn ->
-            CheckoutDialog(game.game.state.players[turn.playerIndex].name, turn.darts, onEvent)
+            CheckoutDialog(
+                game.game.state.players[turn.playerIndex].name,
+                turn.darts,
+                game.checkoutDialogOutcome,
+                onEvent,
+            )
         }
         noVoiceNotice?.let { NoVoiceDialog(it, onEvent) }
     }
 }
 
+/**
+ * The players in configuration order: the highlighted card and the other rows. The highlighted card is scrolled
+ * fully into view each time [GameScreenState.highlightedPlayerIndex] changes, and on first display (U1, M14).
+ */
 @Composable
 private fun Scoreboard(game: GameScreenState, modifier: Modifier) {
     val state = game.game.state
     val visitBoxes = visitBoxTexts(game)
+    val indicators = game.indicators
+    val currentCard = remember { BringIntoViewRequester() }
+    LaunchedEffect(game.highlightedPlayerIndex) {
+        // After the frame that lays the card out at its new place.
+        withFrameNanos {}
+        currentCard.bringIntoView()
+    }
     Column(
-        modifier = modifier.verticalScroll(rememberScrollState()),
+        modifier = modifier
+            .testTag(GameTags.SCOREBOARD)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         state.players.forEachIndexed { index, player ->
+            val figures = PlayerFigures(player, index, game.averageOf(index), indicators?.get(index))
             if (index == game.highlightedPlayerIndex) {
                 CurrentPlayerCard(
-                    player,
-                    index,
+                    figures,
                     game.highlightedTurnDarts,
                     visitBoxes[index],
                     game.isBustShown,
                     game.checkoutSuggestion,
+                    Modifier.bringIntoViewRequester(currentCard),
                 )
             } else {
-                PlayerRow(player, index, visitBoxes[index])
+                PlayerRow(figures, visitBoxes[index])
             }
         }
     }
 }
 
+/**
+ * What a card or a row shows of a player besides the turn: the leg figures, the match average (M9) and the match
+ * indicators (M14, `null` in a single game).
+ */
+private class PlayerFigures(
+    val player: X01PlayerState,
+    val index: Int,
+    val average: Double?,
+    val indicator: MatchIndicator?,
+)
+
 @Composable
 private fun CurrentPlayerCard(
-    player: X01PlayerState,
-    index: Int,
+    figures: PlayerFigures,
     turnDarts: List<Dart>,
     visitBox: VisitBoxText?,
     isBust: Boolean,
     checkoutSuggestion: List<Dart>?,
+    modifier: Modifier = Modifier,
 ) {
+    val player = figures.player
+    val index = figures.index
     val toThrow = stringResource(R.string.game_to_throw, player.name)
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer,
         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
         shape = MaterialTheme.shapes.large,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .testTag(GameTags.CURRENT_PLAYER),
     ) {
@@ -170,7 +211,10 @@ private fun CurrentPlayerCard(
                             contentDescription = toThrow
                         },
                 )
-                PlayerAverage(player, index, MaterialTheme.typography.titleMedium)
+                PlayerAverage(figures.average, index, MaterialTheme.typography.titleMedium)
+            }
+            figures.indicator?.let {
+                MatchIndicators(it, index, Modifier.semantics { traversalIndex = ORDER_INDICATORS })
             }
             CardScoreLine(player.remaining, isBust, visitBox, index, SPACING)
             CheckoutSuggestionLine(checkoutSuggestion, CARD_ORDER_SUGGESTION)
@@ -212,8 +256,35 @@ private fun DartSlots(darts: List<Dart>, modifier: Modifier = Modifier) {
     }
 }
 
+/** A player who is not highlighted; in a match, the indicator line goes under the row (M14). */
 @Composable
-private fun PlayerRow(player: X01PlayerState, index: Int, visitBox: VisitBoxText?) {
+private fun PlayerRow(figures: PlayerFigures, visitBox: VisitBoxText?) {
+    val indicator = figures.indicator
+    if (indicator == null) {
+        PlayerRowLine(figures, visitBox)
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .semantics { isTraversalGroup = true },
+        ) {
+            PlayerRowLine(figures, visitBox)
+            MatchIndicators(
+                indicator,
+                figures.index,
+                Modifier
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 4.dp)
+                    .semantics { traversalIndex = ROW_ORDER_INDICATORS },
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlayerRowLine(figures: PlayerFigures, visitBox: VisitBoxText?) {
+    val player = figures.player
+    val index = figures.index
     val nameStyle = MaterialTheme.typography.titleMedium
     Row(
         modifier = Modifier
@@ -244,7 +315,7 @@ private fun PlayerRow(player: X01PlayerState, index: Int, visitBox: VisitBoxText
             },
             trailing = {
                 PlayerAverage(
-                    player,
+                    figures.average,
                     index,
                     MaterialTheme.typography.bodyMedium,
                     Modifier.semantics { traversalIndex = ROW_ORDER_AVERAGE },
@@ -252,17 +323,7 @@ private fun PlayerRow(player: X01PlayerState, index: Int, visitBox: VisitBoxText
                 )
             },
         )
-        Text(
-            text = player.remaining.toString(),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onBackground,
-            maxLines = 1,
-            softWrap = false,
-            modifier = Modifier
-                .testTag(GameTags.remaining(index))
-                .semantics { traversalIndex = ROW_ORDER_REMAINING },
-        )
+        RowRemaining(player.remaining, index)
         // A row box is never hidden: only the card hides it, while its bust waits (VT13).
         visitBox?.let {
             VisitTotalBox(
@@ -276,17 +337,33 @@ private fun PlayerRow(player: X01PlayerState, index: Int, visitBox: VisitBoxText
     }
 }
 
-/** Three-dart average of the player. */
+/** Remaining score of a player row. */
+@Composable
+private fun RowRemaining(remaining: Int, index: Int) {
+    Text(
+        text = remaining.toString(),
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onBackground,
+        maxLines = 1,
+        softWrap = false,
+        modifier = Modifier
+            .testTag(GameTags.remaining(index))
+            .semantics { traversalIndex = ROW_ORDER_REMAINING },
+    )
+}
+
+/** Three-dart average of the player over the whole match (M9). */
 @Composable
 private fun PlayerAverage(
-    player: X01PlayerState,
+    average: Double?,
     index: Int,
     style: TextStyle,
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
 ) {
     Text(
-        text = stringResource(R.string.game_average, averageText(player.threeDartAverage)),
+        text = stringResource(R.string.game_average, averageText(average)),
         style = style,
         color = color,
         modifier = modifier.testTag(GameTags.average(index)),
@@ -295,10 +372,21 @@ private fun PlayerAverage(
 
 /**
  * Modal confirmation of the winning dart. It cannot be dismissed by tapping outside or with system back: the only
- * ways out are "Finish game" and Undo.
+ * ways out are "Finish …" and Undo. The confirm button names what it decides (M15): "Finish leg", "Finish set", or
+ * "Finish game" for the match and a single game.
  */
 @Composable
-private fun CheckoutDialog(playerName: String, darts: List<Dart>, onEvent: (AppEvent) -> Unit) {
+private fun CheckoutDialog(
+    playerName: String,
+    darts: List<Dart>,
+    outcome: LegOutcome?,
+    onEvent: (AppEvent) -> Unit,
+) {
+    val finishLabel = when (outcome) {
+        LegOutcome.LEG -> R.string.checkout_finish_leg
+        LegOutcome.SET -> R.string.checkout_finish_set
+        LegOutcome.MATCH, null -> R.string.checkout_finish
+    }
     AlertDialog(
         onDismissRequest = {},
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
@@ -312,7 +400,7 @@ private fun CheckoutDialog(playerName: String, darts: List<Dart>, onEvent: (AppE
         },
         confirmButton = {
             TextButton(onClick = { onEvent(AppEvent.FinishGameTapped) }) {
-                Text(stringResource(R.string.checkout_finish))
+                Text(stringResource(finishLabel))
             }
         },
         dismissButton = {
@@ -323,8 +411,9 @@ private fun CheckoutDialog(playerName: String, darts: List<Dart>, onEvent: (AppE
     )
 }
 
+/** The "Abandon the game?" confirmation, shared by the game screen and the between-legs screen (M16, R6). */
 @Composable
-private fun AbandonDialog(onEvent: (AppEvent) -> Unit) {
+internal fun AbandonDialog(onEvent: (AppEvent) -> Unit) {
     AlertDialog(
         onDismissRequest = { onEvent(AppEvent.AbandonDismissed) },
         title = { Text(stringResource(R.string.game_abandon_title)) },

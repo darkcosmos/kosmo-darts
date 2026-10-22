@@ -23,11 +23,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
@@ -35,6 +37,8 @@ import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.format.averageText
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
@@ -42,11 +46,12 @@ import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 private val CONTENT_MAX_WIDTH = 560.dp
 private val MIN_TOUCH_TARGET = 48.dp
 private val PADDING = PaddingValues(horizontal = 24.dp, vertical = 16.dp)
+private const val NAME_MAX_LINES = 2
 
-/** End of a leg: ranking (ties share a rank), then rematch and new game. */
+/** End of a match (M17), a single game included: ranking (ties share a rank), then rematch and new game. */
 @Composable
-fun EndScreen(game: X01Game, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
-    val rows = endRows(game)
+fun EndScreen(match: X01Match, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
+    val rows = endRows(match)
     Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         BoxWithConstraints(modifier = Modifier.safeDrawingPadding()) {
             if (maxWidth > maxHeight) {
@@ -88,7 +93,7 @@ private fun Ranking(rows: List<EndRow>) {
             modifier = Modifier.semantics { heading() },
         )
     }
-    rows.forEach { RankingRow(it) }
+    rows.forEachIndexed { position, row -> RankingRow(row, position) }
 }
 
 @Composable
@@ -105,7 +110,7 @@ private fun Actions(onEvent: (AppEvent) -> Unit) {
 }
 
 @Composable
-private fun RankingRow(row: EndRow) {
+private fun RankingRow(row: EndRow, position: Int) {
     Surface(
         color = if (row.isWinner) {
             MaterialTheme.colorScheme.primaryContainer
@@ -125,20 +130,41 @@ private fun RankingRow(row: EndRow) {
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
             )
+            val average = stringResource(R.string.end_average, averageText(row.threeDartAverage))
+            val darts = pluralStringResource(R.plurals.end_darts_thrown, row.dartsThrown, row.dartsThrown)
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = row.name, style = MaterialTheme.typography.titleMedium)
-                Text(
-                    text = stringResource(R.string.end_average, averageText(row.threeDartAverage)),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text(
-                    text = pluralStringResource(R.plurals.end_darts_thrown, row.dartsThrown, row.dartsThrown),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+                if (row.legsWon == null) {
+                    // A single game: exactly as before matches (M5).
+                    Text(text = row.name, style = MaterialTheme.typography.titleMedium)
+                    Text(text = average, style = MaterialTheme.typography.bodyMedium)
+                    Text(text = darts, style = MaterialTheme.typography.bodyMedium)
+                } else {
+                    // M17, U8: the name on two lines at most, then every figure with its label on one wrapping line.
+                    Text(
+                        text = row.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = NAME_MAX_LINES,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = matchFigures(row, average, darts),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.testTag(EndTags.figures(position)),
+                    )
+                }
             }
         }
     }
 }
+
+/** "Sets 2 · Legs 5 · 3-dart avg. 45.3 · 39 darts", the sets only with more than one set (M17). */
+@Composable
+private fun matchFigures(row: EndRow, average: String, darts: String): String = listOfNotNull(
+    row.setsWon?.let { stringResource(R.string.match_score_sets, it) },
+    row.legsWon?.let { stringResource(R.string.match_score_legs, it) },
+    average,
+    darts,
+).joinToString(stringResource(R.string.match_score_separator))
 
 @Preview
 @Composable
@@ -148,6 +174,6 @@ private fun EndScreenPreview() {
         List(3) { Dart.single(20) } +
         listOf(Dart.triple(20), Dart.triple(20), Dart.single(1))
     KosmoDartsTheme {
-        EndScreen(game = X01Game(config, darts), onEvent = {})
+        EndScreen(match = X01Match(X01MatchConfig(config), emptyList(), X01Game(config, darts)), onEvent = {})
     }
 }

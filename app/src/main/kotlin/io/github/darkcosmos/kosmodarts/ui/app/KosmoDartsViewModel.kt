@@ -32,9 +32,12 @@ class KosmoDartsViewModel(
 
     val state: StateFlow<AppState> = mutableState.asStateFlow()
 
-    /** Whether the game screen is shown: the activity stores it for a return after process death (rule R1). */
+    /**
+     * Whether the game screen or the between-legs screen is shown: the activity stores it for a return after process
+     * death (rules R1, R14; ADR 0002).
+     */
     val isOnGameScreen: Boolean
-        get() = mutableState.value.screen is Screen.Game
+        get() = mutableState.value.screen.let { it is Screen.Game || it is Screen.BetweenLegs }
 
     /** Called after an event changed the screen, before its cues are handed over (ADR 0004, decision 1). */
     var onScreenChanged: (Screen) -> Unit = {}

@@ -122,7 +122,9 @@ internal abstract class AnnouncementsScreenTestBase {
         composeRule.onNodeWithText(string(R.string.home_new_game)).performScrollTo().performClick()
         composeRule.onNodeWithText("301").performClick()
         if (names.size == 1) {
-            composeRule.onNodeWithContentDescription(string(R.string.setup_remove_player)).performClick()
+            composeRule.onNodeWithContentDescription(string(R.string.setup_remove_player))
+                .performScrollTo()
+                .performClick()
         }
         names.forEachIndexed { index, name ->
             composeRule.onNodeWithTag(SetupTags.nameField(index)).performScrollTo().performTextReplacement(name)

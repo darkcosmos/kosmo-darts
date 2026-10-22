@@ -35,7 +35,7 @@ class ResourcePhrasesTest {
 
     @Test
     @Config(qualifiers = "en")
-    fun `AN8 E1 English phrases`() {
+    fun `AN8 E1 AN27 English phrases`() {
         val phrases = phrases()
         assertEquals(
             listOf("Ann, you're throwing first.", "Ann to throw first.", "Game on! Ann throws first."),
@@ -49,12 +49,14 @@ class ResourcePhrasesTest {
         assertEquals("140", phrases.turnScore(140))
         assertEquals("No score", phrases.noScore())
         assertEquals("Game shot! Ann wins", phrases.win("Ann"))
+        assertEquals("Leg for Ann", phrases.legWon("Ann"))
+        assertEquals("Set for Ann", phrases.setWon("Ann"))
         assertEquals("Announcements on", phrases.announcementsOn())
     }
 
     @Test
     @Config(qualifiers = "fr")
-    fun `AN8 E1 French phrases`() {
+    fun `AN8 E1 AN27 French phrases`() {
         val phrases = phrases()
         assertEquals(
             listOf("Ann, c'est toi qui commences.", "On commence avec Ann.", "Ann, à toi l'honneur."),
@@ -68,6 +70,8 @@ class ResourcePhrasesTest {
         assertEquals("140", phrases.turnScore(140))
         assertEquals("Pas de score", phrases.noScore())
         assertEquals("Victoire de Ann", phrases.win("Ann"))
+        assertEquals("Manche pour Ann", phrases.legWon("Ann"))
+        assertEquals("Set pour Ann", phrases.setWon("Ann"))
         assertEquals("Annonces activées", phrases.announcementsOn())
     }
 

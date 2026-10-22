@@ -6,6 +6,8 @@ import io.github.darkcosmos.kosmodarts.audio.SoundEffect.DART_HIT
 import io.github.darkcosmos.kosmodarts.audio.SoundEffect.DART_MISS
 import io.github.darkcosmos.kosmodarts.audio.SoundEffect.ONE_EIGHTY
 import io.github.darkcosmos.kosmodarts.audio.SoundEffect.VICTORY
+import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 import io.github.darkcosmos.kosmodarts.settings.AudioSettings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -422,6 +424,76 @@ class AnnouncementPlayerTest {
         announce(AudioStep.Speech("first Bob"))
         clock.advanceBy(20_000)
         assertEquals(listOf(Heard.Sound(VICTORY, 20_000)), timeline.heard)
+    }
+
+    private fun winCue(outcome: LegOutcome, bigFish: Boolean = false) = player.play(
+        CueScript.of(
+            if (bigFish) X01Cue.BigFish(0, "Ann", outcome) else X01Cue.GameShot(0, "Ann", outcome),
+            TestPhrases,
+        ),
+    )
+
+    /** AN27 (owner O1): a leg or set win, big fish included: no victory sound, its voice, and the next step waits. */
+    @Test
+    fun `AN27 a leg or set win plays its voice without the victory sound`() {
+        listOf(
+            Triple(LegOutcome.LEG, false, "leg Ann"),
+            Triple(LegOutcome.LEG, true, "leg Ann"),
+            Triple(LegOutcome.SET, false, "set Ann"),
+            Triple(LegOutcome.SET, true, "set Ann"),
+        ).forEach { (outcome, bigFish, voice) ->
+            timeline.heard.clear()
+            val start = clock.now()
+            dart()
+            winCue(outcome, bigFish)
+            announce(AudioStep.Speech("first Bob"))
+            clock.advanceBy(20_000)
+
+            assertEquals(
+                "$outcome big fish=$bigFish",
+                listOf(
+                    Heard.Sound(DART_HIT, start),
+                    Heard.Speech(voice, start + 510),
+                    Heard.Speech("first Bob", start + 510 + 800),
+                ),
+                timeline.heard,
+            )
+        }
+    }
+
+    /** AN27, AN9, AN10: the match win keeps the victory sound with its voice; the next step waits for both. */
+    @Test
+    fun `AN27 the match win plays the victory sound with its voice`() {
+        dart()
+        winCue(LegOutcome.MATCH)
+        announce(AudioStep.Speech("first Bob"))
+        clock.advanceBy(20_000)
+
+        assertEquals(
+            listOf(
+                Heard.Sound(DART_HIT, 0),
+                Heard.Sound(VICTORY, 510),
+                Heard.Speech("win Ann", 510),
+                Heard.Speech("first Bob", 510 + 4_000),
+            ),
+            timeline.heard,
+        )
+    }
+
+    /** AN27: voice off and sounds on: nothing after the dart for a leg win, the victory sound for the match. */
+    @Test
+    fun `AN27 with the voice off a leg win is silent after the dart`() {
+        settings = AudioSettings(voiceEnabled = false)
+        dart()
+        winCue(LegOutcome.LEG)
+        clock.advanceBy(20_000)
+        assertEquals(listOf(Heard.Sound(DART_HIT, 0)), timeline.heard)
+
+        timeline.heard.clear()
+        dart()
+        winCue(LegOutcome.MATCH)
+        clock.advanceBy(20_000)
+        assertEquals(listOf(Heard.Sound(DART_HIT, 20_000), Heard.Sound(VICTORY, 20_000 + 510)), timeline.heard)
     }
 
     /** A.2: a victory sound not loaded yet: the voice still plays and the step ends with it. */

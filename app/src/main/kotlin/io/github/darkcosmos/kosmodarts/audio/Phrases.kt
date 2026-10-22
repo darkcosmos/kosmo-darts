@@ -14,8 +14,14 @@ interface Phrases {
 
     fun noScore(): String
 
-    /** E2: the win, for a game shot and a big fish alike. */
+    /** E2: the win of the match (a single game included), for a game shot and a big fish alike. */
     fun win(name: String): String
+
+    /** AN27: a leg won that decides neither a set nor the match. */
+    fun legWon(name: String): String
+
+    /** AN27: a set won that does not decide the match. */
+    fun setWon(name: String): String
 
     /** AN25: the call of a scoring dart, or `null` for a miss. */
     fun dartCall(dart: Dart): String?

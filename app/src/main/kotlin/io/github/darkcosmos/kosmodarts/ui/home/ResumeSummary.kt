@@ -18,19 +18,31 @@ data class ResumeSummary(
     val highlightedPlayer: String,
     val isCheckoutToConfirm: Boolean,
 ) {
-    data class PlayerScore(val name: String, val remaining: Int)
+    /**
+     * @property remaining in the current leg.
+     * @property setsWon sets won, or `null` in a single game or with one set (M18).
+     * @property legsWon legs won in the current set, or `null` in a single game (M18), as on the cards (M14).
+     */
+    data class PlayerScore(val name: String, val remaining: Int, val setsWon: Int? = null, val legsWon: Int? = null)
 
     companion object {
-        /** Reads the player to throw from the resumed game screen, so that both always agree. */
+        /**
+         * Reads the player to throw from the resumed game screen, so that both always agree. Between legs, that is the
+         * starter of the next leg (M18).
+         */
         fun of(saved: SavedGame): ResumeSummary {
             val screen = saved.toGameScreenState()
             val state = screen.game.state
             // A saved game always has a highlighted player: a finished one waits in its checkout dialog.
             val highlighted = checkNotNull(screen.highlightedPlayerIndex)
+            val indicators = screen.indicators
             return ResumeSummary(
                 startScore = screen.game.config.startScore,
                 checkoutRule = screen.game.config.checkoutRule,
-                players = state.players.map { PlayerScore(it.name, it.remaining) },
+                players = state.players.mapIndexed { index, player ->
+                    val indicator = indicators?.get(index)
+                    PlayerScore(player.name, player.remaining, indicator?.setsWon, indicator?.legsWon)
+                },
                 highlightedPlayer = state.players[highlighted].name,
                 isCheckoutToConfirm = screen.isCheckoutDialogShown,
             )

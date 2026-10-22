@@ -171,11 +171,18 @@ private fun SummaryCard(summary: ResumeSummary) {
                         .testTag(HomeTags.player(index))
                         .semantics(mergeDescendants = true) {},
                 ) {
-                    Text(
-                        text = player.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.weight(1f),
-                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = player.name, style = MaterialTheme.typography.bodyLarge)
+                        // M18: the match score, with the same labels as the cards; it wraps, the remaining never does.
+                        matchScoreText(player)?.let {
+                            Text(
+                                text = it,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.testTag(HomeTags.matchScore(index)),
+                            )
+                        }
+                    }
                     Text(
                         text = player.remaining.toString(),
                         style = MaterialTheme.typography.titleMedium,
@@ -195,6 +202,15 @@ private fun SummaryCard(summary: ResumeSummary) {
             )
         }
     }
+}
+
+/** M18: "Sets 1 · Legs 2" (the sets only with more than one set), or `null` for a single game. */
+@Composable
+private fun matchScoreText(player: ResumeSummary.PlayerScore): String? = player.legsWon?.let { legs ->
+    listOfNotNull(
+        player.setsWon?.let { stringResource(R.string.match_score_sets, it) },
+        stringResource(R.string.match_score_legs, legs),
+    ).joinToString(stringResource(R.string.match_score_separator))
 }
 
 @Composable

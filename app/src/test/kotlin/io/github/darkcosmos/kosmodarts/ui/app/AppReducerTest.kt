@@ -5,6 +5,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.engine.x01.X01ConfigError
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
@@ -101,13 +102,13 @@ class AppReducerTest {
 
         val expected = GameScreenState(X01Game(X01Config(listOf("Ann", "Bob"))))
         assertEquals(Screen.Game(expected, isNewGame = true), state.screen)
-        assertEquals(X01Config(listOf("Ann", "Bob")), state.lastSetup)
+        assertEquals(X01MatchConfig(X01Config(listOf("Ann", "Bob"))), state.lastSetup)
     }
 
     @Test
     /** R7: names in order, start score and checkout rule. */
     fun aNewSetupIsPrefilledWithTheLastSetup() {
-        val state = AppState(lastSetup = singleOut301).after(AppEvent.NewGame)
+        val state = AppState(lastSetup = X01MatchConfig(singleOut301)).after(AppEvent.NewGame)
 
         assertEquals(Screen.Setup(SetupState(301, CheckoutRule.SINGLE_OUT, listOf("Ann", "Bob", "Cid"))), state.screen)
     }
@@ -215,10 +216,13 @@ class AppReducerTest {
 
     @Test
     fun newGameFromTheEndScreenOpensThePrefilledSetup() {
-        val state = AppState(lastSetup = singleOut301, screen = inGame(singleOut301, winningDarts).screen)
+        val state = AppState(
+            lastSetup = X01MatchConfig(singleOut301),
+            screen = inGame(singleOut301, winningDarts).screen,
+        )
             .after(*finishEvents, AppEvent.NewGame)
 
-        assertEquals(Screen.Setup(SetupState.prefilled(singleOut301)), state.screen)
+        assertEquals(Screen.Setup(SetupState.prefilled(X01MatchConfig(singleOut301))), state.screen)
     }
 
     /** VT2, VT5 (T1 of the #36 design review): a rematch starts with every box at 0, through the existing reducer. */
@@ -233,7 +237,10 @@ class AppReducerTest {
     /** VT2, VT5: "New game" from the end screen, then Start: every box at 0. */
     @Test
     fun newGameAfterAGameStartsWithFreshVisitTotals() {
-        val state = AppState(lastSetup = singleOut301, screen = inGame(singleOut301, winningDarts).screen)
+        val state = AppState(
+            lastSetup = X01MatchConfig(singleOut301),
+            screen = inGame(singleOut301, winningDarts).screen,
+        )
             .after(*finishEvents, AppEvent.NewGame, AppEvent.StartRequested)
 
         val screen = (state.screen as Screen.Game).game
