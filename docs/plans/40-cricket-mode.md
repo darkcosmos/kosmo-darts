@@ -1071,3 +1071,10 @@ notes are applied:
 ## Implementation notes
 
 (One line per task: task id, deviations, where the main pieces live.)
+
+- T1: `docs/rules/cricket.md` (CR1 to CR16, CR20 to CR28; CR17 to CR19 reserved); `engine/player/PlayerListRules.kt`
+  (`PlayerListError`, `PlayerListViolation`, `normalize`, `violations`, `MAX_PLAYERS`, `MAX_NAME_LENGTH`), to which
+  `X01Config` delegates (its constants alias the shared ones, its errors map one to one, X01 tests unchanged);
+  `engine/cricket/` `CricketVariant`, `CricketTarget` (`points` derived from board order, `NUMBERS`, `ofNumber`),
+  `CricketConfig` (+ `InvalidCricketConfigException`, `targets`), `CricketMarks` (`target`, `count`, `NONE`,
+  `of(dart, config)`). No deviation.
