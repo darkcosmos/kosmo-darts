@@ -120,20 +120,15 @@ data class SetupState(
     /** PC4: shuffles the throwing order with [random], injected so that tests are deterministic. */
     fun shuffled(random: Random): SetupState = edited(copy(roster = roster.shuffled(random)))
 
-    /** CR21: Standard or Cut-throat. */
-    fun withCricketVariant(value: CricketVariant): SetupState = edited(copy(cricketVariant = value))
-
-    /** CR21: whether the Bull is a target. */
-    fun withBullInPlay(value: Boolean): SetupState = edited(copy(isBullInPlay = value))
-
     /**
      * Validates the setup of its [mode] with the engine rules (rules C5, M1, CR1); the slots go with the names (PC5).
      */
     fun start(): SetupResult = try {
         val format = MatchFormat(legsPerSet, sets)
         when (mode) {
-            GameMode.X01 ->
-                SetupResult.Valid(X01MatchConfig(X01Config(roster.names, startScore, checkoutRule), format, roster.slots))
+            GameMode.X01 -> SetupResult.Valid(
+                X01MatchConfig(X01Config(roster.names, startScore, checkoutRule), format, roster.slots),
+            )
             GameMode.CRICKET -> SetupResult.ValidCricket(
                 CricketMatchConfig(CricketConfig(roster.names, cricketVariant, isBullInPlay), format, roster.slots),
             )
@@ -143,17 +138,6 @@ data class SetupState(
     } catch (e: InvalidCricketConfigException) {
         invalid(e.violations.map { it.error.toX01ConfigError() to it.playerIndices })
     }
-
-    private fun invalid(errors: List<Pair<X01ConfigError, List<Int>>>): SetupResult.Invalid {
-        val byField = errors
-            .flatMap { (error, indices) -> indices.map { it to error } }
-            .groupBy(keySelector = { it.first }, valueTransform = { it.second })
-        val screenLevel = errors.filter { it.second.isEmpty() }.map { it.first }
-        return SetupResult.Invalid(copy(nameErrors = byField, screenErrors = screenLevel))
-    }
-
-    private fun edited(state: SetupState): SetupState =
-        state.copy(nameErrors = emptyMap(), screenErrors = emptyList())
 
     companion object {
         private const val DEFAULT_PLAYER_COUNT = 2
@@ -217,4 +201,21 @@ private fun PlayerListError.toX01ConfigError(): X01ConfigError = when (this) {
     PlayerListError.BLANK_NAME -> X01ConfigError.BLANK_NAME
     PlayerListError.NAME_TOO_LONG -> X01ConfigError.NAME_TOO_LONG
     PlayerListError.DUPLICATE_NAME -> X01ConfigError.DUPLICATE_NAME
+}
+
+/** An edit clears the errors of the last [SetupState.start] attempt. */
+private fun edited(state: SetupState): SetupState = state.copy(nameErrors = emptyMap(), screenErrors = emptyList())
+
+/** CR21: Standard or Cut-throat. */
+fun SetupState.withCricketVariant(value: CricketVariant): SetupState = edited(copy(cricketVariant = value))
+
+/** CR21: whether the Bull is a target. */
+fun SetupState.withBullInPlay(value: Boolean): SetupState = edited(copy(isBullInPlay = value))
+
+private fun SetupState.invalid(errors: List<Pair<X01ConfigError, List<Int>>>): SetupResult.Invalid {
+    val byField = errors
+        .flatMap { (error, indices) -> indices.map { it to error } }
+        .groupBy(keySelector = { it.first }, valueTransform = { it.second })
+    val screenLevel = errors.filter { it.second.isEmpty() }.map { it.first }
+    return SetupResult.Invalid(copy(nameErrors = byField, screenErrors = screenLevel))
 }
