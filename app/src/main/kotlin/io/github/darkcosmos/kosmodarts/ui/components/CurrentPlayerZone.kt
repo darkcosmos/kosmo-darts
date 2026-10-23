@@ -205,7 +205,7 @@ private fun NameRow(content: ZoneContent, contentColor: Color) {
 
 /** M14: "S1" "M1" on `background` with `onBackground` text, whatever the player's color. One TalkBack item. */
 @Composable
-private fun Chips(indicator: MatchIndicator, index: Int) {
+internal fun Chips(indicator: MatchIndicator, index: Int) {
     val colors = KosmoTheme.colors
     val description = indicatorDescription(indicator)
     Row(

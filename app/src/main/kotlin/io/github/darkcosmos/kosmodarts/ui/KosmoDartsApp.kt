@@ -6,6 +6,7 @@ import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.AppState
 import io.github.darkcosmos.kosmodarts.ui.app.Screen
 import io.github.darkcosmos.kosmodarts.ui.between.BetweenLegsScreen
+import io.github.darkcosmos.kosmodarts.ui.cricket.CricketGameScreen
 import io.github.darkcosmos.kosmodarts.ui.end.EndScreen
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreen
 import io.github.darkcosmos.kosmodarts.ui.home.HomeScreen
@@ -39,8 +40,9 @@ fun KosmoDartsApp(
             )
         is Screen.End -> EndScreen(screen.match, onEvent)
         is Screen.Settings -> SettingsScreen(settings, onSettingsEvent, onBack = { onEvent(AppEvent.Back) })
-        // The Cricket routes come with docs/plans/40-cricket-mode.md, T8 (game) and T9 (between legs, end). These
-        // screens cannot be reached before T10 adds the Cricket card, so nothing is drawn for them yet.
-        is Screen.CricketGame, is Screen.CricketBetweenLegs, is Screen.CricketEnd -> Unit
+        // The Cricket game screen is T8; the between-legs and end screens come with T9 of docs/plans/40-cricket-mode.md.
+        // They cannot be reached before T10 adds the Cricket card, so nothing is drawn for them yet.
+        is Screen.CricketGame -> CricketGameScreen(screen.game, onEvent, noVoiceNotice = screen.noVoiceNotice)
+        is Screen.CricketBetweenLegs, is Screen.CricketEnd -> Unit
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
@@ -35,7 +36,7 @@ private val UNDERLINE = 4.dp
 /**
  * The three darts of the turn (design system, `DartSlots`): `background` boxes; the slot of the next dart underlined
  * in `accent`; with [isFinalDartHighlighted], the last dart (the winning one) in `accent`. Each slot is one TalkBack
- * item, "Dart 2: T20".
+ * item, "Dart 2: T20". The compact Cricket zone passes a lower [slotHeight].
  */
 @Composable
 fun DartSlots(
@@ -43,6 +44,7 @@ fun DartSlots(
     nextDartIndex: Int?,
     isFinalDartHighlighted: Boolean,
     modifier: Modifier = Modifier,
+    slotHeight: Dp = DART_SLOT_HEIGHT,
 ) {
     val colors = KosmoTheme.colors
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier) {
@@ -59,7 +61,7 @@ fun DartSlots(
                 contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .weight(1f)
-                    .height(DART_SLOT_HEIGHT)
+                    .height(slotHeight)
                     .clip(KosmoShapes.control)
                     .background(colors.background)
                     .testTag(GameTags.dartSlot(index))
