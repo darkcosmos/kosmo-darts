@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.audio
 
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketCue
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 
@@ -49,13 +50,29 @@ object CueScript {
     }
 
     /**
+     * AN29 to AN31: a hit or a miss is its sound, a closed-sector hit plays `CLOSED_SECTOR` instead of the hit sound
+     * and is still called when "Call each dart" is on (AN30). A turn start has no checkout suffix. There is no score,
+     * 180 or bust announcement (AN32).
+     */
+    fun of(cue: CricketCue, phrases: Phrases): AudioAction = when (cue) {
+        is CricketCue.DartHit -> AudioAction.DartSound(SoundEffect.DART_HIT, phrases.dartCall(cue.dart))
+        is CricketCue.ClosedSectorHit -> AudioAction.DartSound(SoundEffect.CLOSED_SECTOR, phrases.dartCall(cue.dart))
+        CricketCue.DartMiss -> AudioAction.DartSound(SoundEffect.DART_MISS)
+        CricketCue.DartUndone -> AudioAction.Undo
+        is CricketCue.TurnStart -> speech(phrases.turnStart(cue.name, cue.isGameStart))
+        is CricketCue.Win -> win(cue.name, cue.outcome, phrases)
+    }
+
+    /**
      * AN27 (owner O1): the victory sound with the victory phrase only when the match is won (a single game included).
      * A leg or a set is its own phrase alone, with no victory sound: with the voice off, nothing follows the dart.
      */
-    private fun win(cue: X01Cue.Win, phrases: Phrases): AudioAction = when (cue.outcome) {
-        LegOutcome.LEG -> speech(phrases.legWon(cue.name))
-        LegOutcome.SET -> speech(phrases.setWon(cue.name))
-        LegOutcome.MATCH -> victory(phrases.win(cue.name))
+    private fun win(cue: X01Cue.Win, phrases: Phrases): AudioAction = win(cue.name, cue.outcome, phrases)
+
+    private fun win(name: String, outcome: LegOutcome, phrases: Phrases): AudioAction = when (outcome) {
+        LegOutcome.LEG -> speech(phrases.legWon(name))
+        LegOutcome.SET -> speech(phrases.setWon(name))
+        LegOutcome.MATCH -> victory(phrases.win(name))
     }
 
     /** E1: the turn start phrase, then the remaining score when a checkout is possible. */
