@@ -5,6 +5,10 @@ object HomeTags {
     /** The "GAME IN PROGRESS" card (R2, M18). */
     const val SUMMARY = "home_summary"
 
+    /** The title "GAME IN PROGRESS" and the format line of the card (U6). */
+    const val SUMMARY_TITLE = "home_summary_title"
+    const val SUMMARY_FORMAT = "home_summary_format"
+
     /** "RESUME · <player> TO THROW" (R2, owner Q11 of issue #49). */
     const val RESUME = "home_resume"
 

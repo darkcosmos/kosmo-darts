@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalResources
@@ -18,7 +17,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
@@ -54,18 +52,20 @@ fun ResumeCard(summary: ResumeSummary, onResume: () -> Unit, modifier: Modifier 
             .testTag(HomeTags.SUMMARY)
             .padding(CARD_PADDING),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        // The title keeps its own line and the format line the full width below it: a long Cricket format ("CRICKET ·
+        // CUT-THROAT · NO 25-BULL · FIRST TO 2 SETS · FIRST TO 2 LEGS") wraps instead of squeezing the title (U6).
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = stringResource(R.string.home_saved_game_title),
                 style = KosmoTheme.typography.label,
                 color = colors.accent,
-                modifier = Modifier.weight(1f).semantics { heading() },
+                modifier = Modifier.fillMaxWidth().testTag(HomeTags.SUMMARY_TITLE).semantics { heading() },
             )
             Text(
                 text = formatLine(summary),
                 style = KosmoTheme.typography.label,
                 color = colors.onBackgroundMuted,
-                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth().testTag(HomeTags.SUMMARY_FORMAT),
             )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
