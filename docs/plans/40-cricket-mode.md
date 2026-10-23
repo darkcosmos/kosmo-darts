@@ -1134,3 +1134,20 @@ notes are applied:
   too (`newMatchState(setup, previous)`, `prefilled(lastSetup?.x01Setup)`, loader type); test call sites of 10 other
   test files adapted mechanically. The roster names are checked through `IllegalArgumentException`, which covers
   both config exceptions.
+- T7: `ui/cricket/CricketGameScreenState.kt` (state holder; `CricketZoneMode`, `CricketZoneScore` Points or
+  ClosedTargets(n, `targets.size`), `CricketBoardRow`; winner highlight with empty turn darts on a non-thrower win;
+  VT6 visits; `colorSlots` is a property, to stay under detekt's function count), `ui/cricket/CricketBoardText.kt`
+  (`CricketRowText`, `RowStyle`, `BoardTextColor`; labels reuse `game_visit_value` and `dart_bull`),
+  `ui/cricket/SavedCricketGameScreen.kt`, `ui/format/MprFormat.kt` (`formatMpr(mpr, locale, none)`: the dash is a
+  resource, passed in), `ui/app/GameMode.kt`, `ui/app/CricketReducer.kt` (`onCricketGame`, `onCricketBetweenLegs`,
+  `onCricketEnd`, `newCricketMatchState`, `cricketRematchSetup`), new screens and `NewGame(mode)` in `AppState.kt`
+  (`Home.newGameDialogMode` replaces the flag; `isGameOrBetweenLegs`, `isNewGameShown`), Cricket branches in
+  `PersistenceEffect.kt` (`SaveGame(StoredGame)`) and `InitialState.kt` (restores a Cricket screen after a process
+  kill). Deviations: the Cricket cues are a separate `cricketGameCues` with a default `CueSink.onCricketCues`, so the
+  X01 cue types and tests are unchanged, and their tests are in `CricketGameCuesTest` rather than `GameCuesTest`;
+  `SetupState.mode` added now (`toSetup(mode)` still prefills X01 and `start()` still starts X01 until T10);
+  `Home.resumableGame` stays X01-only (Cricket summary and Resume in T10); `KosmoDartsApp` has an empty branch for
+  the Cricket screens (T8, T9); wiring outside the file list: `AudioBinder`, `GameAudioSession`, the ViewModel,
+  `NoVoiceNotice`, `HomeScreen`/`EndScreen` events, `MatchIndicator.of`/`MatchPosition.current(score)` shared in
+  `GameScreenState.kt`; extra `CricketPersistenceEffectsTest`; about 20 test files adapted to `NewGame(GameMode.X01)`
+  and long lines wrapped. Process slip: `CueSink.kt` (8 lines) was rewritten with Write instead of Edit.
