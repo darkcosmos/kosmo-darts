@@ -209,8 +209,18 @@ Engine:
 
   They follow VT1 to VT7 of `visit-total.md` with marks instead of points and without the bust state. Like VT6, the
   engine also gives each player's last completed visit, used while a turn waits. They restart at each leg (M9).
-- CR15. Dead target: a target closed by every player (by the only player in a solo game). A dart with at least one mark
-  on a target that was dead before the dart is a *closed-sector hit* (owner sound request, AN30).
+- CR15. Dead target ("zone totalement fermée", owner O1 A): a target closed by every player (by the only player in a
+  solo game). A target becomes dead on the dart that gives its last missing mark to the last player who had not closed
+  it. A *closed-sector hit* is a dart with at least one mark on a target that was already dead **before** this dart
+  (owner sound request, AN30). Consequences (owner example, 3 players: P1 closed 20 with three single 20s, P2 with T20
+  then D20):
+  - the dart of P3 that gives him his third mark on 20 makes 20 dead, but it is not a closed-sector hit: it is a
+    normal hit, because 20 was not dead before it;
+  - every later dart on 20, by P1, P2 or P3, the rest of P3's visit included, is a closed-sector hit;
+  - a dart that closes a target for the thrower while an opponent still has it open is a normal hit, and so is any
+    scoring (Standard) or point-giving (Cut-throat) surplus dart;
+  - undoing the dart that made a target dead makes it live again (CR11), and its row and sound follow;
+  - with 25-Bull off, the Bull is not a target, so 25 and Bull darts are never closed-sector hits.
 - CR16. Match tie-break (M10, M20): points in the last leg, in the CR12 direction, then board marks in the last leg
   (more is better).
 
@@ -250,10 +260,26 @@ App (implemented in T8 to T10):
   - cells: empty, `/`, `X` or `Ⓧ`;
   - a footer row with the points, absent in a solo game;
   - the current player's column has an `accent` border and a "▶" before his name;
-  - a row closed by every player is greyed and its target label struck through.
+  - a dead row (CR15, owner complement to O1) is **struck through and in a less visible color**, so that only the
+    rows still in play read clearly:
+    - one horizontal line of 2 dp in `onBackgroundMuted` crosses the whole row: the target label and every player's
+      cell;
+    - the label and the marks switch from `onBackground` to `onBackgroundMuted`. This is an existing token (8.7:1 on
+      `surface`), so the row stays above the design system's 4.5:1 rule (section 8) and no opacity is applied to its
+      text. The live rows stay in `onBackground`;
+    - the row keeps its height and its marks (`Ⓧ` for everyone), so the board does not move when a row dies;
+    - the strike-through line carries the information, the color only adds to it. The row reads as closed in
+      grayscale too, and the capture test checks this with a grayscale copy of the 4-player capture.
 
-  No information is carried by color alone. TalkBack reads each cell, for example "20, Anna : 2 marques" or
-  "20 : fermée par tous".
+  No information is carried by color alone.
+
+  TalkBack:
+  - a live cell is read as "20, Anna : 2 marques" (« 20, Anna : 2 marques » / "20, Anna: 2 marks"), and "fermée"
+    (« 20, Anna : fermée » / "20, Anna: closed") at 3 marks;
+  - a dead row is one merged node, read once as « 20 : fermée par tous, ne compte plus » ("20: closed by everyone, no
+    longer scores"), without reading its cells one by one;
+  - when a row dies, nothing extra is announced: the sound (AN30) and the visual change are the feedback, and a live
+    region would talk over the voice calls.
 - CR24. `CricketKeypad`:
   - 20 to 15, `25`, `Bull`, `Raté`, plus the one-shot modifiers Double and Triple (the X01 keypad pattern: single by
     default, so there is no "Simple" key);
@@ -289,7 +315,8 @@ Changes to other rules:
     shared roster.
 - `announcements.md`:
   - AN29: the Cricket cues of section 4 and their hook points, the same as `gameCues` for X01 (AN7);
-  - AN30: `sfx_closed_cricket_sector` plays instead of the hit sound for a closed-sector hit (CR15). Any other dart with
+  - AN30: `sfx_closed_cricket_sector` plays instead of the hit sound for a closed-sector hit (CR15: a dart on a target
+    already closed by every player before this dart; the dart that completes the closure plays the hit sound). Any other dart with
     marks plays the hit sound, and a dart with 0 marks plays the miss sound. With "Call each dart" on, a closed-sector
     hit is still called after its sound;
   - AN31: turn start (without the checkout suffix), the leg, set and victory voice (AN27) and the victory sound only on
@@ -383,7 +410,8 @@ Docs:
 | Win banner | "VICTORY" | « VICTOIRE » |
 | Keypad miss key | the existing miss string | identical |
 | TalkBack, cell | "%1$s, %2$s: %3$d marks" | « %1$s, %2$s : %3$d marques » |
-| TalkBack, dead row | "%1$s: closed by everyone" | « %1$s : fermée par tous » |
+| TalkBack, closed cell | "%1$s, %2$s: closed" | « %1$s, %2$s : fermée » |
+| TalkBack, dead row | "%1$s: closed by everyone, no longer scores" | « %1$s : fermée par tous, ne compte plus » |
 | TalkBack, current column | "%1$s, throwing" | « %1$s, au lancer » |
 | TalkBack, visit marks | "Current turn: %1$d marks" / "Last turn: %1$d marks" | « Volée en cours : … », « Dernière volée : … » |
 
@@ -423,7 +451,14 @@ The French texts use a non-breaking space before the colon. The final wording is
   - MPR over completed legs and the current leg, surplus and dead marks included;
   - no MPR before the first dart;
   - visit marks in every state, reset at a new leg, last completed visit while waiting.
-- `CricketDeadTargetTest` (CR15): dead only when every player has closed; solo.
+- `CricketDeadTargetTest` (CR15):
+  - dead only when every player has closed;
+  - the owner's 3-player example: P3's closing dart is not a closed-sector hit, and his next dart on 20 and later
+    darts by P1 or P2 on 20 are;
+  - a dart that closes for the thrower while an opponent is open is not one;
+  - undo of the dart that made the target dead makes it live again;
+  - solo;
+  - 25-Bull off.
 - `CricketMatchTest` (M1 to M12, M19, CR16):
   - leg, set and match outcomes;
   - starter rotation;
@@ -434,6 +469,7 @@ The French texts use a non-breaking space before the colon. The final wording is
 - `MatchRankingTest`: the comparator overload (M20); the existing X01 ranking tests stay unchanged.
 - `CricketCuesTest` (AN29 to AN32):
   - hit, closed-sector hit and miss;
+  - the closing dart is a hit, and the next dart on the same target in the same visit is a closed-sector hit (CR15);
   - undo;
   - turn start (game start, after "Next player", next leg);
   - leg, set and match win, including a win by a non-thrower;
@@ -473,7 +509,9 @@ The French texts use a non-breaking space before the colon. The final wording is
 - Cricket game screen:
   - the keypad sends the right events;
   - the keys and the action bar follow the state;
-  - TalkBack descriptions of the board cells, the dead rows and the current column;
+  - TalkBack descriptions of the board cells, the current column and the dead rows (one merged node, CR23);
+  - a dead row is drawn with the strike-through line and `onBackgroundMuted`, and the live rows with `onBackground`;
+  - the contrast of `onBackgroundMuted` on the board background is at least 4.5:1 (`PaletteContrastTest` case);
   - touch targets of at least 48 dp;
   - fit at 360 x 640 and 640 x 360 with 4 players at font scales 1.0 and 2.0 (nothing truncated);
   - the `Ⓧ` glyph check: if Saira has no `Ⓧ`, `CricketBoard` draws it (circle + X), and a test proves the three marks
@@ -490,6 +528,8 @@ The French texts use a non-breaking space before the colon. The final wording is
   - the win state (CR25: banner and action bar).
 - Also:
   - a win by a non-thrower;
+  - a board with 2 dead rows and the others live, with 2 and 4 players, plus a grayscale copy of the 4-player capture
+    (the dead rows must still read as closed, CR23);
   - solo;
   - Cut-throat;
   - a modifier active;
@@ -515,8 +555,14 @@ The PR description turns this into numbered steps, starting from a fresh install
    (CR21, R22).
 3. Standard, 2 players:
    - three singles on 20 close it (`/`, `X`, `Ⓧ`), and a triple 20 afterwards scores 60 (CR3, CR4);
-   - once the opponent closes 20, a 20 scores nothing, the row turns grey and struck through, and the new sound plays
-     (CR4, CR15, AN30);
+   - when the opponent puts his third mark on 20, his dart plays the normal hit sound, and the 20 row becomes struck
+     through and dimmer, while the other rows stay bright (CR15, CR23);
+   - from then on, any dart in 20, by either player and also later in the same visit, scores nothing and plays the new
+     "closed sector" sound (CR4, CR15, AN30);
+   - an undo of the closing dart brings the row back to normal (CR15);
+   - with 3 players (the owner's example: P1 three single 20s, P2 T20 then D20, P3 his third mark), the sound plays
+     only once all three have closed 20. A dart that closes 20 for one player while another still has it open plays the
+     normal sound;
    - an undo restores the marks and the points (CR11).
 4. The MPR on the zone, and the visit box with the marks of the visit, both in the zone and in the board header
    (CR13, CR14).
@@ -650,14 +696,15 @@ The PR description turns this into numbered steps, starting from a fresh install
 ### T8 - Cricket game screen: board, keypad, zone
 
 - Goal: `CricketGameScreen`, `CricketBoard`, `CricketKeypad`, `KeypadKeys.kt` (moved keys), `ZoneStat` and the VICTOIRE
-  banner in `CurrentPlayerZone`, CR22 to CR25, the strings, the design system doc, and the captures listed for the game
+  banner in `CurrentPlayerZone`, CR22 to CR25 (with the dead row style and its merged TalkBack node, CR23), the strings, the design system doc, and the captures listed for the game
   screen, the keypad and the win state.
 - Files:
   - `ui/cricket/CricketGameScreen.kt`, `CricketBoard.kt`, `CricketKeypad.kt`, `CricketTags.kt`;
   - `ui/game/KeypadKeys.kt`, `Keypad.kt`, `ui/components/CurrentPlayerZone.kt`,
     `ui/KosmoDartsApp.kt` (game screen route);
   - `res/values/strings.xml`, `res/values-fr/strings.xml`, `docs/design/design-system.md`;
-  - tests `CricketScreenTest` (Robolectric), `CricketScreenshotTest`.
+  - tests `CricketScreenTest` (Robolectric, with the dead row style and TalkBack cases), `CricketScreenshotTest`
+    (with the dead rows and their grayscale capture), and a new `PaletteContrastTest` case for a dead row.
 - Depends on: T7.
 - Done when: `./gradlew :app:testDebugUnitTest` and `./gradlew build` are green, the X01 captures are unchanged, and
   `kosmo-detekt` exits 0.
@@ -718,8 +765,20 @@ Owner precisions (same comment):
   current player's zone, and outlined in each player's board column header (CR14, CR23).
 - P3. When a dart hits a fully closed sector, play `sfx_closed_cricket_sector.ogg`, generated with ElevenLabs on the
   free plan. The file is recovered from `origin/feat/sfx_cricket` (T4), credited in `docs/sounds/CREDITS.md`, and
-  played instead of the hit sound (AN30). "Fully closed" is read as "closed by every player" (CR15), pending
-  confirmation (Open question O1).
+  played instead of the hit sound (AN30).
+
+Owner answers to the plan's open questions (issue #40 comment, after the plan):
+- O1 A: "totalement fermée" means that every player has closed that sector. Owner example with 3 players: P1 put three
+  single 20s and P2 put T20 then D20. When P3 puts his third mark on 20, 20 is totally closed. From then on, if P1, P2
+  or P3 puts a dart in 20, the sound plays. Reading recorded in CR15, to be checked in the design review:
+  - the dart that completes the closure is a normal hit, since the sector was not totally closed before it;
+  - the sound plays only for darts thrown after it, the rest of the same visit included;
+  - a dart that closes a sector for the thrower while an opponent still has it open is a normal hit;
+  - in a solo game, "every player" is the player.
+- O1 complement: a totally closed row is struck through and in a less visible color, so that only the rows still in
+  play read clearly. Applied in CR23: a 2 dp line plus `onBackgroundMuted`, an existing token that keeps 4.5:1. The
+  line carries the information without the color, and TalkBack reads one merged description.
+- O2 A: `25` and `Bull` are greyed (disabled) while Double or Triple is active, as on the X01 keypad (CR24, D4).
 
 Design decisions taken in this plan (open to the design review):
 - D1. Separate Cricket bindings (`CricketMatch`, `CricketGameScreenState`, `CricketReducer`) on top of the shared
@@ -728,8 +787,8 @@ Design decisions taken in this plan (open to the design review):
 - D3. `StoredGame` above the unchanged `SavedGame` (alternative A2); format version 4 with a mode line; one
   last-setup file (alternative A4).
 - D4. The issue's "Simple / Double / Triple" follows the X01 keypad: single by default, one-shot Double and Triple
-  keys, and no "Simple" key. With a modifier active, 25 and Bull are disabled, as on the X01 keypad (Q11 "comme sur le
-  pavé X01"). Confirmation requested as O2.
+  keys, and no "Simple" key. With a modifier active, 25 and Bull are disabled (greyed), as on the X01 keypad (owner
+  O2 A).
 - D5. No `PlayerTile`s on the Cricket game screen: the board shows every player (CR22). To be confirmed by the UX
   review.
 - D6. In the zone, a solo game shows the closed targets "n/7" in place of the points, consistent with Q8 (CR22). To be
@@ -737,19 +796,7 @@ Design decisions taken in this plan (open to the design review):
 
 ## Open questions
 
-- O1 (product, for Kosmo). "Lorsqu'une zone est totalement fermée": does the closed sound play when the sector is
-  closed by every player (the greyed row), or as soon as the thrower himself has closed it? Options:
-  - A (recommended): closed by every player (the row is greyed and scores nothing any more; in a solo game, closed by
-    the player);
-  - B: closed by the thrower, even when the dart still scores points (Standard) or gives points to opponents
-    (Cut-throat).
-
-  In both cases the sound replaces the hit sound (never both), and the dart is still called by the voice when "Call each
-  dart" is on. The plan is written for A.
-- O2 (product, for Kosmo, minor). Q11 A said that an active Double/Triple is "ignored" on `25`/`Bull`, "comme sur le
-  pavé X01". The X01 keypad actually disables `25` and `Bull` while Double or Triple is active. Options:
-  - A (recommended): the same as X01, keys disabled;
-  - B: keys enabled, and the modifier ignored.
+- O1 and O2: answered by Kosmo (see Decisions).
 - O3 (owner follow-up, not a squad action). Kosmo asked to delete the branch `feat/sfx_cricket` once its content is
   recovered. Deleting a remote branch is left to Kosmo (or to an explicit instruction from him to `main`) after T4 is
   merged. No squad member deletes it.
