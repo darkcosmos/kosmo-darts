@@ -117,3 +117,20 @@ private fun closingDarts(target: CricketTarget): List<Dart> =
 /** The Cricket game of a valid result; fails the test if the file held another mode. */
 internal val GameDecodeResult.Valid.cricket: SavedCricketGame
     get() = saved as SavedCricketGame
+
+/**
+ * Like [playLegWonBy], except that [winner] first scores 20 points: T20, a single 20 while nobody else closed 20,
+ * then the same closing darts as [playLegWonBy]. Nobody else scores.
+ */
+internal fun CricketMatch.playLegWonByScoring20(winner: Int): CricketMatch {
+    val script = listOf(Dart.triple(20), Dart.single(20), Dart.MISS) +
+        config.targets.filter { it != CricketTarget.TWENTY }.flatMap(::closingDarts)
+    var match = this
+    while (!match.currentLeg.state.isFinished) {
+        val state = match.currentLeg.state
+        val player = checkNotNull(state.currentPlayerIndex)
+        val dart = if (player == winner) script[state.players[player].dartsThrown] else Dart.MISS
+        match = match.throwDart(dart)
+    }
+    return match
+}

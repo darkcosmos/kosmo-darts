@@ -26,14 +26,17 @@ import io.github.darkcosmos.kosmodarts.ui.components.ScoreboardRow
 import io.github.darkcosmos.kosmodarts.ui.components.ScrollingScreen
 import io.github.darkcosmos.kosmodarts.ui.components.WinnerZone
 import io.github.darkcosmos.kosmodarts.ui.components.WinnerZoneTags
-import io.github.darkcosmos.kosmodarts.ui.format.averageText
 import io.github.darkcosmos.kosmodarts.ui.format.displayName
 import io.github.darkcosmos.kosmodarts.ui.format.formatText
+import io.github.darkcosmos.kosmodarts.ui.format.statisticEndDescription
+import io.github.darkcosmos.kosmodarts.ui.format.statisticHeader
+import io.github.darkcosmos.kosmodarts.ui.format.statisticText
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 
 private val AVERAGE_WIDTH = 84.dp
 private val DARTS_WIDTH = 60.dp
+private val POINTS_WIDTH = 60.dp
 private val BUTTON_MIN_HEIGHT = 58.dp
 
 /**
@@ -44,13 +47,33 @@ private val BUTTON_MIN_HEIGHT = 58.dp
  */
 @Composable
 fun EndScreen(match: X01Match, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
-    val rows = endRows(match)
+    EndContent(
+        rows = endRows(match),
+        formatLine = formatText(match.config.startScore, match.config.checkoutRule, match.format),
+        mode = GameMode.X01,
+        onEvent = onEvent,
+        modifier = modifier,
+    )
+}
+
+/**
+ * The end layout of any mode, drawn from [rows] (X01: [EndScreen]; Cricket: `CricketEndScreen`). [formatLine] is the
+ * mode's format line; [mode] decides the statistic column and the "NEW GAME" mode.
+ */
+@Composable
+fun EndContent(
+    rows: List<EndRow>,
+    formatLine: String,
+    mode: GameMode,
+    onEvent: (AppEvent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     ScrollingScreen(
         buttonCount = 2,
         modifier = modifier,
         content = {
             Text(
-                text = formatText(match.config.startScore, match.config.checkoutRule, match.format),
+                text = formatLine,
                 style = KosmoTheme.typography.label,
                 color = KosmoTheme.colors.onBackgroundMuted,
             )
@@ -63,7 +86,7 @@ fun EndScreen(match: X01Match, onEvent: (AppEvent) -> Unit, modifier: Modifier =
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            Ranking(rows)
+            Ranking(rows, mode)
         },
         buttons = {
             KosmoButton(
@@ -76,7 +99,7 @@ fun EndScreen(match: X01Match, onEvent: (AppEvent) -> Unit, modifier: Modifier =
             )
             KosmoButton(
                 text = stringResource(R.string.home_new_game),
-                onClick = { onEvent(AppEvent.NewGame(GameMode.X01)) },
+                onClick = { onEvent(AppEvent.NewGame(mode)) },
                 kind = ButtonKind.SECONDARY,
                 minHeight = BUTTON_MIN_HEIGHT,
                 modifier = Modifier
@@ -89,7 +112,7 @@ fun EndScreen(match: X01Match, onEvent: (AppEvent) -> Unit, modifier: Modifier =
 
 /** M17, owner Q8: SETS (more than one set), else LEGS (one set), else none; then MATCH AVG and DARTS (owner O2). */
 @Composable
-private fun Ranking(rows: List<EndRow>) {
+private fun Ranking(rows: List<EndRow>, mode: GameMode) {
     val showsSets = rows.any { it.setsWon != null }
     val showsLegs = !showsSets && rows.any { it.legsWon != null }
     val scoreHeader = when {
@@ -97,15 +120,18 @@ private fun Ranking(rows: List<EndRow>) {
         showsLegs -> stringResource(R.string.match_legs_label)
         else -> null
     }
+    val showsPoints = rows.any { it.points != null }
     val headers = listOfNotNull(
         scoreHeader?.let { ScoreCell(it, tag = EndTags.SCORE_HEADER) },
-        ScoreCell(stringResource(R.string.match_average_header), width = AVERAGE_WIDTH),
+        ScoreCell(stringResource(R.string.match_points_header), tag = EndTags.POINTS_HEADER, width = POINTS_WIDTH)
+            .takeIf { showsPoints },
+        ScoreCell(statisticHeader(mode), width = AVERAGE_WIDTH),
         ScoreCell(stringResource(R.string.end_darts_header), tag = EndTags.DARTS_HEADER, width = DARTS_WIDTH),
     )
     val separator = stringResource(R.string.checkout_spoken_separator)
     val scoreboardRows = rows.mapIndexed { position, row ->
         val score = if (showsSets) row.setsWon else row.legsWon.takeIf { showsLegs }
-        val average = averageText(row.threeDartAverage)
+        val average = statisticText(mode, row.threeDartAverage)
         val darts = pluralStringResource(R.plurals.end_darts_thrown, row.dartsThrown, row.dartsThrown)
         val description = listOfNotNull(
             row.rank.toString(),
@@ -113,7 +139,8 @@ private fun Ranking(rows: List<EndRow>) {
             score?.let {
                 stringResource(if (showsSets) R.string.match_score_sets else R.string.match_score_legs, it)
             },
-            stringResource(R.string.end_average, average),
+            row.points?.let { stringResource(R.string.cricket_points_description, it) },
+            statisticEndDescription(mode, average),
             darts,
         ).joinToString(separator)
         ScoreboardRow(
@@ -122,6 +149,7 @@ private fun Ranking(rows: List<EndRow>) {
             rank = row.rank,
             cells = listOfNotNull(
                 score?.let { ScoreCell(it.toString(), tag = EndTags.score(position)) },
+                row.points?.let { ScoreCell(it.toString(), tag = EndTags.points(position), width = POINTS_WIDTH) },
                 ScoreCell(average, tag = EndTags.average(position), width = AVERAGE_WIDTH),
                 ScoreCell(row.dartsThrown.toString(), tag = EndTags.darts(position), width = DARTS_WIDTH),
             ),

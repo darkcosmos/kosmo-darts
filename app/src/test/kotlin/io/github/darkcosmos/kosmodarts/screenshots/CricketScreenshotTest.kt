@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.screenshots
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.test.captureToImage
@@ -12,10 +13,14 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
+import io.github.darkcosmos.kosmodarts.persistence.playLegWonByScoring20
 import io.github.darkcosmos.kosmodarts.persistence.throwing
+import io.github.darkcosmos.kosmodarts.ui.cricket.CricketBetweenLegsScreen
+import io.github.darkcosmos.kosmodarts.ui.cricket.CricketEndScreen
 import io.github.darkcosmos.kosmodarts.ui.cricket.CricketGameScreen
 import io.github.darkcosmos.kosmodarts.ui.cricket.CricketGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.cricket.CricketTags
@@ -180,6 +185,86 @@ class CricketScreenshotTest {
         "win_match_portrait_en",
         CricketGameScreenState(CricketSaveFixtures.PENDING_MATCH_WIN.match, isAwaitingConfirmation = true),
     )
+
+    private fun captureScreen(name: String, content: @Composable () -> Unit) {
+        composeRule.runOnUiThread {
+            val view = ComposeView(composeRule.activity)
+            view.setContent { KosmoDartsTheme { content() } }
+            composeRule.activity.setContentView(view)
+        }
+        composeRule.waitForIdle()
+        composeRule.onRoot().captureRoboImage(path(name))
+    }
+
+    private fun betweenLegs(vararg names: String, legsPerSet: Int = 3, sets: Int = 1): CricketMatch =
+        CricketSaveFixtures.match(*names, legsPerSet = legsPerSet, sets = sets).playLegWonByScoring20(0).confirmLeg()
+
+    private fun finished(vararg names: String, legsPerSet: Int = 1, sets: Int = 1): CricketMatch =
+        CricketSaveFixtures.match(*names, legsPerSet = legsPerSet, sets = sets).playLegWonByScoring20(0)
+
+    private fun between(name: String, match: CricketMatch) =
+        captureScreen(name) { CricketBetweenLegsScreen(match, onEvent = {}) }
+
+    private fun end(name: String, match: CricketMatch) = captureScreen(name) { CricketEndScreen(match, onEvent = {}) }
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun betweenLegsLegs() = between("between_legs_2p_portrait_fr", betweenLegs("Anna", "Bob"))
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun betweenLegsSets() =
+        between("between_sets_2p_portrait_fr", betweenLegs("Anna", "Bob", legsPerSet = 1, sets = 2))
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun betweenLegsSolo() = between("between_legs_solo_portrait_fr", betweenLegs("Anna", legsPerSet = 2))
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun betweenLegsEnglish() = between("between_legs_2p_portrait_en", betweenLegs("Anna", "Bob"))
+
+    @Test
+    @Config(qualifiers = "+fr-land")
+    fun betweenLegs4PlayersLandscape() =
+        between("between_legs_4p_landscape_fr", betweenLegs("Anna", "Bob", "Cid", "Dan"))
+
+    @Test
+    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi")
+    fun betweenLegs4PlayersSmall() = between("between_legs_4p_360x640_fr", betweenLegs("Anna", "Bob", "Cid", "Dan"))
+
+    @Test
+    @Config(qualifiers = "+fr-port", fontScale = 2.0f)
+    fun betweenLegs4PlayersLargestFont() =
+        between("between_legs_4p_portrait_fr_font200", betweenLegs("Anna", "Bob", "Cid", "Dan"))
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun endSingleGame() = end("end_single_2p_portrait_fr", finished("Anna", "Bob"))
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun endLegs() = end("end_legs_3p_portrait_fr", finished("Anna", "Bob", "Cid", legsPerSet = 2))
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun endSets() = end("end_sets_2p_portrait_fr", finished("Anna", "Bob", legsPerSet = 1, sets = 2))
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun endSolo() = end("end_solo_portrait_fr", finished("Anna"))
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun endEnglish() = end("end_single_2p_portrait_en", finished("Anna", "Bob"))
+
+    @Test
+    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi")
+    fun end4PlayersSmall() = end("end_4p_360x640_fr", finished("Anna", "Bob", "Cid", "Dan"))
+
+    @Test
+    @Config(qualifiers = "+fr-port", fontScale = 2.0f)
+    fun end4PlayersLargestFont() = end("end_4p_portrait_fr_font200", finished("Anna", "Bob", "Cid", "Dan"))
 
     /** The root as pixels, in gray levels (review aid for color-blind readers). */
     private fun saveGrayscale(file: String) {
