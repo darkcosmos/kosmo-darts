@@ -50,7 +50,7 @@ class SaveColorsCodecTest {
         val decoded = gameCodec.decode(checkNotNull(gameCodec.encode(saved)))
 
         assertEquals(GameDecodeResult.Valid(saved), decoded)
-        assertEquals(listOf(SLOT_3, SLOT_1, SLOT_4), (decoded as GameDecodeResult.Valid).saved.match.colorSlots)
+        assertEquals(listOf(SLOT_3, SLOT_1, SLOT_4), (decoded as GameDecodeResult.Valid).x01.match.colorSlots)
         assertEquals("colors=3 1 4", gameBody.single { it.startsWith("colors=") })
     }
 
@@ -66,9 +66,9 @@ class SaveColorsCodecTest {
     fun `R18 version 1 games get slots by position`() {
         V1Fixtures.GAMES.keys.forEach { name ->
             val decoded = gameCodec.decode(V1Fixtures.bytes(name)) as GameDecodeResult.Valid
-            val players = decoded.saved.match.config.players.size
+            val players = decoded.x01.match.config.players.size
 
-            assertEquals(name, ColorSlot.byPosition(players), decoded.saved.match.colorSlots)
+            assertEquals(name, ColorSlot.byPosition(players), decoded.x01.match.colorSlots)
         }
     }
 
@@ -138,7 +138,10 @@ class SaveColorsCodecTest {
     /** S2, R9: a version 2 file carrying the version 3 colors key is malformed. */
     @Test
     fun `R9 a version 2 file with a colors line is malformed`() {
-        assertGameInvalid(InvalidSaveReason.MALFORMED, gameBody.map { if (it == "version=3") "version=2" else it })
+        // The version 4 mode line is dropped too (R25), so that only the colors line is wrong.
+        val version2 = gameBody.filterNot { it == "mode=x01" }.map { if (it == "version=4") "version=2" else it }
+
+        assertGameInvalid(InvalidSaveReason.MALFORMED, version2)
     }
 
     /** S1, R10: the same invalid colors lines make the last setup unreadable. */

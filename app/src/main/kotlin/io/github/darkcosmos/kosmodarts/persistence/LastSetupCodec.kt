@@ -13,6 +13,8 @@ class LastSetupCodec {
     fun encode(setup: X01MatchConfig): ByteArray = SaveFormat.encode(
         KIND,
         writeBody(V3_LAYOUT, SaveBody(setup.config, setup.format, colorSlots = setup.colorSlots)),
+        // The last setup gets its version 4 layout with the per-mode settings (R22); it stays in version 3 until then.
+        version = SaveFormat.VERSION_3,
     )
 
     /** The last setup, or `null` for any invalid content (rule R10). Never throws. */

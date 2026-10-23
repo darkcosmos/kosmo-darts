@@ -6,7 +6,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 sealed interface GameLoad {
     data object Absent : GameLoad
 
-    data class Valid(val saved: SavedGame) : GameLoad
+    data class Valid(val saved: StoredGame) : GameLoad
 
     /** The saved game cannot be resumed (rule R9). */
     data class Invalid(val reason: InvalidSaveReason) : GameLoad

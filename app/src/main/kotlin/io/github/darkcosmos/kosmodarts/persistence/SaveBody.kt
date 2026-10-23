@@ -50,8 +50,32 @@ internal data class SaveBody(
 /** Largest number of darts that is saved, in the current leg and in each confirmed leg (rule R12). */
 internal const val MAX_SAVED_DARTS: Int = 10_000
 
+/**
+ * The mode line of a version 4 file (ADR 0008, R23): `mode=x01` or `mode=cricket`, right after the version line.
+ * Versions 1 to 3 have no mode line and are X01 files (R25).
+ */
+internal enum class SaveMode(val token: String) {
+    X01("x01"),
+    CRICKET("cricket"),
+    ;
+
+    /** The mode line, as a body line. */
+    val line: Pair<String, String>
+        get() = KEY to token
+
+    companion object {
+        const val KEY: String = "mode"
+
+        /** Reads the mode line; a missing line is [InvalidSaveReason.MALFORMED], an unknown value OUT_OF_RANGE. */
+        fun read(reader: BodyReader): SaveMode {
+            val token = reader.value(KEY)
+            return entries.firstOrNull { it.token == token } ?: reject(InvalidSaveReason.OUT_OF_RANGE)
+        }
+    }
+}
+
 private const val GAME_X01 = "x01"
-private const val POINTS_DARTS_SEPARATOR = '/'
+internal const val FIGURE_SEPARATOR = '/'
 
 private val CHECKOUT_TOKENS = mapOf(CheckoutRule.DOUBLE_OUT to "double-out", CheckoutRule.SINGLE_OUT to "single-out")
 
@@ -141,12 +165,7 @@ private class BodyFields {
         reject(InvalidSaveReason.INVALID_CONFIG, e)
     }
 
-    /** M12: at most the number of legs a match of this format can have. Read after the format and the players. */
-    private fun parseLegCount(value: String): Int {
-        val count = SaveFormat.parseInteger(value)
-        ensure(count <= MatchFormat(legsPerSet, sets).maxLegs(playerCount), InvalidSaveReason.OUT_OF_RANGE)
-        return count
-    }
+    private fun parseLegCount(value: String): Int = parseLegCount(value, MatchFormat(legsPerSet, sets), playerCount)
 
     /**
      * A `leg` value: the winner index, then `points/darts` for each player in configuration order. The ranges are
@@ -158,7 +177,7 @@ private class BodyFields {
         ensure(tokens.size == leg.players.size + 1, InvalidSaveReason.MALFORMED)
         val winner = SaveFormat.parseInteger(tokens.first())
         val figures = tokens.drop(1).map { token ->
-            val parts = token.split(POINTS_DARTS_SEPARATOR)
+            val parts = token.split(FIGURE_SEPARATOR)
             ensure(parts.size == 2, InvalidSaveReason.MALFORMED)
             SaveFormat.parseInteger(parts[0]) to SaveFormat.parseInteger(parts[1])
         }
@@ -173,7 +192,7 @@ private class BodyFields {
 
 private fun legToken(leg: X01LegSummary): String =
     (listOf(leg.winnerIndex.toString()) + leg.pointsScored.indices.map { player ->
-        "${leg.pointsScored[player]}$POINTS_DARTS_SEPARATOR${leg.dartsThrown[player]}"
+        "${leg.pointsScored[player]}$FIGURE_SEPARATOR${leg.dartsThrown[player]}"
     }).joinToString(" ")
 
 private fun parseStartScore(value: String): Int {
@@ -186,13 +205,20 @@ private fun parseCheckout(value: String): CheckoutRule =
     CHECKOUT_TOKENS.entries.firstOrNull { it.value == value }?.key ?: reject(InvalidSaveReason.OUT_OF_RANGE)
 
 /** M1: legs per set and sets are each from [MatchFormat.MIN] to [MatchFormat.MAX]. */
-private fun parseFormatValue(value: String): Int {
+internal fun parseFormatValue(value: String): Int {
     val number = SaveFormat.parseInteger(value)
     ensure(number in MatchFormat.MIN..MatchFormat.MAX, InvalidSaveReason.OUT_OF_RANGE)
     return number
 }
 
-private fun parsePlayerCount(value: String): Int {
+/** M12: at most the number of legs a match of [format] can have. Read after the format and the players. */
+internal fun parseLegCount(value: String, format: MatchFormat, playerCount: Int): Int {
+    val count = SaveFormat.parseInteger(value)
+    ensure(count <= format.maxLegs(playerCount), InvalidSaveReason.OUT_OF_RANGE)
+    return count
+}
+
+internal fun parsePlayerCount(value: String): Int {
     val count = SaveFormat.parseInteger(value)
     ensure(count in 1..X01Config.MAX_PLAYERS, InvalidSaveReason.OUT_OF_RANGE)
     return count
@@ -203,7 +229,7 @@ private fun parsePlayerCount(value: String): Int {
  * (PC1). A wrong count or an empty token is [InvalidSaveReason.MALFORMED]; a value outside 1 to 4 or a repeated slot
  * is [InvalidSaveReason.OUT_OF_RANGE].
  */
-private fun parseColorSlots(value: String, playerCount: Int): List<ColorSlot> {
+internal fun parseColorSlots(value: String, playerCount: Int): List<ColorSlot> {
     val tokens = value.split(' ')
     ensure(tokens.size == playerCount && tokens.none(String::isEmpty), InvalidSaveReason.MALFORMED)
     val slots = tokens.map { ColorSlot.ofNumber(SaveFormat.parseInteger(it)) ?: reject(InvalidSaveReason.OUT_OF_RANGE) }
@@ -211,7 +237,7 @@ private fun parseColorSlots(value: String, playerCount: Int): List<ColorSlot> {
     return slots
 }
 
-private fun parseDarts(value: String): List<Dart> {
+internal fun parseDarts(value: String): List<Dart> {
     if (value.isEmpty()) return emptyList()
     // Count before splitting, so that an oversized list is rejected without building it.
     ensure(value.count { it == ' ' } < MAX_SAVED_DARTS, InvalidSaveReason.OUT_OF_RANGE)
@@ -221,7 +247,7 @@ private fun parseDarts(value: String): List<Dart> {
     }
 }
 
-private fun parseBoolean(value: String): Boolean = when (value) {
+internal fun parseBoolean(value: String): Boolean = when (value) {
     "true" -> true
     "false" -> false
     else -> reject(InvalidSaveReason.OUT_OF_RANGE)
