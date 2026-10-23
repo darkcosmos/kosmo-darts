@@ -20,21 +20,25 @@ class AppReducer(private val random: Random) {
         is Screen.BetweenLegs -> onBetweenLegs(state, screen, event)
         is Screen.End -> onEnd(state, screen.match, event)
         is Screen.Settings -> onSettings(state, screen, event)
+        is Screen.CricketGame -> onCricketGame(state, screen, event)
+        is Screen.CricketBetweenLegs -> onCricketBetweenLegs(state, screen, event)
+        is Screen.CricketEnd -> onCricketEnd(state, screen, event)
     }
 
     /** Rules R2 and R3: "Resume game", and "New game" that asks before deleting the saved game. */
     private fun onHome(state: AppState, home: Screen.Home, event: AppEvent): AppState {
         val saved = home.resumableGame
         return when {
-            home.isNewGameDialogShown -> when (event) {
-                AppEvent.NewGameConfirmed -> state.toSetup()
+            home.newGameDialogMode != null -> when (event) {
+                AppEvent.NewGameConfirmed -> state.toSetup(home.newGameDialogMode)
                 AppEvent.NewGameDismissed, AppEvent.Back ->
-                    state.copy(screen = home.copy(isNewGameDialogShown = false))
+                    state.copy(screen = home.copy(newGameDialogMode = null))
                 else -> state
             }
             event == AppEvent.SettingsTapped -> state.copy(screen = Screen.Settings(home))
-            event == AppEvent.NewGame && saved == null -> state.toSetup()
-            event == AppEvent.NewGame -> state.copy(screen = home.copy(isNewGameDialogShown = true))
+            event is AppEvent.NewGame && saved == null -> state.toSetup(event.mode)
+            // R3, R20: the confirmation remembers the mode of the "New game" that opened it.
+            event is AppEvent.NewGame -> state.copy(screen = home.copy(newGameDialogMode = event.mode))
             // R14: a match saved between legs resumes on the between-legs screen.
             event == AppEvent.ResumeTapped && saved != null -> state.copy(screen = saved.toScreen())
             else -> state
@@ -115,12 +119,10 @@ class AppReducer(private val random: Random) {
 
     private fun onEnd(state: AppState, match: X01Match, event: AppEvent): AppState = when (event) {
         AppEvent.Back -> state.copy(screen = Screen.Home())
-        AppEvent.NewGame -> state.toSetup()
+        is AppEvent.NewGame -> state.toSetup(event.mode)
         // Rule R7: a rematch is a game start, so its order becomes the last setup (owner decision, issue #30 Q3).
         // M17: same format (owner Q3).
         AppEvent.Rematch -> newMatchState(rematchSetup(match), state.lastSetup)
         else -> state
     }
-
-    private fun AppState.toSetup(): AppState = copy(screen = Screen.Setup(SetupState.prefilled(lastSetup?.x01Setup)))
 }

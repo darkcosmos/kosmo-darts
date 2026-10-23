@@ -76,8 +76,8 @@ class PersistenceEffectsTest {
             withAbandonDialog to AppEvent.AbandonDismissed,
             waiting to AppEvent.NumberTapped(20), // Ignored: the keypad is disabled.
             home to AppEvent.ResumeTapped,
-            home to AppEvent.NewGame,
-            reducer.reduce(home, AppEvent.NewGame) to AppEvent.NewGameDismissed,
+            home to AppEvent.NewGame(GameMode.X01),
+            reducer.reduce(home, AppEvent.NewGame(GameMode.X01)) to AppEvent.NewGameDismissed,
         ).forEach { (state, event) ->
             assertEquals(event.toString(), emptyList<PersistenceEffect>(), effectsOf(state, event))
         }
@@ -97,7 +97,7 @@ class PersistenceEffectsTest {
 
     @Test
     fun `R3 Delete in the new-game dialog deletes the saved game`() {
-        val dialog = AppState(screen = Screen.Home(SaveFixtures.MID_TURN, isNewGameDialogShown = true))
+        val dialog = AppState(screen = Screen.Home(SaveFixtures.MID_TURN, newGameDialogMode = GameMode.X01))
 
         assertEquals(listOf(PersistenceEffect.DeleteGame), effectsOf(dialog, AppEvent.NewGameConfirmed))
     }

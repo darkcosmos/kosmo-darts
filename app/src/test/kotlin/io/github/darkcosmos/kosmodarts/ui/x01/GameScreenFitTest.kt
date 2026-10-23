@@ -18,6 +18,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.components.breaksOnlyBetweenWords
 import io.github.darkcosmos.kosmodarts.ui.components.lineEnds
@@ -214,7 +215,9 @@ class GameScreenFitTest {
     @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = LARGEST_FONT_SCALE)
     fun `U12 header on two lines at most, 360 x 640, largest font size`() {
         send(
-            AppEvent.NewGame, AppEvent.StartScoreSelected(501), AppEvent.CheckoutRuleSelected(CheckoutRule.SINGLE_OUT),
+            AppEvent.NewGame(GameMode.X01),
+            AppEvent.StartScoreSelected(501),
+            AppEvent.CheckoutRuleSelected(CheckoutRule.SINGLE_OUT),
             AppEvent.SetsChanged(1), AppEvent.NameChanged(0, "Ann"), AppEvent.NameChanged(1, "Bob"),
             AppEvent.StartRequested,
         )
@@ -259,7 +262,7 @@ class GameScreenFitTest {
 
         /** From home: 301 double out with [names] (two to four), then Start. */
         fun start(vararg names: String): Array<AppEvent> = buildList {
-            add(AppEvent.NewGame)
+            add(AppEvent.NewGame(GameMode.X01))
             add(AppEvent.StartScoreSelected(301))
             repeat(names.size - 2) { add(AppEvent.PlayerAdded) }
             names.forEachIndexed { index, name -> add(AppEvent.NameChanged(index, name)) }

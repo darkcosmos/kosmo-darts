@@ -17,6 +17,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.components.ButtonKind
 import io.github.darkcosmos.kosmodarts.ui.components.KosmoButton
 import io.github.darkcosmos.kosmodarts.ui.components.ScoreCell
@@ -75,7 +76,7 @@ fun EndScreen(match: X01Match, onEvent: (AppEvent) -> Unit, modifier: Modifier =
             )
             KosmoButton(
                 text = stringResource(R.string.home_new_game),
-                onClick = { onEvent(AppEvent.NewGame) },
+                onClick = { onEvent(AppEvent.NewGame(GameMode.X01)) },
                 kind = ButtonKind.SECONDARY,
                 minHeight = BUTTON_MIN_HEIGHT,
                 modifier = Modifier

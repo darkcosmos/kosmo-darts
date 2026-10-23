@@ -50,18 +50,18 @@ class AppReducerTest {
 
     @Test
     fun newGameFromHomeOpensTheDefaultSetup() {
-        assertEquals(Screen.Setup(SetupState()), AppState().after(AppEvent.NewGame).screen)
+        assertEquals(Screen.Setup(SetupState()), AppState().after(AppEvent.NewGame(GameMode.X01)).screen)
     }
 
     @Test
     fun backFromSetupReturnsHome() {
-        assertEquals(Screen.Home(), AppState().after(AppEvent.NewGame, AppEvent.Back).screen)
+        assertEquals(Screen.Home(), AppState().after(AppEvent.NewGame(GameMode.X01), AppEvent.Back).screen)
     }
 
     @Test
     fun setupEventsEditTheSetup() {
         val state = AppState().after(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.StartScoreSelected(301),
             AppEvent.CheckoutRuleSelected(CheckoutRule.SINGLE_OUT),
             AppEvent.PlayerAdded,
@@ -88,7 +88,7 @@ class AppReducerTest {
 
     @Test
     fun invalidStartStaysOnSetupWithErrors() {
-        val state = AppState().after(AppEvent.NewGame, AppEvent.StartRequested)
+        val state = AppState().after(AppEvent.NewGame(GameMode.X01), AppEvent.StartRequested)
 
         val setup = (state.screen as Screen.Setup).setup
         assertEquals(listOf(X01ConfigError.BLANK_NAME), setup.errorsFor(0))
@@ -98,7 +98,7 @@ class AppReducerTest {
     /** R7: the last setup is retained when a game starts. */
     fun validStartOpensTheGameAndRemembersTheSetup() {
         val state = AppState().after(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.NameChanged(0, " Ann"),
             AppEvent.NameChanged(1, "Bob"),
             AppEvent.StartRequested,
@@ -112,7 +112,8 @@ class AppReducerTest {
     @Test
     /** R7: names in order, start score and checkout rule. */
     fun aNewSetupIsPrefilledWithTheLastSetup() {
-        val state = AppState(lastSetup = X01MatchConfig(singleOut301).toLastSetups()).after(AppEvent.NewGame)
+        val state =
+            AppState(lastSetup = X01MatchConfig(singleOut301).toLastSetups()).after(AppEvent.NewGame(GameMode.X01))
 
         assertEquals(Screen.Setup(SetupState(301, CheckoutRule.SINGLE_OUT, listOf("Ann", "Bob", "Cid"))), state.screen)
     }
@@ -236,7 +237,7 @@ class AppReducerTest {
             lastSetup = X01MatchConfig(singleOut301).toLastSetups(),
             screen = inGame(singleOut301, winningDarts).screen,
         )
-            .after(*finishEvents, AppEvent.NewGame)
+            .after(*finishEvents, AppEvent.NewGame(GameMode.X01))
 
         assertEquals(Screen.Setup(SetupState.prefilled(X01MatchConfig(singleOut301))), state.screen)
     }
@@ -257,7 +258,7 @@ class AppReducerTest {
             lastSetup = X01MatchConfig(singleOut301).toLastSetups(),
             screen = inGame(singleOut301, winningDarts).screen,
         )
-            .after(*finishEvents, AppEvent.NewGame, AppEvent.StartRequested)
+            .after(*finishEvents, AppEvent.NewGame(GameMode.X01), AppEvent.StartRequested)
 
         val screen = (state.screen as Screen.Game).game
         assertEquals(listOf(inProgressZero, notPlayed, notPlayed), visitBoxTexts(screen))
@@ -276,7 +277,7 @@ class AppReducerTest {
         val setup = AppState(screen = Screen.Setup(SetupState()))
 
         assertEquals(home, home.after(AppEvent.NumberTapped(20), AppEvent.StartRequested, AppEvent.Rematch))
-        assertEquals(setup, setup.after(AppEvent.UndoTapped, AppEvent.AbandonConfirmed, AppEvent.NewGame))
+        assertEquals(setup, setup.after(AppEvent.UndoTapped, AppEvent.AbandonConfirmed, AppEvent.NewGame(GameMode.X01)))
     }
 
     private val inProgressZero =

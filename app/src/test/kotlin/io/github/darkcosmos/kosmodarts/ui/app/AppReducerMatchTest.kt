@@ -147,7 +147,7 @@ class AppReducerMatchTest {
     fun `R13 the next setup is prefilled with the last format`() {
         val last = X01MatchConfig(X01Config(listOf("Ann", "Bob")), MatchFormat(4, 2))
 
-        val state = events.after(AppState(lastSetup = last.toLastSetups()), AppEvent.NewGame)
+        val state = events.after(AppState(lastSetup = last.toLastSetups()), AppEvent.NewGame(GameMode.X01))
         val setup = (state.screen as Screen.Setup).setup
 
         assertEquals(4 to 2, setup.legsPerSet to setup.sets)

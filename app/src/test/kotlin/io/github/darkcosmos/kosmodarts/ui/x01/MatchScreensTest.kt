@@ -22,6 +22,7 @@ import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.app.MatchScript
 import io.github.darkcosmos.kosmodarts.ui.app.Screen
@@ -67,7 +68,7 @@ class MatchScreensTest {
     @Test
     @Config(qualifiers = "+en-port")
     fun `M13 setup steppers in English`() {
-        send(AppEvent.NewGame)
+        send(AppEvent.NewGame(GameMode.X01))
 
         tag(SetupTags.label(SetupTags.SETS)).performScrollTo().assertTextEquals("Sets · first to")
         tag(SetupTags.label(SetupTags.LEGS)).assertTextEquals("Legs · first to")
@@ -91,7 +92,7 @@ class MatchScreensTest {
     @Test
     @Config(qualifiers = "+fr-port")
     fun `M13 setup steppers in French`() {
-        send(AppEvent.NewGame, AppEvent.SetsChanged(1))
+        send(AppEvent.NewGame(GameMode.X01), AppEvent.SetsChanged(1))
 
         tag(SetupTags.label(SetupTags.SETS)).performScrollTo().assertTextEquals("Sets · premier à")
         tag(SetupTags.label(SetupTags.LEGS)).assertTextEquals("Manches · premier à")
@@ -103,7 +104,7 @@ class MatchScreensTest {
     @Test
     @Config(qualifiers = "+en-port")
     fun `D3 stepper buttons are 48 dp touch targets`() {
-        send(AppEvent.NewGame)
+        send(AppEvent.NewGame(GameMode.X01))
         listOf(SetupTags.LEGS, SetupTags.SETS).forEach { prefix ->
             listOf(SetupTags.decrease(prefix), SetupTags.increase(prefix)).forEach { button ->
                 val bounds = composeRule.onNodeWithTag(button).performScrollTo().getUnclippedBoundsInRoot()
