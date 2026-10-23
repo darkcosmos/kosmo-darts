@@ -100,7 +100,11 @@ fun SetupScreen(
                     onBack = { onEvent(AppEvent.Back) },
                     backTag = SetupTags.BACK,
                 )
-                if (setup.mode == GameMode.CRICKET) CricketSettingsSection(setup, onEvent) else GameSettings(setup, onEvent)
+                if (setup.mode == GameMode.CRICKET) {
+                    CricketSettingsSection(setup, onEvent)
+                } else {
+                    GameSettings(setup, onEvent)
+                }
                 MatchSettings(setup, onEvent)
                 Players(setup, onEvent)
             }

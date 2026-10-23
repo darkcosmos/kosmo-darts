@@ -1174,3 +1174,19 @@ notes are applied:
   `CricketScreenshotTest`; fixture `playLegWonByScoring20`. X01 captures: 160 PNGs of the `e7372f8` baseline are
   byte-identical (`cmp`). Deviations: the UI model is the existing `BetweenLegsState`/`EndRow` with defaulted
   fields instead of new types, so the X01 tests are unchanged; no design-system.md change.
+- T10: `ui/setup/SetupState.kt` (`mode`, `cricketVariant`, `isBullInPlay`; `start()` returns `Valid` or
+  `ValidCricket`; `prefilled(LastSetups?, GameMode)`; `withCricketVariant` and `withBullInPlay` are top-level
+  extensions to stay under the detekt function limit), `ui/setup/CricketSettingsSection.kt` (variant choice, hint
+  `SetupTags.CRICKET_HINT`, "25-Bull" switch `SetupTags.CRICKET_BULL`), `SetupScreen`, `ui/home/HomeScreen.kt` (Cricket
+  `ModeCard`, `HomeTags.MODE_CRICKET`), `ui/home/ResumeSummary.kt` (`ResumeGame` sealed type, `closedTargets`),
+  `ResumeCard`, `ui/app` (`Home.resumableGame: StoredGame?`, events `CricketVariantSelected` and `BullInPlayToggled`,
+  `initialState` and `StoredGame.toScreen()`, `SetupResult.ValidCricket` in `AppReducer`). Tests:
+  `SetupStateCricketTest`, `ResumeSummaryCricketTest`, `CricketSetupFlowTest`, `CricketResumeScreensTest` (home to
+  setup to game, kill and resume, confirmation both ways, abandon), two `HomeScreenTest` cases, and 11 captures in
+  `CricketSetupScreenshotTest`. Deviations: two plain fields instead of a `CricketSettings` object in `SetupState`;
+  the Cricket errors are shown through the existing `X01ConfigError` strings; the variant choice has no test tag (the
+  hint and the switch do). Fixed along the way: after a process kill, a saved Cricket game on a non-game screen is
+  offered as a home card (it used to be dropped). `docs/design/design-system.md` updated (cards, setup). X01 captures:
+  of the 160 PNGs of the `e7372f8` baseline, 145 are byte-identical (`cmp`) and the 15 others are exactly the `home_*`
+  and `match_home_summary_portrait_en` ones, which gain the Cricket card (intended); no other X01 capture changed.
+  The 17 steps of "How Kosmo verifies on the phone" match what was built.

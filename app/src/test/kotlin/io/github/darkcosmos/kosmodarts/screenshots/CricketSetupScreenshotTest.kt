@@ -20,6 +20,8 @@ import io.github.darkcosmos.kosmodarts.ui.home.HomeScreen
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupResult
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupScreen
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
+import io.github.darkcosmos.kosmodarts.ui.setup.withBullInPlay
+import io.github.darkcosmos.kosmodarts.ui.setup.withCricketVariant
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 import org.junit.Rule
 import org.junit.Test

@@ -6,6 +6,8 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
+import io.github.darkcosmos.kosmodarts.ui.setup.withBullInPlay
+import io.github.darkcosmos.kosmodarts.ui.setup.withCricketVariant
 import kotlin.random.Random
 
 // Parts of [AppReducer] about the setup and the start of a match. Pure, except for the injected random of Shuffle.
