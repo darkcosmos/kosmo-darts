@@ -97,6 +97,10 @@ internal object V1Fixtures {
         checkNotNull(V1Fixtures::class.java.getResourceAsStream("/persistence/v1/$name")) { name }.readBytes()
 }
 
+/** The X01 game of a valid result; fails the test if the file held another mode. */
+internal val GameDecodeResult.Valid.x01: SavedGame
+    get() = saved as SavedGame
+
 /** A save file with these covered lines (kind to last body line) and a correct checksum. */
 internal fun withChecksum(lines: List<String>): ByteArray {
     val covered = lines.joinToString(separator = "\n", postfix = "\n")

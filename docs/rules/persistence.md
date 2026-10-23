@@ -8,7 +8,7 @@ R1 to R11 match P1 to P11 of issue #30, refined with every owner decision taken 
 below). R12 covers the technical frame (T1, T2) and the owner's request that deletions share the write queue.
 
 Vocabulary:
-- *Saved game*: the game in progress stored on the device. There is at most one.
+- *Saved game*: the game in progress stored on the device, X01 or Cricket. There is at most one (R20).
 - *Last setup*: player names in throwing order, start score (501/301) and checkout rule of the last game started.
 - *Home screen*: the first screen of the app (the "start screen" of issue #30).
 
@@ -132,3 +132,36 @@ Vocabulary:
   position (1 to n), without any message.
 - R19. A resumed game whose checkout waited for confirmation shows the CHECKOUT zone (score replaced by the CHECKOUT
   banner, keypad locked, "Undo" and the M15 confirm button in the action bar), exactly as before the app was closed.
+
+## Game modes (issue #40, `docs/rules/cricket.md`, ADR 0008)
+
+- R20. One saved game, whatever the mode. Starting any mode while a game is saved asks for confirmation (R3), and the
+  summary says the mode (CR20).
+- R21. Resuming a Cricket game restores everything R4, R14, R15 and R19 restore for X01, with the CR25 zone for a
+  pending win.
+- R23. Format version 4 adds the mode line, and every write uses it. A file is rejected (the R9 message, file
+  deleted; for the last setup, R10, ignored silently) when:
+  - its version 4 mode line is missing or has an unknown value;
+  - a version 1 to 3 file contains a mode line;
+  - the body does not match its mode (`cricket` with an X01 body, or the reverse);
+  - the checksum does not cover the mode line correctly.
+- R24. Cricket saves are validated like X01 saves (R9 to R11), with these bounds checked by the decoder:
+  - player count 1 to 4, with names valid under `PlayerListRules`. An `InvalidCricketConfigException` thrown while
+    decoding is caught and gives "rejected", never a crash;
+  - variant and 25-Bull tokens from a closed set (`standard`/`cut-throat`, `1`/`0`), in the saved game and in the
+    last setup;
+  - each confirmed-leg summary has a winner index below the player count, darts at most the 10,000-dart limit (R12),
+    marks hit at most 3 x darts (CR2), and points from 0 to 99,999 (the 5-digit canonical integer of the format). A
+    leg above it is not written and the previous file is kept, exactly like the 10,000-dart limit of R12; reaching it
+    takes more than 1,600 darts;
+  - the leg count respects M12, and no confirmed leg decides the match (the match is never decided before its last
+    leg, as for X01);
+  - the darts of the current leg are replayed by the engine (rejected by engine on any error).
+
+  The confirmed-leg summaries are the match's accepted record, as in ADR 0001 and 0005. They cannot be replayed
+  (their darts are not stored), so the decoder checks only the bounds above and their consistency with the match
+  score. A file that would be over the size limit of R9 is not written either (ADR 0008, "Size limit").
+- R25. A version 1 to 3 saved game or last setup is read as X01 (R16, R18), without any message. Cricket then uses its
+  defaults, with the shared roster.
+
+R22 (the last setup per mode) is added with the per-mode last setup.

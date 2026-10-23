@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.persistence.GameLoad
 import io.github.darkcosmos.kosmodarts.persistence.LoadResult
+import io.github.darkcosmos.kosmodarts.persistence.SavedCricketGame
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
@@ -15,7 +16,12 @@ import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 fun initialState(load: LoadResult, wasOnGameScreen: Boolean): AppState {
     val screen = when (val game = load.game) {
         GameLoad.Absent -> Screen.Home()
-        is GameLoad.Valid -> if (wasOnGameScreen) game.saved.toScreen() else Screen.Home(resumableGame = game.saved)
+        is GameLoad.Valid -> when (val saved = game.saved) {
+            is SavedGame -> if (wasOnGameScreen) saved.toScreen() else Screen.Home(resumableGame = saved)
+            // The app cannot start a Cricket game yet (docs/plans/40-cricket-mode.md, T7 and T10 add its screens):
+            // such a file is only kept, and the next game started replaces it (R20).
+            is SavedCricketGame -> Screen.Home()
+        }
         is GameLoad.Invalid -> Screen.Setup(SetupState.prefilled(load.lastSetup), isRestoreFailedShown = true)
     }
     return AppState(screen = screen, lastSetup = load.lastSetup)

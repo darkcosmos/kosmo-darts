@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import org.junit.Assert.assertArrayEquals
@@ -24,7 +25,36 @@ class SaveFuzzTest {
         SaveFixtures.WAITING_NORMAL,
         SaveFixtures.WAITING_BUST,
         SaveFixtures.WAITING_CHECKOUT,
-    ).map { checkNotNull(gameCodec.encode(it)) } + matchSeeds() + V1Fixtures.GAMES.keys.map(V1Fixtures::bytes)
+    ).map { checkNotNull(gameCodec.encode(it)) } + matchSeeds() + cricketSeeds() +
+        V1Fixtures.GAMES.keys.map(V1Fixtures::bytes) + V3Fixtures.GAMES.keys.map(V3Fixtures::bytes)
+
+    /**
+     * Version 4 Cricket saves (R23, R24): mid-turn, waiting, a match in a leg, between legs, a pending win by a
+     * non-thrower, cut-throat solo and 25-Bull off, plus the mode-line cases of R23 (no mode line, a mode line that
+     * does not match its body, a mode line in a version 3 file).
+     */
+    private fun cricketSeeds(): List<ByteArray> {
+        val valid = listOf(
+            CricketSaveFixtures.MID_TURN,
+            CricketSaveFixtures.WAITING,
+            CricketSaveFixtures.MATCH_MID_LEG,
+            CricketSaveFixtures.BETWEEN_LEGS,
+            CricketSaveFixtures.NON_THROWER_WIN,
+            CricketSaveFixtures.saved(
+                CricketSaveFixtures.match("Ann", variant = CricketVariant.CUT_THROAT, isBullInPlay = false)
+                    .throwing(Dart.triple(20), Dart.double(15)),
+            ),
+        ).map { checkNotNull(gameCodec.encode(it)) }
+        val cricket = coveredLines(valid.first())
+        val x01 = coveredLines(checkNotNull(gameCodec.encode(SaveFixtures.WAITING_NORMAL)))
+        val modeCases = listOf(
+            cricket.filterNot { it.startsWith("mode=") },
+            cricket.map { if (it == "mode=cricket") "mode=x01" else it },
+            x01.map { if (it == "mode=x01") "mode=cricket" else it },
+            x01.map { if (it == "version=4") "version=3" else it },
+        ).map(::withChecksum)
+        return valid + modeCases
+    }
 
     /**
      * Version 3 matches (R11, ADR 0005, ADR 0006) with non-positional color slots: in a leg, between legs and in a
@@ -61,8 +91,8 @@ class SaveFuzzTest {
     @Test
     fun `R11 mutated saved games never crash the decoder`() = fuzz(validGames) { input ->
         when (val result = gameCodec.decode(input)) {
-            // A version 3 file is canonical; an older file re-encodes as version 3 and decodes to the same game.
-            is GameDecodeResult.Valid -> if (String(input, Charsets.UTF_8).lines().getOrNull(1) != "version=3") {
+            // A version 4 file is canonical; an older file re-encodes as version 4 and decodes to the same game.
+            is GameDecodeResult.Valid -> if (String(input, Charsets.UTF_8).lines().getOrNull(1) != "version=4") {
                 assertEquals(result, gameCodec.decode(checkNotNull(gameCodec.encode(result.saved))))
             } else {
                 assertArrayEquals(input, gameCodec.encode(result.saved))

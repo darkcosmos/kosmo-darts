@@ -68,12 +68,56 @@ class GameSaveDecodeInvalidTest {
         assertInvalid(InvalidSaveReason.MALFORMED, valid.replaceFirst("kosmodarts=saved-game", "kosmodarts=last-setup"))
     }
 
-    /** R9, R16, R18: any version but 1 to 3 is rejected, even when the rest of the file is a valid version 3 file. */
+    /** R9, R16, R18, R23: any version but 1 to 4 is rejected, even when the rest is a valid version 4 file. */
     @Test
     fun `R9 unknown, older and newer versions are unsupported`() {
-        listOf("0", "4", "99", "01", "03", "x", "").forEach { version ->
+        listOf("0", "5", "99", "01", "04", "x", "").forEach { version ->
             assertInvalid(InvalidSaveReason.UNSUPPORTED_VERSION, withValue("version", version))
         }
+    }
+
+    /** R23: a version 4 file without its mode line is malformed. */
+    @Test
+    fun `R23 a version 4 file without a mode line is malformed`() {
+        assertInvalid(InvalidSaveReason.MALFORMED, withChecksum(validBody.filterNot { it == "mode=x01" }))
+    }
+
+    @Test
+    fun `R23 an unknown mode value is out of range`() {
+        listOf("cricket2", "X01", "around-the-clock", "").forEach {
+            assertInvalid(InvalidSaveReason.OUT_OF_RANGE, withValue("mode", it))
+        }
+    }
+
+    /** R23: the body must match its mode line. */
+    @Test
+    fun `R23 a body that does not match its mode is malformed`() {
+        assertInvalid(InvalidSaveReason.MALFORMED, withValue("mode", "cricket"))
+        val cricket = coveredLines(checkNotNull(codec.encode(CricketSaveFixtures.MID_TURN)))
+        val x01Mode = cricket.map { if (it == "mode=cricket") "mode=x01" else it }
+        assertInvalid(InvalidSaveReason.MALFORMED, withChecksum(x01Mode))
+    }
+
+    /** R23, R25: versions 1 to 3 have no mode line; one inside them is malformed. */
+    @Test
+    fun `R23 a mode line in a version 1, 2 or 3 file is malformed`() {
+        listOf("1", "2", "3").forEach { version ->
+            val old = validBody.map { if (it == "version=4") "version=$version" else it }
+            assertInvalid(InvalidSaveReason.MALFORMED, withChecksum(old))
+        }
+        val v1 = coveredLines(V1Fixtures.bytes("game-golden.save"))
+        val v1WithMode = v1.take(2) + "mode=x01" + v1.drop(2)
+        assertInvalid(InvalidSaveReason.MALFORMED, withChecksum(v1WithMode))
+    }
+
+    /** R23: the checksum covers the mode line. */
+    @Test
+    fun `R23 a checksum that does not cover the mode line is a mismatch`() {
+        val withoutMode = withChecksum(validBody.filterNot { it == "mode=x01" })
+        val crcWithoutMode = withoutMode.lines()[withoutMode.lines().size - TRAILER_LINES]
+        val crcLine = valid.lines()[valid.lines().size - TRAILER_LINES]
+        assertInvalid(InvalidSaveReason.CHECKSUM_MISMATCH, valid.replace(crcLine, crcWithoutMode))
+        assertInvalid(InvalidSaveReason.CHECKSUM_MISMATCH, valid.replace("mode=x01", "mode=cricket"))
     }
 
     @Test

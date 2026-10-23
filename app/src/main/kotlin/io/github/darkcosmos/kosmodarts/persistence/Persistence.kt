@@ -40,8 +40,12 @@ class Persistence(
         }
     }
 
-    /** Saves [saved] in the background. A game over [GameSaveCodec.MAX_DARTS] darts keeps the previous file (R12). */
-    fun saveGame(saved: SavedGame) {
+    /**
+     * Saves [saved], of any mode, in the background: it replaces the saved game (R20). A game that cannot be written
+     * ([GameSaveCodec.encode] gives `null`: over [GameSaveCodec.MAX_DARTS] darts, for instance) keeps the previous
+     * file (R12, R24).
+     */
+    fun saveGame(saved: StoredGame) {
         gameCodec.encode(saved)?.let(gameWriter::write)
     }
 
