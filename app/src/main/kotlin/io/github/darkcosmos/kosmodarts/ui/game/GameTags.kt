@@ -14,8 +14,14 @@ object GameTags {
     /** The BUST banner of the zone (VT13). */
     const val CARD_BUST: String = "game_card_bust"
 
+    /** The word "BUST" inside [CARD_BUST]. */
+    const val CARD_BUST_TEXT: String = "game_card_bust_text"
+
     /** The CHECKOUT banner and its line, one live region (design system 6.3, U5). */
     const val CHECKOUT_BANNER: String = "game_checkout_banner"
+
+    /** The `accent` chip "CHECKOUT" inside [CHECKOUT_BANNER]. */
+    const val CHECKOUT_BANNER_LABEL: String = "game_checkout_banner_label"
 
     /** "141 IN 3 DARTS" under the CHECKOUT banner (U2). */
     const val CHECKOUT_LINE: String = "game_checkout_line"
@@ -25,6 +31,9 @@ object GameTags {
 
     /** The darts of the route inside [CHECKOUT_SUGGESTION_LINE]; absent when there is no route. */
     const val CHECKOUT_SUGGESTION: String = "game_checkout_suggestion"
+
+    /** The `accent` box "CHECKOUT" / « SORTIE » before the darts of the route (CS7). */
+    const val CHECKOUT_ROUTE_LABEL: String = "game_checkout_route_label"
 
     /** The `accent` underline of the next dart slot. */
     const val NEXT_DART_MARK: String = "game_next_dart_mark"

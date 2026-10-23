@@ -4,10 +4,13 @@ import android.content.res.Resources
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -46,11 +49,12 @@ private val LABEL_PADDING = 12.dp
  * The area of the zone under the score (design system 6.1 to 6.3): the checkout route in NORMAL mode
  * (docs/rules/checkout-suggestions.md, CS7 to CS9), the white BUST banner in BUST mode (VT13); the zone does not
  * show it in CHECKOUT mode (U10). Its height is always reserved for the widest possible route at the current width
- * and font scale (CS8), so the zone and the score never move when a route appears or disappears. [isStacked]: the
- * label above the darts, for the landscape zone where the route stands right of the score.
+ * and font scale (CS8), so the zone and the score never move when a route appears or disappears. [isSingleLine]: the
+ * darts never wrap and shrink to fit the width instead, for the landscape zone where the route stands right of the
+ * score (owner review of PR #57); in portrait they wrap between two darts.
  */
 @Composable
-fun RouteArea(mode: ZoneMode, route: List<Dart>?, isStacked: Boolean, modifier: Modifier = Modifier) {
+fun RouteArea(mode: ZoneMode, route: List<Dart>?, isSingleLine: Boolean, modifier: Modifier = Modifier) {
     val referenceText = checkoutRouteText(referenceRoute())
     val label = stringResource(R.string.checkout_route_label)
     val labelStyle = KosmoTheme.typography.labelLarge
@@ -64,7 +68,7 @@ fun RouteArea(mode: ZoneMode, route: List<Dart>?, isStacked: Boolean, modifier: 
         content = {
             when {
                 mode == ZoneMode.BUST -> BustBanner()
-                mode == ZoneMode.NORMAL && route != null -> CheckoutRouteBar(route, isStacked)
+                mode == ZoneMode.NORMAL && route != null -> CheckoutRouteBar(route, isSingleLine)
                 else -> Unit
             }
         },
@@ -86,13 +90,16 @@ fun RouteArea(mode: ZoneMode, route: List<Dart>?, isStacked: Boolean, modifier: 
         val vertical = BAR_PADDING.roundToPx()
         val labelSize = measurer.measure(label, labelStyle, softWrap = false, maxLines = 1).size
         val labelHeight = labelSize.height + 2 * vertical
-        val dartsWidth = if (isStacked) width - 2 * horizontal else width - labelSize.width - 4 * horizontal
+        val dartsWidth = width - labelSize.width - 4 * horizontal
+        // On one line the darts shrink to fit, so a line at the full size is the most they need.
         val dartsHeight = measurer.measure(
             referenceText,
             routeStyle,
+            softWrap = !isSingleLine,
+            maxLines = if (isSingleLine) 1 else Int.MAX_VALUE,
             constraints = Constraints(maxWidth = maxOf(1, dartsWidth)),
         ).size.height + vertical
-        val reserved = if (isStacked) labelHeight + dartsHeight else maxOf(labelHeight, dartsHeight)
+        val reserved = maxOf(labelHeight, dartsHeight)
         val placeables = content.map { it.measure(child.copy(minHeight = reserved)) }
         val height = maxOf(reserved, placeables.maxOfOrNull { it.height } ?: 0)
         layout(width, height) { placeables.forEach { it.placeRelative(0, 0) } }
@@ -100,56 +107,50 @@ fun RouteArea(mode: ZoneMode, route: List<Dart>?, isStacked: Boolean, modifier: 
 }
 
 /**
- * The route: the label chip "CHECKOUT" / « SORTIE » on `accent`, then the darts in `accent` on `background`, without
- * separator dots (CS7). [RouteArea] makes it one TalkBack item (CS9).
+ * The route on one panel: the label box "CHECKOUT" / « SORTIE » on `accent`, as high as the panel and sharing its
+ * rounded start corners, then the darts in `accent` on `background`, without separator dots (CS7). [isSingleLine]: the
+ * darts shrink to stay on one line. [RouteArea] makes it one TalkBack item (CS9).
  */
 @Composable
-private fun CheckoutRouteBar(route: List<Dart>, isStacked: Boolean) {
+private fun CheckoutRouteBar(route: List<Dart>, isSingleLine: Boolean) {
     val colors = KosmoTheme.colors
     val typography = KosmoTheme.typography
-    val label: @Composable () -> Unit = {
-        Text(
-            text = stringResource(R.string.checkout_route_label),
-            style = typography.labelLarge,
-            color = colors.onAccent,
-            maxLines = 1,
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Start,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .clip(KosmoShapes.control)
+            .background(colors.background),
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
+                .fillMaxHeight()
                 .background(colors.accent)
-                .padding(horizontal = LABEL_PADDING, vertical = BAR_PADDING),
-        )
-    }
-    val darts: @Composable (Modifier) -> Unit = { modifier ->
+                .testTag(GameTags.CHECKOUT_ROUTE_LABEL),
+        ) {
+            Text(
+                text = stringResource(R.string.checkout_route_label),
+                style = typography.labelLarge,
+                color = colors.onAccent,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = LABEL_PADDING, vertical = BAR_PADDING),
+            )
+        }
         Text(
             text = checkoutRouteText(route),
             style = typography.route,
             color = colors.accent,
-            modifier = modifier
+            maxLines = if (isSingleLine) 1 else Int.MAX_VALUE,
+            softWrap = !isSingleLine,
+            autoSize = if (isSingleLine) TextAutoSize.StepBased(maxFontSize = typography.route.fontSize) else null,
+            modifier = Modifier
+                .weight(1f)
                 .padding(horizontal = LABEL_PADDING, vertical = BAR_PADDING / 2)
                 .testTag(GameTags.CHECKOUT_SUGGESTION),
         )
-    }
-    if (isStacked) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(KosmoShapes.control)
-                .background(colors.background),
-        ) {
-            Box(Modifier.fillMaxWidth().background(colors.accent)) { label() }
-            darts(Modifier)
-        }
-    } else {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start,
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(KosmoShapes.control)
-                .background(colors.background),
-        ) {
-            label()
-            darts(Modifier.weight(1f))
-        }
     }
 }
 
@@ -172,7 +173,7 @@ private fun BustBanner() {
             color = colors.danger,
             textAlign = TextAlign.Center,
             // The same height as the darts line of the route, so the banner fits the reserved height (CS8).
-            modifier = Modifier.padding(vertical = BAR_PADDING / 2),
+            modifier = Modifier.padding(vertical = BAR_PADDING / 2).testTag(GameTags.CARD_BUST_TEXT),
         )
     }
 }

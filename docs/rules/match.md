@@ -71,7 +71,9 @@ Rewritten by issue #49 (design system, owner answers Q1 to Q13, O1 and O2, `docs
   with the chip "SET 2 · MANCHE 3 GAGNÉE" ("MANCHE 3 GAGNÉE" with one set, "SET 2 GAGNÉ" on a set win), his name and
   the winning checkout ("CHECKOUT 141 · T20 T19 D12", not shown after a resume on this screen), the scoreboard (SETS
   when S > 1, MAN. for the legs of the set, MOY MATCH; the leg winner's figures in accent), the bar "SET 2 · MANCHE 4
-  ▌ CID COMMENCE" and the button "MANCHE SUIVANTE". System back opens "Abandon the game?" (owner Q6 i of #39).
+  ▌ CID COMMENCE" and the button "MANCHE SUIVANTE". In landscape (owner review of PR #57) the scoreboard stands right
+  of the winner's zone, the button right under the scoreboard, and the bar under the winner's zone. System back opens
+  "Abandon the game?" (owner Q6 i of #39).
 - M17. End screen: the format line, the winner's zone with "VAINQUEUR DU MATCH" and his name (no "2 SETS À 0" line,
   owner Q8), then the M10 ranking: rank cell (rank 1 on accent), color square, name, the SETS column (MANCHES with one
   set, no score column in a single game), MOY MATCH, and the darts thrown over the match (owner O2, header « FLÉCH. »).

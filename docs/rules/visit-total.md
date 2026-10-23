@@ -89,8 +89,9 @@ The engine derives one state per player from the game state (configuration and o
     4 players, U3 of issue #49).
 - VT12. Translating states to texts happens outside composables (UI state mapping); composables only render the
   mapped texts.
-- VT13. While a bust waits for "Next player", the zone turns `danger` with the white BUST banner under the score, and
-  the thrower's filled box shows `0` (issue #49, design system 6.2; it replaces PR37-R2), read by TalkBack as "Last
+- VT13. While a bust waits for "Next player", the zone turns `danger` with the white BUST banner in the route area
+  (CS8: under the score in portrait, right of it on one line in landscape), and the thrower's filled box shows
+  `0` (issue #49, design system 6.2; it replaces PR37-R2), read by TalkBack as "Last
   turn: bust" / « Dernière volée : bust ». Once "Next player" is tapped, his box (now on a tile) shows `BUST` (VT4);
   if the bust dart is undone, the box follows VT2 to VT6 again. A waiting normal turn and a pending checkout keep
   their box (VT3, VT6).

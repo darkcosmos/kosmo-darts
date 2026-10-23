@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -51,6 +52,7 @@ import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import io.github.darkcosmos.kosmodarts.ui.game.MatchIndicator
 import io.github.darkcosmos.kosmodarts.ui.game.VisitBoxText
 import io.github.darkcosmos.kosmodarts.ui.game.ZoneMode
+import io.github.darkcosmos.kosmodarts.ui.layout.GameLayoutPolicy
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.LABEL_FIGURES
@@ -63,6 +65,9 @@ private val ZONE_PADDING = 12.dp
 private val INNER_GAP = 8.dp
 private val BUST_SQUARE = 22.dp
 private val CHIP_PADDING = 6.dp
+
+/** In landscape the CHECKOUT text may grow up to this times the banner size, if the zone has room (6.3). */
+private const val LANDSCAPE_BANNER_GROWTH = 1.5f
 
 /** Everything the current player's zone shows, mapped by the game screen from its state. */
 class ZoneContent(
@@ -124,12 +129,13 @@ fun CurrentPlayerZone(
                 horizontalArrangement = Arrangement.spacedBy(INNER_GAP),
                 modifier = area.fillMaxWidth(),
             ) {
-                ScoreArea(content, scoreSize, isLandscape, contentColor, Modifier.weight(1f))
-                RouteArea(content.mode, content.route, isStacked = true, modifier = Modifier.weight(1f))
+                val routeShare = GameLayoutPolicy.LANDSCAPE_ROUTE_SHARE
+                ScoreArea(content, scoreSize, isLandscape, contentColor, Modifier.weight(1f - routeShare))
+                RouteArea(content.mode, content.route, isSingleLine = true, modifier = Modifier.weight(routeShare))
             }
         } else {
             ScoreArea(content, scoreSize, isLandscape, contentColor, area.fillMaxWidth())
-            RouteArea(content.mode, content.route, isStacked = false)
+            RouteArea(content.mode, content.route, isSingleLine = false)
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -235,11 +241,12 @@ private fun ScoreArea(
     contentColor: Color,
     modifier: Modifier,
 ) {
-    val alignment = if (isLandscape) Alignment.CenterStart else Alignment.Center
+    val checkout = content.checkout
+    val isCheckout = content.mode == ZoneMode.CHECKOUT && checkout != null
+    val alignment = if (isLandscape && !isCheckout) Alignment.CenterStart else Alignment.Center
     BoxWithConstraints(contentAlignment = alignment, modifier = modifier) {
-        val checkout = content.checkout
-        if (content.mode == ZoneMode.CHECKOUT && checkout != null) {
-            CheckoutBanner(checkout, contentColor)
+        if (isCheckout && checkout != null) {
+            CheckoutBanner(checkout, contentColor, isLandscape)
         } else {
             val density = LocalDensity.current
             val measurer = rememberTextMeasurer()
@@ -279,36 +286,49 @@ private fun ScoreArea(
 /** The widest remaining score in tabular figures. */
 private const val SCORE_REFERENCE = "888"
 
-/** U2, U5: the banner and its line are one polite live region, "Checkout, 141 in 3 darts". */
+/**
+ * U2, U5: the banner and its line are one polite live region, "Checkout, 141 in 3 darts". In landscape
+ * ([isLandscape]) the chip spans the whole middle of the zone and its text may grow up to [LANDSCAPE_BANNER_GROWTH]
+ * times the banner size, centred (owner review of PR #57).
+ */
 @Composable
-private fun CheckoutBanner(checkout: CheckoutSummary, contentColor: Color) {
+private fun CheckoutBanner(checkout: CheckoutSummary, contentColor: Color, isLandscape: Boolean) {
     val colors = KosmoTheme.colors
     val resources = LocalResources.current
     val dartCount = checkout.darts.size
     val announcement = checkoutAnnouncement(resources, checkout.points, dartCount)
+    val style = KosmoTheme.typography.banner
+    val maxFontSize = if (isLandscape) style.fontSize * LANDSCAPE_BANNER_GROWTH else style.fontSize
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(INNER_GAP),
         modifier = Modifier
+            .then(if (isLandscape) Modifier.fillMaxSize() else Modifier)
             .testTag(GameTags.CHECKOUT_BANNER)
             .semantics(mergeDescendants = true) {
                 contentDescription = announcement
                 liveRegion = LiveRegionMode.Polite
             },
     ) {
-        Text(
-            text = stringResource(R.string.checkout_banner),
-            style = KosmoTheme.typography.banner,
-            color = colors.onAccent,
-            maxLines = 1,
-            autoSize = TextAutoSize.StepBased(maxFontSize = KosmoTheme.typography.banner.fontSize),
-            // Measured after the line under it: the banner shrinks to the height left in a low zone (U10).
+        // Measured after the line under it: the banner shrinks to the height left in a low zone (U10).
+        Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .weight(1f, fill = false)
+                .then(if (isLandscape) Modifier.weight(1f).fillMaxWidth() else Modifier.weight(1f, fill = false))
+                .testTag(GameTags.CHECKOUT_BANNER_LABEL)
                 .clip(KosmoShapes.control)
                 .background(colors.accent)
                 .padding(horizontal = 16.dp, vertical = 4.dp),
-        )
+        ) {
+            Text(
+                text = stringResource(R.string.checkout_banner),
+                style = style,
+                color = colors.onAccent,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(maxFontSize = maxFontSize),
+            )
+        }
         Text(
             text = checkoutDartsText(resources, checkout.points, dartCount),
             style = KosmoTheme.typography.labelLarge,

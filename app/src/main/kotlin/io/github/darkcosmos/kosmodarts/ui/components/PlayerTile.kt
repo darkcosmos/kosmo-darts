@@ -32,6 +32,7 @@ import io.github.darkcosmos.kosmodarts.ui.format.tileMatchText
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import io.github.darkcosmos.kosmodarts.ui.game.MatchIndicator
 import io.github.darkcosmos.kosmodarts.ui.game.VisitBoxText
+import io.github.darkcosmos.kosmodarts.ui.layout.GameLayoutPolicy
 import io.github.darkcosmos.kosmodarts.ui.layout.TileVariant
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
@@ -72,7 +73,13 @@ fun PlayerTile(content: TileContent, variant: TileVariant, modifier: Modifier = 
     if (isLandscape) {
         Row(modifier = base.height(IntrinsicSize.Min)) {
             Box(Modifier.width(STRIP).fillMaxHeight().background(strip))
-            TileBody(content, variant, Modifier.weight(1f).padding(TILE_PADDING))
+            TileBody(
+                content,
+                variant,
+                Modifier
+                    .weight(1f)
+                    .padding(horizontal = TILE_PADDING, vertical = GameLayoutPolicy.TILE_PADDING_LANDSCAPE_VERTICAL.dp),
+            )
         }
     } else {
         Column(modifier = base) {
@@ -132,10 +139,13 @@ private fun TileBody(content: TileContent, variant: TileVariant, modifier: Modif
             score()
         }
         TileVariant.COMPACT_TWO_LINES -> Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            // U3: the name alone on its line, on two lines at most, so at least 8 characters show before "…".
-            name(Modifier.fillMaxWidth(), TWO_LINE_NAME_MAX_LINES)
+            // U3: the name on two lines at most, so at least 8 characters show before "…"; the match line beside it
+            // keeps the tile on two lines (owner review of PR #57: lower tiles in landscape).
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                name(Modifier.weight(1f), TWO_LINE_NAME_MAX_LINES)
+                matchLine()
+            }
             ScoreLine(score, box)
-            matchLine()
         }
     }
 }

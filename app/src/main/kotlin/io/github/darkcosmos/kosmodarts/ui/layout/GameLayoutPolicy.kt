@@ -11,7 +11,10 @@ enum class TileVariant {
     /** Landscape, 2 and 3 players: everything on one line. */
     COMPACT,
 
-    /** Landscape, 4 players (owner Q9, U3): the name alone on the first line, score and box on the second. */
+    /**
+     * Landscape, 4 players (owner Q9, U3): the name (two lines at most) and the match line on the first line, score and
+     * box on the second (owner review of PR #57: lower tiles).
+     */
     COMPACT_TWO_LINES,
 }
 
@@ -95,6 +98,15 @@ object GameLayoutPolicy {
     const val SCORE_LANDSCAPE = 160f
     const val LEFT_COLUMN_WIDTH = 480f
 
+    /**
+     * Landscape: share of the zone's width given to the route, right of the score, so that the route stays on one line
+     * (owner review of PR #57); the score is fitted to the rest.
+     */
+    const val LANDSCAPE_ROUTE_SHARE = 0.6f
+
+    /** Landscape tiles: vertical padding, lower than the portrait one, so the tiles fit a phone's height. */
+    const val TILE_PADDING_LANDSCAPE_VERTICAL = 6f
+
     /** Share of the width the left column may take in landscape when the screen is narrower than the mockup. */
     private const val LEFT_COLUMN_MAX_SHARE = 0.55f
     private const val KEYPAD_ROWS = 5
@@ -167,20 +179,22 @@ object GameLayoutPolicy {
     }
 
     /**
-     * Landscape: the left column holds the header, the zone (score with the route on its right) and the tiles; the
-     * right column holds the keypad and the action bar. Each column is checked on its own; the steps are shared.
+     * Landscape: the left column holds the header, the zone (score with the one-line route on its right) and the tiles;
+     * the right column holds the keypad and the action bar. Each column is checked on its own; the steps are shared.
      */
     private fun landscape(space: GameSpace): GameLayout {
         val leftWidth = minOf(LEFT_COLUMN_WIDTH, space.widthDp * LEFT_COLUMN_MAX_SHARE)
         val variant = if (space.playerCount >= FOUR_PLAYERS) TileVariant.COMPACT_TWO_LINES else TileVariant.COMPACT
         val tilesPerRow = maxOf(1, space.playerCount - 1)
         val hasTiles = space.playerCount > 1
-        val stackedRoute = (LABEL_LINE + ROUTE_LINE) * space.textScale + 3 * ROUTE_PADDING
-        val zoneMin = if (space.isCheckoutPending) {
-            checkoutZoneMinHeight(space)
-        } else {
-            zoneFrame(space) * SAFETY + maxOf(SCORE_FLOOR_LANDSCAPE, stackedRoute * SAFETY)
-        }
+        // The route stands on one line right of the score (owner review of PR #57): label chip or darts, the higher.
+        val routeLine = maxOf(
+            LABEL_LINE * space.textScale + 2 * ROUTE_PADDING,
+            ROUTE_LINE * space.textScale + ROUTE_PADDING,
+        )
+        val scoreZoneMin = zoneFrame(space) * SAFETY + maxOf(SCORE_FLOOR_LANDSCAPE, routeLine * SAFETY)
+        // With the one-line route the score zone is low: a waiting checkout never asks for more, its banner shrinks.
+        val zoneMin = if (space.isCheckoutPending) minOf(checkoutZoneMinHeight(space), scoreZoneMin) else scoreZoneMin
         val shape = Shape(variant, tilesPerRow, leftWidth, zoneMin)
         return decide(space, SCORE_LANDSCAPE, SCORE_FLOOR_LANDSCAPE, shape) { choice ->
             val tiles = if (hasTiles) tileHeight(variant, space) + choice.gap else 0f
@@ -256,9 +270,13 @@ object GameLayoutPolicy {
             // The names of these two variants may take two lines at large text sizes (U3, T8).
             TileVariant.NARROW -> name * labelLines(space) + TILE_SCORE_LINE + matchLine
             TileVariant.COMPACT -> maxOf(name, TILE_SCORE_LINE)
-            TileVariant.COMPACT_TWO_LINES -> name * labelLines(space) + TILE_SCORE_LINE
+            TileVariant.COMPACT_TWO_LINES -> maxOf(name * labelLines(space), matchLine) + TILE_SCORE_LINE
         }
-        return TILE_STRIP + 2 * TILE_PADDING + lines
+        return when (variant) {
+            // The strip stands at the start of a landscape tile, so it adds no height.
+            TileVariant.COMPACT, TileVariant.COMPACT_TWO_LINES -> 2 * TILE_PADDING_LANDSCAPE_VERTICAL + lines
+            TileVariant.WIDE, TileVariant.NARROW -> TILE_STRIP + 2 * TILE_PADDING + lines
+        }
     }
 
     private fun keypadHeight(choice: Choice): Float = KEYPAD_ROWS * choice.keyHeight + (KEYPAD_ROWS - 1) * choice.gap

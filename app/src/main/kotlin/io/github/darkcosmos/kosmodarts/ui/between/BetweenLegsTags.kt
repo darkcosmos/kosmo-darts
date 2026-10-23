@@ -8,6 +8,12 @@ object BetweenLegsTags {
     /** The winner's name. */
     const val WINNER: String = "between_winner"
 
+    /** The winner's zone around [TITLE], [WINNER] and [CHECKOUT]. */
+    const val WINNER_ZONE: String = "between_winner_zone"
+
+    /** The scoreboard of the match (M16). */
+    const val SCOREBOARD: String = "between_scoreboard"
+
     /** "CHECKOUT 141 · T20 T19 D12". */
     const val CHECKOUT: String = "between_checkout"
 

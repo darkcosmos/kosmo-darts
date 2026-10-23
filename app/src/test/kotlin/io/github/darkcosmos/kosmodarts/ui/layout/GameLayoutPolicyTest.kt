@@ -105,7 +105,13 @@ class GameLayoutPolicyTest {
                 val normal = GameLayoutPolicy.of(GameSpace(width, height, scale, 4, isMatch = true))
                 val checkout = GameLayoutPolicy.of(GameSpace(width, height, scale, 4, isMatch = true, true))
                 val what = "$width x $height at $scale"
-                assertTrue(what, checkout.zoneMinHeightDp < normal.zoneMinHeightDp)
+                if (width > height && scale > 1f) {
+                    // Landscape, large text: the one-line route keeps the score zone so low (owner review of PR #57)
+                    // that the checkout zone is capped at its height, its banner shrinking to fit.
+                    assertEquals(what, normal.zoneMinHeightDp, checkout.zoneMinHeightDp)
+                } else {
+                    assertTrue(what, checkout.zoneMinHeightDp < normal.zoneMinHeightDp)
+                }
                 assertEquals(what, normal, checkout.copy(zoneMinHeightDp = normal.zoneMinHeightDp))
             }
         }
@@ -146,7 +152,27 @@ class GameLayoutPolicyTest {
         assertTrue(layout.zoneMinHeightDp > GameLayoutPolicy.SCORE_FLOOR_PORTRAIT)
     }
 
+    /**
+     * Owner review of PR #57: a Pixel 7 in landscape inside its bars and cutout (about 800 × 360 dp), in a match at
+     * font scale 1, does not scroll for 2 to 4 players, and the one-line route keeps the zone's least height at its
+     * frame plus the score floor (the old two-line route needed more).
+     */
+    @Test
+    fun `Pixel 7 landscape inside its bars fits without scrolling`() {
+        (2..4).forEach { players ->
+            val layout = portrait(OWNER_LANDSCAPE_WIDTH, OWNER_LANDSCAPE_HEIGHT, players = players)
+            assertFalse("$players players", layout.isScrolling)
+            assertTrue("$players players", layout.scoreSizeDp >= GameLayoutPolicy.SCORE_FLOOR_LANDSCAPE)
+            assertTrue("$players players: ${layout.zoneMinHeightDp}", layout.zoneMinHeightDp < ONE_LINE_ZONE_MIN)
+        }
+    }
+
     private companion object {
+        const val OWNER_LANDSCAPE_WIDTH = 800f
+        const val OWNER_LANDSCAPE_HEIGHT = 360f
+
+        /** Zone frame (120) with its margin (× 1.1), plus the landscape score floor (72), plus rounding. */
+        const val ONE_LINE_ZONE_MIN = 205f
         const val PIXEL7_WIDTH = 412f
         const val PIXEL7_HEIGHT = 915f
     }

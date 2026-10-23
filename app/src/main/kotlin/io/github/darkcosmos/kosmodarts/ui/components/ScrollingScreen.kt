@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,48 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.ui.layout.ScreenLayoutPolicy
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
+
+/**
+ * The landscape frame of a screen with two columns (owner review of PR #57): inside the system bars and the cutout,
+ * [top] across the width, then [start] and [end] side by side, tops aligned. Nothing is pinned: the whole screen
+ * scrolls if it does not fit ([ScreenLayoutPolicy.hasTwoColumns] decides when this frame is used).
+ */
+@Composable
+fun TwoColumnScreen(
+    modifier: Modifier = Modifier,
+    top: @Composable ColumnScope.() -> Unit,
+    start: @Composable ColumnScope.() -> Unit,
+    end: @Composable ColumnScope.() -> Unit,
+) {
+    val gap = Arrangement.spacedBy(COLUMN_GAP)
+    Box(
+        contentAlignment = Alignment.TopCenter,
+        modifier = modifier
+            .fillMaxSize()
+            .background(KosmoTheme.colors.background),
+    ) {
+        Column(
+            verticalArrangement = gap,
+            modifier = Modifier
+                .safeDrawingPadding()
+                .widthIn(max = ScreenLayoutPolicy.TWO_COLUMNS_MAX_WIDTH.dp)
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(
+                    horizontal = ScreenLayoutPolicy.HORIZONTAL_MARGIN.dp,
+                    vertical = ScreenLayoutPolicy.VERTICAL_MARGIN.dp,
+                ),
+        ) {
+            top()
+            Row(horizontalArrangement = gap, modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = gap, modifier = Modifier.weight(1f), content = start)
+                Column(verticalArrangement = gap, modifier = Modifier.weight(1f), content = end)
+            }
+        }
+    }
+}
+
+private val COLUMN_GAP = 12.dp
 
 /**
  * The frame of the between-legs and end screens (plan of issue #49, section 4b): inside the system bars and the

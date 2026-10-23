@@ -28,6 +28,18 @@ object ScreenLayoutPolicy {
     const val VERTICAL_MARGIN = 16f
     const val CONTENT_MAX_WIDTH = 560f
 
+    /** Two columns side by side never get wider than this together (landscape). */
+    const val TWO_COLUMNS_MAX_WIDTH = 960f
+
+    /** Two columns need at least this width; a narrower landscape window keeps one column. */
+    private const val TWO_COLUMNS_MIN_WIDTH = 600f
+
+    /**
+     * Whether a screen that has two columns in landscape (between legs: the winner on the left, the scoreboard and
+     * "Next leg" on the right; owner review of PR #57) shows them side by side, in a window of [widthDp] × [heightDp].
+     */
+    fun hasTwoColumns(widthDp: Float, heightDp: Float): Boolean = widthDp > heightDp && widthDp >= TWO_COLUMNS_MIN_WIDTH
+
     /** Height (dp at font scale 1) of one pinned button, its margin included. */
     private const val PINNED_BUTTON = 74f
 

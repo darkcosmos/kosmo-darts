@@ -163,6 +163,28 @@ class DesignSystemScreenshotTest {
     @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi", fontScale = LARGEST)
     fun smallLandscapeLargestFont() = captureAfter("game_4p_small_640x360_fr_font200", fourLongNames())
 
+    // A Pixel 7 in landscape inside its bars and cutout (owner review of PR #57).
+
+    @Test
+    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    fun ownerLandscape4Players() = captureAfter("game_4p_route_800x360_fr", fourPlayersRoute())
+
+    @Test
+    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    fun ownerLandscapeBust() = captureAfter("game_bust_800x360_fr", bustEvents())
+
+    @Test
+    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    fun ownerLandscapeCheckout() = captureAfter("game_checkout_leg_800x360_fr", checkoutLeg3Players())
+
+    @Test
+    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    fun ownerLandscapeNextLeg() = captureAfter(
+        "next_leg_sets_800x360_fr",
+        MatchScript().start("Ann", "Bob", "Cid", legsPerSet = 3, sets = 2).legsWonBy(1, 1, 1, 2).playLegWonBy(1)
+            .finish().events,
+    )
+
     // Setup (mockup 07).
 
     @Test
@@ -255,6 +277,13 @@ class DesignSystemScreenshotTest {
         .then(*triple(20), AppEvent.NumberTapped(20), AppEvent.NumberTapped(20), AppEvent.NextPlayerTapped)
         .events
 
+    /** 4 players in a match: Ann leaves 121 and throws next, with the route on screen. */
+    private fun fourPlayersRoute() = MatchScript()
+        .start("Ann", "Bob", "Cid", "Dan", legsPerSet = 3, sets = 2, singleOut = false)
+        .then(*triple(20), *triple(20), *triple(20), AppEvent.NextPlayerTapped)
+        .then(*MISSED_TURN, *MISSED_TURN, *MISSED_TURN)
+        .events
+
     /** 301 double out, Ann and Bob: Ann leaves 121, Bob 3, then Ann's T20 T20 leaves 1, a bust. */
     private fun bustEvents() = MatchScript().start("Ann", "Bob", "Cid", legsPerSet = 3, sets = 2, singleOut = false)
         .then(*triple(20), *triple(20), *triple(20), AppEvent.NextPlayerTapped)
@@ -285,6 +314,9 @@ class DesignSystemScreenshotTest {
         const val SCREENSHOT_DIR_PROPERTY = "kosmodarts.screenshot.dir"
         const val DEFAULT_SCREENSHOT_DIR = "build/outputs/roborazzi"
         const val LARGEST = 2.0f
+
+        val MISSED_TURN: Array<AppEvent> =
+            arrayOf(AppEvent.MissTapped, AppEvent.MissTapped, AppEvent.MissTapped, AppEvent.NextPlayerTapped)
 
         fun triple(number: Int): Array<AppEvent> =
             arrayOf(AppEvent.MultiplierTapped(Multiplier.TRIPLE), AppEvent.NumberTapped(number))

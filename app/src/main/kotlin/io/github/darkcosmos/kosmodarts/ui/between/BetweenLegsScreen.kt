@@ -3,7 +3,10 @@ package io.github.darkcosmos.kosmodarts.ui.between
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -31,6 +34,7 @@ import io.github.darkcosmos.kosmodarts.ui.components.ScoreCell
 import io.github.darkcosmos.kosmodarts.ui.components.Scoreboard
 import io.github.darkcosmos.kosmodarts.ui.components.ScoreboardRow
 import io.github.darkcosmos.kosmodarts.ui.components.ScrollingScreen
+import io.github.darkcosmos.kosmodarts.ui.components.TwoColumnScreen
 import io.github.darkcosmos.kosmodarts.ui.components.WinnerZone
 import io.github.darkcosmos.kosmodarts.ui.components.WinnerZoneTags
 import io.github.darkcosmos.kosmodarts.ui.format.averageText
@@ -40,6 +44,7 @@ import io.github.darkcosmos.kosmodarts.ui.format.formatText
 import io.github.darkcosmos.kosmodarts.ui.format.positionText
 import io.github.darkcosmos.kosmodarts.ui.game.AbandonDialog
 import io.github.darkcosmos.kosmodarts.ui.game.CheckoutSummary
+import io.github.darkcosmos.kosmodarts.ui.layout.ScreenLayoutPolicy
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
@@ -64,39 +69,62 @@ fun BetweenLegsScreen(
     checkout: CheckoutSummary? = null,
 ) {
     val state = BetweenLegsState.of(match, checkout)
-    ScrollingScreen(
-        buttonCount = 1,
-        modifier = modifier,
-        content = {
-            Text(
-                text = formatText(match.config.startScore, match.config.checkoutRule, match.format),
-                style = KosmoTheme.typography.label,
-                color = KosmoTheme.colors.onBackgroundMuted,
-            )
-            WinnerZone(
-                chip = titleText(state),
-                name = state.winnerName,
-                slot = state.winnerSlot,
-                tags = WinnerZoneTags(BetweenLegsTags.TITLE, BetweenLegsTags.WINNER, BetweenLegsTags.CHECKOUT),
-                detail = state.checkout?.let {
-                    stringResource(R.string.between_checkout, it.points, dartsText(it.darts))
+    val format: @Composable ColumnScope.() -> Unit = {
+        Text(
+            text = formatText(match.config.startScore, match.config.checkoutRule, match.format),
+            style = KosmoTheme.typography.label,
+            color = KosmoTheme.colors.onBackgroundMuted,
+        )
+    }
+    val winner: @Composable () -> Unit = {
+        WinnerZone(
+            chip = titleText(state),
+            name = state.winnerName,
+            slot = state.winnerSlot,
+            tags = WinnerZoneTags(BetweenLegsTags.TITLE, BetweenLegsTags.WINNER, BetweenLegsTags.CHECKOUT),
+            detail = state.checkout?.let {
+                stringResource(R.string.between_checkout, it.points, dartsText(it.darts))
+            },
+            modifier = Modifier.fillMaxWidth().testTag(BetweenLegsTags.WINNER_ZONE),
+        )
+    }
+    val nextLeg: @Composable () -> Unit = {
+        KosmoButton(
+            text = stringResource(R.string.between_next_leg),
+            onClick = { onEvent(AppEvent.NextLegTapped) },
+            minHeight = 58.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(BetweenLegsTags.NEXT_LEG),
+        )
+    }
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        if (ScreenLayoutPolicy.hasTwoColumns(maxWidth.value, maxHeight.value)) {
+            // Owner review of PR #57: the scoreboard right of the winner, "Next leg" right under the scoreboard.
+            TwoColumnScreen(
+                top = format,
+                start = {
+                    winner()
+                    NextStarterBar(state, match)
                 },
-                modifier = Modifier.fillMaxWidth(),
+                end = {
+                    MatchScoreboard(state)
+                    nextLeg()
+                },
             )
-            MatchScoreboard(state)
-            NextStarterBar(state, match)
-        },
-        buttons = {
-            KosmoButton(
-                text = stringResource(R.string.between_next_leg),
-                onClick = { onEvent(AppEvent.NextLegTapped) },
-                minHeight = 58.dp,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag(BetweenLegsTags.NEXT_LEG),
+        } else {
+            ScrollingScreen(
+                buttonCount = 1,
+                content = {
+                    format()
+                    winner()
+                    MatchScoreboard(state)
+                    NextStarterBar(state, match)
+                },
+                buttons = { nextLeg() },
             )
-        },
-    )
+        }
+    }
     if (isAbandonDialogShown) AbandonDialog(onEvent)
 }
 
@@ -142,7 +170,12 @@ private fun MatchScoreboard(state: BetweenLegsState) {
             description = description,
         )
     }
-    Scoreboard(headers, stringResource(R.string.match_player_header), rows, Modifier.fillMaxWidth())
+    Scoreboard(
+        headers,
+        stringResource(R.string.match_player_header),
+        rows,
+        Modifier.fillMaxWidth().testTag(BetweenLegsTags.SCOREBOARD),
+    )
 }
 
 /** "SET 2 · LEG 4 ▌ CID STARTS": the next leg's position (M19) and its starter (M6), one TalkBack item. */

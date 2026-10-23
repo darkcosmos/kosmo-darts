@@ -566,6 +566,21 @@ Deviations from the plan, to review:
    - A4: `VisitBox` derives its reference number from `X01Cues.MAX_TURN_SCORE`.
    - The fitted score keeps one pixel of the area free (rounding of the measured line, seen on VT11 landscape).
 
+12. Owner review of PR #57 (Pixel 7, landscape inside its bars about 800 × 360 dp; tested at that size):
+   - Landscape tiles: at 4 players the match line moved beside the name (two lines in all), landscape tiles have a 6 dp
+     vertical padding (`GameLayoutPolicy.TILE_PADDING_LANDSCAPE_VERTICAL`); the policy's tile estimate now counts the
+     match line (it was missing, so the left column scrolled and cut the tiles).
+   - Landscape route: one line right of the score (`RouteArea(isSingleLine)`; darts shrink with `TextAutoSize`), on
+     `LANDSCAPE_ROUTE_SHARE` (60 %) of the zone width, the score fitted to the rest; the reserved height is one line,
+     so the BUST banner is one line too and the zone's least height is lower. The landscape checkout zone minimum is
+     capped at the score zone minimum (large text: the banner shrinks), see `GameLayoutPolicyTest`.
+   - Route label: an `accent` box filling the panel height (`IntrinsicSize.Min`), clipped by the panel's rounded shape.
+   - Landscape CHECKOUT: the chip fills the middle of the zone, centred, text up to 1.5 × `banner`.
+   - Between legs in landscape (`ScreenLayoutPolicy.hasTwoColumns`, `TwoColumnScreen`): format line, then the winner
+     and the starter bar on the left, the scoreboard and "Next leg" on the right. Portrait unchanged.
+   - Tests: `ZoneLayoutTest`, `BetweenLegsLayoutTest`, `ScreenLayoutPolicyTest`, a policy test at 800 × 360; captures
+     `*_800x360_fr`. Rules CS7, CS8, VT13, M16 and the design system amended.
+
 Known limitations found while building:
 - Robolectric honours the Saira width axis (`SairaWidthSpikeTest`: "501" at width 75 is about 75 % of width 100) but
   ignores the line height of the styles: in the captures the score is drawn smaller than on the phone (its box is the
