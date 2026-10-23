@@ -185,7 +185,8 @@ class CricketScreenTest {
         }
         // The dead row is read once, without its cells.
         composeRule.onNode(
-            hasContentDescription("20\u00A0: fermée par tous, ne compte plus").and(hasAnyAncestor(hasTestTag(CricketTags.row(CricketTarget.TWENTY)))),
+            hasContentDescription("20\u00A0: fermée par tous, ne compte plus")
+                .and(hasAnyAncestor(hasTestTag(CricketTags.row(CricketTarget.TWENTY)))),
             useUnmergedTree = true,
         ).assertExists()
         composeRule.onNodeWithTag(CricketTags.cell(CricketTarget.TWENTY, 0)).assertDoesNotExist()

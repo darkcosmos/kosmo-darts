@@ -1151,3 +1151,15 @@ notes are applied:
   `NoVoiceNotice`, `HomeScreen`/`EndScreen` events, `MatchIndicator.of`/`MatchPosition.current(score)` shared in
   `GameScreenState.kt`; extra `CricketPersistenceEffectsTest`; about 20 test files adapted to `NewGame(GameMode.X01)`
   and long lines wrapped. Process slip: `CueSink.kt` (8 lines) was rewritten with Write instead of Edit.
+- T8: `ui/cricket/` `CricketGameScreen` (portrait and landscape from `CricketLayoutPolicy`, abandon and no-voice
+  dialogs, keeps the screen on), `CricketBoard` (sticky headers, scrolling rows, drawn marks, strike node and
+  `RowDead` on a node whose strike sibling stays outside the cleared cells, header traversal order, points row),
+  `CricketKeypad`, `CricketPlayerZone`, `CricketMarksBox`, `CricketTags`, `CricketSemantics`; `ZoneStat`
+  (`ComponentModels.kt`), `DartSlots(slotHeight)`, `Chips` and `confirmLabel` made `internal` for reuse;
+  `KosmoDartsApp` draws `CricketGameScreen` (between legs and end stay empty for T9). Tests: `CricketScreenTest`
+  (Robolectric, state given directly through a `ComposeView`), `CricketScreenshotTest` (20 captures, with the
+  grayscale copy of the 4-player dead rows), a `PaletteContrastTest` case; `FrenchStringsTest` plurals were already
+  in. `docs/design/design-system.md` got `CricketBoard`, `CricketKeypad` and section 6.5 (layout contract; the file
+  is not protected). X01 captures: the 160 PNGs of the `e7372f8` baseline are byte-identical to the head's (`cmp`).
+  Deviations: no separate `Keypad.kt` change beyond the earlier `KeypadKeys.kt` move; unused string
+  `cricket_board_column_current_visit` removed. Started by `developer-build-T8`, finished by `developer-build-T8-2`.
