@@ -152,6 +152,67 @@ class MatchScoreTest {
         }
     }
 
+    /** M19: at the start of a match, set 1 leg 1, and no last leg. */
+    @Test
+    fun `M19 position at the start`() {
+        val start = score(3, 2, 2)
+
+        assertEquals(1, start.currentSetNumber)
+        assertEquals(1, start.currentLegNumber)
+        assertNull(start.lastLegSetNumber)
+        assertNull(start.lastLegNumber)
+    }
+
+    /** M19: mid-set, the leg number counts the legs played in the set; the last leg is the one before. */
+    @Test
+    fun `M19 position mid-set`() {
+        val midSet = score(3, 2, 2, a, b)
+
+        assertEquals(1, midSet.currentSetNumber)
+        assertEquals(3, midSet.currentLegNumber)
+        assertEquals(1, midSet.lastLegSetNumber)
+        assertEquals(2, midSet.lastLegNumber)
+    }
+
+    /** M19: after a set is won, the next leg is leg 1 of the next set; the last leg stays in the set it closed. */
+    @Test
+    fun `M19 position after a set change`() {
+        val afterSet = score(2, 3, 2, a, b, a)
+
+        assertEquals(2, afterSet.currentSetNumber)
+        assertEquals(1, afterSet.currentLegNumber)
+        assertEquals(1, afterSet.lastLegSetNumber)
+        assertEquals(3, afterSet.lastLegNumber)
+
+        val next = afterSet.withLegWonBy(b)
+
+        assertEquals(2, next.currentSetNumber)
+        assertEquals(2, next.currentLegNumber)
+        assertEquals(2, next.lastLegSetNumber)
+        assertEquals(1, next.lastLegNumber)
+    }
+
+    /** M19: with one set, the set number stays 1 and the leg number counts every leg. */
+    @Test
+    fun `M19 position with legs only`() {
+        val legsOnly = score(5, 1, 3, a, b, c)
+
+        assertEquals(1, legsOnly.currentSetNumber)
+        assertEquals(4, legsOnly.currentLegNumber)
+        assertEquals(1, legsOnly.lastLegSetNumber)
+        assertEquals(3, legsOnly.lastLegNumber)
+    }
+
+    /** M19: a single game is set 1 leg 1 throughout. */
+    @Test
+    fun `M19 position in a single game`() {
+        val single = score(1, 1, 2)
+
+        assertEquals(1, single.currentSetNumber)
+        assertEquals(1, single.currentLegNumber)
+        assertNull(single.lastLegNumber)
+    }
+
     /** Longest number of legs from [score] to the end of the match, memoized on the sets and legs of the set. */
     private fun longestMatch(score: MatchScore, memo: MutableMap<Pair<List<Int>, List<Int>>, Int>): Int {
         if (score.isFinished) return 0

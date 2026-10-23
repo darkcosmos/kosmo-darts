@@ -4,9 +4,6 @@ import android.media.AudioManager
 import android.os.Looper
 import android.speech.tts.TextToSpeech
 import androidx.compose.ui.test.SemanticsNodeInteraction
-import androidx.compose.ui.test.hasAnyAncestor
-import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -23,7 +20,10 @@ import io.github.darkcosmos.kosmodarts.audio.TtsTestSupport
 import io.github.darkcosmos.kosmodarts.audio.TtsTestSupport.initLastEngine
 import io.github.darkcosmos.kosmodarts.audio.TtsTestSupport.lastEngine
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
+import io.github.darkcosmos.kosmodarts.ui.end.EndTags
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
+import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
+import io.github.darkcosmos.kosmodarts.ui.revealIfScrolled
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import io.github.darkcosmos.kosmodarts.ui.resume.AppProcess
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
@@ -67,7 +67,7 @@ internal abstract class AnnouncementsScreenTestBase {
 
     protected fun key(tag: String): SemanticsNodeInteraction = composeRule.onNodeWithTag(tag)
 
-    protected fun tap(vararg tags: String) = tags.forEach { key(it).performClick() }
+    protected fun tap(vararg tags: String) = tags.forEach { key(it).revealIfScrolled().performClick() }
 
     protected fun triple(number: Int) = tap(KeypadTags.TRIPLE, KeypadTags.number(number))
 
@@ -81,7 +81,7 @@ internal abstract class AnnouncementsScreenTestBase {
 
     protected fun undo() = tap(KeypadTags.UNDO)
 
-    protected fun finishGame() = composeRule.onNodeWithText(string(R.string.checkout_finish)).performClick()
+    protected fun finishGame() = key(GameTags.CONFIRM).revealIfScrolled().performClick()
 
     /** Lets every pending sound and voice play. */
     protected fun playEverything() {
@@ -119,12 +119,10 @@ internal abstract class AnnouncementsScreenTestBase {
 
     /** From home: opens the setup and fills it, 301 double out, without starting. */
     protected fun openSetup(vararg names: String = arrayOf("Ann")) {
-        composeRule.onNodeWithText(string(R.string.home_new_game)).performScrollTo().performClick()
+        composeRule.onNodeWithTag(HomeTags.MODE_X01).performScrollTo().performClick()
         composeRule.onNodeWithText("301").performClick()
         if (names.size == 1) {
-            composeRule.onNodeWithContentDescription(string(R.string.setup_remove_player))
-                .performScrollTo()
-                .performClick()
+            composeRule.onNodeWithTag(SetupTags.remove(1)).performScrollTo().performClick()
         }
         names.forEachIndexed { index, name ->
             composeRule.onNodeWithTag(SetupTags.nameField(index)).performScrollTo().performTextReplacement(name)
@@ -133,7 +131,7 @@ internal abstract class AnnouncementsScreenTestBase {
     }
 
     protected fun tapStart() {
-        composeRule.onNodeWithText(string(R.string.setup_start)).performScrollTo().performClick()
+        composeRule.onNodeWithTag(SetupTags.START).performClick()
         composeRule.waitForIdle()
     }
 
@@ -182,7 +180,7 @@ internal abstract class AnnouncementsScreenTestBase {
         finishGame()
         playEverything()
 
-        composeRule.onNodeWithText(string(R.string.end_rematch)).performScrollTo().performClick()
+        composeRule.onNodeWithTag(EndTags.REMATCH).revealIfScrolled().performClick()
         composeRule.waitForIdle()
         // The end screen kept the voice: the rematch's first player is announced at once.
         triple(20); triple(20); single(11) // 131, 170 left
@@ -207,11 +205,10 @@ internal abstract class AnnouncementsScreenTestBase {
         playEverything()
     }
 
-    /** The Undo button of the checkout dialog, not the Undo key of the keypad. */
+    /** "Undo" of the action bar while the checkout waits (it was the Undo button of the checkout dialog). */
     protected fun undoInCheckoutDialog() {
-        composeRule.onNode(
-            hasText(string(R.string.key_undo)).and(hasAnyAncestor(hasTestTag(GameTags.CHECKOUT_DIALOG))),
-        ).performClick()
+        composeRule.onNodeWithTag(GameTags.CONFIRM).assertExists()
+        tap(KeypadTags.UNDO)
         composeRule.waitForIdle()
     }
 

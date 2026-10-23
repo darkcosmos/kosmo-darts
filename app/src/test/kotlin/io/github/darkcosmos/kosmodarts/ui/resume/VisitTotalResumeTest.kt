@@ -14,6 +14,8 @@ import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
+import io.github.darkcosmos.kosmodarts.ui.revealIfScrolled
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import org.junit.After
@@ -50,7 +52,10 @@ class VisitTotalResumeTest {
     private fun bust() =
         Box(process.string(R.string.game_bust), process.string(R.string.game_visit_last_bust_description))
 
-    /** One entry per player; `null` means no box (VT13: the thrower of a waiting bust). */
+    /** VT13 (as amended by issue #49): the zone box of a waiting bust shows 0, read "Last turn: bust". */
+    private fun pendingBust() = Box("0", process.string(R.string.game_visit_last_bust_description))
+
+    /** One entry per player; `null` means no box. */
     private fun assertBoxes(expected: List<Box?>) {
         composeRule.waitForIdle()
         expected.forEachIndexed { player, box ->
@@ -58,7 +63,7 @@ class VisitTotalResumeTest {
             if (box == null) {
                 node.assertDoesNotExist()
             } else {
-                node.performScrollTo().assertTextEquals(box.text).assertContentDescriptionEquals(box.description)
+                node.revealIfScrolled().assertTextEquals(box.text).assertContentDescriptionEquals(box.description)
             }
         }
         composeRule.onNodeWithTag(GameTags.visitTotal(expected.size)).assertDoesNotExist()
@@ -67,7 +72,7 @@ class VisitTotalResumeTest {
     private fun resume(saved: SavedGame) {
         process.writeGame(saved)
         process.launchFresh()
-        composeRule.onNodeWithText(process.string(R.string.home_resume_game)).performScrollTo().performClick()
+        composeRule.onNodeWithTag(HomeTags.RESUME).performScrollTo().performClick()
     }
 
     private fun darts(vararg codes: Int): List<Dart> = codes.map { Dart.single(it) }
@@ -97,15 +102,15 @@ class VisitTotalResumeTest {
         val config = X01Config(listOf("Ann", "Bob"), startScore = 301)
         val t20 = Dart.triple(20)
         resume(SavedGame(X01Game(config, listOf(t20, t20, t20) + darts(1, 1, 1) + listOf(t20, t20)), true))
-        val expected = listOf(null, lastVisit(3))
+        val expected = listOf(pendingBust(), lastVisit(3))
         assertBoxes(expected)
-        composeRule.onNodeWithTag(GameTags.CARD_BUST).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag(GameTags.CARD_BUST).revealIfScrolled().assertIsDisplayed()
 
         process.rotate()
 
         assertBoxes(expected)
-        composeRule.onNodeWithTag(GameTags.CARD_BUST).performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithTag(KeypadTags.NEXT_PLAYER).performClick()
+        composeRule.onNodeWithTag(GameTags.CARD_BUST).revealIfScrolled().assertIsDisplayed()
+        composeRule.onNodeWithTag(KeypadTags.NEXT_PLAYER).revealIfScrolled().performClick()
         assertBoxes(listOf(bust(), inProgress(0)))
     }
 
@@ -142,7 +147,7 @@ class VisitTotalResumeTest {
 
         process.finish()
         process.launchFresh()
-        composeRule.onNodeWithText(process.string(R.string.home_resume_game)).performScrollTo().performClick()
+        composeRule.onNodeWithTag(HomeTags.RESUME).performScrollTo().performClick()
 
         assertBoxes(expected)
     }

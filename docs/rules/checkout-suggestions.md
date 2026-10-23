@@ -1,6 +1,6 @@
 # Checkout suggestion rules (game screen)
 
-Status: v1 (issue #38, with the owner answers Q1 to Q5 of 2026-10-21).
+Status: v2 (issue #38, with the owner answers Q1 to Q5 of 2026-10-21; CS5 and CS7 to CS9 amended by issue #49).
 This document is the single source of truth for the checkout suggestion shown on the highlighted card of the game
 screen: tests cite these rules, never the issue text. Rule ids (CS1, CS2, ...) are stable. They use the prefix CS so
 that they never collide with the X01 rules (`docs/rules/x01.md`), the persistence rules (`docs/rules/persistence.md`),
@@ -65,21 +65,26 @@ Reference cases (owner table, issue #38, with Q5):
 
 ## Display (`:app`)
 
-- CS5. The suggestion is shown only on the highlighted card, and only when no turn waits: it is hidden while a turn
-  waits for "Next player" (after the third dart or a bust) and while the checkout dialog is open. Player rows and
-  the end screen have no suggestion.
+- CS5. The suggestion is shown only in the current player's zone, and only when no turn waits: it is hidden while a
+  turn waits for "Next player" (after the third dart or a bust: BUST mode) and while a checkout waits for its
+  confirmation (CHECKOUT mode; issue #49). Tiles and the end screen have no suggestion.
 - CS6. It is recomputed after every dart and every undo: it is derived from the game, never stored, and needs no
   setting.
-- CS7. Text: the label "Checkout: " / « Sortie : », then the darts separated by ` · `, written like the dart slots:
-  `T20`, `D16`, `20` (single), `25` (outer bull), `Bull`. The notation is the same in English and French.
-- CS8. The suggestion line is always present in the highlighted card, under the remaining score and above the dart
-  slots. It is empty and silent for TalkBack when there is no suggestion. Its height is reserved for the widest
-  possible suggestion text (the label then three times the widest dart text) at the current width and font scale,
-  in every state: one line on a Pixel 7, including at the largest font size; two lines on a narrower screen where
-  that text needs two. The card therefore never changes height
-  because of the suggestion. The text is never truncated: it may wrap only after a ` · `, never inside a dart and
-  never between the label and the first dart.
-- CS9. TalkBack reads the label, then the darts with the words of the voice announcements, separated by commas.
-  The words are identical in English and French: single `20`, double `Double 16`, triple `Triple 20`, outer bull
-  `25`, bull `Bull`. Examples: "Checkout: Triple 20, Triple 20, Bull", « Sortie : 20, Double 20 ». In the card,
-  TalkBack reads the suggestion after the visit total box and before the dart slots.
+- CS7. Text (as amended by issue #49, design system `CheckoutRouteBar`): a label chip "CHECKOUT" / « SORTIE » on
+  `accent`, as high as the route panel and sharing its rounded start corners, then the darts in `accent` on
+  `background`, separated by a wide space (no separator dots), written like the dart slots: `T20`, `D16`, `20`
+  (single), `25` (outer bull), `BULL`. The notation is the same in English and French.
+- CS8. The route area of the zone is always present while the player throws and during a BUST, under the score and
+  above the dart slots. When there is no route it is empty and silent for TalkBack; during a BUST it holds the BUST
+  banner (VT13). Its height is reserved for the widest possible route (the label then three times the widest dart
+  text) at the current width and font scale, in those states, so the zone and the score never move when a route
+  appears or disappears. While a checkout waits for its confirmation (CHECKOUT mode, no score, no route) the area is
+  not shown: the CHECKOUT banner takes the middle of the zone, and on a short screen the zone gives that height back
+  so the keypad and the action bar fit (issue #49, code review U10). The text is never truncated. In portrait it may
+  wrap only between two darts; in landscape the area stands right of the score and the route stays on one line, its
+  darts shrinking to fit the width (owner review of PR #57), so the area is one line high.
+- CS9. TalkBack reads the route area as one item: the label, then the darts with the words of the voice
+  announcements, separated by commas. The words are identical in English and French: single `20`, double
+  `Double 16`, triple `Triple 20`, outer bull `25`, bull `Bull`. Examples: "Checkout: Triple 20, Triple 20, Bull",
+  « Sortie : 20, Double 20 ». In the zone, TalkBack reads in screen order: the name, the score, the route, then the
+  dart slots and the visit total box.

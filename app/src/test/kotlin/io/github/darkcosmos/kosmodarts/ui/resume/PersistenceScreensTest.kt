@@ -11,12 +11,9 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
-import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
-import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -31,9 +28,11 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.ui.end.EndTags
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
+import io.github.darkcosmos.kosmodarts.ui.revealIfScrolled
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -70,7 +69,13 @@ class PersistenceScreensTest {
 
     private fun key(tag: String): SemanticsNodeInteraction = composeRule.onNodeWithTag(tag)
 
-    private fun tap(vararg tags: String) = tags.forEach { key(it).performClick() }
+    private fun tap(vararg tags: String) = tags.forEach { key(it).revealIfScrolled().performClick() }
+
+    private fun resume() = key(HomeTags.RESUME).performScrollTo().performClick()
+
+    private fun newGameFromHome() = key(HomeTags.MODE_X01).performScrollTo().performClick()
+
+    private fun confirmCheckout() = key(GameTags.CONFIRM).revealIfScrolled().performClick()
 
     private fun back() {
         composeRule.waitForIdle()
@@ -81,12 +86,12 @@ class PersistenceScreensTest {
     private fun assertSummaryShown(shown: Boolean) {
         val summary = composeRule.onNodeWithTag(HomeTags.SUMMARY)
         if (shown) summary.performScrollTo().assertIsDisplayed() else summary.assertDoesNotExist()
-        if (!shown) text(R.string.home_resume_game).assertDoesNotExist()
+        if (!shown) key(HomeTags.RESUME).assertDoesNotExist()
     }
 
     /** The card of the player shown as throwing, as the X01 screen tests check it. */
     private fun assertOnGameScreen(player: String) {
-        composeRule.onNodeWithTag(GameTags.CURRENT_PLAYER).assert(hasAnyDescendant(hasText(player)))
+        composeRule.onNodeWithTag(GameTags.CURRENT_PLAYER).assert(hasAnyDescendant(hasText(player, ignoreCase = true)))
     }
 
     private fun assertDartSlot(index: Int, dart: String) {
@@ -100,7 +105,7 @@ class PersistenceScreensTest {
     fun `R1 returning after process death shows the game directly`() {
         process.writeGame(ann2Darts)
         process.launchFresh()
-        click(R.string.home_resume_game)
+        resume()
 
         process.killInBackgroundAndReturn()
 
@@ -115,61 +120,62 @@ class PersistenceScreensTest {
     fun `R4 a waiting bust is restored after process death`() {
         process.writeGame(SaveFixtures.WAITING_BUST)
         process.launchFresh()
-        click(R.string.home_resume_game)
+        resume()
 
         process.killInBackgroundAndReturn()
 
         assertOnGameScreen("Ann")
-        key(GameTags.CARD_BUST).performScrollTo().assertIsDisplayed()
+        key(GameTags.CARD_BUST).revealIfScrolled().assertIsDisplayed()
         key(KeypadTags.number(20)).assertIsNotEnabled()
-        key(KeypadTags.NEXT_PLAYER).assertIsEnabled().performClick()
+        key(KeypadTags.NEXT_PLAYER).revealIfScrolled().assertIsEnabled().performClick()
         assertOnGameScreen("Bob")
     }
 
-    /** R4: the checkout dialog is open again, and both buttons behave as before. */
+    /** R4, R19: the pending checkout is shown again in the zone, and both action buttons behave as before. */
     @Test
-    fun `R4 the checkout dialog is restored and both buttons work`() {
+    fun `R4 R19 the pending checkout is restored and both buttons work`() {
         process.writeGame(SaveFixtures.WAITING_CHECKOUT)
         process.launchFresh()
-        click(R.string.home_resume_game)
+        resume()
 
         process.killInBackgroundAndReturn()
 
-        key(GameTags.CHECKOUT_DIALOG).assertIsDisplayed()
-        composeRule.onNode(hasText(string(R.string.key_undo)).and(hasAnyAncestor(hasTestTag(GameTags.CHECKOUT_DIALOG))))
-            .performClick()
-        key(GameTags.CHECKOUT_DIALOG).assertDoesNotExist()
+        key(GameTags.CHECKOUT_BANNER).revealIfScrolled().assertIsDisplayed()
+        key(GameTags.CONFIRM).assertIsEnabled()
+        tap(KeypadTags.UNDO)
+        key(GameTags.CHECKOUT_BANNER).assertDoesNotExist()
         tap(KeypadTags.number(1))
-        clickInDialog(R.string.checkout_finish)
-        text(R.string.end_winner, "Ann").assertIsDisplayed()
+        confirmCheckout()
+        key(EndTags.WINNER).assertTextEquals("ANN")
     }
 
-    /** R2: a fresh launch shows the summary, then "New game", then "Resume game" under it. */
+    /** R2, M18: a fresh launch shows the card with its resume button, then "NEW GAME" and the X01 card. */
     @Test
-    fun `R2 a fresh launch shows the summary and the two buttons in order`() {
+    fun `R2 a fresh launch shows the card then the new game section`() {
         process.writeGame(SaveFixtures.WAITING_NORMAL)
         process.launchFresh()
 
         assertSummaryShown(true)
-        text(R.string.home_saved_game_mode, 501, string(R.string.setup_double_out)).assertIsDisplayed()
-        key(HomeTags.player(0)).assert(hasText("Ann")).assert(hasText("361"))
-        key(HomeTags.player(1)).assert(hasText("Bob")).assert(hasText("501"))
-        text(R.string.game_to_throw, "Ann").assertIsDisplayed()
-        val newGame = text(R.string.home_new_game).getUnclippedBoundsInRoot()
-        val resume = text(R.string.home_resume_game).getUnclippedBoundsInRoot()
-        assertTrue(resume.top >= newGame.bottom)
+        composeRule.onNodeWithText("501 · " + string(R.string.setup_double_out)).assertIsDisplayed()
+        key(HomeTags.player(0)).assert(hasText("ANN")).assert(hasText("361"))
+        key(HomeTags.player(1)).assert(hasText("BOB")).assert(hasText("501"))
+        key(HomeTags.RESUME).assertTextEquals(string(R.string.home_resume, "ANN"))
+        val resume = key(HomeTags.RESUME).getUnclippedBoundsInRoot()
+        val newGame = key(HomeTags.MODE_X01).getUnclippedBoundsInRoot()
+        assertTrue(newGame.top >= resume.bottom)
 
-        click(R.string.home_resume_game)
+        resume()
         assertOnGameScreen("Ann")
         key(KeypadTags.NEXT_PLAYER).assertIsEnabled()
     }
 
+    /** M18, owner Q11 of issue #49: a pending checkout reads "Resume · Ann to throw", like any other game. */
     @Test
-    fun `R2 the summary of an open checkout names the winner`() {
+    fun `M18 the summary of a pending checkout names the winner to throw`() {
         process.writeGame(SaveFixtures.WAITING_CHECKOUT)
         process.launchFresh()
 
-        text(R.string.home_saved_game_checkout, "Ann").performScrollTo().assertIsDisplayed()
+        key(HomeTags.RESUME).performScrollTo().assertTextEquals(string(R.string.home_resume, "ANN"))
     }
 
     /** R5: undo works back to the first dart of the game. */
@@ -177,7 +183,7 @@ class PersistenceScreensTest {
     fun `R5 undo after a resume goes back to the first dart`() {
         process.writeGame(ann2Darts)
         process.launchFresh()
-        click(R.string.home_resume_game)
+        resume()
 
         tap(KeypadTags.UNDO, KeypadTags.UNDO)
 
@@ -191,14 +197,14 @@ class PersistenceScreensTest {
         process.writeGame(ann2Darts)
         process.launchFresh()
 
-        click(R.string.home_new_game)
+        newGameFromHome()
         text(R.string.new_game_confirm_title).assertIsDisplayed()
         clickInDialog(R.string.new_game_confirm_cancel)
         assertSummaryShown(true)
 
-        click(R.string.home_new_game)
+        newGameFromHome()
         clickInDialog(R.string.new_game_confirm_delete)
-        text(R.string.setup_title).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.setup_title), substring = true).assertIsDisplayed()
         back()
         assertSummaryShown(false)
 
@@ -212,13 +218,13 @@ class PersistenceScreensTest {
     fun `R6 the saved game is deleted when the win is confirmed`() {
         process.writeGame(SaveFixtures.WAITING_CHECKOUT)
         process.launchFresh()
-        click(R.string.home_resume_game)
-        clickInDialog(R.string.checkout_finish)
-        text(R.string.end_winner, "Ann").assertIsDisplayed()
+        resume()
+        confirmCheckout()
+        key(EndTags.WINNER).assertTextEquals("ANN")
 
         process.killInBackgroundAndReturn()
 
-        text(R.string.home_new_game).assertIsDisplayed()
+        key(HomeTags.MODE_X01).assertIsDisplayed()
         assertSummaryShown(false)
         process.launchFresh()
         assertSummaryShown(false)
@@ -229,7 +235,7 @@ class PersistenceScreensTest {
     fun `R6 Abandon deletes the saved game`() {
         process.writeGame(ann2Darts)
         process.launchFresh()
-        click(R.string.home_resume_game)
+        resume()
 
         back()
         clickInDialog(R.string.game_abandon_confirm)
@@ -243,23 +249,23 @@ class PersistenceScreensTest {
     @Test
     fun `R7 the last setup prefills the next game after a restart`() {
         process.launchFresh()
-        click(R.string.home_new_game)
-        composeRule.onNodeWithContentDescription(string(R.string.setup_add_player)).performScrollTo().performClick()
+        newGameFromHome()
+        key(SetupTags.ADD_PLAYER).performScrollTo().performClick()
         listOf("Cid", "Ann", "Bob").forEachIndexed { index, name ->
             composeRule.onNodeWithTag(SetupTags.nameField(index)).performScrollTo().performTextReplacement(name)
         }
-        text(R.string.setup_start_score, 301).performScrollTo().performClick()
+        text(R.string.format_start_score, 301).performScrollTo().performClick()
         click(R.string.setup_single_out)
-        click(R.string.setup_start)
+        key(SetupTags.START).performClick()
 
         process.launchFresh()
-        click(R.string.home_new_game)
+        newGameFromHome()
         clickInDialog(R.string.new_game_confirm_delete)
 
         listOf("Cid", "Ann", "Bob").forEachIndexed { index, name ->
             composeRule.onNodeWithTag(SetupTags.nameField(index)).assert(hasText(name))
         }
-        text(R.string.setup_start_score, 301).assertIsSelected()
+        text(R.string.format_start_score, 301).assertIsSelected()
         text(R.string.setup_single_out).assertIsSelected()
         text(R.string.setup_double_out).assertIsNotSelected()
     }
@@ -270,12 +276,12 @@ class PersistenceScreensTest {
         process.writeSetup(SaveFixtures.WAITING_CHECKOUT.game.config)
         process.writeGame(SaveFixtures.WAITING_CHECKOUT)
         process.launchFresh()
-        click(R.string.home_resume_game)
-        clickInDialog(R.string.checkout_finish)
-        click(R.string.end_rematch)
+        resume()
+        confirmCheckout()
+        key(EndTags.REMATCH).performClick()
 
         process.launchFresh()
-        click(R.string.home_new_game)
+        newGameFromHome()
         clickInDialog(R.string.new_game_confirm_delete)
 
         composeRule.onNodeWithTag(SetupTags.nameField(0)).assert(hasText("Bob"))
@@ -293,7 +299,7 @@ class PersistenceScreensTest {
         composeRule.onNodeWithTag(SetupTags.nameField(0)).assert(hasText("Dan"))
         clickInDialog(R.string.restore_failed_ok)
         text(R.string.restore_failed_message).assertDoesNotExist()
-        text(R.string.setup_title).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.setup_title), substring = true).assertIsDisplayed()
         assertFalse(process.gameFile.exists())
 
         process.launchFresh()
@@ -309,10 +315,10 @@ class PersistenceScreensTest {
         process.launchFresh()
 
         assertSummaryShown(true)
-        click(R.string.home_new_game)
+        newGameFromHome()
         clickInDialog(R.string.new_game_confirm_delete)
         composeRule.onNodeWithTag(SetupTags.nameField(0)).assert(hasText(""))
-        text(R.string.setup_start_score, 501).assertIsSelected()
+        text(R.string.format_start_score, 501).assertIsSelected()
         text(R.string.setup_double_out).assertIsSelected()
     }
 
@@ -324,7 +330,7 @@ class PersistenceScreensTest {
         process.launchFresh()
         process.viewModel.addCueSink { cues += it }
 
-        click(R.string.home_resume_game)
+        resume()
         process.killInBackgroundAndReturn()
         process.viewModel.addCueSink { cues += it }
         composeRule.waitForIdle()
@@ -337,7 +343,7 @@ class PersistenceScreensTest {
     fun `R4 an active modifier is not restored`() {
         process.writeGame(ann2Darts)
         process.launchFresh()
-        click(R.string.home_resume_game)
+        resume()
         tap(KeypadTags.DOUBLE)
         key(KeypadTags.DOUBLE).assertIsSelected()
 
@@ -362,12 +368,12 @@ class PersistenceScreensTest {
     fun `R1 returning to the setup screen shows home`() {
         process.writeGame(ann2Darts)
         process.launchFresh()
-        click(R.string.home_new_game)
+        newGameFromHome()
         clickInDialog(R.string.new_game_confirm_delete)
 
         process.killInBackgroundAndReturn()
 
-        text(R.string.home_new_game).assertIsDisplayed()
+        key(HomeTags.MODE_X01).assertIsDisplayed()
         assertSummaryShown(false)
     }
 
@@ -375,12 +381,12 @@ class PersistenceScreensTest {
     fun `R1 returning to the end screen shows home`() {
         process.writeGame(SaveFixtures.WAITING_CHECKOUT)
         process.launchFresh()
-        click(R.string.home_resume_game)
-        clickInDialog(R.string.checkout_finish)
+        resume()
+        confirmCheckout()
 
         process.killInBackgroundAndReturn()
 
-        text(R.string.home_new_game).assertIsDisplayed()
+        key(HomeTags.MODE_X01).assertIsDisplayed()
         assertSummaryShown(false)
     }
 
@@ -389,7 +395,7 @@ class PersistenceScreensTest {
     fun `R12 rotating during a game reads and writes nothing`() {
         process.writeGame(ann2Darts)
         process.launchFresh()
-        click(R.string.home_resume_game)
+        resume()
         tap(KeypadTags.MISS)
         process.persistence.awaitIdle()
         val reads = process.gameStore.reads
@@ -409,7 +415,7 @@ class PersistenceScreensTest {
     fun `R12 rotating keeps the new-game dialog open`() {
         process.writeGame(ann2Darts)
         process.launchFresh()
-        click(R.string.home_new_game)
+        newGameFromHome()
 
         process.rotate()
         composeRule.waitForIdle()
@@ -448,6 +454,6 @@ class PersistenceScreensTest {
                 .getBoundsInRoot()
             assertTrue("score $index is clipped", score.right <= card.right && score.right > score.left)
         }
-        text(R.string.home_resume_game).performScrollTo().assertIsDisplayed()
+        key(HomeTags.RESUME).performScrollTo().assertIsDisplayed()
     }
 }

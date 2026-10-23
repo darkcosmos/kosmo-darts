@@ -84,31 +84,31 @@ class MatchScreenshotTest {
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun twoPlayersPortrait() = captureAfter("match_cards_2p_portrait_en", twoPlayers())
+    fun twoPlayersPortrait() = captureAfter("match_game_2p_portrait_en", twoPlayers())
 
     @Test
     @Config(qualifiers = "+en-land")
-    fun twoPlayersLandscape() = captureAfter("match_cards_2p_landscape_en", twoPlayers())
+    fun twoPlayersLandscape() = captureAfter("match_game_2p_landscape_en", twoPlayers())
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun fourPlayersPortrait() = captureAfter("match_cards_4p_portrait_en", fourPlayers())
+    fun fourPlayersPortrait() = captureAfter("match_game_4p_portrait_en", fourPlayers())
 
     @Test
     @Config(qualifiers = "+en-land")
-    fun fourPlayersLandscape() = captureAfter("match_cards_4p_landscape_en", fourPlayers())
+    fun fourPlayersLandscape() = captureAfter("match_game_4p_landscape_en", fourPlayers())
 
     /** U1: 4 long names at 200 %, the last player highlighted. */
     @Test
     @Config(qualifiers = "+en-port", fontScale = LARGEST_FONT_SCALE)
     fun fourLongNamesLastPlayerLargestFont() =
-        captureAfter("match_cards_4p_long_names_last_player_portrait_en_font200", fourLongNamesLastPlayer())
+        captureAfter("match_game_4p_long_names_last_player_portrait_en_font200", fourLongNamesLastPlayer())
 
     /** U3: a group of 5 legs or more shows one mark and "×N". */
     @Test
     @Config(qualifiers = "+en-port")
     fun overflowCount() = captureAfter(
-        "match_cards_overflow_portrait_en",
+        "match_game_9legs_portrait_en",
         MatchScript().start("Ann", "Bob", legsPerSet = 9, sets = 2).legsWonBy(0, 0, 0, 0, 0).events,
     )
 
@@ -116,16 +116,16 @@ class MatchScreenshotTest {
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun dialogLeg() = captureAfter("match_dialog_leg_portrait_en", script().playLegWonBy(0).events)
+    fun dialogLeg() = captureAfter("match_checkout_leg_portrait_en", script().playLegWonBy(0).events)
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun dialogSet() = captureAfter("match_dialog_set_portrait_en", script().legsWonBy(0).playLegWonBy(0).events)
+    fun dialogSet() = captureAfter("match_checkout_set_portrait_en", script().legsWonBy(0).playLegWonBy(0).events)
 
     @Test
     @Config(qualifiers = "+en-port")
     fun dialogMatch() =
-        captureAfter("match_dialog_match_portrait_en", script().legsWonBy(0, 0, 0).playLegWonBy(0).events)
+        captureAfter("match_checkout_match_portrait_en", script().legsWonBy(0, 0, 0).playLegWonBy(0).events)
 
     // Between legs (M16, U7, T5).
 

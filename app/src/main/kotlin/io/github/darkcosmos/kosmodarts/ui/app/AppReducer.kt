@@ -69,16 +69,16 @@ class AppReducer(private val random: Random) {
                 state.copy(screen = screen.copy(noVoiceNotice = NoVoiceNotice(event.canInstall)))
             // Rule R6: leaving the game screen this way deletes the saved game.
             event == AppEvent.AbandonConfirmed -> state.copy(screen = Screen.Home())
-            event == AppEvent.FinishGameTapped && game.isCheckoutDialogShown -> state.copy(screen = finish(game))
-            // The checkout dialog cannot be dismissed with system back.
-            event == AppEvent.Back && game.isCheckoutDialogShown -> state
+            event == AppEvent.FinishGameTapped && game.isCheckoutPending -> state.copy(screen = finish(game))
+            // M15, owner O1: system back opens "Abandon the game?" in every zone mode, a pending checkout included;
+            // dismissing it leaves the checkout pending.
             else -> state.copy(screen = screen.copy(game = playGame(game, event)))
         }
     }
 
-    /** M15, M16, M17: "Finish game" ends the match; "Finish leg" and "Finish set" confirm the leg. */
-    private fun finish(game: GameScreenState): Screen = when (game.checkoutDialogOutcome) {
-        LegOutcome.LEG, LegOutcome.SET -> Screen.BetweenLegs(game.match.confirmLeg())
+    /** M15, M16, M17: "Confirm match" ends the match; "Confirm leg" and "Confirm set" confirm the leg. */
+    private fun finish(game: GameScreenState): Screen = when (game.checkoutOutcome) {
+        LegOutcome.LEG, LegOutcome.SET -> Screen.BetweenLegs(game.match.confirmLeg(), checkout = game.checkoutSummary)
         LegOutcome.MATCH, null -> Screen.End(game.match)
     }
 

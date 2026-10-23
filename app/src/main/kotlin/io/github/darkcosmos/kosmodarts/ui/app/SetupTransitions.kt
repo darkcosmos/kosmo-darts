@@ -15,7 +15,7 @@ internal fun editSetup(setup: SetupState, event: AppEvent, random: Random): Setu
     is AppEvent.CheckoutRuleSelected -> setup.withCheckoutRule(event.rule)
     is AppEvent.NameChanged -> setup.withName(event.index, event.name)
     AppEvent.PlayerAdded -> setup.withPlayerAdded()
-    AppEvent.PlayerRemoved -> setup.withLastPlayerRemoved()
+    is AppEvent.PlayerRemoved -> setup.withPlayerRemoved(event.index)
     AppEvent.PlayersShuffled -> setup.shuffled(random)
     // M13: the steppers, clamped by the setup.
     is AppEvent.LegsPerSetChanged -> setup.withLegsPerSet(setup.legsPerSet + event.delta)
@@ -31,10 +31,11 @@ internal fun newMatchState(setup: X01MatchConfig): AppState = AppState(
 
 /**
  * The setup of a rematch (M17, owner Q3): same players, settings and format; the first player moves to the end, so
- * the next one starts the first leg (A, B, C -> B, C, A).
+ * the next one starts the first leg (A, B, C -> B, C, A). Each player keeps his color slot (PC7).
  */
 internal fun rematchSetup(match: X01Match): X01MatchConfig {
     val config = match.config
     val rotated = X01Config(config.players.drop(1) + config.players.first(), config.startScore, config.checkoutRule)
-    return X01MatchConfig(rotated, match.format)
+    val slots = match.colorSlots
+    return X01MatchConfig(rotated, match.format, slots.drop(1) + slots.first())
 }

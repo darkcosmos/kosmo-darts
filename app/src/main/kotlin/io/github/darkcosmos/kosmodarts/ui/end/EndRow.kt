@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.end
 
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
@@ -10,7 +11,9 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
  * @property threeDartAverage over the whole match (M9).
  * @property dartsThrown over the whole match (M9).
  * @property setsWon sets won, or `null` in a single game or with one set: the column is then not shown (M17).
- * @property legsWon legs won over the whole match, or `null` in a single game (M17).
+ * @property legsWon legs won over the whole match, or `null` in a single game (M17). The end screen shows the sets
+ *   column when [setsWon] is known, else the legs column (owner Q8 of issue #49), else no score column.
+ * @property slot the player's color slot, drawn as a square before his name (PC9).
  */
 data class EndRow(
     val rank: Int,
@@ -20,6 +23,7 @@ data class EndRow(
     val isWinner: Boolean,
     val setsWon: Int? = null,
     val legsWon: Int? = null,
+    val slot: ColorSlot,
 )
 
 /** End screen ranking of a single game, in the engine order (rules E1, E2). Empty while the leg is in progress. */
@@ -40,6 +44,7 @@ fun endRows(match: X01Match): List<EndRow> {
             isWinner = player == score.winnerIndex,
             setsWon = score.setsWon[player].takeIf { format.hasSets },
             legsWon = score.legsWonTotal[player].takeUnless { format.isSingleGame },
+            slot = match.colorSlots[player],
         )
     }
 }

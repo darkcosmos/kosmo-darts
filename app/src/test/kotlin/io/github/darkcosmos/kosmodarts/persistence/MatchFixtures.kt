@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
@@ -17,8 +18,9 @@ internal object MatchFixtures {
         sets: Int = 1,
         startScore: Int = 301,
         rule: CheckoutRule = CheckoutRule.SINGLE_OUT,
+        colorSlots: List<ColorSlot> = ColorSlot.byPosition(players.size),
     ): X01Match = X01Match.start(
-        X01MatchConfig(X01Config(players.toList(), startScore, rule), MatchFormat(legsPerSet, sets)),
+        X01MatchConfig(X01Config(players.toList(), startScore, rule), MatchFormat(legsPerSet, sets), colorSlots),
     )
 
     /** The darts that play the current leg of [match] until [winner] checks out; the others miss. Never a bust. */

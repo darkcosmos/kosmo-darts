@@ -13,6 +13,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
+import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
+import io.github.darkcosmos.kosmodarts.ui.revealIfScrolled
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
 import org.junit.Rule
@@ -35,26 +37,26 @@ class VisitTotalFrenchScreensTest {
 
     private fun key(tag: String): SemanticsNodeInteraction = composeRule.onNodeWithTag(tag)
 
-    private fun tap(vararg tags: String) = tags.forEach { key(it).performClick() }
+    private fun tap(vararg tags: String) = tags.forEach { key(it).revealIfScrolled().performClick() }
 
     private fun single(vararg numbers: Int) = numbers.forEach { tap(KeypadTags.number(it)) }
 
     private fun triple(number: Int) = tap(KeypadTags.TRIPLE, KeypadTags.number(number))
 
     private fun assertBox(player: Int, text: String, description: String) {
-        key(GameTags.visitTotal(player)).performScrollTo()
+        key(GameTags.visitTotal(player)).revealIfScrolled()
             .assertTextEquals(text)
             .assertContentDescriptionEquals(description)
     }
 
     @Test
     fun `VT8 French values and descriptions`() {
-        composeRule.onNodeWithText(string(R.string.home_new_game)).performScrollTo().performClick()
+        key(HomeTags.MODE_X01).performScrollTo().performClick()
         composeRule.onNodeWithText("301").performClick()
         listOf("Ann", "Bob").forEachIndexed { index, name ->
             key(SetupTags.nameField(index)).performScrollTo().performTextReplacement(name)
         }
-        composeRule.onNodeWithText(string(R.string.setup_start)).performScrollTo().performClick()
+        key(SetupTags.START).performClick()
 
         assertBox(0, "0", "Volée en cours\u00A0: 0")
         assertBox(1, "0", "Pas encore joué")
@@ -73,8 +75,8 @@ class VisitTotalFrenchScreensTest {
         triple(20)
         triple(20)
         triple(20)
-        // VT13: while the bust waits, no box for Ann; Bob keeps his last turn (VT6).
-        key(GameTags.visitTotal(0)).assertDoesNotExist()
+        // VT13 (as amended by issue #49): while the bust waits, Ann's box shows 0; Bob keeps his last turn (VT6).
+        assertBox(0, "0", "Dernière volée\u00A0: bust")
         assertBox(1, "3", "Dernière volée\u00A0: 3")
         tap(KeypadTags.NEXT_PLAYER)
         assertBox(0, "BUST", "Dernière volée\u00A0: bust")

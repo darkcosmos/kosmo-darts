@@ -2,17 +2,52 @@ package io.github.darkcosmos.kosmodarts.ui.game
 
 /** Test tags of the game screen. */
 object GameTags {
-    const val CURRENT_PLAYER: String = "game_current_player"
-    const val CURRENT_REMAINING: String = "game_current_remaining"
-    const val CARD_BUST: String = "game_card_bust"
-    const val CHECKOUT_DIALOG: String = "game_checkout_dialog"
+    /** The whole screen content: it scrolls only below the score floor (layout policy, step 4). */
+    const val SCREEN: String = "game_screen"
 
-    /** The always-present suggestion line of the highlighted card (its reserved height). */
+    /** The current player's zone. */
+    const val CURRENT_PLAYER: String = "game_current_player"
+
+    /** The score of the zone. */
+    const val CURRENT_REMAINING: String = "game_current_remaining"
+
+    /** The BUST banner of the zone (VT13). */
+    const val CARD_BUST: String = "game_card_bust"
+
+    /** The word "BUST" inside [CARD_BUST]. */
+    const val CARD_BUST_TEXT: String = "game_card_bust_text"
+
+    /** The CHECKOUT banner and its line, one live region (design system 6.3, U5). */
+    const val CHECKOUT_BANNER: String = "game_checkout_banner"
+
+    /** The `accent` chip "CHECKOUT" inside [CHECKOUT_BANNER]. */
+    const val CHECKOUT_BANNER_LABEL: String = "game_checkout_banner_label"
+
+    /** "141 IN 3 DARTS" under the CHECKOUT banner (U2). */
+    const val CHECKOUT_LINE: String = "game_checkout_line"
+
+    /** The route area of the zone, always present (its reserved height, CS8). */
     const val CHECKOUT_SUGGESTION_LINE: String = "game_checkout_suggestion_line"
 
-    /** The suggestion text inside [CHECKOUT_SUGGESTION_LINE]; absent from the merged tree when there is no route. */
+    /** The darts of the route inside [CHECKOUT_SUGGESTION_LINE]; absent when there is no route. */
     const val CHECKOUT_SUGGESTION: String = "game_checkout_suggestion"
+
+    /** The `accent` box "CHECKOUT" / « SORTIE » before the darts of the route (CS7). */
+    const val CHECKOUT_ROUTE_LABEL: String = "game_checkout_route_label"
+
+    /** The `accent` underline of the next dart slot. */
+    const val NEXT_DART_MARK: String = "game_next_dart_mark"
+
+    /** The mode and finish at the start of the header ("501 · DOUBLE OUT"). */
+    const val HEADER_MODE: String = "game_header_mode"
+
+    /** The match position at the end of the header (M14, M19). */
+    const val HEADER_POSITION: String = "game_header_position"
+
     const val NO_VOICE_DIALOG: String = "game_no_voice_dialog"
+
+    /** The main button of the action bar while a checkout waits: "Confirm leg", "Confirm set" or "Confirm match". */
+    const val CONFIRM: String = "game_confirm"
 
     fun dartSlot(index: Int): String = "game_dart_slot_$index"
 
@@ -22,18 +57,12 @@ object GameTags {
 
     fun playerName(playerIndex: Int): String = "game_player_name_$playerIndex"
 
-    /** The indicator line of a player (M14). */
+    /** The chips of the zone or the match line of a tile (M14). */
     fun matchIndicators(playerIndex: Int): String = "game_match_indicators_$playerIndex"
 
-    /** Each drawn set mark of a player (M14). */
-    fun setMark(playerIndex: Int): String = "game_set_mark_$playerIndex"
+    /** The tile of a player who is not throwing (M6). */
+    fun tile(playerIndex: Int): String = "game_tile_$playerIndex"
 
-    /** Each drawn leg mark of a player (M14). */
-    fun legMark(playerIndex: Int): String = "game_leg_mark_$playerIndex"
-
-    /** The scrolling column of player cards and rows (U1). */
-    const val SCOREBOARD: String = "game_scoreboard"
-
-    /** Remaining score of a player row; the highlighted card uses [CURRENT_REMAINING]. */
+    /** Remaining score of a tile; the zone uses [CURRENT_REMAINING]. */
     fun remaining(playerIndex: Int): String = "game_remaining_$playerIndex"
 }

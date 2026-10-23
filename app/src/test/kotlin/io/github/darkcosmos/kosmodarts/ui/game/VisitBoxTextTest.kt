@@ -31,6 +31,10 @@ class VisitBoxTextTest {
 
     private val bust = VisitBoxText(R.string.game_bust, R.string.game_visit_last_bust_description, emptyList())
 
+    /** VT13 (issue #49): the thrower's box while his bust waits shows 0, read as "Last turn: bust". */
+    private val pendingBust =
+        VisitBoxText(R.string.game_visit_value, R.string.game_visit_last_bust_description, listOf(0))
+
     /** Ann leaves 121, Bob scores 3, both turns confirmed: Ann throws next. */
     private fun annAt121() = start().triples(20, 20, 20).nextPlayer().numbers(1, 1, 1).nextPlayer()
 
@@ -53,11 +57,11 @@ class VisitBoxTextTest {
     }
 
     @Test
-    fun `VT13 VT6 a waiting bust hides the thrower box and keeps the next player on his last visit`() {
+    fun `VT13 VT6 a waiting bust shows 0 in the thrower box and keeps the next player on his last visit`() {
         // Ann has 121: T20 T20 leaves 1, a bust in double out.
         val waiting = annAt121().triples(20, 20)
-        assertTrue(waiting.isBustShown)
-        assertEquals(listOf(null, lastVisit(3)), visitBoxTexts(waiting))
+        assertTrue(waiting.isBustPending)
+        assertEquals(listOf(pendingBust, lastVisit(3)), visitBoxTexts(waiting))
         assertEquals(listOf(bust, inProgress(0)), visitBoxTexts(waiting.nextPlayer()))
     }
 
@@ -68,11 +72,11 @@ class VisitBoxTextTest {
     }
 
     @Test
-    fun `VT13 one player waiting a bust has no box until Next player`() {
+    fun `VT13 one player waiting a bust shows 0 until Next player`() {
         // Ann alone has 121 after T20 T20 T20 and Next player; T20 T20 leaves 1, a bust.
         val waiting = start(X01Config(listOf("Ann"), startScore = 301)).triples(20, 20, 20).nextPlayer().triples(20, 20)
-        assertTrue(waiting.isBustShown)
-        assertEquals(listOf(null), visitBoxTexts(waiting))
+        assertTrue(waiting.isBustPending)
+        assertEquals(listOf(pendingBust), visitBoxTexts(waiting))
         assertEquals(listOf(inProgress(0)), visitBoxTexts(waiting.nextPlayer()))
     }
 
@@ -90,9 +94,9 @@ class VisitBoxTextTest {
     }
 
     @Test
-    fun `VT6 VT3 the checkout dialog shows the winning total`() {
+    fun `VT6 VT3 the pending checkout shows the winning total`() {
         val won = annAt121().triples(20, 19).toggleMultiplier(Multiplier.DOUBLE).throwNumber(2)
-        assertTrue(won.isCheckoutDialogShown)
+        assertTrue(won.isCheckoutPending)
         assertEquals(listOf(lastVisit(121), lastVisit(3)), visitBoxTexts(won))
     }
 }

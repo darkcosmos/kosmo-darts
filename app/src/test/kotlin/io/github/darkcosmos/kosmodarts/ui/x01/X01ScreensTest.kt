@@ -13,14 +13,12 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
-import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -30,18 +28,23 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
+import io.github.darkcosmos.kosmodarts.ui.end.EndTags
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
+import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
+import io.github.darkcosmos.kosmodarts.ui.revealIfScrolled
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 
 /**
  * Behaviour tests of the X01 screens (setup, game, end), launched through [MainActivity] like on a phone.
@@ -50,6 +53,7 @@ import org.junit.runner.RunWith
  * turn completed hook), so this class can later run unchanged as an instrumented test on a device or an emulator.
  */
 @RunWith(AndroidJUnit4::class)
+@Config(qualifiers = RobolectricDeviceQualifiers.Pixel7)
 class X01ScreensTest {
 
     @get:Rule
@@ -82,14 +86,15 @@ class X01ScreensTest {
 
     private fun nextPlayer() = tap(KeypadTags.NEXT_PLAYER)
 
-    private fun checkoutDialog(): SemanticsNodeInteraction = composeRule.onNodeWithTag(GameTags.CHECKOUT_DIALOG)
+    /** The CHECKOUT zone of a pending checkout (it replaced the checkout dialog, issue #49). */
+    private fun checkoutBanner(): SemanticsNodeInteraction = composeRule.onNodeWithTag(GameTags.CHECKOUT_BANNER)
 
-    private fun finishGame() = composeRule.onNodeWithText(string(R.string.checkout_finish)).performClick()
+    private fun finishGame() = composeRule.onNodeWithTag(GameTags.CONFIRM).performClick()
 
-    /** The Undo button of the checkout dialog, not the Undo key of the keypad. */
-    private fun undoInCheckoutDialog() {
-        composeRule.onNode(hasText(string(R.string.key_undo)).and(hasAnyAncestor(hasTestTag(GameTags.CHECKOUT_DIALOG))))
-            .performClick()
+    /** "Undo" of the action bar while the checkout waits. */
+    private fun undoPendingCheckout() {
+        key(GameTags.CONFIRM).assertIsDisplayed()
+        tap(KeypadTags.UNDO)
     }
 
     private fun pressBack() {
@@ -99,25 +104,23 @@ class X01ScreensTest {
 
     /** From home: fills the setup and starts the game. Double out unless [singleOut]. */
     private fun startGame(vararg names: String, startScore: Int = 501, singleOut: Boolean = false) {
-        click(R.string.home_new_game)
+        composeRule.onNodeWithTag(HomeTags.MODE_X01).performScrollTo().performClick()
         composeRule.onNodeWithText(startScore.toString()).performClick()
         if (singleOut) clickInScroll(R.string.setup_single_out)
         repeat(names.size - 2) {
-            composeRule.onNodeWithContentDescription(string(R.string.setup_add_player)).performScrollTo().performClick()
+            composeRule.onNodeWithTag(SetupTags.ADD_PLAYER).performScrollTo().performClick()
         }
         if (names.size == 1) {
-            composeRule.onNodeWithContentDescription(string(R.string.setup_remove_player))
-                .performScrollTo()
-                .performClick()
+            composeRule.onNodeWithTag(SetupTags.remove(1)).performScrollTo().performClick()
         }
         names.forEachIndexed { index, name ->
             composeRule.onNodeWithTag(SetupTags.nameField(index)).performScrollTo().performTextReplacement(name)
         }
-        clickInScroll(R.string.setup_start)
+        composeRule.onNodeWithTag(SetupTags.START).performClick()
     }
 
     private fun assertCurrentPlayer(name: String, remaining: Int) {
-        composeRule.onNodeWithTag(GameTags.CURRENT_PLAYER).assert(hasAnyDescendant(hasText(name)))
+        composeRule.onNodeWithTag(GameTags.CURRENT_PLAYER).assert(hasAnyDescendant(hasText(name, ignoreCase = true)))
         composeRule.onNodeWithTag(GameTags.CURRENT_REMAINING).assertTextEquals(remaining.toString())
     }
 
@@ -128,7 +131,7 @@ class X01ScreensTest {
 
     /** VT3, VT4: the visit total box of a player who is not throwing (it replaced "Prev.", PR37-R1). */
     private fun assertLastTurnBox(playerIndex: Int, points: Int?) {
-        val box = composeRule.onNodeWithTag(GameTags.visitTotal(playerIndex)).performScrollTo()
+        val box = composeRule.onNodeWithTag(GameTags.visitTotal(playerIndex)).revealIfScrolled()
         if (points == null) {
             box.assertTextEquals(string(R.string.game_bust))
                 .assertContentDescriptionEquals(string(R.string.game_visit_last_bust_description))
@@ -229,15 +232,16 @@ class X01ScreensTest {
 
         triple(20)
 
-        composeRule.onNodeWithTag(GameTags.CARD_BUST).performScrollTo().assertIsDisplayed()
+        composeRule.onNodeWithTag(GameTags.CARD_BUST).revealIfScrolled().assertIsDisplayed()
         composeRule.onNodeWithTag(GameTags.CURRENT_PLAYER)
             .assert(hasAnyDescendant(hasTestTag(GameTags.CARD_BUST)))
         assertCurrentPlayer("Ann", 121)
         assertDartSlot(0, "T20")
         assertDartSlot(1, "T20")
         key(KeypadTags.number(1)).assertIsNotEnabled()
-        // VT13 (PR37-R2): while the bust waits, the badge replaces the box.
-        composeRule.onNodeWithTag(GameTags.visitTotal(0)).assertDoesNotExist()
+        // VT13 (as amended by issue #49): while the bust waits, the zone box shows 0, read "Last turn: bust".
+        composeRule.onNodeWithTag(GameTags.visitTotal(0)).assertTextEquals("0")
+            .assertContentDescriptionEquals(string(R.string.game_visit_last_bust_description))
         key(KeypadTags.NEXT_PLAYER).assertIsEnabled()
 
         nextPlayer()
@@ -319,57 +323,73 @@ class X01ScreensTest {
 
         pressBack()
         click(R.string.game_abandon_confirm)
-        composeRule.onNodeWithText(string(R.string.home_welcome)).assertIsDisplayed()
+        key(HomeTags.MODE_X01).assertIsDisplayed()
     }
 
+    /**
+     * Design system 6.3: the zone keeps the player, the CHECKOUT banner and "121 IN 3 DARTS" replace the score, the
+     * darts stay in their slots, the keypad is locked; "CONFIRM MATCH" opens the end screen.
+     */
     @Test
-    fun theCheckoutDialogShowsThePlayerAndDartsThenFinishGameOpensTheEndScreen() {
+    fun thePendingCheckoutShowsThePlayerAndDartsThenConfirmOpensTheEndScreen() {
         playAnnToFourRemaining()
 
         double(2)
 
-        checkoutDialog().assertIsDisplayed()
-        checkoutDialog().assert(hasAnyDescendant(hasText(string(R.string.checkout_title))))
-        checkoutDialog().assert(hasAnyDescendant(hasText("Ann")))
-        checkoutDialog().assert(hasAnyDescendant(hasText("T20 T19 D2")))
-        composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertDoesNotExist()
+        checkoutBanner().assertIsDisplayed()
+        composeRule.onNodeWithTag(GameTags.CURRENT_PLAYER).assert(hasAnyDescendant(hasText("ANN")))
+        composeRule.onNodeWithTag(GameTags.CHECKOUT_LINE, useUnmergedTree = true).assertTextEquals("121 IN 3 DARTS")
+        assertDartSlot(0, "T20")
+        assertDartSlot(1, "T19")
+        assertDartSlot(2, "D2")
+        keypadTags.forEach { key(it).assertIsNotEnabled() }
+        key(GameTags.CONFIRM).assertTextEquals(string(R.string.checkout_confirm_match))
+        key(KeypadTags.UNDO).assertIsEnabled()
+        key(EndTags.WINNER).assertDoesNotExist()
 
         finishGame()
 
-        checkoutDialog().assertDoesNotExist()
-        composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
+        checkoutBanner().assertDoesNotExist()
+        key(EndTags.WINNER).assertTextEquals("ANN")
         composeRule.onNodeWithText(string(R.string.end_rematch)).assertIsDisplayed()
     }
 
     @Test
-    fun undoInTheCheckoutDialogReopensTheTurn() {
+    fun undoOfAPendingCheckoutReopensTheTurn() {
         playAnnToFourRemaining()
         double(2)
 
-        undoInCheckoutDialog()
+        undoPendingCheckout()
 
-        checkoutDialog().assertDoesNotExist()
+        checkoutBanner().assertDoesNotExist()
         assertCurrentPlayer("Ann", 4)
         assertDartSlot(0, "T20")
         assertDartSlot(1, "T19")
         key(KeypadTags.number(2)).assertIsEnabled()
         double(2)
         finishGame()
-        composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
+        key(EndTags.WINNER).assertTextEquals("ANN")
     }
 
+    /**
+     * M15, owner O1: system back on a pending checkout opens "Abandon the game?"; dismissing it leaves the checkout
+     * pending. A tap on the screen does nothing.
+     */
     @Test
-    fun theCheckoutDialogIgnoresOutsideTapsAndSystemBack() {
+    fun backOnAPendingCheckoutOpensTheAbandonConfirmation() {
         playAnnToFourRemaining()
         double(2)
 
         composeRule.onAllNodes(isRoot()).onLast().performTouchInput { click(Offset(1f, 1f)) }
+        checkoutBanner().assertIsDisplayed()
         pressBack()
 
-        checkoutDialog().assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.game_abandon_title)).assertIsDisplayed()
+        click(R.string.game_abandon_cancel)
         composeRule.onNodeWithText(string(R.string.game_abandon_title)).assertDoesNotExist()
+        checkoutBanner().assertIsDisplayed()
         finishGame()
-        composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
+        key(EndTags.WINNER).assertTextEquals("ANN")
     }
 
     @Test
@@ -378,7 +398,7 @@ class X01ScreensTest {
         double(2)
         finishGame()
 
-        composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
+        key(EndTags.WINNER).assertTextEquals("ANN")
         composeRule.onAllNodes(hasClickAction()).assertCountEquals(2)
         composeRule.onNodeWithText(string(R.string.end_rematch)).assertHasClickAction()
         composeRule.onNodeWithText(string(R.string.home_new_game)).assertHasClickAction()
@@ -399,7 +419,7 @@ class X01ScreensTest {
         single(1)
         finishGame()
 
-        clickInScroll(R.string.end_rematch)
+        key(EndTags.REMATCH).performClick()
 
         assertCurrentPlayer("Bob", 301)
         single(1, 1, 1)
@@ -412,12 +432,12 @@ class X01ScreensTest {
 
     @Test
     fun setupErrorsAreShownUnderTheConcernedFields() {
-        click(R.string.home_new_game)
-        composeRule.onNodeWithContentDescription(string(R.string.setup_add_player)).performScrollTo().performClick()
+        composeRule.onNodeWithTag(HomeTags.MODE_X01).performScrollTo().performClick()
+        composeRule.onNodeWithTag(SetupTags.ADD_PLAYER).performScrollTo().performClick()
         composeRule.onNodeWithTag(SetupTags.nameField(0)).performTextReplacement("Ann")
         composeRule.onNodeWithTag(SetupTags.nameField(2)).performTextReplacement("ann")
 
-        clickInScroll(R.string.setup_start)
+        composeRule.onNodeWithTag(SetupTags.START).performClick()
 
         val blank = hasText(string(R.string.setup_error_blank_name))
         val duplicate = hasText(string(R.string.setup_error_duplicate_name))
@@ -460,15 +480,16 @@ class X01ScreensTest {
     }
 
     @Test
-    fun theCheckoutDialogSurvivesAConfigurationChange() {
+    fun thePendingCheckoutSurvivesAConfigurationChange() {
         playAnnToFourRemaining()
         double(2)
 
         composeRule.activityRule.scenario.recreate()
 
-        checkoutDialog().assert(hasAnyDescendant(hasText("T20 T19 D2")))
+        checkoutBanner().assertIsDisplayed()
+        assertDartSlot(2, "D2")
         finishGame()
-        composeRule.onNodeWithText(string(R.string.end_winner, "Ann")).assertIsDisplayed()
+        key(EndTags.WINNER).assertTextEquals("ANN")
     }
 
     @Test
@@ -506,7 +527,7 @@ class X01ScreensTest {
         double(2)
         finishGame()
 
-        clickInScroll(R.string.home_new_game)
+        key(EndTags.NEW_GAME).performClick()
 
         composeRule.onNodeWithTag(SetupTags.nameField(0)).assert(hasText("Ann"))
         composeRule.onNodeWithTag(SetupTags.nameField(1)).assert(hasText("Bob"))

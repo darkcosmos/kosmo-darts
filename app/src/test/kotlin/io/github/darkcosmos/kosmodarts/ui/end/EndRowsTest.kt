@@ -1,5 +1,8 @@
 package io.github.darkcosmos.kosmodarts.ui.end
 
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_1
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_2
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_3
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
@@ -23,9 +26,30 @@ class EndRowsTest {
 
         assertEquals(
             listOf(
-                EndRow(rank = 1, name = "Ann", threeDartAverage = 301 * 3 / 6.0, dartsThrown = 6, isWinner = true),
-                EndRow(rank = 2, name = "Bob", threeDartAverage = 60.0, dartsThrown = 3, isWinner = false),
-                EndRow(rank = 2, name = "Cid", threeDartAverage = 60.0, dartsThrown = 3, isWinner = false),
+                EndRow(
+                    rank = 1,
+                    name = "Ann",
+                    threeDartAverage = 301 * 3 / 6.0,
+                    dartsThrown = 6,
+                    isWinner = true,
+                    slot = SLOT_1,
+                ),
+                EndRow(
+                    rank = 2,
+                    name = "Bob",
+                    threeDartAverage = 60.0,
+                    dartsThrown = 3,
+                    isWinner = false,
+                    slot = SLOT_2,
+                ),
+                EndRow(
+                    rank = 2,
+                    name = "Cid",
+                    threeDartAverage = 60.0,
+                    dartsThrown = 3,
+                    isWinner = false,
+                    slot = SLOT_3,
+                ),
             ),
             rows,
         )

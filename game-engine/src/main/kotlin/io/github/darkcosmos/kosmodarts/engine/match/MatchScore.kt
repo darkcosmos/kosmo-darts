@@ -59,6 +59,26 @@ class MatchScore(val format: MatchFormat, val playerCount: Int, legWinners: List
     val legsPlayed: Int
         get() = legWinners.size
 
+    /** M19: number of the set the next leg belongs to: sets completed + 1, from 1. */
+    val currentSetNumber: Int
+        get() = setsWon.sum() + 1
+
+    /** M19: number of the next leg inside its set: legs played in the current set + 1, from 1. */
+    val currentLegNumber: Int
+        get() = legsWonInSet.sum() + 1
+
+    /** M19: set number of the last confirmed leg, or `null` before the first one. */
+    val lastLegSetNumber: Int?
+        get() = beforeLastLeg?.currentSetNumber
+
+    /** M19: number of the last confirmed leg inside its set, or `null` before the first one. */
+    val lastLegNumber: Int?
+        get() = beforeLastLeg?.currentLegNumber
+
+    private val beforeLastLeg: MatchScore? by lazy {
+        if (legWinners.isEmpty()) null else MatchScore(format, playerCount, legWinners.dropLast(1))
+    }
+
     /** Index of the player who starts the next leg: legs are numbered from 0 over the match, sets ignored (M6). */
     val starterOfNextLeg: Int
         get() = legsPlayed % playerCount

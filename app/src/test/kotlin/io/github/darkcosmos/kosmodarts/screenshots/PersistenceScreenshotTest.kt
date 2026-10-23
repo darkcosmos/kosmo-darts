@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.screenshots
 
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -14,6 +15,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
 import io.github.darkcosmos.kosmodarts.ui.resume.AppProcess
 import org.junit.After
 import org.junit.Rule
@@ -108,21 +110,21 @@ class PersistenceScreenshotTest {
     fun homeResumePortraitEnglishLargestFont() {
         launchWith(FOUR_LONG_NAMES)
         capture("home_resume_4p_portrait_en_font200_top")
-        composeRule.onNodeWithText(process.string(R.string.home_resume_game)).performScrollTo()
+        composeRule.onNodeWithTag(HomeTags.RESUME).performScrollTo()
         capture("home_resume_4p_portrait_en_font200_scrolled")
     }
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun homeCheckoutPortraitEnglish() = homeCheckout("home_resume_checkout_portrait_en")
+    fun homeCheckoutPortraitEnglish() = homeCheckout("home_resume_pending_checkout_portrait_en")
 
     @Test
     @Config(qualifiers = "+en-land")
-    fun homeCheckoutLandscapeEnglish() = homeCheckout("home_resume_checkout_landscape_en")
+    fun homeCheckoutLandscapeEnglish() = homeCheckout("home_resume_pending_checkout_landscape_en")
 
     @Test
     @Config(qualifiers = "+fr-port")
-    fun homeCheckoutPortraitFrench() = homeCheckout("home_resume_checkout_portrait_fr")
+    fun homeCheckoutPortraitFrench() = homeCheckout("home_resume_pending_checkout_portrait_fr")
 
     @Test
     @Config(qualifiers = "+en-port")

@@ -126,12 +126,12 @@ class SettingsScreenTest {
     @Test
     fun `AN13 no gear on the setup and game screens, and the game screen has no sound control`() {
         process.launchFresh()
-        composeRule.onNodeWithText(string(R.string.home_new_game)).performClick()
+        composeRule.onNodeWithTag(HomeTags.MODE_X01).performClick()
         node(HomeTags.SETTINGS).assertDoesNotExist()
 
         composeRule.onNodeWithTag(SetupTags.nameField(0)).performTextReplacement("Ann")
         composeRule.onNodeWithTag(SetupTags.nameField(1)).performTextReplacement("Bob")
-        composeRule.onNodeWithText(string(R.string.setup_start)).performScrollTo().performClick()
+        composeRule.onNodeWithTag(SetupTags.START).performClick()
         composeRule.waitForIdle()
 
         node(HomeTags.SETTINGS).assertDoesNotExist()

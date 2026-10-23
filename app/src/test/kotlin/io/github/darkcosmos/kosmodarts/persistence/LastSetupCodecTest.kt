@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
@@ -10,8 +11,8 @@ import org.junit.Test
 import java.util.zip.CRC32
 
 /**
- * The last setup file (docs/adr/0001-save-format.md, docs/adr/0005-save-format-v2-match.md; rules R7, R10, R13,
- * R16).
+ * The last setup file (docs/adr/0001-save-format.md, docs/adr/0005-save-format-v2-match.md,
+ * docs/adr/0006-save-format-v3-colors.md; rules R7, R10, R13, R16 to R18).
  */
 class LastSetupCodecTest {
 
@@ -52,27 +53,29 @@ class LastSetupCodecTest {
         assertEquals(listOf("Dan", "Ann", "Cid"), codec.decode(codec.encode(setup))?.config?.players)
     }
 
-    /** ADR 0005: version 2 inserts the format after the checkout rule; nothing else changes. */
+    /**
+     * ADR 0006, R17: version 3 is the version 2 layout (format after the checkout rule) plus the color slots after
+     * the player lines; nothing else changes.
+     */
     @Test
-    fun `R13 version 2 layout`() {
-        val setup = SaveFixtures.setup(format = MatchFormat(3, 2))
+    fun `R13 R17 version 3 layout`() {
+        val setup = SaveFixtures.setup(format = MatchFormat(3, 2)).let {
+            X01MatchConfig(it.config, it.format, listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_2))
+        }
         val lines = String(codec.encode(setup), Charsets.UTF_8).lines()
 
-        assertEquals(
-            listOf(
-                "kosmodarts=last-setup",
-                "version=2",
-                "game=x01",
-                "start-score=501",
-                "checkout=double-out",
-                "legs-per-set=3",
-                "sets=2",
-                "players=2",
-                "player=QW5u",
-                "player=Qm9i",
-            ),
-            lines.dropLast(TRAILER_LINES),
-        )
+        val expected = V2_LINES.map { if (it == "version=2") "version=3" else it } + "colors=4 2"
+        assertEquals(expected, lines.dropLast(TRAILER_LINES))
+        assertEquals(setup, codec.decode(codec.encode(setup)))
+    }
+
+    /** ADR 0005, R18: the version 2 layout, frozen, is still read, with the color slots of the player positions. */
+    @Test
+    fun `R18 a version 2 last setup has slots by position`() {
+        val decoded = codec.decode(withChecksum(V2_LINES))
+
+        assertEquals(X01MatchConfig(X01Config(listOf("Ann", "Bob")), MatchFormat(3, 2)), decoded)
+        assertEquals(ColorSlot.byPosition(2), decoded?.colorSlots)
     }
 
     /** R16: the version 1 file written by the previous app is read as a single game, with its names in order. */
@@ -91,7 +94,7 @@ class LastSetupCodecTest {
         listOf(
             "",
             valid.dropLast(1),
-            valid.replace("version=2", "version=3"),
+            valid.replace("version=3", "version=4"),
             valid.replace("start-score=501", "start-score=401"),
             valid.replace("kosmodarts=last-setup", "kosmodarts=saved-game"),
             valid.replace("players=2", "players=3"),
@@ -109,16 +112,23 @@ class LastSetupCodecTest {
         }
     }
 
-    /** S2: strict keys per version. Version 1 with a version 2 key, version 2 without one, reordered or doubled. */
+    /**
+     * S2: strict keys per version. Version 1 with a version 2 key, version 2 with the version 3 key, version 3
+     * without one, reordered or doubled.
+     */
     @Test
     fun `R10 keys must follow the layout of their version`() {
-        val v1Body = validBody.filterNot { it.startsWith("legs-per-set=") || it.startsWith("sets=") }
-            .map { if (it == "version=2") "version=1" else it }
+        val colorsLine = validBody.first { it.startsWith("colors=") }
+        val v1Body = validBody
+            .filterNot { it.startsWith("legs-per-set=") || it.startsWith("sets=") || it == colorsLine }
+            .map { if (it == "version=3") "version=1" else it }
         assertEquals(SaveFixtures.setup(), codec.decode(withChecksum(v1Body)))
         val legsLine = validBody.first { it.startsWith("legs-per-set=") }
         val setsLine = validBody.first { it.startsWith("sets=") }
         listOf(
             v1Body.take(5) + legsLine + setsLine + v1Body.drop(5), // Version 1 with the version 2 keys.
+            V2_LINES + colorsLine, // Version 2 with the version 3 key.
+            validBody - colorsLine, // Missing colors key.
             validBody - setsLine, // Missing key.
             validBody.flatMap { if (it == setsLine) listOf(it, it) else listOf(it) }, // Duplicated key.
             validBody.map { if (it == legsLine) setsLine else if (it == setsLine) legsLine else it }, // Out of order.
@@ -148,5 +158,19 @@ class LastSetupCodecTest {
     private companion object {
         /** CRC line, end line and the empty string after the final line feed. */
         const val TRAILER_LINES = 3
+
+        /** The covered lines the version 2 encoder wrote for Ann and Bob, first to 3 legs and 2 sets (frozen, T2). */
+        val V2_LINES = listOf(
+            "kosmodarts=last-setup",
+            "version=2",
+            "game=x01",
+            "start-score=501",
+            "checkout=double-out",
+            "legs-per-set=3",
+            "sets=2",
+            "players=2",
+            "player=QW5u",
+            "player=Qm9i",
+        )
     }
 }

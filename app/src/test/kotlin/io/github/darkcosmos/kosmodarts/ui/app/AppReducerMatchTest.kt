@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
@@ -34,18 +35,22 @@ class AppReducerMatchTest {
     @Test
     fun `M16 Finish leg opens the between-legs screen`() {
         val won = events.playLegWonBy(inGame(match("Ann", "Bob", legsPerSet = 2)), winner = 0)
-        assertEquals(LegOutcome.LEG, gameOf(won).checkoutDialogOutcome)
+        assertEquals(LegOutcome.LEG, gameOf(won).checkoutOutcome)
 
         val between = events.after(won, AppEvent.FinishGameTapped)
 
-        assertEquals(Screen.BetweenLegs(gameOf(won).match.confirmLeg()), between.screen)
+        assertEquals(
+            Screen.BetweenLegs(gameOf(won).match.confirmLeg(), checkout = gameOf(won).checkoutSummary),
+            between.screen,
+        )
+        assertTrue((between.screen as Screen.BetweenLegs).checkout != null)
     }
 
     /** M15, M16: "Finish set" does the same. */
     @Test
     fun `M16 Finish set opens the between-legs screen`() {
         val won = events.playLegWonBy(inGame(match("Ann", "Bob", legsPerSet = 1, sets = 2)), winner = 1)
-        assertEquals(LegOutcome.SET, gameOf(won).checkoutDialogOutcome)
+        assertEquals(LegOutcome.SET, gameOf(won).checkoutOutcome)
 
         val between = events.after(won, AppEvent.FinishGameTapped).screen as Screen.BetweenLegs
 
@@ -57,7 +62,7 @@ class AppReducerMatchTest {
     @Test
     fun `M17 Finish game ends the match`() {
         val won = events.playLegWonBy(inGame(match("Ann", "Bob", legsPerSet = 2).confirmLegsWonBy(0)), winner = 0)
-        assertEquals(LegOutcome.MATCH, gameOf(won).checkoutDialogOutcome)
+        assertEquals(LegOutcome.MATCH, gameOf(won).checkoutOutcome)
 
         assertEquals(Screen.End(gameOf(won).match), events.after(won, AppEvent.FinishGameTapped).screen)
     }
@@ -97,7 +102,10 @@ class AppReducerMatchTest {
 
         val rematch = events.after(ended, AppEvent.Rematch)
 
-        val expected = X01MatchConfig(X01Config(listOf("Bob", "Cid", "Ann"), 301, CheckoutRule.SINGLE_OUT), format)
+        // PC7: each player keeps his color slot through the rotation.
+        val slots = listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_3, ColorSlot.SLOT_1)
+        val rotated = X01Config(listOf("Bob", "Cid", "Ann"), 301, CheckoutRule.SINGLE_OUT)
+        val expected = X01MatchConfig(rotated, format, slots)
         assertEquals(expected, rematch.lastSetup)
         assertEquals(Screen.Game(GameScreenState(X01Match.start(expected)), isNewGame = true), rematch.screen)
     }
@@ -171,8 +179,8 @@ class AppReducerMatchTest {
             val state = initialState(LoadResult(GameLoad.Valid(saved), null), wasOnGameScreen = true)
 
             val game = gameOf(state)
-            assertTrue(game.isCheckoutDialogShown)
-            assertEquals(outcome, game.checkoutDialogOutcome)
+            assertTrue(game.isCheckoutPending)
+            assertEquals(outcome, game.checkoutOutcome)
         }
     }
 

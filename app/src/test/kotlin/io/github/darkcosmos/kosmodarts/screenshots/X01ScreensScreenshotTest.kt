@@ -124,15 +124,15 @@ class X01ScreensScreenshotTest {
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun checkoutDialogPortraitEnglish() = captureScreen("checkout_dialog_portrait_en", *CHECKOUT_DIALOG)
+    fun checkoutDialogPortraitEnglish() = captureScreen("checkout_zone_portrait_en", *CHECKOUT_DIALOG)
 
     @Test
     @Config(qualifiers = "+en-land")
-    fun checkoutDialogLandscapeEnglish() = captureScreen("checkout_dialog_landscape_en", *CHECKOUT_DIALOG)
+    fun checkoutDialogLandscapeEnglish() = captureScreen("checkout_zone_landscape_en", *CHECKOUT_DIALOG)
 
     @Test
     @Config(qualifiers = "+fr-port")
-    fun checkoutDialogPortraitFrench() = captureScreen("checkout_dialog_portrait_fr", *CHECKOUT_DIALOG)
+    fun checkoutDialogPortraitFrench() = captureScreen("checkout_zone_portrait_fr", *CHECKOUT_DIALOG)
 
     @Test
     @Config(qualifiers = "+en-port")

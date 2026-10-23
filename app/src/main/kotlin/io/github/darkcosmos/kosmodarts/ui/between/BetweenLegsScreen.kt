@@ -1,34 +1,24 @@
 package io.github.darkcosmos.kosmodarts.ui.between
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.sizeIn
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.hideFromAccessibility
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
@@ -39,18 +29,36 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.components.KosmoButton
+import io.github.darkcosmos.kosmodarts.ui.components.ScoreCell
+import io.github.darkcosmos.kosmodarts.ui.components.Scoreboard
+import io.github.darkcosmos.kosmodarts.ui.components.ScoreboardRow
+import io.github.darkcosmos.kosmodarts.ui.components.ScrollingScreen
+import io.github.darkcosmos.kosmodarts.ui.components.TwoColumnScreen
+import io.github.darkcosmos.kosmodarts.ui.components.WinnerZone
+import io.github.darkcosmos.kosmodarts.ui.components.WinnerZoneTags
+import io.github.darkcosmos.kosmodarts.ui.format.averageText
+import io.github.darkcosmos.kosmodarts.ui.format.dartsText
+import io.github.darkcosmos.kosmodarts.ui.format.displayName
+import io.github.darkcosmos.kosmodarts.ui.format.formatText
+import io.github.darkcosmos.kosmodarts.ui.format.positionText
 import io.github.darkcosmos.kosmodarts.ui.game.AbandonDialog
+import io.github.darkcosmos.kosmodarts.ui.game.CheckoutSummary
+import io.github.darkcosmos.kosmodarts.ui.layout.ScreenLayoutPolicy
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
+import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
+import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
+import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 
-private val CONTENT_MAX_WIDTH = 560.dp
-private val MIN_TOUCH_TARGET = 48.dp
-private val NUMBER_COLUMN_WIDTH = 72.dp
-private const val NAME_MAX_LINES = 2
+private val AVERAGE_WIDTH = 84.dp
+private val NEXT_MARK_WIDTH = 4.dp
+private val NEXT_MARK_HEIGHT = 24.dp
 
 /**
- * Between two legs of a match (docs/rules/match.md, M16): who won the leg or the set, the match score, who starts the
- * next leg, and "Next leg". A scrolling column inside the system bars, in portrait and landscape; the button stays at
- * the end of the content (U7). System back opens "Abandon the game?" ([isAbandonDialogShown]).
+ * Between two legs of a match (mockup 08; docs/rules/match.md, M16, M19): the format line, the winner's zone with
+ * "SET 2 · LEG 3 WON" (or "SET 2 WON") and the winning checkout, the scoreboard (sets when there are several, legs of
+ * the set, match average; the leg winner's figures in `accent`), the info bar "SET 2 · LEG 4 ▌ CID STARTS", and
+ * "NEXT LEG". System back opens "Abandon the game?" ([isAbandonDialogShown]).
  */
 @Composable
 fun BetweenLegsScreen(
@@ -58,133 +66,153 @@ fun BetweenLegsScreen(
     onEvent: (AppEvent) -> Unit,
     modifier: Modifier = Modifier,
     isAbandonDialogShown: Boolean = false,
+    checkout: CheckoutSummary? = null,
 ) {
-    val state = BetweenLegsState.of(match)
-    Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Box(
+    val state = BetweenLegsState.of(match, checkout)
+    val format: @Composable ColumnScope.() -> Unit = {
+        Text(
+            text = formatText(match.config.startScore, match.config.checkoutRule, match.format),
+            style = KosmoTheme.typography.label,
+            color = KosmoTheme.colors.onBackgroundMuted,
+        )
+    }
+    val winner: @Composable () -> Unit = {
+        WinnerZone(
+            chip = titleText(state),
+            name = state.winnerName,
+            slot = state.winnerSlot,
+            tags = WinnerZoneTags(BetweenLegsTags.TITLE, BetweenLegsTags.WINNER, BetweenLegsTags.CHECKOUT),
+            detail = state.checkout?.let {
+                stringResource(R.string.between_checkout, it.points, dartsText(it.darts))
+            },
+            modifier = Modifier.fillMaxWidth().testTag(BetweenLegsTags.WINNER_ZONE),
+        )
+    }
+    val nextLeg: @Composable () -> Unit = {
+        KosmoButton(
+            text = stringResource(R.string.between_next_leg),
+            onClick = { onEvent(AppEvent.NextLegTapped) },
+            minHeight = 58.dp,
             modifier = Modifier
-                .safeDrawingPadding()
-                .verticalScroll(rememberScrollState()),
-            contentAlignment = Alignment.TopCenter,
-        ) {
-            Column(
-                modifier = Modifier
-                    .widthIn(max = CONTENT_MAX_WIDTH)
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                Text(
-                    text = if (state.isSetWon) {
-                        stringResource(R.string.between_set_won_by, state.winnerName)
-                    } else {
-                        stringResource(R.string.between_leg_won_by, state.winnerName)
-                    },
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .testTag(BetweenLegsTags.WINNER)
-                        .semantics { heading() },
-                )
-                Text(
-                    text = stringResource(R.string.between_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.semantics { heading() },
-                )
-                ScoreTable(state)
-                Text(
-                    text = stringResource(R.string.between_next_starter, state.nextStarterName),
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.testTag(BetweenLegsTags.NEXT_STARTER),
-                )
-                Button(
-                    onClick = { onEvent(AppEvent.NextLegTapped) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .sizeIn(minHeight = MIN_TOUCH_TARGET)
-                        .testTag(BetweenLegsTags.NEXT_LEG),
-                ) {
-                    Text(stringResource(R.string.between_next_leg))
-                }
-            }
+                .fillMaxWidth()
+                .testTag(BetweenLegsTags.NEXT_LEG),
+        )
+    }
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        if (ScreenLayoutPolicy.hasTwoColumns(maxWidth.value, maxHeight.value)) {
+            // Owner review of PR #57: the scoreboard right of the winner, "Next leg" right under the scoreboard.
+            TwoColumnScreen(
+                top = format,
+                start = {
+                    winner()
+                    NextStarterBar(state, match)
+                },
+                end = {
+                    MatchScoreboard(state)
+                    nextLeg()
+                },
+            )
+        } else {
+            ScrollingScreen(
+                buttonCount = 1,
+                content = {
+                    format()
+                    winner()
+                    MatchScoreboard(state)
+                    NextStarterBar(state, match)
+                },
+                buttons = { nextLeg() },
+            )
         }
-        if (isAbandonDialogShown) AbandonDialog(onEvent)
+    }
+    if (isAbandonDialogShown) AbandonDialog(onEvent)
+}
+
+/** M19: "SET 2 WON" on a set win, else "SET 2 · LEG 3 WON", or "LEG 3 WON" with one set. */
+@Composable
+private fun titleText(state: BetweenLegsState): String {
+    val set = state.wonPosition.setNumber
+    val leg = state.wonPosition.legNumber ?: 1
+    return when {
+        state.isSetWon && set != null -> stringResource(R.string.between_set_won, set)
+        set != null -> stringResource(R.string.between_leg_won, set, leg)
+        else -> stringResource(R.string.between_leg_won_no_set, leg)
     }
 }
 
-/** Column headers "Sets" (only with more than one set) and "Legs", then one row per player (U2). */
+/** M16: SETS (more than one set), LEGS of the set, MATCH AVG; the leg winner's figures in `accent`. */
 @Composable
-private fun ScoreTable(state: BetweenLegsState) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Spacer(Modifier.weight(1f))
-            if (state.hasSets) {
-                HeaderCell(stringResource(R.string.match_sets_label), BetweenLegsTags.SETS_HEADER)
-            }
-            HeaderCell(stringResource(R.string.match_legs_label), BetweenLegsTags.LEGS_HEADER)
-        }
-        state.rows.forEachIndexed { index, row -> ScoreRow(row, index) }
+private fun MatchScoreboard(state: BetweenLegsState) {
+    val headers = listOfNotNull(
+        ScoreCell(stringResource(R.string.match_sets_label), tag = BetweenLegsTags.SETS_HEADER)
+            .takeIf { state.hasSets },
+        ScoreCell(stringResource(R.string.match_legs_short), tag = BetweenLegsTags.LEGS_HEADER),
+        ScoreCell(stringResource(R.string.match_average_header), width = AVERAGE_WIDTH),
+    )
+    val separator = stringResource(R.string.checkout_spoken_separator)
+    val rows = state.rows.mapIndexed { index, row ->
+        val average = averageText(row.average)
+        val description = listOfNotNull(
+            displayName(row.name),
+            row.setsWon?.let { stringResource(R.string.match_score_sets, it) },
+            stringResource(R.string.match_score_legs, row.legsWon),
+            stringResource(R.string.game_average, average),
+        ).joinToString(separator)
+        ScoreboardRow(
+            name = row.name,
+            slot = row.slot,
+            rank = null,
+            cells = listOfNotNull(
+                row.setsWon?.let { ScoreCell(it.toString(), row.isLegWinner, BetweenLegsTags.sets(index)) },
+                ScoreCell(row.legsWon.toString(), row.isLegWinner, BetweenLegsTags.legs(index)),
+                ScoreCell(average, tag = BetweenLegsTags.average(index), width = AVERAGE_WIDTH),
+            ),
+            description = description,
+        )
     }
-}
-
-@Composable
-private fun HeaderCell(text: String, tag: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        textAlign = TextAlign.Center,
-        modifier = Modifier
-            .widthIn(min = NUMBER_COLUMN_WIDTH)
-            .testTag(tag)
-            .semantics { hideFromAccessibility() },
+    Scoreboard(
+        headers,
+        stringResource(R.string.match_player_header),
+        rows,
+        Modifier.fillMaxWidth().testTag(BetweenLegsTags.SCOREBOARD),
     )
 }
 
-/** A player's name (two lines at most, then an ellipsis) and numbers, read as "Ann, Sets 1, Legs 2". */
+/** "SET 2 · LEG 4 ▌ CID STARTS": the next leg's position (M19) and its starter (M6), one TalkBack item. */
 @Composable
-private fun ScoreRow(row: BetweenLegsState.Row, index: Int) {
-    val legs = stringResource(R.string.match_score_legs, row.legsWon)
-    val score = row.setsWon?.let {
-        stringResource(R.string.match_indicators_description, stringResource(R.string.match_score_sets, it), legs)
-    } ?: legs
-    val description = stringResource(R.string.match_indicators_description, row.name, score)
+private fun NextStarterBar(state: BetweenLegsState, match: X01Match) {
+    val colors = KosmoTheme.colors
+    val starter = match.currentLeg.startingPlayerIndex
     Row(
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
         modifier = Modifier
             .fillMaxWidth()
-            .semantics(mergeDescendants = true) { contentDescription = description },
+            .clip(KosmoShapes.card)
+            .background(colors.surface)
+            .padding(16.dp)
+            .testTag(BetweenLegsTags.NEXT_STARTER)
+            .semantics(mergeDescendants = true) {},
     ) {
-        Text(
-            text = row.name,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            maxLines = NAME_MAX_LINES,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
+        positionText(state.nextPosition)?.let {
+            Text(text = it, style = KosmoTheme.typography.labelLarge, color = colors.onBackgroundMuted)
+        }
+        Box(
+            Modifier
+                .width(NEXT_MARK_WIDTH)
+                .height(NEXT_MARK_HEIGHT)
+                .background(PlayerPalette.colorOf(match.colorSlots[starter], colors)),
         )
-        row.setsWon?.let { NumberCell(it, BetweenLegsTags.sets(index)) }
-        NumberCell(row.legsWon, BetweenLegsTags.legs(index))
+        Text(
+            text = stringResource(R.string.between_starts, displayName(state.nextStarterName)),
+            style = KosmoTheme.typography.labelLarge,
+            color = colors.onBackground,
+            modifier = Modifier.weight(1f, fill = false),
+        )
     }
 }
 
-@Composable
-private fun NumberCell(value: Int, tag: String) {
-    Text(
-        text = value.toString(),
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground,
-        textAlign = TextAlign.Center,
-        modifier = Modifier
-            .widthIn(min = NUMBER_COLUMN_WIDTH)
-            .testTag(tag),
-    )
-}
-
-@Preview
+@Preview(widthDp = 412, heightDp = 915)
 @Composable
 private fun BetweenLegsScreenPreview() {
     val config = X01Config(listOf("Ann", "Bob"), startScore = 301, checkoutRule = CheckoutRule.SINGLE_OUT)

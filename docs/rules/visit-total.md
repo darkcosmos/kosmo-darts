@@ -1,6 +1,7 @@
 # Visit total rules (game screen)
 
-Status: v2 (issue #36, with the owner answers Q1 to Q4 of 2026-10-20 and his review PR37-R1, PR37-R2 of PR #37).
+Status: v3 (issue #36, with the owner answers Q1 to Q4 of 2026-10-20 and his review PR37-R1, PR37-R2 of PR #37;
+VT9 to VT11 and VT13 amended by issue #49, design system).
 This document is the single source of truth for the visit total box of the game screen: tests cite these rules, never
 the issue text. Rule ids (VT1, VT2, ...) are stable. They use the prefix VT so that they never collide with the
 X01 rules (`docs/rules/x01.md`), the persistence rules (`docs/rules/persistence.md`) or the announcement rules
@@ -72,27 +73,25 @@ The engine derives one state per player from the game state (configuration and o
   `BUST` is the same text in English and French (existing `game_bust` resource). French descriptions use a
   non-breaking space before the colon. The description does not repeat the player name: TalkBack reads the box
   after the player's name and scores, in the order of the screen (top to bottom, then start to end).
-- VT9. Every player's box is framed and visible at all times during the game, next to his remaining score, for every
-  player, except in the case of VT13. The "Prev." / « Préc. » label is removed (PR37-R1): a player row shows the
-  name, the average, the remaining score and the box; the card shows the name, the average, the remaining score, the
-  box and the dart slots. The "BUST" badge of a waiting bust (PR #28) stays.
-- VT10. The highlighted player's box is inside his highlighted card and takes the card's existing colors; the other
-  boxes take the existing colors of the player rows. No new color or style is created. Contrast is checked in the
-  dark theme (Q1).
+- VT9. Every player's box is visible at all times during the game, next to his remaining score, without a label
+  (PR37-R1). Since issue #49 (design system, `VisitBox`): the current player's box is **filled** (white, text
+  `background`) at the end of the dart slots of his zone; the other players' boxes are **outlined** (border
+  `onBackgroundMuted`) on their tiles, after their remaining score.
+- VT10. The filled box keeps its white fill whatever the zone color (player color, `danger` during a BUST); the
+  outlined boxes sit on the tiles' `surface`. Contrast is checked in the dark theme (Q1; `PaletteContrastTest`).
 - VT11. Layout: in portrait and in landscape, with 1 to 4 players (X01 rule C4), at every font size up to the
   largest one offered by Android (scale 2.0):
-  - the box is right after the remaining score, on its right, or directly below it when the width runs out;
-    in a player row it always stays on the right;
   - no box text is truncated, and a box keeps the same size whether it shows `BUST`, `180`, or any other value;
-  - the remaining score is never pushed out of the screen, squeezed, wrapped or clipped: it stays complete on one
-    line. In the highlighted card, when the line is too narrow, the BUST badge or the box goes on a second
-    line under the remaining score;
-  - a player name always keeps at least the width of six characters of its style. In a player row, when the line is
-    too narrow, the average goes on a second line under the name. A name longer than its space is still
-    cut with an ellipsis, as before.
+  - the remaining score of a tile is never truncated; on a narrow tile at a large font size, the box goes under the
+    score;
+  - the score of the zone keeps its place and size while a turn is played, waits, busts or is confirmed;
+  - a player name longer than its space is cut with an ellipsis (on two lines at most on the landscape tiles at
+    4 players, U3 of issue #49).
 - VT12. Translating states to texts happens outside composables (UI state mapping); composables only render the
   mapped texts.
-- VT13. While a bust waits for "Next player", the thrower's card shows the big BUST badge and no visit total box
-  (PR37-R2). The mapping says so (no box for that player); TalkBack then reads the badge, not a box. Once "Next
-  player" is tapped, or if the bust dart is undone, the box is back and follows VT2 to VT6. A waiting normal turn and
-  the checkout dialog keep their box (VT3, VT6).
+- VT13. While a bust waits for "Next player", the zone turns `danger` with the white BUST banner in the route area
+  (CS8: under the score in portrait, right of it on one line in landscape), and the thrower's filled box shows
+  `0` (issue #49, design system 6.2; it replaces PR37-R2), read by TalkBack as "Last
+  turn: bust" / « Dernière volée : bust ». Once "Next player" is tapped, his box (now on a tile) shows `BUST` (VT4);
+  if the bust dart is undone, the box follows VT2 to VT6 again. A waiting normal turn and a pending checkout keep
+  their box (VT3, VT6).

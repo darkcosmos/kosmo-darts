@@ -21,24 +21,28 @@ data class VisitBoxText(
 )
 
 /**
- * One box text per player, in configuration order (VT6, VT8). While a turn waits for "Next player" or for the
- * checkout dialog, the engine current player is shown with his last completed visit, not with his new turn (VT6, Q3).
- * While a bust waits, its thrower has no box (`null`): the BUST badge replaces it (VT13, PR37-R2).
+ * One box text per player, in configuration order (VT6, VT8). While a turn waits for "Next player" or for its
+ * checkout confirmation, the engine current player is shown with his last completed visit, not with his new turn
+ * (VT6, Q3). While a bust waits, its thrower's box shows `0` (VT13 as amended by issue #49): the BUST banner of the
+ * zone says why, and TalkBack reads "Last turn: bust".
  */
-fun visitBoxTexts(screen: GameScreenState): List<VisitBoxText?> {
+fun visitBoxTexts(screen: GameScreenState): List<VisitBoxText> {
     val state = screen.game.state
     val totals = VisitTotals.of(state)
-    val bustThrower = screen.pendingTurn?.playerIndex?.takeIf { screen.isBustShown }
+    val bustThrower = screen.pendingTurn?.playerIndex?.takeIf { screen.isBustPending }
     val waitingNextPlayer = state.currentPlayerIndex.takeIf { screen.isAwaitingConfirmation }
     return totals.mapIndexed { player, total ->
-        val shown = when {
-            player == bustThrower -> null
-            player == waitingNextPlayer -> VisitTotals.lastCompleted(state, player)
-            else -> total
+        when (player) {
+            bustThrower -> PENDING_BUST
+            waitingNextPlayer -> VisitTotals.lastCompleted(state, player).toBoxText()
+            else -> total.toBoxText()
         }
-        shown?.toBoxText()
     }
 }
+
+/** VT13: the box of a bust waiting for "Next player". */
+private val PENDING_BUST =
+    VisitBoxText(R.string.game_visit_value, R.string.game_visit_last_bust_description, listOf(0))
 
 private fun VisitTotal.toBoxText(): VisitBoxText = when (this) {
     VisitTotal.NotPlayed ->

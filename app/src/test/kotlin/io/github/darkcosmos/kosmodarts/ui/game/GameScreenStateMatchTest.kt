@@ -17,17 +17,17 @@ class GameScreenStateMatchTest {
     @Test
     fun `M15 checkout dialog outcome`() {
         val start = match("Ann", "Bob", legsPerSet = 2, sets = 2)
-        assertNull(GameScreenState(start).checkoutDialogOutcome)
+        assertNull(GameScreenState(start).checkoutOutcome)
         mapOf(
             start.playLegWonBy(0) to LegOutcome.LEG,
             start.confirmLegsWonBy(0).playLegWonBy(0) to LegOutcome.SET,
             start.confirmLegsWonBy(0, 0, 0).playLegWonBy(0) to LegOutcome.MATCH,
         ).forEach { (finished, outcome) ->
             val screen = GameScreenState(finished, isAwaitingConfirmation = true)
-            assertEquals(outcome, screen.checkoutDialogOutcome)
+            assertEquals(outcome, screen.checkoutOutcome)
         }
         val single = match("Ann", "Bob").playLegWonBy(1)
-        assertEquals(LegOutcome.MATCH, GameScreenState(single, isAwaitingConfirmation = true).checkoutDialogOutcome)
+        assertEquals(LegOutcome.MATCH, GameScreenState(single, isAwaitingConfirmation = true).checkoutOutcome)
     }
 
     /** M9: the average shown is over the whole match, not the current leg. */
