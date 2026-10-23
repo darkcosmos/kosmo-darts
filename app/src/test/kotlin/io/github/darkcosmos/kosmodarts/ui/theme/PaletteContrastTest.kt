@@ -48,6 +48,13 @@ class PaletteContrastTest {
         }
     }
 
+    /** CR23: a dead Cricket row (label, marks, strike line) is in `onBackgroundMuted` on the board's `surface`. */
+    @Test
+    fun `CR23 a dead board row stays above 4,5 to 1`() {
+        assertTrue(ratio(colors.onBackgroundMuted, colors.surface) >= TEXT_RATIO)
+        assertTrue(ratio(colors.onBackgroundMuted, colors.background) >= TEXT_RATIO)
+    }
+
     /**
      * Non-text indicators, at least 3:1 (U8): the active Double/Triple key (accent) against the inactive one and the
      * background, and the color strips and markers against the background they sit on.
