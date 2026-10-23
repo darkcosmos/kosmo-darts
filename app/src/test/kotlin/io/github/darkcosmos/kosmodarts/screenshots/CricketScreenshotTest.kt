@@ -128,16 +128,23 @@ class CricketScreenshotTest {
     @Test
     @Config(qualifiers = "+fr-port")
     fun cutThroat() =
-        capture("cut_throat_portrait_fr", game("Anna", "Bob", darts = "T20 T20 19 0", variant = CricketVariant.CUT_THROAT))
+        capture(
+            "cut_throat_portrait_fr",
+            game("Anna", "Bob", darts = "T20 T20 19 0", variant = CricketVariant.CUT_THROAT),
+        )
 
     @Test
     @Config(qualifiers = "+fr-port")
-    fun modifierActive() = capture("modifier_triple_portrait_fr", game("Anna", "Bob").toggleMultiplier(Multiplier.TRIPLE))
+    fun modifierActive() =
+        capture("modifier_triple_portrait_fr", game("Anna", "Bob").toggleMultiplier(Multiplier.TRIPLE))
 
     @Test
     @Config(qualifiers = "+fr-port")
     fun turnWaiting() =
-        capture("turn_waiting_portrait_fr", game("Anna", "Bob", darts = "T20 T19 18").copy(isAwaitingConfirmation = true))
+        capture(
+            "turn_waiting_portrait_fr",
+            game("Anna", "Bob", darts = "T20 T19 18").copy(isAwaitingConfirmation = true),
+        )
 
     @Test
     @Config(qualifiers = "+fr-port")
@@ -181,11 +188,14 @@ class CricketScreenshotTest {
         for (x in 0 until source.width) {
             for (y in 0 until source.height) {
                 val pixel = source.getPixel(x, y)
-                val level = (LUMA_RED * Color.red(pixel) + LUMA_GREEN * Color.green(pixel) + LUMA_BLUE * Color.blue(pixel)).toInt()
+                val sum = LUMA_RED * Color.red(pixel) + LUMA_GREEN * Color.green(pixel) + LUMA_BLUE * Color.blue(pixel)
+                val level = sum.toInt()
                 gray.setPixel(x, y, Color.rgb(level, level, level))
             }
         }
-        File(file).also { it.parentFile?.mkdirs() }.outputStream().use { gray.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        File(file).also { it.parentFile?.mkdirs() }.outputStream().use {
+            gray.compress(Bitmap.CompressFormat.PNG, 100, it)
+        }
     }
 
     private companion object {

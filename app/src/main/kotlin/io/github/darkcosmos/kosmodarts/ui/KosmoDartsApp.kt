@@ -40,7 +40,8 @@ fun KosmoDartsApp(
             )
         is Screen.End -> EndScreen(screen.match, onEvent)
         is Screen.Settings -> SettingsScreen(settings, onSettingsEvent, onBack = { onEvent(AppEvent.Back) })
-        // The Cricket game screen is T8; the between-legs and end screens come with T9 of docs/plans/40-cricket-mode.md.
+        // The Cricket game screen is T8; the between-legs and end screens come with T9 of
+        // docs/plans/40-cricket-mode.md.
         // They cannot be reached before T10 adds the Cricket card, so nothing is drawn for them yet.
         is Screen.CricketGame -> CricketGameScreen(screen.game, onEvent, noVoiceNotice = screen.noVoiceNotice)
         is Screen.CricketBetweenLegs, is Screen.CricketEnd -> Unit

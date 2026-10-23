@@ -98,8 +98,10 @@ class FrenchStringsTest {
         assertEquals("20, Anna : 0 marque", resources.getQuantityString(cell, 0, "20", "Anna", 0))
         assertEquals("20, Anna : 1 marque", resources.getQuantityString(cell, 1, "20", "Anna", 1))
         assertEquals("20, Anna : 2 marques", resources.getQuantityString(cell, 2, "20", "Anna", 2))
-        assertEquals("Volée en cours : 0 marque", resources.getQuantityString(R.plurals.cricket_current_visit_marks, 0, 0))
-        assertEquals("Dernière volée : 3 marques", resources.getQuantityString(R.plurals.cricket_last_visit_marks, 3, 3))
+        val current = resources.getQuantityString(R.plurals.cricket_current_visit_marks, 0, 0)
+        assertEquals("Volée en cours\u00A0: 0 marque", current)
+        val last = resources.getQuantityString(R.plurals.cricket_last_visit_marks, 3, 3)
+        assertEquals("Dernière volée\u00A0: 3 marques", last)
         assertEquals("20, Anna : fermée", context.getString(R.string.cricket_board_closed_cell, "20", "Anna"))
         assertEquals(
             "20 : fermée par tous, ne compte plus",
@@ -123,8 +125,11 @@ class FrenchStringsTest {
                     element.getAttribute("name") to
                         (0 until items.length).map { (items.item(it) as org.w3c.dom.Element).getAttribute("quantity") }
                 }
-            assertEquals(setOf("cricket_cell_marks", "cricket_current_visit_marks", "cricket_last_visit_marks"), quantities.keys)
-            quantities.forEach { (name, found) -> assertEquals("$path $name", true, found.containsAll(listOf("one", "other"))) }
+            val expected = setOf("cricket_cell_marks", "cricket_current_visit_marks", "cricket_last_visit_marks")
+            assertEquals(expected, quantities.keys)
+            quantities.forEach { (name, found) ->
+                assertEquals("$path $name", true, found.containsAll(listOf("one", "other")))
+            }
         }
     }
 

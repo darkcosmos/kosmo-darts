@@ -123,7 +123,8 @@ private fun HeaderCell(player: Int, content: CricketBoardContent, modifier: Modi
     val visit = content.visits[player]
     val visitText = visitDescription(visit)
     val description = if (isCurrent) {
-        stringResource(R.string.cricket_board_column_other, stringResource(R.string.cricket_board_column_current, name), visitText)
+        val current = stringResource(R.string.cricket_board_column_current, name)
+        stringResource(R.string.cricket_board_column_other, current, visitText)
     } else {
         stringResource(R.string.cricket_board_column_other, name, visitText)
     }
@@ -310,7 +311,7 @@ private fun PointsRow(points: List<Int>, content: CricketBoardContent, layout: C
 @Composable
 private fun rowStyle(): TextStyle = KosmoTheme.typography.labelLarge.copy(fontSize = ROW_TEXT_SIZE.sp)
 
-/** The `accent` border of the current player's column: both sides, and the top or the bottom where it starts or ends. */
+/** The `accent` border of the current player's column: both sides, and the top or the bottom where it ends. */
 private fun Modifier.columnBorder(isCurrent: Boolean, color: Color, drawTop: Boolean, drawBottom: Boolean): Modifier =
     if (!isCurrent) {
         this
@@ -320,6 +321,9 @@ private fun Modifier.columnBorder(isCurrent: Boolean, color: Color, drawTop: Boo
             drawLine(color, Offset(width / 2, 0f), Offset(width / 2, size.height), width)
             drawLine(color, Offset(size.width - width / 2, 0f), Offset(size.width - width / 2, size.height), width)
             if (drawTop) drawLine(color, Offset(0f, width / 2), Offset(size.width, width / 2), width)
-            if (drawBottom) drawLine(color, Offset(0f, size.height - width / 2), Offset(size.width, size.height - width / 2), width)
+            if (drawBottom) {
+                val y = size.height - width / 2
+                drawLine(color, Offset(0f, y), Offset(size.width, y), width)
+            }
         }
     }
