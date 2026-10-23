@@ -4,6 +4,7 @@ import io.github.darkcosmos.kosmodarts.persistence.GameLoad
 import io.github.darkcosmos.kosmodarts.persistence.LoadResult
 import io.github.darkcosmos.kosmodarts.persistence.SavedCricketGame
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.ui.cricket.toGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 
@@ -18,9 +19,10 @@ fun initialState(load: LoadResult, wasOnGameScreen: Boolean): AppState {
         GameLoad.Absent -> Screen.Home()
         is GameLoad.Valid -> when (val saved = game.saved) {
             is SavedGame -> if (wasOnGameScreen) saved.toScreen() else Screen.Home(resumableGame = saved)
-            // The app cannot start a Cricket game yet (docs/plans/40-cricket-mode.md, T7 and T10 add its screens):
-            // such a file is only kept, and the next game started replaces it (R20).
-            is SavedCricketGame -> Screen.Home()
+            // R21: back on the Cricket screen after a process kill. The home screen cannot show a saved Cricket game
+            // yet (docs/plans/40-cricket-mode.md, T10 adds its summary): the file is kept, and the next game started
+            // replaces it (R20).
+            is SavedCricketGame -> if (wasOnGameScreen) saved.toScreen() else Screen.Home()
         }
         is GameLoad.Invalid -> Screen.Setup(SetupState.prefilled(load.lastSetup?.x01Setup), isRestoreFailedShown = true)
     }
@@ -30,3 +32,7 @@ fun initialState(load: LoadResult, wasOnGameScreen: Boolean): AppState {
 /** R14: the screen the saved game was on: the between-legs screen (owner Q6 ii), else the game screen. */
 fun SavedGame.toScreen(): Screen =
     if (isBetweenLegs) Screen.BetweenLegs(match) else Screen.Game(toGameScreenState())
+
+/** R14, R21: the screen the saved Cricket game was on: between legs, else the Cricket game screen. */
+fun SavedCricketGame.toScreen(): Screen =
+    if (isBetweenLegs) Screen.CricketBetweenLegs(match) else Screen.CricketGame(toGameScreenState())

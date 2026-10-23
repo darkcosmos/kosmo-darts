@@ -37,6 +37,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.Screen
 import io.github.darkcosmos.kosmodarts.ui.components.DialogAction
 import io.github.darkcosmos.kosmodarts.ui.components.KosmoDialog
@@ -88,7 +89,7 @@ fun HomeScreen(home: Screen.Home, onEvent: (AppEvent) -> Unit, modifier: Modifie
                 thumbnail = stringResource(R.string.mode_x01_title),
                 title = stringResource(R.string.mode_x01_title),
                 description = stringResource(R.string.mode_x01_description),
-                onClick = { onEvent(AppEvent.NewGame) },
+                onClick = { onEvent(AppEvent.NewGame(GameMode.X01)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag(HomeTags.MODE_X01),

@@ -25,6 +25,13 @@ internal fun editSetup(setup: SetupState, event: AppEvent, random: Random): Setu
 }
 
 /**
+ * The setup screen of [mode], prefilled with the last setup (R7, R13, R22). The Cricket settings and its start come
+ * with docs/plans/40-cricket-mode.md, T10: until then, the setup of either mode is prefilled from the X01 settings.
+ */
+internal fun AppState.toSetup(mode: GameMode): AppState =
+    copy(screen = Screen.Setup(SetupState.prefilled(lastSetup?.x01Setup).copy(mode = mode)))
+
+/**
  * A new match from Start or Rematch: its roster and X01 settings become the last setup, and the settings of the other
  * modes in [previous] are kept (R7, R13, R22).
  */

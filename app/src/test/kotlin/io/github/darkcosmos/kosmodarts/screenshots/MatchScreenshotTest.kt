@@ -13,6 +13,7 @@ import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.persistence.confirmLegsWonBy
 import io.github.darkcosmos.kosmodarts.persistence.throwing
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.app.MatchScript
 import io.github.darkcosmos.kosmodarts.ui.resume.AppProcess
@@ -66,7 +67,7 @@ class MatchScreenshotTest {
 
     @Test
     @Config(qualifiers = "+en-port")
-    fun setupSingleGame() = captureAfter("match_setup_1x1_portrait_en", listOf(AppEvent.NewGame))
+    fun setupSingleGame() = captureAfter("match_setup_1x1_portrait_en", listOf(AppEvent.NewGame(GameMode.X01)))
 
     @Test
     @Config(qualifiers = "+en-port")
@@ -200,7 +201,7 @@ class MatchScreenshotTest {
             arrayOf("Alexandrine Martinez", "Bartholomew Jenkins", "Clementine Dubois", "Dimitri Kowalczyk")
 
         val SETUP_3X2: List<AppEvent> =
-            listOf(AppEvent.NewGame) + List(2) { AppEvent.LegsPerSetChanged(1) } + AppEvent.SetsChanged(1)
+            listOf(AppEvent.NewGame(GameMode.X01)) + List(2) { AppEvent.LegsPerSetChanged(1) } + AppEvent.SetsChanged(1)
 
         val SAVED_MATCH = SavedGame(
             match("Ann", "Bob", "Clementine Dubois", legsPerSet = 3, sets = 2)

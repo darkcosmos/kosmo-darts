@@ -8,6 +8,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.InvalidX01ConfigException
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01ConfigError
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import kotlin.random.Random
 
 /**
@@ -20,6 +21,8 @@ import kotlin.random.Random
  * @property screenErrors errors of the last [start] attempt that are not about a name.
  * @property legsPerSet legs a player must win to win a set, from [MatchFormat.MIN] to [MatchFormat.MAX] (M13).
  * @property sets sets a player must win to win the match, from [MatchFormat.MIN] to [MatchFormat.MAX] (M13).
+ * @property mode the mode of the "New game" that opened the setup (CR20). Only X01 can be started yet: the Cricket
+ *   settings and start come with docs/plans/40-cricket-mode.md, T10.
  */
 data class SetupState(
     val startScore: Int = X01Config.DEFAULT_START_SCORE,
@@ -29,6 +32,7 @@ data class SetupState(
     val screenErrors: List<X01ConfigError> = emptyList(),
     val legsPerSet: Int = MatchFormat.MIN,
     val sets: Int = MatchFormat.MIN,
+    val mode: GameMode = GameMode.X01,
 ) {
     /** [names] with the color slots of their positions (PC5), for a setup typed in one go. */
     constructor(

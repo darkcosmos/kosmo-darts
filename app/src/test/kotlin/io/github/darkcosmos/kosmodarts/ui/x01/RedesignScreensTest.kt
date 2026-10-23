@@ -34,6 +34,7 @@ import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
@@ -222,7 +223,7 @@ class RedesignScreensTest {
     @Test
     @Config(qualifiers = "+en-port")
     fun `M13 the remove cross and add player`() {
-        send(AppEvent.NewGame, AppEvent.NameChanged(0, "Ann"))
+        send(AppEvent.NewGame(GameMode.X01), AppEvent.NameChanged(0, "Ann"))
 
         node(SetupTags.remove(0)).performScrollTo().assertContentDescriptionEquals("Remove Ann")
         node(SetupTags.remove(1)).assertContentDescriptionEquals("Remove Player 2")
@@ -283,7 +284,7 @@ class RedesignScreensTest {
     @Test
     @Config(qualifiers = "w360dp-h640dp-port-xhdpi", fontScale = LARGEST_FONT_SCALE)
     fun `U7 start stays visible under the focused field`() {
-        send(AppEvent.NewGame, AppEvent.PlayerAdded, AppEvent.PlayerAdded)
+        send(AppEvent.NewGame(GameMode.X01), AppEvent.PlayerAdded, AppEvent.PlayerAdded)
         val root = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
         node(SetupTags.nameField(3)).performScrollTo().performClick()
         composeRule.waitForIdle()
@@ -306,7 +307,7 @@ class RedesignScreensTest {
 
         /** From home: 301 double out with [names] (one to four), then Start. */
         fun start(vararg names: String): Array<AppEvent> = buildList {
-            add(AppEvent.NewGame)
+            add(AppEvent.NewGame(GameMode.X01))
             add(AppEvent.StartScoreSelected(301))
             repeat(names.size - 2) { add(AppEvent.PlayerAdded) }
             if (names.size == 1) add(AppEvent.PlayerRemoved(1))

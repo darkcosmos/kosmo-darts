@@ -12,6 +12,7 @@ import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureScreenRoboImage
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.app.MatchScript
 import io.github.darkcosmos.kosmodarts.ui.resume.AppProcess
@@ -299,7 +300,7 @@ class DesignSystemScreenshotTest {
     private fun singleGameCheckout() = MatchScript().start("Ann", "Bob").playLegWonBy(0).events
 
     private fun setupEvents() = listOf(
-        AppEvent.NewGame,
+        AppEvent.NewGame(GameMode.X01),
         AppEvent.PlayerAdded,
         AppEvent.PlayerAdded,
         AppEvent.NameChanged(0, "Anne-Sophie"),
