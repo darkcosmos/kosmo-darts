@@ -1,0 +1,18 @@
+kosmodarts=saved-game
+version=3
+game=x01
+start-score=301
+checkout=single-out
+legs-per-set=2
+sets=1
+players=2
+player=QW5u
+player=Qm9i
+colors=1 2
+legs=1
+leg=0 301/6 0/3
+darts=0 0 0 T20 T20 T20 0 0 0 T20 T20 1
+awaiting-next-player=true
+between-legs=false
+crc32=4f780de0
+end
