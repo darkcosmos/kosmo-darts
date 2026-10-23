@@ -1,19 +1,17 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
-import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
-
 /** The saved game as found at launch. */
 sealed interface GameLoad {
     data object Absent : GameLoad
 
-    data class Valid(val saved: SavedGame) : GameLoad
+    data class Valid(val saved: StoredGame) : GameLoad
 
     /** The saved game cannot be resumed (rule R9). */
     data class Invalid(val reason: InvalidSaveReason) : GameLoad
 }
 
 /** Both files as found at launch. They are independent (rule R8). */
-data class LoadResult(val game: GameLoad, val lastSetup: X01MatchConfig?)
+data class LoadResult(val game: GameLoad, val lastSetup: LastSetups?)
 
 /**
  * Reads and decodes both files (rules R8 to R11). A file that cannot be loaded, whatever the reason (a read error
@@ -44,7 +42,7 @@ class SaveLoader(
     }
 
     /** A last setup that cannot be loaded is ignored silently and deleted (rule R10). */
-    private fun loadSetup(): X01MatchConfig? {
+    private fun loadSetup(): LastSetups? {
         val read = setupStore.read(LastSetupCodec.MAX_FILE_BYTES)
         val config = (read as? ReadResult.Bytes)?.let { setupCodec.decode(it.bytes) }
         if (config == null && read != ReadResult.Absent) setupStore.delete()

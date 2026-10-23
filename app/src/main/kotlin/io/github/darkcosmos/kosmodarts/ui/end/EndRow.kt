@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.end
 
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
@@ -14,6 +15,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
  * @property legsWon legs won over the whole match, or `null` in a single game (M17). The end screen shows the sets
  *   column when [setsWon] is known, else the legs column (owner Q8 of issue #49), else no score column.
  * @property slot the player's color slot, drawn as a square before his name (PC9).
+ * @property points Cricket only: the points of the last leg, shown in the PTS column (CR27); `null` otherwise.
  */
 data class EndRow(
     val rank: Int,
@@ -24,6 +26,7 @@ data class EndRow(
     val setsWon: Int? = null,
     val legsWon: Int? = null,
     val slot: ColorSlot,
+    val points: Int? = null,
 )
 
 /** End screen ranking of a single game, in the engine order (rules E1, E2). Empty while the leg is in progress. */
@@ -45,6 +48,33 @@ fun endRows(match: X01Match): List<EndRow> {
             setsWon = score.setsWon[player].takeIf { format.hasSets },
             legsWon = score.legsWonTotal[player].takeUnless { format.isSingleGame },
             slot = match.colorSlots[player],
+        )
+    }
+}
+
+/**
+ * End screen ranking of a finished Cricket match, in the engine order (M10, CR16, CR27). The `threeDartAverage` of a
+ * row holds the marks per round (CR13). `points` are those of the last leg (CR27), `null` in a solo game.
+ * Empty while the match is in progress.
+ */
+fun endRows(match: CricketMatch): List<EndRow> {
+    val score = match.finalScore ?: return emptyList()
+    val format = match.format
+    val lastLeg = match.currentLeg.state.players
+    val isSolo = match.config.players.size == 1
+    return match.ranking.map { rank ->
+        val player = rank.playerIndex
+        val stats = match.playerStats[player]
+        EndRow(
+            rank = rank.rank,
+            name = match.config.players[player],
+            threeDartAverage = stats.marksPerRound,
+            dartsThrown = stats.dartsThrown,
+            isWinner = player == score.winnerIndex,
+            setsWon = score.setsWon[player].takeIf { format.hasSets },
+            legsWon = score.legsWonTotal[player].takeUnless { format.isSingleGame },
+            slot = match.colorSlots[player],
+            points = lastLeg[player].points.takeUnless { isSolo },
         )
     }
 }

@@ -12,6 +12,8 @@
     <string name="home_saved_game_title">GAME IN PROGRESS</string>
     <string name="mode_x01_title" translatable="false">X01</string>
     <string name="mode_x01_description">501 or 301, double or single out</string>
+    <string name="mode_cricket_thumbnail" translatable="false">15–20</string>
+    <string name="mode_cricket_description">Standard or Cut-throat</string>
     <string name="new_game_confirm_title">A game is in progress</string>
     <string name="new_game_confirm_text">Delete it and start a new one?</string>
     <string name="new_game_confirm_delete">Delete</string>
@@ -35,6 +37,10 @@
     <string name="setup_title">NEW GAME</string>
     <string name="setup_title_mode" translatable="false">X01</string>
     <string name="setup_game_label">GAME</string>
+    <string name="setup_cricket_variant_label">VARIANT</string>
+    <string name="setup_cricket_hint_standard">Your points are yours; highest score wins.</string>
+    <string name="setup_cricket_hint_cut_throat">Your points go to your opponents; lowest score wins.</string>
+    <string name="setup_cricket_bull" translatable="false">25-Bull</string>
     <string name="setup_double_out">DOUBLE OUT</string>
     <string name="setup_single_out">SINGLE OUT</string>
     <string name="setup_players_label">PLAYERS · THROWING ORDER</string>
@@ -206,4 +212,37 @@
     <string name="announce_dart_outer_bull">25</string>
     <string name="announce_dart_bull">Bull</string>
     <string name="announce_announcements_on">Announcements on</string>
+
+    <!-- Cricket game screen (docs/rules/cricket.md, CR22 to CR25) -->
+    <string name="cricket_title" translatable="false">CRICKET</string>
+    <string name="cricket_variant_standard">STANDARD</string>
+    <string name="cricket_variant_cut_throat">CUT-THROAT</string>
+    <string name="cricket_header_without_bull">WITHOUT 25-BULL</string>
+    <string name="cricket_zone_mpr">MPR %1$s</string>
+    <string name="match_mpr_header" translatable="false">MPR MATCH</string>
+    <string name="match_points_header" translatable="false">PTS</string>
+    <string name="between_points" translatable="false">%1$d PTS</string>
+    <string name="cricket_mpr_description">Marks per round %1$s</string>
+    <string name="cricket_points_description">Points %1$d</string>
+    <string name="cricket_closed_targets" translatable="false">%1$d/%2$d</string>
+    <string name="cricket_win_banner">VICTORY</string>
+    <string name="cricket_board_dead_row">%1$s: closed by everyone, no longer scores</string>
+    <string name="cricket_board_closed_cell">%1$s, %2$s: closed</string>
+    <string name="cricket_board_column_current">%1$s, throwing</string>
+    <string name="cricket_board_column_other">%1$s, %2$s</string>
+    <string name="cricket_board_points">Points: %1$s</string>
+    <string name="cricket_board_points_entry" translatable="false">%1$s %2$d</string>
+    <string name="cricket_board_points_separator" translatable="false">", "</string>
+    <plurals name="cricket_cell_marks">
+        <item quantity="one">%1$s, %2$s: %3$d mark</item>
+        <item quantity="other">%1$s, %2$s: %3$d marks</item>
+    </plurals>
+    <plurals name="cricket_current_visit_marks">
+        <item quantity="one">Current turn: %1$d mark</item>
+        <item quantity="other">Current turn: %1$d marks</item>
+    </plurals>
+    <plurals name="cricket_last_visit_marks">
+        <item quantity="one">Last turn: %1$d mark</item>
+        <item quantity="other">Last turn: %1$d marks</item>
+    </plurals>
 </resources>

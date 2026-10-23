@@ -90,6 +90,49 @@ class FrenchStringsTest {
         )
     }
 
+    /** Review U2, CR23: the mark counts are plurals; the French "one" covers 0 and 1. */
+    @Test
+    fun `CR23 mark counts are plurals and French reads 0 and 1 in the singular`() {
+        val resources = context.resources
+        val cell = R.plurals.cricket_cell_marks
+        assertEquals("20, Anna : 0 marque", resources.getQuantityString(cell, 0, "20", "Anna", 0))
+        assertEquals("20, Anna : 1 marque", resources.getQuantityString(cell, 1, "20", "Anna", 1))
+        assertEquals("20, Anna : 2 marques", resources.getQuantityString(cell, 2, "20", "Anna", 2))
+        val current = resources.getQuantityString(R.plurals.cricket_current_visit_marks, 0, 0)
+        assertEquals("Volée en cours\u00A0: 0 marque", current)
+        val last = resources.getQuantityString(R.plurals.cricket_last_visit_marks, 3, 3)
+        assertEquals("Dernière volée\u00A0: 3 marques", last)
+        assertEquals("20, Anna : fermée", context.getString(R.string.cricket_board_closed_cell, "20", "Anna"))
+        assertEquals(
+            "20 : fermée par tous, ne compte plus",
+            context.getString(R.string.cricket_board_dead_row, "20"),
+        )
+        assertEquals("VICTOIRE", context.getString(R.string.cricket_win_banner))
+        assertEquals("SANS 25-BULL", context.getString(R.string.cricket_header_without_bull))
+        assertEquals("Points : Anna 60, Bob 40", context.getString(R.string.cricket_board_points, "Anna 60, Bob 40"))
+    }
+
+    /** Review U2: each mark plural defines `one` and `other` in both files. */
+    @Test
+    fun `CR23 the mark plurals define one and other in both languages`() {
+        listOf("src/main/res/values/strings.xml", "src/main/res/values-fr/strings.xml").forEach { path ->
+            val root = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(File(path)).documentElement
+            val plurals = root.getElementsByTagName("plurals")
+            val quantities = (0 until plurals.length).map { plurals.item(it) as org.w3c.dom.Element }
+                .filter { it.getAttribute("name").startsWith("cricket_") }
+                .associate { element ->
+                    val items = element.getElementsByTagName("item")
+                    element.getAttribute("name") to
+                        (0 until items.length).map { (items.item(it) as org.w3c.dom.Element).getAttribute("quantity") }
+                }
+            val expected = setOf("cricket_cell_marks", "cricket_current_visit_marks", "cricket_last_visit_marks")
+            assertEquals(expected, quantities.keys)
+            quantities.forEach { (name, found) ->
+                assertEquals("$path $name", true, found.containsAll(listOf("one", "other")))
+            }
+        }
+    }
+
     @Test
     fun `R9 the message is the owner's text`() {
         assertEquals(

@@ -107,6 +107,7 @@ class SoundPoolPlayer(context: Context) : SoundPlayer {
             SoundEffect.DART_CANCEL -> R.raw.sfx_dart_cancel
             SoundEffect.BUST -> R.raw.sfx_bust
             SoundEffect.ONE_EIGHTY -> R.raw.sfx_one_eighty
+            SoundEffect.CLOSED_SECTOR -> R.raw.sfx_closed_cricket_sector
             SoundEffect.VICTORY -> R.raw.sfx_victory
         }
     }

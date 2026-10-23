@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,13 +20,18 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.States
 
 private val THUMBNAIL = 64.dp
+private val THUMBNAIL_PADDING = 4.dp
+private val THUMBNAIL_MIN_FONT = 10.sp
+private val THUMBNAIL_MAX_FONT = 32.sp
 
 /**
  * A game mode of the home screen (design system, `ModeCard`): a 64 × 64 thumbnail, the mode name, its description and
@@ -59,7 +65,16 @@ fun ModeCard(
                 .background(colors.accent)
                 .clearAndSetSemantics {},
         ) {
-            Text(text = thumbnail, style = KosmoTheme.typography.title, color = colors.onAccent, maxLines = 1)
+            // "15–20" is wider than "X01": the text shrinks until it fits the box, whatever the font scale (U7).
+            Text(
+                text = thumbnail,
+                style = KosmoTheme.typography.title,
+                color = colors.onAccent,
+                maxLines = 1,
+                autoSize = TextAutoSize.StepBased(minFontSize = THUMBNAIL_MIN_FONT, maxFontSize = THUMBNAIL_MAX_FONT),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(horizontal = THUMBNAIL_PADDING),
+            )
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(text = title, style = KosmoTheme.typography.title, color = colors.onBackground)

@@ -6,6 +6,7 @@
     <string name="home_resume">REPRENDRE · À %1$s DE LANCER</string>
     <string name="home_saved_game_title">PARTIE EN COURS</string>
     <string name="mode_x01_description">501 ou 301, sortie double ou simple</string>
+    <string name="mode_cricket_description">Standard ou Cut-throat</string>
     <string name="new_game_confirm_title">Une partie est en cours</string>
     <string name="new_game_confirm_text">La supprimer et en commencer une nouvelle ?</string>
     <string name="new_game_confirm_delete">Supprimer</string>
@@ -28,6 +29,9 @@
     <!-- Setup screen -->
     <string name="setup_title">NOUVELLE PARTIE</string>
     <string name="setup_game_label">JEU</string>
+    <string name="setup_cricket_variant_label">VARIANTE</string>
+    <string name="setup_cricket_hint_standard">Vos points sont pour vous\u00A0; le plus haut score gagne.</string>
+    <string name="setup_cricket_hint_cut_throat">Vos points vont aux adversaires\u00A0; le plus bas score gagne.</string>
     <string name="setup_double_out">SORTIE DOUBLE</string>
     <string name="setup_single_out">SORTIE SIMPLE</string>
     <string name="setup_players_label">JOUEURS · ORDRE DE JEU</string>
@@ -193,4 +197,37 @@
     <string name="announce_dart_outer_bull">25</string>
     <string name="announce_dart_bull">Bull</string>
     <string name="announce_announcements_on">Annonces activées</string>
+
+    <!-- Cricket game screen (docs/rules/cricket.md, CR22 to CR25) -->
+    <string name="cricket_title" translatable="false">CRICKET</string>
+    <string name="cricket_variant_standard">STANDARD</string>
+    <string name="cricket_variant_cut_throat">CUT-THROAT</string>
+    <string name="cricket_header_without_bull">SANS 25-BULL</string>
+    <string name="cricket_zone_mpr">MPR %1$s</string>
+    <string name="cricket_mpr_description">Marques par tour %1$s</string>
+    <string name="cricket_points_description">Points %1$d</string>
+    <string name="cricket_closed_targets" translatable="false">%1$d/%2$d</string>
+    <string name="cricket_win_banner">VICTOIRE</string>
+    <string name="cricket_board_dead_row">%1$s\u00A0: fermée par tous, ne compte plus</string>
+    <string name="cricket_board_closed_cell">%1$s, %2$s\u00A0: fermée</string>
+    <string name="cricket_board_column_current">%1$s, au lancer</string>
+    <string name="cricket_board_column_other">%1$s, %2$s</string>
+    <string name="cricket_board_points">Points\u00A0: %1$s</string>
+    <string name="cricket_board_points_entry" translatable="false">%1$s %2$d</string>
+    <string name="cricket_board_points_separator" translatable="false">", "</string>
+    <plurals name="cricket_cell_marks">
+        <item quantity="one">%1$s, %2$s\u00A0: %3$d marque</item>
+        <item quantity="many">%1$s, %2$s\u00A0: %3$d marques</item>
+        <item quantity="other">%1$s, %2$s\u00A0: %3$d marques</item>
+    </plurals>
+    <plurals name="cricket_current_visit_marks">
+        <item quantity="one">Volée en cours\u00A0: %1$d marque</item>
+        <item quantity="many">Volée en cours\u00A0: %1$d marques</item>
+        <item quantity="other">Volée en cours\u00A0: %1$d marques</item>
+    </plurals>
+    <plurals name="cricket_last_visit_marks">
+        <item quantity="one">Dernière volée\u00A0: %1$d marque</item>
+        <item quantity="many">Dernière volée\u00A0: %1$d marques</item>
+        <item quantity="other">Dernière volée\u00A0: %1$d marques</item>
+    </plurals>
 </resources>

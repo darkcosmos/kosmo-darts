@@ -63,7 +63,7 @@ class DeletionOrderTest {
         persistence.saveGame(SaveFixtures.MID_TURN)
         val viewModel = viewModel(AppState(screen = Screen.Home(resumableGame = SaveFixtures.MID_TURN)))
 
-        viewModel.onEvent(AppEvent.NewGame)
+        viewModel.onEvent(AppEvent.NewGame(GameMode.X01))
         viewModel.onEvent(AppEvent.NewGameConfirmed)
         executor.runAll()
 

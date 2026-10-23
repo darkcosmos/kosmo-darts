@@ -12,6 +12,7 @@ import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import org.junit.Rule
 import org.junit.Test
@@ -165,17 +166,20 @@ class X01ScreensScreenshotTest {
 
         fun singles(vararg numbers: Int): Array<AppEvent> = numbers.map { AppEvent.NumberTapped(it) }.toTypedArray()
 
-        val SETUP_DEFAULT: Array<AppEvent> = arrayOf(AppEvent.NewGame)
+        val SETUP_DEFAULT: Array<AppEvent> = arrayOf(AppEvent.NewGame(GameMode.X01))
 
         /** Second name blank, first and third the same ignoring case. */
         val SETUP_ERRORS: Array<AppEvent> =
-            arrayOf(AppEvent.NewGame, AppEvent.PlayerAdded, *names("Ann", "", "ann"), AppEvent.StartRequested)
+            arrayOf(
+                AppEvent.NewGame(GameMode.X01), AppEvent.PlayerAdded, *names("Ann", "", "ann"), AppEvent.StartRequested,
+            )
 
-        val GAME_START: Array<AppEvent> = arrayOf(AppEvent.NewGame, *names("Ann", "Bob"), AppEvent.StartRequested)
+        val GAME_START: Array<AppEvent> =
+            arrayOf(AppEvent.NewGame(GameMode.X01), *names("Ann", "Bob"), AppEvent.StartRequested)
 
         /** 501, four players, turns confirmed: Ann and Bob show a last turn, Cid has one dart and Double active. */
         val GAME_MID_TURN: Array<AppEvent> = arrayOf(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.PlayerAdded,
             AppEvent.PlayerAdded,
             *names("Ann", "Bob", "Cid", "Dan"),
@@ -188,7 +192,7 @@ class X01ScreensScreenshotTest {
 
         /** 501, two players: Ann's T20 T20 20 waits for "Next player". */
         val WAITING_TURN: Array<AppEvent> = arrayOf(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             *names("Ann", "Bob"),
             AppEvent.StartRequested,
             *triple(20), *triple(20), *singles(20),
@@ -196,7 +200,7 @@ class X01ScreensScreenshotTest {
 
         /** 301 double out: Ann and Bob leave 121, then Ann's T20 T20 leaves 1, a bust waiting for "Next player". */
         val WAITING_BUST: Array<AppEvent> = arrayOf(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.StartScoreSelected(301),
             *names("Ann", "Bob"),
             AppEvent.StartRequested,
@@ -207,7 +211,7 @@ class X01ScreensScreenshotTest {
 
         /** 301 single out, three players: Bob and Cid both leave 241, the winning dart opens the checkout dialog. */
         val CHECKOUT_DIALOG: Array<AppEvent> = arrayOf(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.StartScoreSelected(301),
             AppEvent.CheckoutRuleSelected(CheckoutRule.SINGLE_OUT),
             AppEvent.PlayerAdded,

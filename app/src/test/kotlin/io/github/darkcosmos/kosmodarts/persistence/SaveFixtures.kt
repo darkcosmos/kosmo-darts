@@ -9,6 +9,9 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import java.io.IOException
 
 /** Games used by the persistence tests. Names are made up; nothing here is ever logged. */
+/** The last setups after an X01 Start with this setup and no earlier file (R22): its roster and X01 settings only. */
+internal fun X01MatchConfig.toLastSetups(): LastSetups = LastSetups.afterX01(previous = null, this)
+
 internal object SaveFixtures {
 
     val NAMES = listOf("Ann", "Bob", "Cid", "Dan")
@@ -96,6 +99,10 @@ internal object V1Fixtures {
     fun bytes(name: String): ByteArray =
         checkNotNull(V1Fixtures::class.java.getResourceAsStream("/persistence/v1/$name")) { name }.readBytes()
 }
+
+/** The X01 game of a valid result; fails the test if the file held another mode. */
+internal val GameDecodeResult.Valid.x01: SavedGame
+    get() = saved as SavedGame
 
 /** A save file with these covered lines (kind to last body line) and a correct checksum. */
 internal fun withChecksum(lines: List<String>): ByteArray {

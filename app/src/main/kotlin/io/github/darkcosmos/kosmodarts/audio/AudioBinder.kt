@@ -10,6 +10,8 @@ import io.github.darkcosmos.kosmodarts.settings.AudioSettingsRepository
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.app.Screen
+import io.github.darkcosmos.kosmodarts.ui.app.isGameOrBetweenLegs
+import io.github.darkcosmos.kosmodarts.ui.app.isNewGameShown
 import io.github.darkcosmos.kosmodarts.ui.settings.SettingsViewModel
 
 /**
@@ -64,7 +66,7 @@ class AudioBinder(
     private fun update() {
         val screen = game.state.value.screen
         // The between-legs screen keeps the session: a leg or set voice ends there, and "Next leg" speaks (AN27, AN28).
-        val isGameShown = screen is Screen.Game || screen is Screen.BetweenLegs || screen is Screen.End
+        val isGameShown = screen.isGameOrBetweenLegs || screen is Screen.End || screen is Screen.CricketEnd
         activity.volumeControlStream =
             if (isGameShown) AudioManager.STREAM_MUSIC else AudioManager.USE_DEFAULT_STREAM_TYPE
         // A.4: the session already exists on the setup screen, so the speech engine is ready when "Start" is tapped.
@@ -103,7 +105,7 @@ class AudioBinder(
     /** AN16, A.4: [FirstVoiceCheck] decides; the ViewModel then decides whether the message shows. */
     private fun reportUnavailableVoice(speaker: Speaker, status: VoiceStatus) {
         val screen = game.state.value.screen
-        val isNewGameShown = screen is Screen.Game && screen.isNewGame
+        val isNewGameShown = screen.isNewGameShown
         if (voiceCheck.shouldReport(status, isNewGameShown)) {
             val canInstall = VoiceInstaller(activity, speaker.enginePackage).canInstall
             game.onEvent(AppEvent.VoiceUnavailable(canInstall))

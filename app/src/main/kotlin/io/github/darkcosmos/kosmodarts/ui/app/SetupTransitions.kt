@@ -3,8 +3,11 @@ package io.github.darkcosmos.kosmodarts.ui.app
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
+import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
+import io.github.darkcosmos.kosmodarts.ui.setup.withBullInPlay
+import io.github.darkcosmos.kosmodarts.ui.setup.withCricketVariant
 import kotlin.random.Random
 
 // Parts of [AppReducer] about the setup and the start of a match. Pure, except for the injected random of Shuffle.
@@ -13,6 +16,8 @@ import kotlin.random.Random
 internal fun editSetup(setup: SetupState, event: AppEvent, random: Random): SetupState = when (event) {
     is AppEvent.StartScoreSelected -> setup.withStartScore(event.score)
     is AppEvent.CheckoutRuleSelected -> setup.withCheckoutRule(event.rule)
+    is AppEvent.CricketVariantSelected -> setup.withCricketVariant(event.variant)
+    is AppEvent.BullInPlayToggled -> setup.withBullInPlay(event.isInPlay)
     is AppEvent.NameChanged -> setup.withName(event.index, event.name)
     AppEvent.PlayerAdded -> setup.withPlayerAdded()
     is AppEvent.PlayerRemoved -> setup.withPlayerRemoved(event.index)
@@ -23,10 +28,17 @@ internal fun editSetup(setup: SetupState, event: AppEvent, random: Random): Setu
     else -> setup
 }
 
-/** A new match from Start or Rematch: its setup becomes the last setup (R7, R13). */
-internal fun newMatchState(setup: X01MatchConfig): AppState = AppState(
+/** The setup screen of [mode], prefilled with the last setup of that mode (R7, R13, R22, CR21). */
+internal fun AppState.toSetup(mode: GameMode): AppState =
+    copy(screen = Screen.Setup(SetupState.prefilled(lastSetup, mode)))
+
+/**
+ * A new match from Start or Rematch: its roster and X01 settings become the last setup, and the settings of the other
+ * modes in [previous] are kept (R7, R13, R22).
+ */
+internal fun newMatchState(setup: X01MatchConfig, previous: LastSetups?): AppState = AppState(
     screen = Screen.Game(GameScreenState(X01Match.start(setup)), isNewGame = true),
-    lastSetup = setup,
+    lastSetup = LastSetups.afterX01(previous, setup),
 )
 
 /**

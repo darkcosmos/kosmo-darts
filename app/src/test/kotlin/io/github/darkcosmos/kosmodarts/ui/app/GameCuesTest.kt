@@ -208,7 +208,7 @@ class GameCuesTest {
     /** AN7: the screens without a game announce nothing. */
     @Test
     fun `AN7 outside the game nothing is announced`() {
-        assertEquals(emptyList<X01Cue>(), cuesOf(AppState(), AppEvent.NewGame))
+        assertEquals(emptyList<X01Cue>(), cuesOf(AppState(), AppEvent.NewGame(GameMode.X01)))
         assertEquals(emptyList<X01Cue>(), cuesOf(AppState(), AppEvent.SettingsTapped, AppEvent.Back))
     }
 

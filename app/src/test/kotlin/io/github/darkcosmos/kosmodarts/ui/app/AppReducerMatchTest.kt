@@ -13,6 +13,7 @@ import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures.match
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.persistence.confirmLegsWonBy
 import io.github.darkcosmos.kosmodarts.persistence.playLegWonBy
+import io.github.darkcosmos.kosmodarts.persistence.toLastSetups
 import io.github.darkcosmos.kosmodarts.settings.AudioSettingsRepository
 import io.github.darkcosmos.kosmodarts.settings.InMemoryAudioSettingsStore
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
@@ -106,7 +107,7 @@ class AppReducerMatchTest {
         val slots = listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_3, ColorSlot.SLOT_1)
         val rotated = X01Config(listOf("Bob", "Cid", "Ann"), 301, CheckoutRule.SINGLE_OUT)
         val expected = X01MatchConfig(rotated, format, slots)
-        assertEquals(expected, rematch.lastSetup)
+        assertEquals(expected, rematch.lastSetup?.x01Setup)
         assertEquals(Screen.Game(GameScreenState(X01Match.start(expected)), isNewGame = true), rematch.screen)
     }
 
@@ -123,7 +124,7 @@ class AppReducerMatchTest {
         )
 
         val expected = X01MatchConfig(X01Config(listOf("Ann", "Bob")), MatchFormat(legsPerSet = 3, sets = 2))
-        assertEquals(expected, state.lastSetup)
+        assertEquals(expected, state.lastSetup?.x01Setup)
         assertEquals(expected, gameOf(state).match.matchConfig)
     }
 
@@ -146,7 +147,8 @@ class AppReducerMatchTest {
     fun `R13 the next setup is prefilled with the last format`() {
         val last = X01MatchConfig(X01Config(listOf("Ann", "Bob")), MatchFormat(4, 2))
 
-        val setup = (events.after(AppState(lastSetup = last), AppEvent.NewGame).screen as Screen.Setup).setup
+        val state = events.after(AppState(lastSetup = last.toLastSetups()), AppEvent.NewGame(GameMode.X01))
+        val setup = (state.screen as Screen.Setup).setup
 
         assertEquals(4 to 2, setup.legsPerSet to setup.sets)
     }

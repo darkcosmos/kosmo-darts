@@ -1,9 +1,11 @@
 package io.github.darkcosmos.kosmodarts.ui.between
 
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.match.MatchScore
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.game.CheckoutSummary
 import io.github.darkcosmos.kosmodarts.ui.game.MatchPosition
 
@@ -22,6 +24,9 @@ import io.github.darkcosmos.kosmodarts.ui.game.MatchPosition
  * @property rows one row per player, in configuration order.
  * @property nextStarterName the player who starts the next leg (M6).
  * @property nextPosition set and leg number of the next leg, from the engine (M19).
+ * @property nextStarterSlot the color slot of the next starter.
+ * @property mode the game mode: it decides the statistic column (MATCH AVG, or MPR MATCH for Cricket, CR26).
+ * @property winnerPoints Cricket only: the points of the leg winner ("245 PTS"), or `null` in a solo game (CR26).
  */
 data class BetweenLegsState(
     val winnerIndex: Int,
@@ -34,11 +39,15 @@ data class BetweenLegsState(
     val rows: List<Row>,
     val nextStarterName: String,
     val nextPosition: MatchPosition,
+    val nextStarterSlot: ColorSlot,
+    val mode: GameMode = GameMode.X01,
+    val winnerPoints: Int? = null,
 ) {
     /**
      * @property setsWon sets won, or `null` when the match has a single set.
      * @property legsWon legs won in the current set.
-     * @property average three-dart average over the match (M9), or `null` before the first dart.
+     * @property average three-dart average over the match (M9), marks per round for Cricket (CR13), or `null` before
+     *   the first dart.
      * @property isLegWinner whether this player won the leg that just ended: his figures are in `accent`.
      */
     data class Row(
@@ -81,6 +90,44 @@ data class BetweenLegsState(
                 },
                 nextStarterName = names[match.currentLeg.startingPlayerIndex],
                 nextPosition = MatchPosition.current(match),
+                nextStarterSlot = match.colorSlots[match.currentLeg.startingPlayerIndex],
+            )
+        }
+
+        /**
+         * The screen for the Cricket [match], whose last leg was just confirmed (CR26).
+         *
+         * @throws IllegalArgumentException if [match] has no confirmed leg.
+         */
+        fun of(match: CricketMatch): BetweenLegsState {
+            val score = match.score
+            val lastWinner = requireNotNull(score.legWinners.lastOrNull()) { "No confirmed leg" }
+            val before = MatchScore(score.format, score.playerCount, score.legWinners.dropLast(1))
+            val names = match.config.players
+            val starter = match.currentLeg.startingPlayerIndex
+            return BetweenLegsState(
+                winnerIndex = lastWinner,
+                winnerName = names[lastWinner],
+                winnerSlot = match.colorSlots[lastWinner],
+                isSetWon = before.outcomeIfWonBy(lastWinner) == LegOutcome.SET,
+                wonPosition = checkNotNull(MatchPosition.lastLeg(score)),
+                checkout = null,
+                hasSets = match.format.hasSets,
+                rows = names.mapIndexed { player, name ->
+                    Row(
+                        name = name,
+                        slot = match.colorSlots[player],
+                        setsWon = score.setsWon[player].takeIf { match.format.hasSets },
+                        legsWon = score.legsWonInSet[player],
+                        average = match.playerStats[player].marksPerRound,
+                        isLegWinner = player == lastWinner,
+                    )
+                },
+                nextStarterName = names[starter],
+                nextPosition = MatchPosition.current(score),
+                nextStarterSlot = match.colorSlots[starter],
+                mode = GameMode.CRICKET,
+                winnerPoints = match.completedLegs.last().points[lastWinner].takeIf { names.size > 1 },
             )
         }
     }

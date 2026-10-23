@@ -1,5 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
+import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -7,8 +9,12 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
+import io.github.darkcosmos.kosmodarts.persistence.CricketSettings
+import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.persistence.SharedRoster
+import io.github.darkcosmos.kosmodarts.persistence.toLastSetups
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
@@ -26,7 +32,8 @@ class PersistenceEffectsTest {
     private fun effectsOf(before: AppState, event: AppEvent): List<PersistenceEffect> =
         persistenceEffects(before, reducer.reduce(before, event))
 
-    private fun inGame(screen: GameScreenState) = AppState(screen = Screen.Game(screen), lastSetup = config)
+    private fun inGame(screen: GameScreenState) =
+        AppState(screen = Screen.Game(screen), lastSetup = config.toLastSetups())
 
     private fun saveOf(state: AppState, event: AppEvent): PersistenceEffect =
         PersistenceEffect.SaveGame(checkNotNull(savedGameOf(reducer.reduce(state, event))))
@@ -62,15 +69,15 @@ class PersistenceEffectsTest {
     @Test
     fun `R12 what does not change the saved game writes nothing`() {
         val withAbandonDialog = reducer.reduce(midTurn, AppEvent.Back)
-        val home = AppState(screen = Screen.Home(SaveFixtures.MID_TURN), lastSetup = config)
+        val home = AppState(screen = Screen.Home(SaveFixtures.MID_TURN), lastSetup = config.toLastSetups())
         listOf(
             midTurn to AppEvent.MultiplierTapped(Multiplier.DOUBLE),
             midTurn to AppEvent.Back,
             withAbandonDialog to AppEvent.AbandonDismissed,
             waiting to AppEvent.NumberTapped(20), // Ignored: the keypad is disabled.
             home to AppEvent.ResumeTapped,
-            home to AppEvent.NewGame,
-            reducer.reduce(home, AppEvent.NewGame) to AppEvent.NewGameDismissed,
+            home to AppEvent.NewGame(GameMode.X01),
+            reducer.reduce(home, AppEvent.NewGame(GameMode.X01)) to AppEvent.NewGameDismissed,
         ).forEach { (state, event) ->
             assertEquals(event.toString(), emptyList<PersistenceEffect>(), effectsOf(state, event))
         }
@@ -90,7 +97,7 @@ class PersistenceEffectsTest {
 
     @Test
     fun `R3 Delete in the new-game dialog deletes the saved game`() {
-        val dialog = AppState(screen = Screen.Home(SaveFixtures.MID_TURN, isNewGameDialogShown = true))
+        val dialog = AppState(screen = Screen.Home(SaveFixtures.MID_TURN, newGameDialogMode = GameMode.X01))
 
         assertEquals(listOf(PersistenceEffect.DeleteGame), effectsOf(dialog, AppEvent.NewGameConfirmed))
     }
@@ -102,11 +109,29 @@ class PersistenceEffectsTest {
 
         assertEquals(
             listOf(
-                PersistenceEffect.SaveLastSetup(X01MatchConfig(started)),
+                PersistenceEffect.SaveLastSetup(X01MatchConfig(started).toLastSetups()),
                 PersistenceEffect.SaveGame(SavedGame(X01Game(started), isAwaitingNextPlayer = false)),
             ),
             effectsOf(setup, AppEvent.StartRequested),
         )
+    }
+
+    /** R22: an X01 Start writes the roster and the X01 settings, and keeps the Cricket settings of the last setup. */
+    @Test
+    fun `R22 an X01 Start keeps the Cricket settings of the last setup`() {
+        val cricket = CricketSettings(CricketVariant.CUT_THROAT, isBullInPlay = false, MatchFormat(3, 1))
+        val previous = LastSetups(SharedRoster(listOf("Cid"), listOf(ColorSlot.SLOT_3)), cricket = cricket)
+        val setup = AppState(
+            screen = Screen.Setup(SetupState(301, CheckoutRule.SINGLE_OUT, listOf("Ann", "Bob"))),
+            lastSetup = previous,
+        )
+        val started = X01MatchConfig(X01Config(listOf("Ann", "Bob"), 301, CheckoutRule.SINGLE_OUT))
+
+        val effect = effectsOf(setup, AppEvent.StartRequested).first() as PersistenceEffect.SaveLastSetup
+
+        assertEquals(SharedRoster(listOf("Ann", "Bob"), ColorSlot.byPosition(2)), effect.setups.roster)
+        assertEquals(started, effect.setups.x01Setup)
+        assertEquals(cricket, effect.setups.cricket)
     }
 
     @Test
@@ -119,14 +144,17 @@ class PersistenceEffectsTest {
     @Test
     fun `R7 Rematch saves the rotated setup and the new game`() {
         val three = X01Config(listOf("Ann", "Bob", "Cid"))
-        val end = AppState(screen = Screen.End(X01Game(three, emptyList())), lastSetup = X01MatchConfig(three))
+        val end = AppState(
+            screen = Screen.End(X01Game(three, emptyList())),
+            lastSetup = X01MatchConfig(three).toLastSetups(),
+        )
         val rotated = X01Config(listOf("Bob", "Cid", "Ann"))
         // PC7: each player keeps his color slot through the rotation.
         val setup = X01MatchConfig(rotated, colorSlots = listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_3, ColorSlot.SLOT_1))
 
         assertEquals(
             listOf(
-                PersistenceEffect.SaveLastSetup(setup),
+                PersistenceEffect.SaveLastSetup(setup.toLastSetups()),
                 PersistenceEffect.SaveGame(SavedGame(X01Match.start(setup), isAwaitingNextPlayer = false)),
             ),
             effectsOf(end, AppEvent.Rematch),

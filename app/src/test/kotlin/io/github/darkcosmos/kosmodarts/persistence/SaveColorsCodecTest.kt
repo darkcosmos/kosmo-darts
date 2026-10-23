@@ -35,7 +35,7 @@ class SaveColorsCodecTest {
     private val setup =
         X01MatchConfig(X01Config(listOf("Ann", "Bob", "Cid")), colorSlots = listOf(SLOT_2, SLOT_4, SLOT_1))
 
-    private val setupBody: List<String> = coveredLines(setupCodec.encode(setup))
+    private val setupBody: List<String> = coveredLines(setupCodec.encode(setup.toLastSetups()))
 
     private fun assertGameInvalid(expected: InvalidSaveReason, lines: List<String>) {
         assertEquals(lines.toString(), GameDecodeResult.Invalid(expected), gameCodec.decode(withChecksum(lines)))
@@ -50,15 +50,17 @@ class SaveColorsCodecTest {
         val decoded = gameCodec.decode(checkNotNull(gameCodec.encode(saved)))
 
         assertEquals(GameDecodeResult.Valid(saved), decoded)
-        assertEquals(listOf(SLOT_3, SLOT_1, SLOT_4), (decoded as GameDecodeResult.Valid).saved.match.colorSlots)
+        assertEquals(listOf(SLOT_3, SLOT_1, SLOT_4), (decoded as GameDecodeResult.Valid).x01.match.colorSlots)
         assertEquals("colors=3 1 4", gameBody.single { it.startsWith("colors=") })
     }
 
     /** R17, PC8: the last setup keeps non-positional slots. */
     @Test
     fun `R17 a last setup keeps non-positional slots`() {
-        assertEquals(setup, setupCodec.decode(setupCodec.encode(setup)))
-        assertEquals(listOf(SLOT_2, SLOT_4, SLOT_1), setupCodec.decode(setupCodec.encode(setup))?.colorSlots)
+        val decoded = setupCodec.decode(setupCodec.encode(setup.toLastSetups()))
+
+        assertEquals(setup, decoded?.x01Setup)
+        assertEquals(listOf(SLOT_2, SLOT_4, SLOT_1), decoded?.roster?.colorSlots)
     }
 
     /** R18: every frozen version 1 game decodes with the slots of the player positions. */
@@ -66,9 +68,9 @@ class SaveColorsCodecTest {
     fun `R18 version 1 games get slots by position`() {
         V1Fixtures.GAMES.keys.forEach { name ->
             val decoded = gameCodec.decode(V1Fixtures.bytes(name)) as GameDecodeResult.Valid
-            val players = decoded.saved.match.config.players.size
+            val players = decoded.x01.match.config.players.size
 
-            assertEquals(name, ColorSlot.byPosition(players), decoded.saved.match.colorSlots)
+            assertEquals(name, ColorSlot.byPosition(players), decoded.x01.match.colorSlots)
         }
     }
 
@@ -77,7 +79,7 @@ class SaveColorsCodecTest {
     fun `R18 a version 1 last setup gets slots by position`() {
         val bytes = checkNotNull(javaClass.getResourceAsStream("/persistence/v1/last-setup.save")).readBytes()
 
-        assertEquals(ColorSlot.byPosition(3), setupCodec.decode(bytes)?.colorSlots)
+        assertEquals(ColorSlot.byPosition(3), setupCodec.decode(bytes)?.roster?.colorSlots)
     }
 
     /** S1, R9: one slot per player, separated by single spaces; another count or an empty token is malformed. */
@@ -138,7 +140,10 @@ class SaveColorsCodecTest {
     /** S2, R9: a version 2 file carrying the version 3 colors key is malformed. */
     @Test
     fun `R9 a version 2 file with a colors line is malformed`() {
-        assertGameInvalid(InvalidSaveReason.MALFORMED, gameBody.map { if (it == "version=3") "version=2" else it })
+        // The version 4 mode line is dropped too (R25), so that only the colors line is wrong.
+        val version2 = gameBody.filterNot { it == "mode=x01" }.map { if (it == "version=4") "version=2" else it }
+
+        assertGameInvalid(InvalidSaveReason.MALFORMED, version2)
     }
 
     /** S1, R10: the same invalid colors lines make the last setup unreadable. */
@@ -152,7 +157,8 @@ class SaveColorsCodecTest {
             setupBody.withColors("2 4 2"),
             setupBody - colors,
             setupBody + colors,
-            setupBody.map { if (it == "version=3") "version=2" else it },
+            // Version 2 with the colors key: the version 4 X01 lines without the mode line are the version 3 layout.
+            setupBody.filterNot { it.startsWith("mode=") }.map { if (it == "version=4") "version=2" else it },
         ).forEach { assertNull(it.toString(), setupCodec.decode(withChecksum(it))) }
     }
 }

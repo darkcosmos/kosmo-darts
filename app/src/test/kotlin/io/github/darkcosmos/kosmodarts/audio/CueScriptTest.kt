@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.audio
 
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketCue
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
@@ -77,5 +78,47 @@ class CueScriptTest {
             steps(AudioStep.Speech("turn Bob requires 40")),
             of(X01Cue.TurnStart(1, "Bob", 40, isGameStart = false)),
         )
+    }
+
+    private fun ofCricket(cue: CricketCue) = CueScript.of(cue, TestPhrases)
+
+    @Test
+    fun `AN29 AN30 a Cricket hit and miss are the hit and miss sounds, the hit with its call`() {
+        assertEquals(
+            AudioAction.DartSound(SoundEffect.DART_HIT, "call 60"),
+            ofCricket(CricketCue.DartHit(Dart.triple(20))),
+        )
+        assertEquals(AudioAction.DartSound(SoundEffect.DART_MISS, null), ofCricket(CricketCue.DartMiss))
+    }
+
+    @Test
+    fun `AN30 a closed-sector hit plays the closed sector sound instead of the hit sound, with its call`() {
+        assertEquals(
+            AudioAction.DartSound(SoundEffect.CLOSED_SECTOR, "call 60"),
+            ofCricket(CricketCue.ClosedSectorHit(Dart.triple(20))),
+        )
+    }
+
+    @Test
+    fun `AN23 AN29 the Cricket undo cue is an undo`() {
+        assertEquals(AudioAction.Undo, ofCricket(CricketCue.DartUndone))
+    }
+
+    @Test
+    fun `AN31 a Cricket turn start is the phrase without a checkout suffix`() {
+        val first = CricketCue.TurnStart(1, "Bob", isGameStart = true)
+        val next = CricketCue.TurnStart(1, "Bob", isGameStart = false)
+        assertEquals(steps(AudioStep.Speech("first Bob")), ofCricket(first))
+        assertEquals(steps(AudioStep.Speech("turn Bob")), ofCricket(next))
+    }
+
+    @Test
+    fun `AN27 AN31 a Cricket win is the victory sound with the phrase for a match, the phrase alone otherwise`() {
+        assertEquals(
+            steps(AudioStep.SoundWithSpeech(SoundEffect.VICTORY, "win Ann")),
+            ofCricket(CricketCue.Win(0, "Ann", LegOutcome.MATCH)),
+        )
+        assertEquals(steps(AudioStep.Speech("leg Ann")), ofCricket(CricketCue.Win(0, "Ann", LegOutcome.LEG)))
+        assertEquals(steps(AudioStep.Speech("set Bob")), ofCricket(CricketCue.Win(1, "Bob", LegOutcome.SET)))
     }
 }

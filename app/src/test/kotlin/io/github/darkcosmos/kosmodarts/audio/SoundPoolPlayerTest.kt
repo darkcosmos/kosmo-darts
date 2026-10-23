@@ -31,6 +31,7 @@ class SoundPoolPlayerTest {
                 R.raw.sfx_dart_cancel,
                 R.raw.sfx_bust,
                 R.raw.sfx_one_eighty,
+                R.raw.sfx_closed_cricket_sector,
                 R.raw.sfx_victory,
             ),
             SoundEffect.entries.map(SoundPoolPlayer::resourceOf),
