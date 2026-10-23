@@ -1108,3 +1108,15 @@ notes are applied:
   has "\x01vorbis" (Ogg Vorbis, mono, 48 kHz, about 1 s); only this file taken from `origin/feat/sfx_cricket`
   (remote branch left in place). Deviation: `CricketCues`/`CricketCue` live in one file `CricketCue.kt` like
   `X01Cue.kt`; the plan's separate `CricketCues.kt` is not created.
+- T5: `persistence/` `SaveFormat` (`VERSION_4`, `VERSION` = 4, mode line first in the v4 body, rejected in v1 to v3),
+  `SaveBody.kt` (`SaveMode` x01/cricket), `StoredGame` (sealed: `SavedGame`, `SavedCricketGame`), `CricketSaveBody.kt`
+  (write/read, `CRICKET_VARIANT_TOKENS`, `CRICKET_BULL_TOKENS`, `isWritable` with the 99,999-point cap, the R24
+  bounds, `InvalidCricketConfigException` caught), `GameSaveCodec` (mode dispatch, `CricketLegFinishedException`
+  caught on replay), `GameLoad.Valid(StoredGame)`, `Persistence.saveGame(StoredGame)`; ADR 0008; `persistence.md`
+  R20, R21, R23 to R25. Frozen v3 fixtures in `src/test/resources/persistence/v3/` (from `e7372f8`, own commit).
+  Tests: `CricketSaveCodecTest`, `CricketSaveDecodeBoundsTest`, `CricketSaveFixtures`, `SaveV3CompatibilityTest`,
+  v4 golden files and R23 cases in `GameSaveCodecTest`, `GameSaveMatchCodecTest`, `GameSaveDecodeInvalidTest`,
+  Cricket and mode-line seeds in `SaveFuzzTest`. Deviations: `LastSetupCodec` still writes version 3 (an explicit
+  `version = VERSION_3`) until T6 gives it its v4 per-mode layout; `InitialState` sends a valid saved Cricket game to
+  a plain Home (kept, not resumable) until T7 and T10 add its screens. Started by `developer-build-T5`, finished by
+  `developer-build-T5-2`.

@@ -48,9 +48,9 @@ internal class DecodedFile(val version: Int, val reader: BodyReader)
  * docs/adr/0005-save-format-v2-match.md; version 3: docs/adr/0006-save-format-v3-colors.md; version 4:
  * docs/adr/0008-save-format-v4-modes.md).
  *
- * A file is: a kind line, a version line, body lines in a fixed order (from version 4, the mode line comes first), a CRC-32 line covering every byte before it,
- * and an end line. Every value has a single canonical form, so that `decode(encode(x)) == x` and any other content is
- * rejected.
+ * A file is: a kind line, a version line, body lines in a fixed order (from version 4, the mode line comes first), a
+ * CRC-32 line covering every byte before it, and an end line. Every value has a single canonical form, so that
+ * `decode(encode(x)) == x` and any other content is rejected.
  */
 internal object SaveFormat {
 
