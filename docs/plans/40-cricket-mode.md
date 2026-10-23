@@ -1098,3 +1098,13 @@ notes are applied:
   only; its starter computation is untouched); `match.md` M2, M10, M11 amended, M20 added, a Cricket line in "Related
   rules". Tests: `CricketMatchTest`, `CricketStatisticsTest`, `LegOutcomeTest`, new `MatchRankingTest` cases, fixtures
   in `CricketMatchFixtures.kt` (`cricketMatch`, `turns`, `playLegWonBy`, `confirmLegsWonBy`). No deviation.
+- T4: `engine/cricket/CricketCue.kt` (`CricketCue` DartHit, ClosedSectorHit, DartMiss, DartUndone, TurnStart, Win;
+  `CricketCues.afterDart(game|match)`, `turnStart`, `dartUndone`; the closed-sector decision is
+  `before.isClosedSectorHit(dart)` on the game before the dart; the match overload only sets the win outcome from
+  `pendingOutcome`); `audio/SoundEffect.CLOSED_SECTOR`, `SoundPoolPlayer.resourceOf`, `CueScript.of(CricketCue)`
+  (shares the `win` helper with X01); `announcements.md` AN29 to AN32 in a new "Cricket" section and AN24 amended
+  (seven sounds); `CREDITS.md` line. Tests: `CricketCuesTest`, Cricket cases in `CueScriptTest`, `AudioFakes` duration.
+  Sound file checks: `app/src/main/res/raw/sfx_closed_cricket_sector.ogg`, 17,734 bytes, starts with "OggS", first page
+  has "\x01vorbis" (Ogg Vorbis, mono, 48 kHz, about 1 s); only this file taken from `origin/feat/sfx_cricket`
+  (remote branch left in place). Deviation: `CricketCues`/`CricketCue` live in one file `CricketCue.kt` like
+  `X01Cue.kt`; the plan's separate `CricketCues.kt` is not created.
