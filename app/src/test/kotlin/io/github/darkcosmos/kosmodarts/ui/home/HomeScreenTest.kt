@@ -7,6 +7,9 @@ import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -17,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -44,7 +48,7 @@ class HomeScreenTest {
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
     }
 
-    /** Issue #49: "NEW GAME" then the X01 mode card only (the Cricket card is out of scope). */
+    /** R2, CR20: "NEW GAME" then the X01 mode card. */
     @Test
     fun newGameSectionShowsTheX01Card() {
         composeRule.onNodeWithText(string(R.string.home_new_game_section)).assertIsDisplayed()
@@ -52,6 +56,39 @@ class HomeScreenTest {
             .assertIsDisplayed()
             .assertHasClickAction()
         composeRule.onNodeWithText(string(R.string.mode_x01_description), useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    /** CR20: the Cricket card sits under the X01 card, with its thumbnail text, name and description. */
+    @Test
+    fun cricketCardSitsUnderTheX01Card() {
+        val x01 = composeRule.onNodeWithTag(HomeTags.MODE_X01).getUnclippedBoundsInRoot()
+        val cricket = composeRule.onNodeWithTag(HomeTags.MODE_CRICKET)
+            .assertIsDisplayed()
+            .assertHasClickAction()
+            .getUnclippedBoundsInRoot()
+
+        assertTrue(cricket.top >= x01.bottom)
+        assertTrue(cricket.bottom - cricket.top >= 48.dp)
+        composeRule.onNodeWithText(string(R.string.mode_cricket_thumbnail), useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.cricket_title), useUnmergedTree = true).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.mode_cricket_description), useUnmergedTree = true)
+            .assertIsDisplayed()
+    }
+
+    /** CR21: the Cricket card opens the Cricket setup: Standard with its hint, 25-Bull on, then the toggles. */
+    @Test
+    fun cricketCardOpensTheCricketSetup() {
+        composeRule.onNodeWithTag(HomeTags.MODE_CRICKET).performClick()
+
+        composeRule.onNodeWithText(string(R.string.cricket_title), substring = true).assertIsDisplayed()
+        composeRule.onNodeWithText(string(R.string.setup_cricket_variant_label)).assertIsDisplayed()
+        composeRule.onNodeWithTag(SetupTags.CRICKET_HINT).assertTextEquals(string(R.string.setup_cricket_hint_standard))
+        composeRule.onNodeWithTag(SetupTags.CRICKET_BULL).assertIsOn()
+        composeRule.onNodeWithTag(SetupTags.CRICKET_BULL).performClick()
+        composeRule.onNodeWithTag(SetupTags.CRICKET_BULL).assertIsOff()
+        composeRule.onNodeWithText(string(R.string.cricket_variant_cut_throat)).performClick()
+        composeRule.onNodeWithTag(SetupTags.CRICKET_HINT)
+            .assertTextEquals(string(R.string.setup_cricket_hint_cut_throat))
     }
 
     @Test
