@@ -35,7 +35,7 @@ data class SavedCricketGame(
             return if (state.isFinished) isAwaitingNextPlayer else !isAwaitingNextPlayer || lastDartCompletedTurn
         }
 
-        /** Between legs only after a confirmed leg, before the first dart of the next one (docs/rules/match.md, M16). */
+        /** Between legs only after a confirmed leg, before the first dart of the next one (match.md, M16). */
         private fun isBetweenLegsPossible(match: CricketMatch): Boolean =
             match.completedLegs.isNotEmpty() && match.currentLeg.darts.isEmpty()
     }
