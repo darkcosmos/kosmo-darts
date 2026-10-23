@@ -11,6 +11,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.engine.x01.X01ConfigError
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
+import io.github.darkcosmos.kosmodarts.persistence.toLastSetups
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.game.VisitBoxText
 import io.github.darkcosmos.kosmodarts.ui.game.visitBoxTexts
@@ -105,13 +106,13 @@ class AppReducerTest {
 
         val expected = GameScreenState(X01Game(X01Config(listOf("Ann", "Bob"))))
         assertEquals(Screen.Game(expected, isNewGame = true), state.screen)
-        assertEquals(X01MatchConfig(X01Config(listOf("Ann", "Bob"))), state.lastSetup)
+        assertEquals(X01MatchConfig(X01Config(listOf("Ann", "Bob"))), state.lastSetup?.x01Setup)
     }
 
     @Test
     /** R7: names in order, start score and checkout rule. */
     fun aNewSetupIsPrefilledWithTheLastSetup() {
-        val state = AppState(lastSetup = X01MatchConfig(singleOut301)).after(AppEvent.NewGame)
+        val state = AppState(lastSetup = X01MatchConfig(singleOut301).toLastSetups()).after(AppEvent.NewGame)
 
         assertEquals(Screen.Setup(SetupState(301, CheckoutRule.SINGLE_OUT, listOf("Ann", "Bob", "Cid"))), state.screen)
     }
@@ -232,7 +233,7 @@ class AppReducerTest {
     @Test
     fun newGameFromTheEndScreenOpensThePrefilledSetup() {
         val state = AppState(
-            lastSetup = X01MatchConfig(singleOut301),
+            lastSetup = X01MatchConfig(singleOut301).toLastSetups(),
             screen = inGame(singleOut301, winningDarts).screen,
         )
             .after(*finishEvents, AppEvent.NewGame)
@@ -253,7 +254,7 @@ class AppReducerTest {
     @Test
     fun newGameAfterAGameStartsWithFreshVisitTotals() {
         val state = AppState(
-            lastSetup = X01MatchConfig(singleOut301),
+            lastSetup = X01MatchConfig(singleOut301).toLastSetups(),
             screen = inGame(singleOut301, winningDarts).screen,
         )
             .after(*finishEvents, AppEvent.NewGame, AppEvent.StartRequested)

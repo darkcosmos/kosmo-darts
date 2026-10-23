@@ -22,7 +22,7 @@ fun initialState(load: LoadResult, wasOnGameScreen: Boolean): AppState {
             // such a file is only kept, and the next game started replaces it (R20).
             is SavedCricketGame -> Screen.Home()
         }
-        is GameLoad.Invalid -> Screen.Setup(SetupState.prefilled(load.lastSetup), isRestoreFailedShown = true)
+        is GameLoad.Invalid -> Screen.Setup(SetupState.prefilled(load.lastSetup?.x01Setup), isRestoreFailedShown = true)
     }
     return AppState(screen = screen, lastSetup = load.lastSetup)
 }

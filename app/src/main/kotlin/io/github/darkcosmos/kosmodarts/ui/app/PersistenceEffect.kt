@@ -1,6 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
-import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
+import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.toSavedGame
@@ -11,7 +11,7 @@ sealed interface PersistenceEffect {
 
     data object DeleteGame : PersistenceEffect
 
-    data class SaveLastSetup(val setup: X01MatchConfig) : PersistenceEffect
+    data class SaveLastSetup(val setups: LastSetups) : PersistenceEffect
 }
 
 /**
@@ -48,6 +48,6 @@ fun Persistence.applyEffects(effects: List<PersistenceEffect>) = effects.forEach
     when (effect) {
         is PersistenceEffect.SaveGame -> saveGame(effect.saved)
         PersistenceEffect.DeleteGame -> deleteGame()
-        is PersistenceEffect.SaveLastSetup -> saveLastSetup(effect.setup)
+        is PersistenceEffect.SaveLastSetup -> saveLastSetup(effect.setups)
     }
 }

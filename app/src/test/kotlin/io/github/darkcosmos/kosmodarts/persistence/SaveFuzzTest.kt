@@ -86,7 +86,7 @@ class SaveFuzzTest {
         return valid + keyCases
     }
 
-    private val validSetups: List<ByteArray> = (1..4).map { setupCodec.encode(SaveFixtures.setup(players = it)) }
+    private val validSetups: List<ByteArray> = (1..4).map { setupCodec.encode(SaveFixtures.setup(players = it).toLastSetups()) }
 
     @Test
     fun `R11 mutated saved games never crash the decoder`() = fuzz(validGames) { input ->

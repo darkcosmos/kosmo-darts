@@ -8,6 +8,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -46,7 +47,10 @@ class SaveV3CompatibilityTest {
     fun `R25 the version 3 last setup decodes to its X01 setup`() {
         val bytes = V3Fixtures.bytes("last-setup.save")
 
-        assertEquals(V3Fixtures.LAST_SETUP, setupCodec.decode(bytes))
+        val decoded = setupCodec.decode(bytes)
+
+        assertEquals(V3Fixtures.LAST_SETUP, decoded?.x01Setup)
+        assertNull(decoded?.cricket)
         assertFalse(String(bytes, Charsets.UTF_8).contains("mode="))
     }
 }
