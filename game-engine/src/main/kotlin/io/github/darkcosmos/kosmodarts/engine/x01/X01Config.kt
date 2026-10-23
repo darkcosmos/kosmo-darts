@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.engine.x01
 
-import java.text.Normalizer
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerListError
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerListRules
 
 /** How a player must reach exactly zero (rule C2). */
 enum class CheckoutRule {
@@ -57,44 +58,20 @@ class X01Config(
     val checkoutRule: CheckoutRule = CheckoutRule.DOUBLE_OUT,
 ) {
     /** Trimmed, NFC-normalized player names, in throwing order. */
-    val players: List<String> = playerNames.map { Normalizer.normalize(it.trim(), Normalizer.Form.NFC) }
+    val players: List<String> = PlayerListRules.normalize(playerNames)
 
     init {
-        val violations = X01ConfigError.entries.flatMap(::violationsOf)
+        val startScoreViolations = if (startScore in START_SCORES) {
+            emptyList()
+        } else {
+            listOf(X01ConfigViolation(X01ConfigError.INVALID_START_SCORE))
+        }
+        val playerViolations = PlayerListRules.violations(players).map {
+            X01ConfigViolation(it.error.toX01ConfigError(), it.playerIndices)
+        }
+        val violations = startScoreViolations + playerViolations
         if (violations.isNotEmpty()) throw InvalidX01ConfigException(violations)
     }
-
-    private fun violationsOf(rule: X01ConfigError): List<X01ConfigViolation> = when (rule) {
-        X01ConfigError.INVALID_START_SCORE -> ruleViolation(rule, isBroken = startScore !in START_SCORES)
-        X01ConfigError.NO_PLAYERS -> ruleViolation(rule, isBroken = players.isEmpty())
-        X01ConfigError.TOO_MANY_PLAYERS -> ruleViolation(rule, isBroken = players.size > MAX_PLAYERS)
-        X01ConfigError.BLANK_NAME -> nameViolation(rule) { it.isBlank() }
-        X01ConfigError.NAME_TOO_LONG -> nameViolation(rule) { it.codePointCount(0, it.length) > MAX_NAME_LENGTH }
-        X01ConfigError.DUPLICATE_NAME -> duplicateNameViolations()
-    }
-
-    private fun ruleViolation(rule: X01ConfigError, isBroken: Boolean): List<X01ConfigViolation> =
-        if (isBroken) listOf(X01ConfigViolation(rule)) else emptyList()
-
-    private fun nameViolation(rule: X01ConfigError, breaks: (String) -> Boolean): List<X01ConfigViolation> {
-        val indices = players.indices.filter { breaks(players[it]) }
-        return if (indices.isEmpty()) emptyList() else listOf(X01ConfigViolation(rule, indices))
-    }
-
-    /** One violation per duplicated name. Blank names are reported as [X01ConfigError.BLANK_NAME] only. */
-    private fun duplicateNameViolations(): List<X01ConfigViolation> = players.indices
-        .filterNot { players[it].isBlank() }
-        .groupBy { caseInsensitiveKey(players[it]) }
-        .values
-        .filter { it.size > 1 }
-        .map { X01ConfigViolation(X01ConfigError.DUPLICATE_NAME, it) }
-
-    /**
-     * Locale-independent case folding, code point by code point (also correct for letters outside the BMP). Upper
-     * then lower case maps every case variant to one form, like [String.equals] with `ignoreCase = true`.
-     */
-    private fun caseInsensitiveKey(name: String): List<Int> =
-        name.codePoints().map { Character.toLowerCase(Character.toUpperCase(it)) }.toArray().toList()
 
     override fun equals(other: Any?): Boolean = other is X01Config &&
         players == other.players &&
@@ -114,11 +91,20 @@ class X01Config(
         val START_SCORES: Set<Int> = setOf(501, 301)
 
         /** Maximum number of players (rule C4). */
-        const val MAX_PLAYERS: Int = 4
+        const val MAX_PLAYERS: Int = PlayerListRules.MAX_PLAYERS
 
         /** Maximum length of a player name, in Unicode code points after trimming and NFC normalization (rule C4). */
-        const val MAX_NAME_LENGTH: Int = 20
+        const val MAX_NAME_LENGTH: Int = PlayerListRules.MAX_NAME_LENGTH
 
         private const val HASH_PRIME = 31
     }
+}
+
+/** The X01 error of a shared player list rule (rule C5): same rule, same reporting order. */
+private fun PlayerListError.toX01ConfigError(): X01ConfigError = when (this) {
+    PlayerListError.NO_PLAYERS -> X01ConfigError.NO_PLAYERS
+    PlayerListError.TOO_MANY_PLAYERS -> X01ConfigError.TOO_MANY_PLAYERS
+    PlayerListError.BLANK_NAME -> X01ConfigError.BLANK_NAME
+    PlayerListError.NAME_TOO_LONG -> X01ConfigError.NAME_TOO_LONG
+    PlayerListError.DUPLICATE_NAME -> X01ConfigError.DUPLICATE_NAME
 }
