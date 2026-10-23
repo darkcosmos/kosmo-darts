@@ -1163,3 +1163,14 @@ notes are applied:
   is not protected). X01 captures: the 160 PNGs of the `e7372f8` baseline are byte-identical to the head's (`cmp`).
   Deviations: no separate `Keypad.kt` change beyond the earlier `KeypadKeys.kt` move; unused string
   `cricket_board_column_current_visit` removed. Started by `developer-build-T8`, finished by `developer-build-T8-2`.
+- T9: `ui/between/BetweenLegsScreen.kt` (`BetweenLegsContent(state, formatLine, ...)` shared; `BetweenLegsScreen`
+  maps the X01 match), `BetweenLegsState` (new `mode`, `nextStarterSlot`, `winnerPoints`, `of(CricketMatch)`),
+  `ui/end/EndScreen.kt` (`EndContent(rows, formatLine, mode, ...)`), `EndRow` (`points`, `endRows(CricketMatch)`,
+  the MPR sits in `threeDartAverage`), `EndTags` (PTS), `ui/format/StatisticText.kt` (header, value and TalkBack text
+  by `GameMode`), `ui/cricket/CricketBetweenLegsContent.kt` and `CricketEndContent.kt` (`cricketFormatText`), routes in
+  `KosmoDartsApp`. Strings: `match_mpr_header`, `match_points_header`, `between_points` (not translated),
+  `cricket_mpr_description`, `cricket_points_description`. Tests: `BetweenLegsContentTest`, `EndContentTest`
+  (ex aequo row), `CricketEndScreenTest` (360 x 640, font scale 2.0, 4 players), 15 captures in
+  `CricketScreenshotTest`; fixture `playLegWonByScoring20`. X01 captures: 160 PNGs of the `e7372f8` baseline are
+  byte-identical (`cmp`). Deviations: the UI model is the existing `BetweenLegsState`/`EndRow` with defaulted
+  fields instead of new types, so the X01 tests are unchanged; no design-system.md change.
