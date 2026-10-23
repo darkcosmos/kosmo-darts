@@ -1088,3 +1088,13 @@ notes are applied:
   Deviations: an extra `CricketVisitsTest` (CR14 per leg ships with `CricketVisits`; T3 keeps the reset at a new
   leg); `CricketClosingTest` covers both "single then triple" (2 close, 1 surplus) and "two singles then triple"
   (1 closes, 2 surplus), since the test plan's "(1 closes, 2 surplus)" matches the latter.
+- T3: `engine/cricket/` `CricketMatchConfig` (mirrors `X01MatchConfig`), `CricketLegSummary` (`of(leg)`; per player
+  `marksHit`, `dartsThrown`, `points`, `boardMarks`, checked: marks at most 3 x darts, points >= 0, board marks at most
+  3 x targets and at most marks hit, the winner's board full), `CricketMatch` (`CricketMatchPlayerStats(marksPerRound,
+  dartsThrown)`, exact MPR or `null`; `ranking` through `MatchRanking.rank(score, Comparator<Int>)` with the CR16
+  comparator built from the current leg; `confirmLeg` guarded by `LegOutcome.isConfirmable`, next starter from
+  `score.withLegWonBy(winner).starterOfNextLeg`), `CricketPlayerState.closedTargetCount`; `match/LegOutcome.kt`
+  (`isConfirmable`), `match/MatchRanking.kt` (comparator overload, the list one delegates), `x01/X01Match.kt` (guard
+  only; its starter computation is untouched); `match.md` M2, M10, M11 amended, M20 added, a Cricket line in "Related
+  rules". Tests: `CricketMatchTest`, `CricketStatisticsTest`, `LegOutcomeTest`, new `MatchRankingTest` cases, fixtures
+  in `CricketMatchFixtures.kt` (`cricketMatch`, `turns`, `playLegWonBy`, `confirmLegsWonBy`). No deviation.
