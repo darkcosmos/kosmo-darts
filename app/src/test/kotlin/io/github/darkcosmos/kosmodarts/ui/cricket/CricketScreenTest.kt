@@ -3,6 +3,7 @@ package io.github.darkcosmos.kosmodarts.ui.cricket
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertContentDescriptionEquals
@@ -17,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
@@ -240,6 +242,59 @@ class CricketScreenTest {
         }
         node(CricketTags.rowLabel(CricketTarget.TWENTY)).assertExists()
         node(CricketTags.rowLabel(CricketTarget.BULL)).assertExists()
+        assertBoardTextNotClipped()
+        assertPointsNotClipped()
+    }
+
+    // No clipped text (reviews U1, U2, T9): the text bounds are inside the node bounds, whatever the font scale.
+
+    private fun textNodeOf(tag: String): SemanticsNode {
+        fun find(node: SemanticsNode): SemanticsNode? =
+            if (node.config.contains(SemanticsActions.GetTextLayoutResult)) {
+                node
+            } else {
+                node.children.firstNotNullOfOrNull(::find)
+            }
+        return checkNotNull(find(node(tag).fetchSemanticsNode())) { "no text in $tag" }
+    }
+
+    /** The text of [tag] (or of its first text child) is not cut: not vertically, nor sideways unless [ellipsis]. */
+    private fun assertTextNotClipped(tag: String, ellipsis: Boolean = false) {
+        if (isInScrollContainer(tag)) node(tag).performScrollTo()
+        val textNode = textNodeOf(tag)
+        val results = mutableListOf<TextLayoutResult>()
+        textNode.config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+        val layout = results.single()
+        val owner = node(tag).fetchSemanticsNode().boundsInRoot
+        val text = textNode.boundsInRoot
+        // didOverflowHeight also tells that the one line is too long for its width, which an ellipsis allows.
+        if (!ellipsis) assertFalse("$tag overflows vertically", layout.didOverflowHeight)
+        assertTrue(
+            "$tag text ${layout.multiParagraph.height} px in ${text.height} px",
+            layout.multiParagraph.height <= text.height + 1f,
+        )
+        assertTrue("$tag text $text inside $owner", text.top >= owner.top - 1f && text.bottom <= owner.bottom + 1f)
+        assertEquals("$tag on one line", 1, layout.lineCount)
+        if (!ellipsis) {
+            val lineWidth = layout.getLineRight(0) - layout.getLineLeft(0)
+            val wide = "$tag text is ${lineWidth.toInt()} px wide in ${text.width.toInt()} px"
+            assertTrue(wide, lineWidth <= text.width + 1f)
+            assertFalse("$tag ellipsized", layout.isLineEllipsized(0))
+        }
+    }
+
+    private fun assertBoardTextNotClipped() {
+        CricketTarget.entries.forEach { assertTextNotClipped(CricketTags.rowLabel(it)) }
+        (0..3).forEach { player ->
+            assertTextNotClipped(CricketTags.columnName(player), ellipsis = true)
+            assertTextNotClipped(CricketTags.columnVisit(player))
+        }
+    }
+
+    private fun assertPointsNotClipped() {
+        (0..3).forEach { player ->
+            assertTextNotClipped(CricketTags.points(player))
+        }
     }
 
     private fun fourPlayerGame() = match(fourPlayers, darts = listOf("T20"))

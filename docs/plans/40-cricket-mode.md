@@ -269,20 +269,23 @@ App (implemented in T8 to T10):
   - Board:
     - it takes the remaining height;
     - its cells are display-only, so they are not touch targets and may be under 48 dp;
-    - row height = max(26 dp, text line height + 6 dp), 32 dp by default;
-    - column header = 4 dp strip + name line + a compact outlined `VisitBox` (24 dp tall, `label` text, one digit
+    - row height = max(24 dp, text line + 2 dp), 32 dp by default; the text line of the 14 sp board texts is taken as
+      22.5 dp times the font scale of a 14 sp text (the display font has tall metrics, review U1);
+    - column header = 3 dp strip + name line (22.5 dp times the font scale) + 2 dp gap + a compact outlined `VisitBox`
+      (max(26, name line + 4) dp tall, `label` text, one digit
       since a visit gives at most 9 marks);
     - the points footer row has the same height as the other rows.
 
     When the rows at their minimum do not fit, the board region alone scrolls vertically, with its column header kept
     on top (sticky). The current player's column is always on screen, since all columns are always visible
     horizontally.
-  - Columns: a target label column of 40 dp (48 dp at scale 2.0), then the players share the rest equally: about
+  - Columns: a target label column of 40 dp at scale 1.0, wide enough for "BULL" at every scale (2.5 em of the 14 sp
+    label size + 5 dp, never truncated), then the players share the rest equally: about
     76 dp each at 360 dp wide with 4 players. A name in a column header takes 1 line, cut with an ellipsis; the
-    TalkBack text always has the full name. Points take up to 5 digits without truncation at scale 2.0 in 76 dp.
+    TalkBack text always has the full name. Points take one line and are never cut.
   - Portrait, at 360 x 640 (about 568 dp usable), 4 players, scale 1.0: header 24 + zone 76 + keypad 152 + action bar
-    48 + margins 16 = 316 dp, which leaves about 252 dp for the board. That is the column header 44 + 7 rows of 26 +
-    footer 26 = 252 dp, so it fits without scrolling at the minimums. At scale 2.0, the board scrolls.
+    48 + margins 16 = 316 dp, which leaves about 252 dp for the board. That is the column header 54 + 7 rows of 24.75 +
+    footer 24.75 = 252 dp, so it fits without scrolling at the minimums. At scale 2.0, the board scrolls.
   - Landscape (640 x 360, about 336 dp usable):
     - left column: the header and the board, which scrolls vertically when needed;
     - right column: the compact zone, the keypad and the action bar, with the last two pinned to the bottom. The zone

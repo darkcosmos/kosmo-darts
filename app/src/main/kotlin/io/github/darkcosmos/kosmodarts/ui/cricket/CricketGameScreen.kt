@@ -71,11 +71,16 @@ fun CricketGameScreen(
             val density = LocalDensity.current
             // The effective scale of a 24 sp text: Android 14 enlarges large text less than the setting says.
             val textScale = with(density) { TEXT_SCALE_REFERENCE.sp.toDp().value } / TEXT_SCALE_REFERENCE
+            val labelSize = CricketLayoutPolicy.ROW_LABEL_TEXT_SIZE
+            val labelScale = with(density) { labelSize.sp.toDp().value } / labelSize
             val config = game.game.config
             val players = config.players.size
-            val layout = remember(maxWidth, maxHeight, textScale, players, config.targets.size) {
+            val layout = remember(maxWidth, maxHeight, textScale, labelScale, players, config.targets.size) {
                 CricketLayoutPolicy.of(
-                    CricketSpace(maxWidth.value, maxHeight.value, textScale, players, config.targets.size, players > 1),
+                    CricketSpace(
+                        maxWidth.value, maxHeight.value, textScale, players, config.targets.size, players > 1,
+                        labelScale,
+                    ),
                 )
             }
             if (maxWidth > maxHeight) LandscapeGame(game, layout, onEvent) else PortraitGame(game, layout, onEvent)

@@ -50,6 +50,13 @@ class CricketBoardTextTest {
         assertEquals(listOf("", "/", "X", "Ⓧ"), (0..3).map(CricketBoardText::glyphOf))
     }
 
+    /** CR3, CR23, review A7: only 3 marks are read "closed"; 0, 1 and 2 are read as a number of marks. */
+    @Test
+    fun `CR3 CR23 a cell is closed from 3 marks`() {
+        assertEquals(listOf(false, false, false, true), (0..3).map(CricketBoardText::isClosed))
+        assertEquals(texts.map { row -> row.cells.map { it == "Ⓧ" } }, texts.map { it.isClosed })
+    }
+
     @Test
     fun `CR23 rows go from 20 to 15 then Bull, with their labels`() {
         assertEquals(CricketTarget.entries.toList(), rows.map { it.target })
