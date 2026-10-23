@@ -13,7 +13,7 @@ import io.github.darkcosmos.kosmodarts.persistence.GameSaveCodec
 import io.github.darkcosmos.kosmodarts.persistence.LastSetupCodec
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.ReadResult
-import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.persistence.toLastSetups
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import org.robolectric.Robolectric
@@ -56,7 +56,7 @@ internal class AppProcess {
 
     fun string(id: Int, vararg args: Any): String = app.getString(id, *args)
 
-    fun writeGame(saved: SavedGame) = AtomicFileStore(gameFile).write(checkNotNull(GameSaveCodec().encode(saved)))
+    fun writeGame(saved: StoredGame) = AtomicFileStore(gameFile).write(checkNotNull(GameSaveCodec().encode(saved)))
 
     fun writeRawGame(bytes: ByteArray) = AtomicFileStore(gameFile).write(bytes)
 
