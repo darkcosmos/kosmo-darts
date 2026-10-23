@@ -184,18 +184,15 @@ private fun BoardRow(
         .height(layout.rowHeightDp.dp)
         .drawBehind { drawLine(outline, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx()) }
         .testTag(CricketTags.row(row.target))
-    Box(
-        modifier = if (row.isDead) {
-            // One merged node, read once (CR23): the cells are not read one by one.
-            rowModifier.clearAndSetSemantics {
-                contentDescription = deadDescription
-                rowDead = true
-            }
+    Box(modifier = rowModifier.semantics { rowDead = row.isDead }) {
+        // A dead row is one merged node, read once (CR23): its cells are not read one by one. The strike line is a
+        // sibling of this node, so that clearing the cells' semantics does not remove it.
+        val cellsModifier = if (row.isDead) {
+            Modifier.clearAndSetSemantics { contentDescription = deadDescription }
         } else {
-            rowModifier.semantics { rowDead = false }
-        },
-    ) {
-        Row(Modifier.fillMaxWidth().fillMaxHeight()) {
+            Modifier
+        }
+        Row(cellsModifier.fillMaxWidth().fillMaxHeight()) {
             Text(
                 text = label,
                 style = rowStyle(),
