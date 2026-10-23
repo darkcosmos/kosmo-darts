@@ -14,6 +14,7 @@ import io.github.darkcosmos.kosmodarts.persistence.LastSetupCodec
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.ReadResult
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.persistence.toLastSetups
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import org.robolectric.Robolectric
 import org.robolectric.android.controller.ActivityController
@@ -60,7 +61,7 @@ internal class AppProcess {
     fun writeRawGame(bytes: ByteArray) = AtomicFileStore(gameFile).write(bytes)
 
     fun writeSetup(config: X01Config) =
-        AtomicFileStore(setupFile).write(LastSetupCodec().encode(X01MatchConfig(config)))
+        AtomicFileStore(setupFile).write(LastSetupCodec().encode(X01MatchConfig(config).toLastSetups()))
 
     fun writeRawSetup(bytes: ByteArray) = AtomicFileStore(setupFile).write(bytes)
 

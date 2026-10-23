@@ -1,7 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
 import androidx.annotation.VisibleForTesting
-import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executor
@@ -51,7 +50,7 @@ class Persistence(
 
     fun deleteGame() = gameWriter.delete()
 
-    fun saveLastSetup(setup: X01MatchConfig) = setupWriter.write(setupCodec.encode(setup))
+    fun saveLastSetup(setups: LastSetups) = setupWriter.write(setupCodec.encode(setups))
 
     /** Waits until every read and write requested so far is done. For tests that check the files. */
     @VisibleForTesting

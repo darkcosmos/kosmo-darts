@@ -50,7 +50,7 @@ class AppReducer(private val random: Random) {
         }
         event == AppEvent.Back -> state.copy(screen = Screen.Home())
         event == AppEvent.StartRequested -> when (val result = screen.setup.start()) {
-            is SetupResult.Valid -> newMatchState(result.config)
+            is SetupResult.Valid -> newMatchState(result.config, state.lastSetup)
             is SetupResult.Invalid -> state.copy(screen = Screen.Setup(result.setup))
         }
         else -> state.copy(screen = Screen.Setup(editSetup(screen.setup, event, random)))
@@ -118,9 +118,9 @@ class AppReducer(private val random: Random) {
         AppEvent.NewGame -> state.toSetup()
         // Rule R7: a rematch is a game start, so its order becomes the last setup (owner decision, issue #30 Q3).
         // M17: same format (owner Q3).
-        AppEvent.Rematch -> newMatchState(rematchSetup(match))
+        AppEvent.Rematch -> newMatchState(rematchSetup(match), state.lastSetup)
         else -> state
     }
 
-    private fun AppState.toSetup(): AppState = copy(screen = Screen.Setup(SetupState.prefilled(lastSetup)))
+    private fun AppState.toSetup(): AppState = copy(screen = Screen.Setup(SetupState.prefilled(lastSetup?.x01Setup)))
 }

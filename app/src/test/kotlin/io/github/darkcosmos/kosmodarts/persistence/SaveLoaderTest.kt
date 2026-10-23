@@ -12,7 +12,7 @@ class SaveLoaderTest {
     private val gameCodec = GameSaveCodec()
     private val setupCodec = LastSetupCodec()
     private val validGame = checkNotNull(gameCodec.encode(SaveFixtures.WAITING_CHECKOUT))
-    private val validSetup = setupCodec.encode(SaveFixtures.setup(players = 3))
+    private val validSetup = setupCodec.encode(SaveFixtures.setup(players = 3).toLastSetups())
     private val garbage = "not a save".toByteArray()
 
     private val gameStore = MemoryStore()
@@ -30,7 +30,7 @@ class SaveLoaderTest {
         gameStore.content = validGame
         setupStore.content = validSetup
 
-        val expected = LoadResult(GameLoad.Valid(SaveFixtures.WAITING_CHECKOUT), SaveFixtures.setup(players = 3))
+        val expected = LoadResult(GameLoad.Valid(SaveFixtures.WAITING_CHECKOUT), SaveFixtures.setup(players = 3).toLastSetups())
 
         assertEquals(expected, loader.load())
         assertEquals(0, gameStore.deletes + setupStore.deletes)
@@ -44,7 +44,7 @@ class SaveLoaderTest {
         val result = loader.load()
 
         assertEquals(GameLoad.Invalid(InvalidSaveReason.MALFORMED), result.game)
-        assertEquals(SaveFixtures.setup(players = 3), result.lastSetup)
+        assertEquals(SaveFixtures.setup(players = 3).toLastSetups(), result.lastSetup)
         assertNull(gameStore.content)
         assertArrayEquals(validSetup, setupStore.content)
     }

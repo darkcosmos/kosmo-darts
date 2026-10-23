@@ -9,6 +9,9 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import java.io.IOException
 
 /** Games used by the persistence tests. Names are made up; nothing here is ever logged. */
+/** The last setups after an X01 Start with this setup and no earlier file (R22): its roster and X01 settings only. */
+internal fun X01MatchConfig.toLastSetups(): LastSetups = LastSetups.afterX01(previous = null, this)
+
 internal object SaveFixtures {
 
     val NAMES = listOf("Ann", "Bob", "Cid", "Dan")

@@ -25,8 +25,8 @@ internal data class CricketSaveBody(
     val isBetweenLegs: Boolean,
 )
 
-private const val VARIANT_KEY = "variant"
-private const val BULL_KEY = "bull"
+internal const val VARIANT_KEY = "variant"
+internal const val BULL_KEY = "bull"
 
 /** R24: the variant tokens, a closed set. */
 internal val CRICKET_VARIANT_TOKENS: Map<CricketVariant, String> =
@@ -95,7 +95,7 @@ internal fun readCricketBody(reader: BodyReader): CricketSaveBody {
 }
 
 /** The value whose token is [token], or [InvalidSaveReason.OUT_OF_RANGE] for any other text. */
-private fun <T> parseToken(token: String, tokens: Map<T, String>): T =
+internal fun <T> parseToken(token: String, tokens: Map<T, String>): T =
     tokens.entries.firstOrNull { it.value == token }?.key ?: reject(InvalidSaveReason.OUT_OF_RANGE)
 
 /**

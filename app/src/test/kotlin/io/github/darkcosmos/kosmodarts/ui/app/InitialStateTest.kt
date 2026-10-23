@@ -1,10 +1,18 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
+import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
+import io.github.darkcosmos.kosmodarts.persistence.CricketSettings
 import io.github.darkcosmos.kosmodarts.persistence.GameLoad
 import io.github.darkcosmos.kosmodarts.persistence.InvalidSaveReason
+import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.persistence.LoadResult
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
+import io.github.darkcosmos.kosmodarts.persistence.SharedRoster
+import io.github.darkcosmos.kosmodarts.persistence.toLastSetups
 import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 import org.junit.Assert.assertEquals
@@ -21,7 +29,10 @@ class InitialStateTest {
         SaveFixtures.WAITING_CHECKOUT,
     )
     private val lastSetups =
-        listOf(null, SaveFixtures.setup(players = 3, startScore = 301, rule = CheckoutRule.SINGLE_OUT))
+        listOf(
+            null,
+            SaveFixtures.setup(players = 3, startScore = 301, rule = CheckoutRule.SINGLE_OUT).toLastSetups(),
+        )
 
     @Test
     fun `R1 back on the game screen after process death`() {
@@ -64,10 +75,26 @@ class InitialStateTest {
                 for (lastSetup in lastSetups) {
                     val state = initialState(LoadResult(GameLoad.Invalid(reason), lastSetup), wasOnGameScreen)
 
-                    val expected = Screen.Setup(SetupState.prefilled(lastSetup), isRestoreFailedShown = true)
+                    val expected = Screen.Setup(SetupState.prefilled(lastSetup?.x01Setup), isRestoreFailedShown = true)
                     assertEquals(AppState(expected, lastSetup), state)
                 }
             }
         }
+    }
+
+    /**
+     * R22, R25: a last setup without X01 settings (only Cricket games since it was written) prefills the X01 setup
+     * with the shared roster and the X01 defaults, and the whole last setup is kept for the next start.
+     */
+    @Test
+    fun `R22 a last setup without X01 settings prefills the shared roster with the X01 defaults`() {
+        val roster = SharedRoster(listOf("Cid", "Ann"), listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_1))
+        val cricketOnly = LastSetups(roster, cricket = CricketSettings(CricketVariant.CUT_THROAT))
+
+        val state = initialState(LoadResult(GameLoad.Invalid(InvalidSaveReason.MALFORMED), cricketOnly), false)
+
+        val expected = X01MatchConfig(X01Config(listOf("Cid", "Ann")), colorSlots = roster.colorSlots)
+        assertEquals(Screen.Setup(SetupState.prefilled(expected), isRestoreFailedShown = true), state.screen)
+        assertEquals(cricketOnly, state.lastSetup)
     }
 }

@@ -196,6 +196,9 @@ internal class BodyReader(private val lines: List<String>) {
         return line.substring(key.length + 1)
     }
 
+    /** Whether the next line exists and has the given [key], without consuming it (optional sections). */
+    fun isNext(key: String): Boolean = lines.getOrNull(next)?.startsWith("$key=") == true
+
     /** Checks that every line was read. */
     fun finish() {
         ensure(next == lines.size, InvalidSaveReason.MALFORMED)

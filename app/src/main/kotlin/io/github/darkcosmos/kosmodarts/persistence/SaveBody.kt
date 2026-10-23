@@ -74,10 +74,10 @@ internal enum class SaveMode(val token: String) {
     }
 }
 
-private const val GAME_X01 = "x01"
+internal const val GAME_X01 = "x01"
 internal const val FIGURE_SEPARATOR = '/'
 
-private val CHECKOUT_TOKENS = mapOf(CheckoutRule.DOUBLE_OUT to "double-out", CheckoutRule.SINGLE_OUT to "single-out")
+internal val CHECKOUT_TOKENS = mapOf(CheckoutRule.DOUBLE_OUT to "double-out", CheckoutRule.SINGLE_OUT to "single-out")
 
 /** The lines of [body], in the order of [layout]. */
 internal fun writeBody(layout: List<SaveKey>, body: SaveBody): List<Pair<String, String>> = layout.flatMap { key ->
@@ -195,13 +195,13 @@ private fun legToken(leg: X01LegSummary): String =
         "${leg.pointsScored[player]}$FIGURE_SEPARATOR${leg.dartsThrown[player]}"
     }).joinToString(" ")
 
-private fun parseStartScore(value: String): Int {
+internal fun parseStartScore(value: String): Int {
     val startScore = SaveFormat.parseInteger(value)
     ensure(startScore in X01Config.START_SCORES, InvalidSaveReason.OUT_OF_RANGE)
     return startScore
 }
 
-private fun parseCheckout(value: String): CheckoutRule =
+internal fun parseCheckout(value: String): CheckoutRule =
     CHECKOUT_TOKENS.entries.firstOrNull { it.value == value }?.key ?: reject(InvalidSaveReason.OUT_OF_RANGE)
 
 /** M1: legs per set and sets are each from [MatchFormat.MIN] to [MatchFormat.MAX]. */

@@ -5,6 +5,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
+import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.CheckoutSummary
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
@@ -62,12 +63,12 @@ sealed interface Screen {
 /**
  * Whole UI state of the app.
  *
- * @property lastSetup configuration and match format of the last game started (Start or Rematch), to prefill the
- *   next setup (rules R7, R13).
+ * @property lastSetup the shared roster and, per mode, the settings of the last game started in that mode (Start or
+ *   Rematch), to prefill the next setup (rules R7, R13, R22); `null` before any game was started.
  */
 data class AppState(
     val screen: Screen = Screen.Home(),
-    val lastSetup: X01MatchConfig? = null,
+    val lastSetup: LastSetups? = null,
 )
 
 /** Everything the user can do. An event that does not apply to the current screen is ignored. */
