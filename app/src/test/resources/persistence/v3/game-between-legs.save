@@ -1,0 +1,19 @@
+kosmodarts=saved-game
+version=3
+game=x01
+start-score=301
+checkout=single-out
+legs-per-set=3
+sets=2
+players=2
+player=QW5u
+player=Qm9i
+colors=2 4
+legs=2
+leg=0 301/6 0/3
+leg=1 0/3 301/6
+darts=
+awaiting-next-player=false
+between-legs=true
+crc32=46c5af45
+end
