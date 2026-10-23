@@ -55,6 +55,7 @@ class AppReducer(private val random: Random) {
         event == AppEvent.Back -> state.copy(screen = Screen.Home())
         event == AppEvent.StartRequested -> when (val result = screen.setup.start()) {
             is SetupResult.Valid -> newMatchState(result.config, state.lastSetup)
+            is SetupResult.ValidCricket -> newCricketMatchState(result.config, state.lastSetup)
             is SetupResult.Invalid -> state.copy(screen = Screen.Setup(result.setup))
         }
         else -> state.copy(screen = Screen.Setup(editSetup(screen.setup, event, random)))

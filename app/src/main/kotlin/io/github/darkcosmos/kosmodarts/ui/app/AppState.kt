@@ -1,13 +1,14 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
-import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.ui.cricket.CricketGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.game.CheckoutSummary
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
@@ -20,7 +21,7 @@ sealed interface Screen {
      * @property newGameDialogMode the mode of the "New game" that asks to delete the saved game (rules R3, R20), or
      *   `null` while the confirmation is closed; confirming it opens the setup of that mode.
      */
-    data class Home(val resumableGame: SavedGame? = null, val newGameDialogMode: GameMode? = null) : Screen {
+    data class Home(val resumableGame: StoredGame? = null, val newGameDialogMode: GameMode? = null) : Screen {
         /** Whether "New game" asks to delete the saved game (rule R3). */
         val isNewGameDialogShown: Boolean
             get() = newGameDialogMode != null
@@ -133,6 +134,12 @@ sealed interface AppEvent {
     data class StartScoreSelected(val score: Int) : AppEvent
 
     data class CheckoutRuleSelected(val rule: CheckoutRule) : AppEvent
+
+    /** Standard or Cut-throat in the Cricket setup (CR21). */
+    data class CricketVariantSelected(val variant: CricketVariant) : AppEvent
+
+    /** The "25-Bull" switch of the Cricket setup (CR21). */
+    data class BullInPlayToggled(val isInPlay: Boolean) : AppEvent
 
     data class NameChanged(val index: Int, val name: String) : AppEvent
 

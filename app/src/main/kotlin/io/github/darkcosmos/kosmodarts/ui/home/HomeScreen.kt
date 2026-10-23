@@ -52,7 +52,7 @@ import io.github.darkcosmos.kosmodarts.ui.theme.States
 
 /**
  * Home screen (mockup 06; R2, R3, M18): the title and the settings button, the "GAME IN PROGRESS" card when a game is
- * saved, then "NEW GAME" with the X01 mode card. Everything scrolls.
+ * saved, then "NEW GAME" with the X01 and Cricket mode cards. Everything scrolls.
  */
 @Composable
 fun HomeScreen(home: Screen.Home, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
@@ -84,7 +84,7 @@ fun HomeScreen(home: Screen.Home, onEvent: (AppEvent) -> Unit, modifier: Modifie
                 )
             }
             SectionLabel(stringResource(R.string.home_new_game_section), Modifier.padding(top = 8.dp))
-            // Only the X01 card exists for now (issue #49: the Cricket card of the mockup is out of scope).
+            // CR20: X01, then Cricket (mockup 06).
             ModeCard(
                 thumbnail = stringResource(R.string.mode_x01_title),
                 title = stringResource(R.string.mode_x01_title),
@@ -93,6 +93,15 @@ fun HomeScreen(home: Screen.Home, onEvent: (AppEvent) -> Unit, modifier: Modifie
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag(HomeTags.MODE_X01),
+            )
+            ModeCard(
+                thumbnail = stringResource(R.string.mode_cricket_thumbnail),
+                title = stringResource(R.string.cricket_title),
+                description = stringResource(R.string.mode_cricket_description),
+                onClick = { onEvent(AppEvent.NewGame(GameMode.CRICKET)) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(HomeTags.MODE_CRICKET),
             )
         }
     }

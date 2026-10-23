@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
@@ -21,11 +22,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.ui.cricket.cricketFormatText
 import io.github.darkcosmos.kosmodarts.ui.format.displayName
 import io.github.darkcosmos.kosmodarts.ui.format.formatText
 import io.github.darkcosmos.kosmodarts.ui.format.tileMatchText
 import io.github.darkcosmos.kosmodarts.ui.game.MatchIndicator
 import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
+import io.github.darkcosmos.kosmodarts.ui.home.ResumeGame
 import io.github.darkcosmos.kosmodarts.ui.home.ResumeSummary
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
@@ -59,7 +62,7 @@ fun ResumeCard(summary: ResumeSummary, onResume: () -> Unit, modifier: Modifier 
                 modifier = Modifier.weight(1f).semantics { heading() },
             )
             Text(
-                text = formatText(summary.startScore, summary.checkoutRule, summary.format),
+                text = formatLine(summary),
                 style = KosmoTheme.typography.label,
                 color = colors.onBackgroundMuted,
                 textAlign = TextAlign.End,
@@ -100,7 +103,7 @@ private fun MiniTile(player: ResumeSummary.PlayerScore, index: Int, modifier: Mo
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = player.remaining.toString(),
+                text = tileValue(player),
                 style = KosmoTheme.typography.tileScoreSmall,
                 color = colors.onBackground,
                 maxLines = 1,
@@ -120,3 +123,17 @@ private fun MiniTile(player: ResumeSummary.PlayerScore, index: Int, modifier: Mo
         }
     }
 }
+
+/** The format line of the card: "501 · DOUBLE OUT" (M18), or "CRICKET · CUT-THROAT · SANS 25-BULL" (CR20). */
+@Composable
+private fun formatLine(summary: ResumeSummary): String = when (val game = summary.game) {
+    is ResumeGame.X01 -> formatText(game.startScore, game.checkoutRule, summary.format)
+    is ResumeGame.Cricket ->
+        cricketFormatText(LocalResources.current, game.variant, game.isBullInPlay, summary.format)
+}
+
+/** The score of a tile: the remaining or scored points, or the closed targets "4/7" of a solo Cricket game (CR20). */
+@Composable
+private fun tileValue(player: ResumeSummary.PlayerScore): String = player.closedTargets
+    ?.let { stringResource(R.string.cricket_closed_targets, it.closed, it.total) }
+    ?: player.remaining.toString()
