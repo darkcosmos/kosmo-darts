@@ -39,14 +39,14 @@ class CricketLayoutPolicyTest {
         assertEquals(CricketLayoutPolicy.ACTION_BAR_HEIGHT_MIN, layout.actionBarMinHeightDp)
         assertEquals(CricketLayoutPolicy.GAP_MIN, layout.gapDp)
         assertEquals(CricketLayoutPolicy.ZONE_HEIGHT_MIN, layout.zoneHeightDp)
-        assertEquals(CricketLayoutPolicy.ROW_HEIGHT_MIN, layout.rowHeightDp)
-        assertEquals(44f, layout.columnHeaderHeightDp)
+        assertEquals(24.75f, layout.rowHeightDp, 0.001f)
+        assertEquals(54f, layout.columnHeaderHeightDp, 0.001f)
         assertFalse(layout.boardScrolls)
         // header 24 + zone 76 + keypad 152 + action bar 48 + 16 of margins and gaps + the board 252 = 568.
         val total = layout.headerHeightDp + layout.zoneHeightDp + (3 * layout.keyHeightDp + 2 * layout.gapDp) +
             layout.actionBarMinHeightDp + layout.topMarginDp + layout.bottomMarginDp + 3 * layout.gapDp +
             layout.columnHeaderHeightDp + 8 * layout.rowHeightDp
-        assertEquals(568f, total)
+        assertEquals(568f, total, 0.001f)
     }
 
     /** CR22: 25-Bull off gives six rows, so a shorter screen still fits. */
@@ -75,7 +75,7 @@ class CricketLayoutPolicyTest {
 
         assertEquals(CricketLayoutPolicy.ZONE_HEIGHT_MIN * 1.5f, layout.zoneHeightDp)
         assertEquals(CricketLayoutPolicy.ZONE_HEIGHT_MIN * 1.5f, layout.zoneMinHeightDp)
-        assertEquals(CricketLayoutPolicy.LABEL_COLUMN_WIDTH_LARGE, layout.labelColumnWidthDp)
+        assertEquals(CricketLayoutPolicy.labelColumnWidth(2f), layout.labelColumnWidthDp)
         assertEquals(CricketLayoutPolicy.rowFloor(2f), layout.rowHeightDp)
         assertEquals(CricketLayoutPolicy.KEY_HEIGHT_MIN, layout.keyHeightDp)
         assertTrue(layout.boardScrolls)
@@ -83,9 +83,39 @@ class CricketLayoutPolicyTest {
 
     @Test
     fun `the row floor follows the text line at large font scales`() {
-        assertEquals(26f, CricketLayoutPolicy.rowFloor(1f))
-        assertEquals(30f, CricketLayoutPolicy.rowFloor(1.2f))
-        assertEquals(46f, CricketLayoutPolicy.rowFloor(2f))
+        assertEquals(24.5f, CricketLayoutPolicy.rowFloor(1f))
+        assertEquals(29f, CricketLayoutPolicy.rowFloor(1.2f), 0.001f)
+        assertEquals(47f, CricketLayoutPolicy.rowFloor(2f))
+    }
+
+    /** Review U1: the header follows the real line heights, with a gap between the name and the visit box. */
+    @Test
+    fun `the column header grows with the font scale and leaves a gap`() {
+        listOf(1f, 1.3f, 1.5f, 2f).forEach { scale ->
+            val box = CricketLayoutPolicy.visitBoxHeight(scale)
+            val nameLine = 22.5f * scale
+
+            assertTrue(box >= nameLine)
+            assertEquals(
+                CricketLayoutPolicy.HEADER_STRIP + nameLine + CricketLayoutPolicy.HEADER_GAP + box,
+                CricketLayoutPolicy.columnHeaderHeight(scale),
+                0.001f,
+            )
+        }
+        assertTrue(CricketLayoutPolicy.HEADER_GAP >= 2f)
+        assertEquals(26.5f, CricketLayoutPolicy.visitBoxHeight(1f))
+    }
+
+    /** Review U2: "BULL" at the label text size fits the label column at every font scale (2.5 em, wide). */
+    @Test
+    fun `the label column fits BULL at every font scale`() {
+        listOf(1f, 1.3f, 1.5f, 2f).forEach { scale ->
+            val bull = 2.5f * CricketLayoutPolicy.ROW_LABEL_TEXT_SIZE * scale
+
+            assertTrue("scale $scale", CricketLayoutPolicy.labelColumnWidth(scale) >= bull)
+            assertEquals(CricketLayoutPolicy.labelColumnWidth(scale), layout(360f, 640f, scale).labelColumnWidthDp)
+        }
+        assertEquals(CricketLayoutPolicy.LABEL_COLUMN_WIDTH, CricketLayoutPolicy.labelColumnWidth(1f))
     }
 
     /** CR22: about 76 dp per player at 360 dp wide with 4 players, from 1 to 4 players. */

@@ -5,12 +5,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -46,13 +49,12 @@ import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 
 private val STRIKE = 2.dp
+private val NAME_MIN_FONT = 10.sp
+private val NAME_MAX_FONT = CricketLayoutPolicy.ROW_LABEL_TEXT_SIZE.sp
 private val COLUMN_BORDER = 2.dp
-private val HEADER_STRIP = 4.dp
-private val VISIT_BOX_HEIGHT = 24.dp
 private val MARK_SIZE = 18.dp
 private val MARK_STROKE = 2.dp
 private const val ROWS_TRAVERSAL_INDEX = 10f
-private const val ROW_TEXT_SIZE = 16f
 
 /**
  * Everything the board shows, mapped by the game screen from its state.
@@ -110,13 +112,13 @@ private fun HeaderRow(content: CricketBoardContent, layout: CricketLayout) {
     Row(Modifier.fillMaxWidth().height(layout.columnHeaderHeightDp.dp)) {
         Box(Modifier.width(layout.labelColumnWidthDp.dp))
         content.names.indices.forEach { player ->
-            HeaderCell(player, content, Modifier.weight(1f).fillMaxHeight())
+            HeaderCell(player, content, layout, Modifier.weight(1f).fillMaxHeight())
         }
     }
 }
 
 @Composable
-private fun HeaderCell(player: Int, content: CricketBoardContent, modifier: Modifier) {
+private fun HeaderCell(player: Int, content: CricketBoardContent, layout: CricketLayout, modifier: Modifier) {
     val colors = KosmoTheme.colors
     val isCurrent = player == content.currentIndex
     val name = content.names[player]
@@ -142,7 +144,7 @@ private fun HeaderCell(player: Int, content: CricketBoardContent, modifier: Modi
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(HEADER_STRIP)
+                .height(CricketLayoutPolicy.HEADER_STRIP.dp)
                 .background(PlayerPalette.colorOf(content.slots[player], colors)),
         )
         Text(
@@ -152,14 +154,16 @@ private fun HeaderCell(player: Int, content: CricketBoardContent, modifier: Modi
             textAlign = TextAlign.Center,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            autoSize = TextAutoSize.StepBased(minFontSize = NAME_MIN_FONT, maxFontSize = NAME_MAX_FONT),
             modifier = Modifier.fillMaxWidth().weight(1f).testTag(CricketTags.columnName(player)),
         )
+        Spacer(Modifier.height(CricketLayoutPolicy.HEADER_GAP.dp))
         CricketMarksBox(
             visit = visit,
             isFilled = false,
             style = KosmoTheme.typography.label,
             tag = CricketTags.columnVisit(player),
-            modifier = Modifier.height(VISIT_BOX_HEIGHT),
+            modifier = Modifier.height(layout.visitBoxHeightDp.dp),
         )
     }
 }
@@ -206,7 +210,8 @@ private fun BoardRow(
                     .testTag(CricketTags.rowLabel(row.target)),
             )
             row.marks.forEachIndexed { player, marks ->
-                BoardCell(row.target, label, player, marks, textColor, content, Modifier.weight(1f).fillMaxHeight())
+                val cell = Modifier.weight(1f).fillMaxHeight()
+                BoardCell(row.target, label, player, CellMarks(marks, text.isClosed[player]), textColor, content, cell)
             }
         }
         if (text.isStruck) {
@@ -214,6 +219,7 @@ private fun BoardRow(
                 Modifier
                     .align(Alignment.Center)
                     .fillMaxWidth()
+                    .padding(start = layout.labelColumnWidthDp.dp)
                     .height(STRIKE)
                     .background(colors.onBackgroundMuted)
                     .testTag(CricketTags.rowStrike(row.target)),
@@ -227,13 +233,14 @@ private fun BoardCell(
     target: CricketTarget,
     label: String,
     player: Int,
-    marks: Int,
+    cellMarks: CellMarks,
     color: Color,
     content: CricketBoardContent,
     modifier: Modifier,
 ) {
     val name = content.names[player]
-    val description = if (marks >= CLOSING_MARKS) {
+    val (marks, isClosed) = cellMarks
+    val description = if (isClosed) {
         stringResource(R.string.cricket_board_closed_cell, label, name)
     } else {
         pluralStringResource(R.plurals.cricket_cell_marks, marks, label, name, marks)
@@ -257,18 +264,17 @@ private fun BoardCell(
 private fun MarkGlyph(marks: Int, color: Color, modifier: Modifier) {
     Canvas(modifier.size(MARK_SIZE)) {
         val stroke = Stroke(width = MARK_STROKE.toPx(), cap = StrokeCap.Round)
-        val inset = if (marks >= CLOSING_MARKS) size.width * CROSS_INSET_CLOSED else 0f
+        val inset = if (CricketBoardText.isClosed(marks)) size.width * CROSS_INSET_CLOSED else 0f
         val low = inset + stroke.width / 2
         val high = size.width - inset - stroke.width / 2
         drawLine(color, Offset(low, high), Offset(high, low), stroke.width, StrokeCap.Round)
         if (marks >= 2) drawLine(color, Offset(low, low), Offset(high, high), stroke.width, StrokeCap.Round)
-        if (marks >= CLOSING_MARKS) {
+        if (CricketBoardText.isClosed(marks)) {
             drawCircle(color, radius = (size.width - stroke.width) / 2, style = stroke)
         }
     }
 }
 
-private const val CLOSING_MARKS = 3
 private const val CROSS_INSET_CLOSED = 0.22f
 
 @Composable
@@ -309,7 +315,8 @@ private fun PointsRow(points: List<Int>, content: CricketBoardContent, layout: C
 }
 
 @Composable
-private fun rowStyle(): TextStyle = KosmoTheme.typography.labelLarge.copy(fontSize = ROW_TEXT_SIZE.sp)
+private fun rowStyle(): TextStyle =
+    KosmoTheme.typography.labelLarge.copy(fontSize = CricketLayoutPolicy.ROW_LABEL_TEXT_SIZE.sp)
 
 /** The `accent` border of the current player's column: both sides, and the top or the bottom where it ends. */
 private fun Modifier.columnBorder(isCurrent: Boolean, color: Color, drawTop: Boolean, drawBottom: Boolean): Modifier =
@@ -327,3 +334,6 @@ private fun Modifier.columnBorder(isCurrent: Boolean, color: Color, drawTop: Boo
             }
         }
     }
+
+/** The marks of one cell and whether they close the target, as decided by [CricketBoardText] (review A7). */
+private data class CellMarks(val marks: Int, val isClosed: Boolean)
