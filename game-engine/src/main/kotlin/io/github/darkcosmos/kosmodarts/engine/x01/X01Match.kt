@@ -105,7 +105,7 @@ class X01Match(
      *   [LegOutcome.SET]: a leg in progress cannot be confirmed, and the leg that decides the match stays current.
      */
     fun confirmLeg(): X01Match {
-        check(pendingOutcome == LegOutcome.LEG || pendingOutcome == LegOutcome.SET) {
+        check(pendingOutcome?.isConfirmable == true) {
             "Only a won leg that does not decide the match can be confirmed"
         }
         val legs = completedLegs + X01LegSummary.of(currentLeg)

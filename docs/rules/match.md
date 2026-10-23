@@ -16,8 +16,8 @@ Vocabulary:
 
 - M1. A match has a format: legs per set L and sets S, each from 1 to 9. Default 1 and 1. A format outside these
   bounds is rejected with an explicit error. Both are shown as "First to N" (« Premier à N »), never "Best of".
-- M2. A leg is one game of the mode (for X01: one leg under rules C to A of `x01.md`). The first player to finish
-  wins the leg.
+- M2. A leg is one game of the mode (for X01: one leg under rules C to A of `x01.md`; for Cricket, CR7 to CR9 of
+  `cricket.md`). The first player to finish wins the leg.
 - M3. A player wins a set on reaching L legs won in the current set. Every player's legs of the current set then go
   back to 0.
 - M4. A player wins the match on reaching S sets won. The match is then finished: no further leg can be played.
@@ -39,15 +39,20 @@ Vocabulary:
   restart at each leg: remaining score, darts of the current turn, the visit total box (`visit-total.md`), which
   shows "not played" for everyone at the start of a leg.
 - M10. Final ranking: the match winner first. The others by sets won (more is better), then by legs won over the
-  whole match (owner Q1), then by the mode tie-break (X01: remaining score in the last leg, lower is better). Players
-  equal on all criteria share a rank and the next rank is skipped (1, 2, 2, 4). With 1 and 1 this is E1 and E2.
-- M11. The match logic knows nothing of X01: the mode provides the leg winner, the per-leg figures it needs and the
-  tie-break value of each player.
+  whole match (owner Q1), then by the mode tie-break (M20; X01: remaining score in the last leg, lower is better;
+  Cricket: CR16 of `cricket.md`). Players equal on all criteria share a rank and the next rank is skipped
+  (1, 2, 2, 4). With 1 and 1 this is E1 and E2 for X01, and CR12 for Cricket.
+- M11. The match logic knows nothing of the game mode (X01 or Cricket): the mode provides the leg winner, the
+  per-leg figures it needs and its tie-break (M20).
 - M12. A match has at most (n(L-1)+1) x (n(S-1)+1) legs (1,089 for 4 players, 9 and 9): this bound is used to
   validate saves.
 - M19. Match position (issue #49): the next leg belongs to set number "sets completed + 1" and is leg number "legs
   played in the current set + 1" of its set. The last confirmed leg has the set and leg numbers it had while it was
   played. The app shows these numbers as given by the engine and never counts legs or sets itself.
+- M20. Mode tie-break (issue #40): the tie-break of M10 may be a sequence of criteria, each with its own direction,
+  applied in order after the sets and the legs. X01 has one criterion (remaining score in the last leg, lower is
+  better); Cricket has two (CR16: points in the last leg in the CR12 direction, then board marks in the last leg, more
+  is better). Players equal on every criterion share a rank.
 
 ## App
 
@@ -88,5 +93,6 @@ Rewritten by issue #49 (design system, owner answers Q1 to Q13, O1 and O2, `docs
 - Persistence: R13 to R19 (`docs/rules/persistence.md`), format versions 2 and 3 (`docs/adr/0005-save-format-v2-match.md`,
   `docs/adr/0006-save-format-v3-colors.md`).
 - Player colors: PC1 to PC9 (`docs/rules/players.md`).
+- Cricket: the Cricket leg (CR7 to CR9), its statistics (CR13) and its tie-break (CR16) (`docs/rules/cricket.md`).
 - Announcements: AN27 (win voice and victory sound by outcome) and AN28 (turn start of a new leg)
   (`docs/rules/announcements.md`).

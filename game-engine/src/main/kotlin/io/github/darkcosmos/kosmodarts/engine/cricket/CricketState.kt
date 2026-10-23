@@ -55,6 +55,13 @@ data class CricketPlayerState(
     val boardMarks: Int
         get() = marks.values.sum()
 
+    /**
+     * Number of targets in play the player has closed (CR3), from 0 to `CricketConfig.targets.size` (6 or 7, CR1).
+     * The app shows it against that size and never counts marks itself.
+     */
+    val closedTargetCount: Int
+        get() = marks.values.count { it >= CLOSING_MARKS }
+
     companion object {
         /** Marks that close a target (CR3). */
         const val CLOSING_MARKS: Int = 3
