@@ -4,7 +4,7 @@
 - Date: 2026-10-23
 - Extends: ADR 0001 (save format), ADR 0005 (version 2) and ADR 0006 (version 3). ADR 0002 (save lifecycle) is
   unchanged.
-- Rules: `docs/rules/persistence.md` (R9 to R12, R20, R21, R23 to R25), `docs/rules/cricket.md`,
+- Rules: `docs/rules/persistence.md` (R9 to R12, R20 to R25), `docs/rules/cricket.md`,
   `docs/rules/match.md` (M4, M6, M12)
 
 ## Context
@@ -138,8 +138,43 @@ format is not affected: the dart tokens are the same for both modes.
 
 ### Last setup file
 
-The last setup file moves to version 4 with the per-mode settings of R22 in the same mission (plan task T6), which
-completes this ADR with its layout. Until then it is still written in version 3.
+The last setup file moves to version 4 too, with the per-mode settings of R22 and one shared roster (owner Q9;
+alternative A4 of the plan, one file per mode, rejected). Its body has one section per mode started since the file
+was written, each opened by its mode line, X01 first, then the roster:
+
+```
+kosmodarts=last-setup
+version=4
+mode=x01
+game=x01
+start-score=301
+checkout=single-out
+legs-per-set=3
+sets=2
+mode=cricket
+variant=cut-throat
+bull=0
+legs-per-set=2
+sets=1
+players=2
+player=QW5u
+player=Qm9i
+colors=4 2
+crc32=...
+end
+```
+
+- The first body line is a mode line, as in the saved game: there is at least one section. A missing first mode line
+  is `MALFORMED`, an unknown value `OUT_OF_RANGE`; a repeated or out-of-order section, or a section whose body does
+  not match its mode, is `MALFORMED` (R23). Any rejection is silent (R10).
+- The X01 section is the X01 settings of version 3 (`game` to `sets`); the Cricket section has the `variant` and
+  `bull` tokens of the saved game (closed sets, R24) and the match format.
+- The roster names are checked with the configuration of every mode present; an `InvalidX01ConfigException` or
+  `InvalidCricketConfigException` is `INVALID_CONFIG`, never a crash (R24).
+- A version 1 to 3 file is an X01 setup: its roster and X01 settings, without Cricket settings (R25). A mode without
+  a section uses its defaults with the shared roster.
+- `MAX_FILE_BYTES` (4,096) is unchanged: the largest version 4 file (4 names of 20 four-byte code points, both
+  sections) stays under 1 KB.
 
 ### Older app finding version 4
 
@@ -150,7 +185,7 @@ installs builds from PRs. The PR states it under "Known limitations".
 ## Consequences
 
 - The format is frozen again by exact-bytes tests of version 4: an X01 single game, an X01 match and a Cricket match
-  between legs.
+  between legs; the version 4 last setup with both mode sections is frozen line by line in `LastSetupCodecTest`.
 - The version 3 game and last setup files written before version 4 are committed under
   `app/src/test/resources/persistence/v3` and are never regenerated; the version 1 fixtures and the version 2 and 3
   golden literals are unchanged and keep decoding the same.
