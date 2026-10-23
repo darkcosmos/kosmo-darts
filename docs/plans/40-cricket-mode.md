@@ -1078,3 +1078,13 @@ notes are applied:
   `engine/cricket/` `CricketVariant`, `CricketTarget` (`points` derived from board order, `NUMBERS`, `ofNumber`),
   `CricketConfig` (+ `InvalidCricketConfigException`, `targets`), `CricketMarks` (`target`, `count`, `NONE`,
   `of(dart, config)`). No deviation.
+- T2: `engine/cricket/` `CricketGame` (+ `CricketLegFinishedException`, its own type so `x01` is untouched;
+  `isClosedSectorHit(dart)`, true when the dart has marks on a target already dead in this game, for T4 to call on the
+  game before the dart), `CricketState` (`deadTargets` in board order; `CricketPlayerState` with `marks` per target in
+  play capped at `CLOSING_MARKS`, `points`, `dartsThrown`, `marksHit` (CR13 raw count, MPR left to T3),
+  `currentTurnDarts`, `currentTurnMarks`, `marksOn`, `hasClosed`, `boardMarks`; `CricketRank`; `CricketTurn` with
+  `marks` = CR2 marks of its darts), `CricketReplay` (internal), `CricketVisits` (`CricketVisit` NotPlayed /
+  InProgress / LastVisit, `of`, `lastCompleted`). Tests use `CricketTestFixtures.kt` (`turns("T20 D20 MISS", ...)`).
+  Deviations: an extra `CricketVisitsTest` (CR14 per leg ships with `CricketVisits`; T3 keeps the reset at a new
+  leg); `CricketClosingTest` covers both "single then triple" (2 close, 1 surplus) and "two singles then triple"
+  (1 closes, 2 surplus), since the test plan's "(1 closes, 2 surplus)" matches the latter.
