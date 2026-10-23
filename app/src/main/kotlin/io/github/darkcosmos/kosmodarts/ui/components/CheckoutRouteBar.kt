@@ -44,10 +44,10 @@ private val LABEL_PADDING = 12.dp
 
 /**
  * The area of the zone under the score (design system 6.1 to 6.3): the checkout route in NORMAL mode
- * (docs/rules/checkout-suggestions.md, CS7 to CS9), the white BUST banner in BUST mode (VT13), nothing in CHECKOUT
- * mode. Its height is always reserved for the widest possible route at the current width and font scale (CS8), so
- * the zone and the score never move when a route appears or disappears. [isStacked]: the label above the darts, for
- * the landscape zone where the route stands right of the score.
+ * (docs/rules/checkout-suggestions.md, CS7 to CS9), the white BUST banner in BUST mode (VT13); the zone does not
+ * show it in CHECKOUT mode (U10). Its height is always reserved for the widest possible route at the current width
+ * and font scale (CS8), so the zone and the score never move when a route appears or disappears. [isStacked]: the
+ * label above the darts, for the landscape zone where the route stands right of the score.
  */
 @Composable
 fun RouteArea(mode: ZoneMode, route: List<Dart>?, isStacked: Boolean, modifier: Modifier = Modifier) {

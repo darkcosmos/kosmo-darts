@@ -74,10 +74,13 @@ Reference cases (owner table, issue #38, with Q5):
   `accent`, then the darts in `accent` on `background`, separated by a wide space (no separator dots), written like
   the dart slots: `T20`, `D16`, `20` (single), `25` (outer bull), `BULL`. The notation is the same in English and
   French.
-- CS8. The route area of the zone is always present, under the score and above the dart slots. When there is no
-  route it is empty and silent for TalkBack; during a BUST it holds the BUST banner (VT13). Its height is reserved
-  for the widest possible route (the label then three times the widest dart text) at the current width and font
-  scale, in every state, so the zone and the score never move when a route appears or disappears. The text is never
+- CS8. The route area of the zone is always present while the player throws and during a BUST, under the score and
+  above the dart slots. When there is no route it is empty and silent for TalkBack; during a BUST it holds the BUST
+  banner (VT13). Its height is reserved for the widest possible route (the label then three times the widest dart
+  text) at the current width and font scale, in those states, so the zone and the score never move when a route
+  appears or disappears. While a checkout waits for its confirmation (CHECKOUT mode, no score, no route) the area is
+  not shown: the CHECKOUT banner takes the middle of the zone, and on a short screen the zone gives that height back
+  so the keypad and the action bar fit (issue #49, code review U10). The text is never
   truncated: it may wrap only between two darts.
 - CS9. TalkBack reads the route area as one item: the label, then the darts with the words of the voice
   announcements, separated by commas. The words are identical in English and French: single `20`, double

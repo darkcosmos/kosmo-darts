@@ -35,6 +35,12 @@ val SairaCondensed: FontFamily = FontFamily(sairaFont(WEIGHT_BOLD), sairaFont(WE
 /** Tabular figures on every number (design system, section 3). */
 private const val TABULAR_FIGURES = "tnum"
 
+/**
+ * Tabular figures with the distinct zero of Saira (its `zero` feature), for the short labels where a 0 sits next to
+ * letters, "S0 · M0", so it never reads as the letter O (U14).
+ */
+const val LABEL_FIGURES: String = "tnum, zero"
+
 /** Line height of the display styles, relative to their size: one line takes 1.2 times the size. */
 const val DISPLAY_LINE_HEIGHT: Float = 1.2f
 

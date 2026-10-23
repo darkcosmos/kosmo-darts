@@ -7,6 +7,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.text.AnnotatedString
@@ -68,8 +69,11 @@ class CheckoutSuggestionScreenTest {
         ?.takeIf { it.isNotEmpty() }
 
     /** TalkBack description of the suggestion line, or null when it is silent. */
-    private fun description(): String? = node(GameTags.CHECKOUT_SUGGESTION_LINE).fetchSemanticsNode()
-        .config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString("")
+    private fun description(): String? = composeRule.onAllNodes(hasTestTag(GameTags.CHECKOUT_SUGGESTION_LINE), true)
+        .fetchSemanticsNodes()
+        .singleOrNull()
+        ?.config
+        ?.getOrNull(SemanticsProperties.ContentDescription)?.joinToString("")
 
     private fun textLayout(node: SemanticsNode): TextLayoutResult {
         val results = mutableListOf<TextLayoutResult>()
@@ -202,7 +206,10 @@ class CheckoutSuggestionScreenTest {
         composeRule.onNode(hasTestTag(GameTags.CHECKOUT_BANNER)).assertExists()
         assertNull("checkout pending", shownText())
         assertNull(description())
-        assertEquals("card while the checkout waits", withoutSuggestion, cardPlacement())
+        // CS8, U10: while the checkout waits the zone has no route area, and it never grows (it may give height back).
+        composeRule.onAllNodes(hasTestTag(GameTags.CHECKOUT_SUGGESTION_LINE), true).assertCountEquals(0)
+        val card = bounds(GameTags.CURRENT_PLAYER)
+        assertTrue("card $card while the checkout waits", card.height <= withoutSuggestion[1] + EPSILON)
     }
 
     /** CS8: the card does not move when the suggestion appears or disappears. */

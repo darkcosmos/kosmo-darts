@@ -81,8 +81,9 @@ fun GameScreen(
             val textScale = with(density) { TEXT_SCALE_REFERENCE.sp.toDp().value } / TEXT_SCALE_REFERENCE
             val players = game.game.config.players.size
             val isMatch = !game.match.format.isSingleGame
-            val layout = remember(maxWidth, maxHeight, textScale, players, isMatch) {
-                GameLayoutPolicy.of(GameSpace(maxWidth.value, maxHeight.value, textScale, players, isMatch))
+            val isCheckout = game.zoneMode == ZoneMode.CHECKOUT
+            val layout = remember(maxWidth, maxHeight, textScale, players, isMatch, isCheckout) {
+                GameLayoutPolicy.of(GameSpace(maxWidth.value, maxHeight.value, textScale, players, isMatch, isCheckout))
             }
             val isLandscape = maxWidth > maxHeight
             if (isLandscape) LandscapeGame(game, layout, onEvent) else PortraitGame(game, layout, onEvent)
@@ -95,22 +96,33 @@ fun GameScreen(
 @Composable
 private fun PortraitGame(game: GameScreenState, layout: GameLayout, onEvent: (AppEvent) -> Unit) {
     val gap = layout.gapDp.dp
-    FillColumn(
-        gap = gap,
-        verticalPadding = layout.verticalMarginDp.dp,
-        fillMinHeight = layout.zoneMinHeightDp.dp,
+    val margin = layout.verticalMarginDp.dp
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .testTag(GameTags.SCREEN)
             .padding(horizontal = Spacing.screenHorizontal),
-        before = listOf { Header(game) },
-        fill = { Zone(game, layout, isLandscape = false) },
-        after = listOf(
-            { Tiles(game, layout) },
-            { Keypad(game, onEvent, keyHeight = layout.keyHeightDp.dp, gap = gap, modifier = Modifier.fillMaxWidth()) },
-            { GameActions(game, layout, onEvent) },
-        ),
-    )
+    ) {
+        FillColumn(
+            gap = gap,
+            topPadding = margin,
+            bottomPadding = gap,
+            fillMinHeight = layout.zoneMinHeightDp.dp,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            before = listOf { Header(game) },
+            fill = { Zone(game, layout, isLandscape = false) },
+            after = listOf(
+                { Tiles(game, layout) },
+                {
+                    Keypad(game, onEvent, keyHeight = layout.keyHeightDp.dp, gap = gap, Modifier.fillMaxWidth())
+                },
+            ),
+        )
+        // U10: pinned under the scrolling part, so "Undo" and the main action are always on screen.
+        GameActions(game, layout, onEvent, Modifier.padding(bottom = margin))
+    }
 }
 
 @Composable
@@ -126,7 +138,8 @@ private fun LandscapeGame(game: GameScreenState, layout: GameLayout, onEvent: (A
     ) {
         FillColumn(
             gap = gap,
-            verticalPadding = margin,
+            topPadding = margin,
+            bottomPadding = margin,
             fillMinHeight = layout.zoneMinHeightDp.dp,
             modifier = Modifier
                 .width(layout.leftColumnWidthDp.dp)
@@ -135,20 +148,24 @@ private fun LandscapeGame(game: GameScreenState, layout: GameLayout, onEvent: (A
             fill = { Zone(game, layout, isLandscape = true) },
             after = listOf { Tiles(game, layout) },
         )
-        // The space between the keypad and the action bar takes the rest, so the bar stays at the bottom.
-        FillColumn(
-            gap = gap,
-            verticalPadding = margin,
-            fillMinHeight = 0.dp,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(),
-            before = listOf {
-                Keypad(game, onEvent, keyHeight = layout.keyHeightDp.dp, gap = gap, modifier = Modifier.fillMaxWidth())
-            },
-            fill = { Spacer(Modifier) },
-            after = listOf { GameActions(game, layout, onEvent) },
-        )
+        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            // The space under the keypad takes the rest; the action bar is pinned under it (U10).
+            FillColumn(
+                gap = gap,
+                topPadding = margin,
+                bottomPadding = 0.dp,
+                fillMinHeight = 0.dp,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                before = listOf {
+                    Keypad(game, onEvent, keyHeight = layout.keyHeightDp.dp, gap = gap, Modifier.fillMaxWidth())
+                },
+                fill = { Spacer(Modifier) },
+                after = emptyList(),
+            )
+            GameActions(game, layout, onEvent, Modifier.padding(bottom = margin))
+        }
     }
 }
 
@@ -232,7 +249,12 @@ private fun Tiles(game: GameScreenState, layout: GameLayout) {
  * during a BUST (owner Q3).
  */
 @Composable
-private fun GameActions(game: GameScreenState, layout: GameLayout, onEvent: (AppEvent) -> Unit) {
+private fun GameActions(
+    game: GameScreenState,
+    layout: GameLayout,
+    onEvent: (AppEvent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val undo = BarAction(stringResource(R.string.key_undo), KeypadTags.UNDO, game.canUndo) {
         onEvent(AppEvent.UndoTapped)
     }
@@ -244,7 +266,7 @@ private fun GameActions(game: GameScreenState, layout: GameLayout, onEvent: (App
     } else {
         BarAction(confirmLabel(outcome), GameTags.CONFIRM, isEnabled = true) { onEvent(AppEvent.FinishGameTapped) }
     }
-    ActionBar(undo, primary, minHeight = layout.actionBarMinHeightDp.dp, modifier = Modifier.fillMaxWidth())
+    ActionBar(undo, primary, minHeight = layout.actionBarMinHeightDp.dp, modifier = modifier.fillMaxWidth())
 }
 
 @Composable

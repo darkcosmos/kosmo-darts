@@ -40,16 +40,15 @@ class GameLayoutPolicyTest {
     }
 
     /**
-     * At the largest font size on Android 14 and later (an effective text scale of 1.42 for a 24 sp text, the Pixel 7
-     * runs Android 14 or later), the Pixel 7 keeps every part on screen without scrolling, 4 players included. With a
-     * linear scale of 2.0 (Android 13 and older), the portrait screen may scroll: see the plan, known limitations.
+     * The Pixel 7 frame at an effective text scale of 1.42 (a 24 sp text drawn 1.42 times larger: the U10
+     * acceptance criterion; Compose scales large text non-linearly, the largest setting 2.0 gives 1.5, see
+     * GameScreenFitTest) keeps every part on screen without scrolling, 4 players included.
      */
     @Test
-    fun `Pixel 7 at the largest font size never scrolls`() {
-        listOf(1.42f).forEach { scale ->
-            assertFalse("portrait $scale", portrait(PIXEL7_WIDTH, PIXEL7_HEIGHT, scale, players = 4).isScrolling)
-            assertFalse("landscape $scale", portrait(PIXEL7_HEIGHT, PIXEL7_WIDTH, scale, players = 4).isScrolling)
-        }
+    fun `Pixel 7 at effective text scale 1_42 does not scroll`() {
+        val scale = 1.42f
+        assertFalse("portrait", portrait(PIXEL7_WIDTH, PIXEL7_HEIGHT, scale, players = 4).isScrolling)
+        assertFalse("landscape", portrait(PIXEL7_HEIGHT, PIXEL7_WIDTH, scale, players = 4).isScrolling)
     }
 
     /** Steps in order on a short portrait screen: keys and action bar to 48 before the score shrinks. */
@@ -73,14 +72,43 @@ class GameLayoutPolicyTest {
         assertEquals(GameLayoutPolicy.SCORE_FLOOR_PORTRAIT, smallest.scoreSizeDp)
     }
 
+    /**
+     * Steps in order on a short landscape screen: the score only shrinks once keys, action bar and margins are at their
+     * minimum (steps 1 and 2 before 3); the left column width never depends on the step.
+     */
     @Test
     fun `640 x 360 landscape applies the steps in order`() {
-        val layout = portrait(640f, 360f, players = 4)
+        val layouts = (2..4).flatMap { players -> listOf(1f, 1.5f).map { portrait(640f, 360f, it, players) } }
+        layouts.forEach { layout ->
+            if (layout.scoreSizeDp < GameLayoutPolicy.SCORE_LANDSCAPE) {
+                assertEquals(GameLayoutPolicy.KEY_HEIGHT_MIN, layout.keyHeightDp)
+                assertEquals(GameLayoutPolicy.ACTION_BAR_HEIGHT_MIN, layout.actionBarMinHeightDp)
+                assertEquals(GameLayoutPolicy.MARGIN_MIN, layout.verticalMarginDp)
+                assertEquals(GameLayoutPolicy.GAP_MIN, layout.gapDp)
+                assertTrue(layout.step >= 3)
+            }
+            assertTrue(layout.scoreSizeDp >= GameLayoutPolicy.SCORE_FLOOR_LANDSCAPE)
+            assertEquals(640f * 0.55f, layout.leftColumnWidthDp)
+        }
+        // At least one of these short screens reaches the score step, so the check above is not empty.
+        assertTrue(layouts.any { it.scoreSizeDp < GameLayoutPolicy.SCORE_LANDSCAPE })
+    }
 
-        assertEquals(GameLayoutPolicy.KEY_HEIGHT_MIN, layout.keyHeightDp)
-        assertTrue(layout.step >= 1)
-        assertTrue(layout.scoreSizeDp >= GameLayoutPolicy.SCORE_FLOOR_LANDSCAPE)
-        assertTrue(layout.leftColumnWidthDp <= 640f * 0.55f)
+    /**
+     * U10: while a checkout waits the zone needs no score and no route, so its least height is lower, and nothing else
+     * changes (the keypad keeps its size when the banner appears).
+     */
+    @Test
+    fun `a waiting checkout lowers only the zone minimum`() {
+        listOf(PIXEL7_WIDTH to PIXEL7_HEIGHT, PIXEL7_HEIGHT to PIXEL7_WIDTH, 360f to 640f).forEach { (width, height) ->
+            listOf(1f, 1.5f).forEach { scale ->
+                val normal = GameLayoutPolicy.of(GameSpace(width, height, scale, 4, isMatch = true))
+                val checkout = GameLayoutPolicy.of(GameSpace(width, height, scale, 4, isMatch = true, true))
+                val what = "$width x $height at $scale"
+                assertTrue(what, checkout.zoneMinHeightDp < normal.zoneMinHeightDp)
+                assertEquals(what, normal, checkout.copy(zoneMinHeightDp = normal.zoneMinHeightDp))
+            }
+        }
     }
 
     /** Touch targets: keys and action bar never below 48 dp, whatever the space. */

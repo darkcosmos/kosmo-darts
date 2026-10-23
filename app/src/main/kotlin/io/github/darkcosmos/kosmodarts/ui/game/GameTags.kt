@@ -29,6 +29,9 @@ object GameTags {
     /** The `accent` underline of the next dart slot. */
     const val NEXT_DART_MARK: String = "game_next_dart_mark"
 
+    /** The mode and finish at the start of the header ("501 · DOUBLE OUT"). */
+    const val HEADER_MODE: String = "game_header_mode"
+
     /** The match position at the end of the header (M14, M19). */
     const val HEADER_POSITION: String = "game_header_position"
 

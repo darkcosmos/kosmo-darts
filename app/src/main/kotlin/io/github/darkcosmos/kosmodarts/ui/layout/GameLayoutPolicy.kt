@@ -22,6 +22,8 @@ enum class TileVariant {
  *   divided by 24 (1.0 to 2.0; Android 14 enlarges large text less than small text, so this is less than the setting
  *   at large sizes).
  * @property isMatch whether the match has legs or sets: the tiles then have a match line (M14).
+ * @property isCheckoutPending whether the zone shows the CHECKOUT banner instead of the score and the route (M15): the
+ *   zone then needs less height, and gives the rest back (U10). The other sizes do not change, so nothing else moves.
  */
 data class GameSpace(
     val widthDp: Float,
@@ -29,6 +31,7 @@ data class GameSpace(
     val textScale: Float,
     val playerCount: Int,
     val isMatch: Boolean,
+    val isCheckoutPending: Boolean = false,
 ) {
     val isLandscape: Boolean
         get() = widthDp > heightDp
@@ -40,7 +43,8 @@ data class GameSpace(
  * @property step the last degradation step applied: 0 for none (the mockup values), then 1 to 4 (plan, section 4b).
  * @property isScrolling whether the screen (portrait) or each column (landscape) is expected to scroll: below the score
  *   floor. The screen measures its parts and scrolls whenever they do not fit, so this is the estimate only.
- * @property zoneMinHeightDp the zone never gets less height than this: its fixed parts with the score at its floor.
+ * @property zoneMinHeightDp the zone never gets less height than this: its fixed parts with the score at its floor, or
+ *   with the CHECKOUT banner at its least height while a checkout waits (no score, no route).
  * @property leftColumnWidthDp landscape only: the width of the zone and tiles column.
  */
 data class GameLayout(
@@ -65,7 +69,12 @@ data class GameLayout(
  * 1. keypad keys from 54 down to 48 dp, action bar from 58 down to 48 dp (never below 48: touch targets);
  * 2. vertical screen margin from 16 down to 8 dp, gaps from 6 down to 4 dp;
  * 3. the score shrinks to the free height, never below its floor (96 portrait, 72 landscape);
- * 4. below the floor, the screen (portrait) or the column (landscape) scrolls: nothing is ever clipped.
+ * 4. below the floor, the screen (portrait) or the column (landscape) scrolls: nothing is ever clipped. The action bar
+ *    is never part of the scrolling area: it stays pinned at the bottom, so "Undo" and the main action are always on
+ *    screen (U10).
+ *
+ * The steps are chosen for the zone with its score, in every zone mode, so the keypad never changes size when a
+ * checkout waits; only the zone's least height is lower then ([GameSpace.isCheckoutPending]).
  *
  * No Compose type here: inputs and outputs are plain numbers, so the policy is tested on the JVM.
  */
@@ -119,6 +128,12 @@ object GameLayoutPolicy {
     /** Margin on the estimated least height of the zone. */
     private const val SAFETY = 1.1f
 
+    /** Least height of the CHECKOUT banner chip: its text shrinks to fit (design system 6.3). */
+    private const val CHECKOUT_BANNER_MIN = 40f
+
+    /** The line under the banner, "141 IN 3 DARTS", in the `labelLarge` style. */
+    private const val CHECKOUT_LINE = 22f
+
     fun of(space: GameSpace): GameLayout = if (space.isLandscape) landscape(space) else portrait(space)
 
     private data class Shape(val variant: TileVariant, val tilesPerRow: Int, val leftWidth: Float, val zoneMin: Float)
@@ -136,11 +151,17 @@ object GameLayoutPolicy {
         val tilesPerRow = if (space.playerCount >= FOUR_PLAYERS) 3 else 2
         val variant = if (space.playerCount >= FOUR_PLAYERS) TileVariant.NARROW else TileVariant.WIDE
         val tileRows = (space.playerCount - 1 + tilesPerRow - 1) / tilesPerRow
-        val zoneMin = zoneMinHeight(space, SCORE_FLOOR_PORTRAIT)
+        // The least height of the zone, kept on the safe side because the zone is never squeezed below it: the route
+        // may wrap on two lines at large text sizes, and a margin covers the rounding of the measured lines.
+        val zoneMin = if (space.isCheckoutPending) {
+            checkoutZoneMinHeight(space)
+        } else {
+            zoneWithoutScore(space, labelLines(space)) * SAFETY + SCORE_FLOOR_PORTRAIT
+        }
         return decide(space, maxScore, SCORE_FLOOR_PORTRAIT, Shape(variant, tilesPerRow, 0f, zoneMin)) { choice ->
             val tiles = if (tileRows == 0) 0f else tileRows * tileHeight(variant, space) + (tileRows - 1) * choice.gap
             val sections = if (tileRows == 0) 3 else 4
-            2 * choice.margin + HEADER_LINE * space.textScale + sections * choice.gap + zoneWithoutScore(space) +
+            2 * choice.margin + HEADER_LINE * space.textScale + sections * choice.gap + zoneWithoutScore(space, 1) +
                 tiles + keypadHeight(choice) + actionBarHeight(choice, space)
         }
     }
@@ -155,8 +176,11 @@ object GameLayoutPolicy {
         val tilesPerRow = maxOf(1, space.playerCount - 1)
         val hasTiles = space.playerCount > 1
         val stackedRoute = (LABEL_LINE + ROUTE_LINE) * space.textScale + 3 * ROUTE_PADDING
-        val zoneMin = (2 * ZONE_PADDING + ZONE_NAME_LINE * space.textScale + 2 * ZONE_INNER_GAP + DART_SLOTS) * SAFETY +
-            maxOf(SCORE_FLOOR_LANDSCAPE, stackedRoute * SAFETY)
+        val zoneMin = if (space.isCheckoutPending) {
+            checkoutZoneMinHeight(space)
+        } else {
+            zoneFrame(space) * SAFETY + maxOf(SCORE_FLOOR_LANDSCAPE, stackedRoute * SAFETY)
+        }
         val shape = Shape(variant, tilesPerRow, leftWidth, zoneMin)
         return decide(space, SCORE_LANDSCAPE, SCORE_FLOOR_LANDSCAPE, shape) { choice ->
             val tiles = if (hasTiles) tileHeight(variant, space) + choice.gap else 0f
@@ -205,19 +229,23 @@ object GameLayoutPolicy {
     }
 
     /**
-     * The least height of the portrait zone, kept on the safe side because the zone is never squeezed below it: the
-     * route may wrap on two lines at large text sizes, and a margin covers the rounding of the measured lines.
+     * The least height of the zone while a checkout waits (U10): name, the banner at its least height with its line,
+     * and the dart slots; no score and no route area (CS8), so the zone gives that height back to the screen.
      */
-    private fun zoneMinHeight(space: GameSpace, floor: Float): Float {
-        val routeLines = if (space.textScale >= TWO_LINE_LABELS_FROM) 2 else 1
-        val fixed = 2 * ZONE_PADDING + ZONE_NAME_LINE * space.textScale + PORTRAIT_ZONE_GAPS * ZONE_INNER_GAP +
-            routeLines * ROUTE_LINE * space.textScale + 2 * ROUTE_PADDING + DART_SLOTS
-        return fixed * SAFETY + floor
-    }
+    private fun checkoutZoneMinHeight(space: GameSpace): Float =
+        zoneFrame(space) * SAFETY + CHECKOUT_BANNER_MIN + ZONE_INNER_GAP +
+            labelLines(space) * CHECKOUT_LINE * space.textScale
 
-    private fun zoneWithoutScore(space: GameSpace): Float =
-        2 * ZONE_PADDING + ZONE_NAME_LINE * space.textScale + PORTRAIT_ZONE_GAPS * ZONE_INNER_GAP +
-            ROUTE_LINE * space.textScale + 2 * ROUTE_PADDING + DART_SLOTS
+    /** Padding, name line, the two gaps around the middle part, and the dart slots: present in every zone mode. */
+    private fun zoneFrame(space: GameSpace): Float =
+        2 * ZONE_PADDING + ZONE_NAME_LINE * space.textScale + 2 * ZONE_INNER_GAP + DART_SLOTS
+
+    /** Labels that may wrap (route, action bar, checkout line) are counted on two lines at large text sizes (U6). */
+    private fun labelLines(space: GameSpace): Int = if (space.textScale >= TWO_LINE_LABELS_FROM) 2 else 1
+
+    /** The portrait zone but its score: frame, the gap under the score, and the route area on [routeLines] lines. */
+    private fun zoneWithoutScore(space: GameSpace, routeLines: Int): Float = zoneFrame(space) +
+        (PORTRAIT_ZONE_GAPS - 2) * ZONE_INNER_GAP + routeLines * ROUTE_LINE * space.textScale + 2 * ROUTE_PADDING
 
     /** One tile: its strip, padding, name line, score line, and the match line when it has its own line. */
     private fun tileHeight(variant: TileVariant, space: GameSpace): Float {
@@ -225,9 +253,10 @@ object GameLayoutPolicy {
         val matchLine = if (space.isMatch) TILE_MATCH_LINE * space.textScale else 0f
         val lines = when (variant) {
             TileVariant.WIDE -> maxOf(name, matchLine) + TILE_SCORE_LINE
-            TileVariant.NARROW -> name + TILE_SCORE_LINE + matchLine
+            // The names of these two variants may take two lines at large text sizes (U3, T8).
+            TileVariant.NARROW -> name * labelLines(space) + TILE_SCORE_LINE + matchLine
             TileVariant.COMPACT -> maxOf(name, TILE_SCORE_LINE)
-            TileVariant.COMPACT_TWO_LINES -> name + TILE_SCORE_LINE
+            TileVariant.COMPACT_TWO_LINES -> name * labelLines(space) + TILE_SCORE_LINE
         }
         return TILE_STRIP + 2 * TILE_PADDING + lines
     }
@@ -235,7 +264,6 @@ object GameLayoutPolicy {
     private fun keypadHeight(choice: Choice): Float = KEYPAD_ROWS * choice.keyHeight + (KEYPAD_ROWS - 1) * choice.gap
 
     private fun actionBarHeight(choice: Choice, space: GameSpace): Float {
-        val lines = if (space.textScale >= TWO_LINE_LABELS_FROM) 2 else 1
-        return maxOf(choice.actionBar, lines * BUTTON_LINE * space.textScale + 2 * BUTTON_PADDING)
+        return maxOf(choice.actionBar, labelLines(space) * BUTTON_LINE * space.textScale + 2 * BUTTON_PADDING)
     }
 }

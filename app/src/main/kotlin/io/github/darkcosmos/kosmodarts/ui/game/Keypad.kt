@@ -9,15 +9,14 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -31,9 +30,12 @@ import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.components.WordSafeText
+import io.github.darkcosmos.kosmodarts.ui.components.wordCount
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.States
+import io.github.darkcosmos.kosmodarts.ui.theme.fixedSp
 
 private const val NUMBERS_PER_ROW = 5
 private val ACTIVE_BORDER = 2.dp
@@ -194,17 +196,22 @@ private fun RowScope.Key(
             isOutlined -> BorderStroke(1.dp, colors.outline)
             else -> null
         },
-        contentPadding = PaddingValues(2.dp),
+        // Clear of the 2 dp border of the active key (U11).
+        contentPadding = PaddingValues(horizontal = ACTIVE_BORDER + 2.dp, vertical = 2.dp),
         modifier = modifier
             .weight(1f)
             .fillMaxHeight()
             .testTag(tag),
     ) {
-        Text(
+        // U11: the whole word is always shown ("DOUBLE", never "DOUB"); "✓ DOUBLE" may only wrap at its space.
+        WordSafeText(
             text = text,
             style = style,
-            maxLines = 1,
-            autoSize = TextAutoSize.StepBased(maxFontSize = style.fontSize),
+            maxLines = wordCount(text),
+            minFontSize = LocalDensity.current.fixedSp(KEY_MIN_FONT),
         )
     }
 }
+
+/** Least size (dp) of a key label: small keys on short landscape screens shrink their label rather than cut it. */
+private const val KEY_MIN_FONT = 8f

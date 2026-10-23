@@ -53,6 +53,7 @@ import io.github.darkcosmos.kosmodarts.ui.game.VisitBoxText
 import io.github.darkcosmos.kosmodarts.ui.game.ZoneMode
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
+import io.github.darkcosmos.kosmodarts.ui.theme.LABEL_FIGURES
 import io.github.darkcosmos.kosmodarts.ui.theme.LocalAnimationSettings
 import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 import io.github.darkcosmos.kosmodarts.ui.theme.fixedSp
@@ -113,17 +114,21 @@ fun CurrentPlayerZone(
     ) {
         NameRow(content, contentColor)
         val area = Modifier.weight(1f)
-        if (isLandscape) {
+        if (content.mode == ZoneMode.CHECKOUT) {
+            // U10: while a checkout waits there is no route (CS8): the banner takes the whole middle of the zone,
+            // which the layout policy may make lower than with a score.
+            ScoreArea(content, scoreSize, isLandscape, contentColor, area.fillMaxWidth())
+        } else if (isLandscape) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(INNER_GAP),
                 modifier = area.fillMaxWidth(),
             ) {
-                ScoreArea(content, scoreSize, contentColor, Modifier.weight(1f))
+                ScoreArea(content, scoreSize, isLandscape, contentColor, Modifier.weight(1f))
                 RouteArea(content.mode, content.route, isStacked = true, modifier = Modifier.weight(1f))
             }
         } else {
-            ScoreArea(content, scoreSize, contentColor, area.fillMaxWidth())
+            ScoreArea(content, scoreSize, isLandscape, contentColor, area.fillMaxWidth())
             RouteArea(content.mode, content.route, isStacked = false)
         }
         Row(
@@ -206,7 +211,7 @@ private fun Chips(indicator: MatchIndicator, index: Int) {
         chipTexts(indicator).forEach { chip ->
             Text(
                 text = chip,
-                style = KosmoTheme.typography.labelLarge,
+                style = KosmoTheme.typography.labelLarge.copy(fontFeatureSettings = LABEL_FIGURES),
                 color = colors.onBackground,
                 maxLines = 1,
                 modifier = Modifier
@@ -218,15 +223,20 @@ private fun Chips(indicator: MatchIndicator, index: Int) {
     }
 }
 
-/** The score, or in CHECKOUT mode the `accent` banner "CHECKOUT" and "141 IN 3 DARTS" (design system 6.3). */
+/**
+ * The score, or in CHECKOUT mode the `accent` banner "CHECKOUT" and "141 IN 3 DARTS" (design system 6.3). In
+ * landscape the score stands at the start, under the name, as in mockup 05 (U13); in portrait it is centred.
+ */
 @Composable
 private fun ScoreArea(
     content: ZoneContent,
     scoreSize: Float,
+    isLandscape: Boolean,
     contentColor: Color,
     modifier: Modifier,
 ) {
-    BoxWithConstraints(contentAlignment = Alignment.Center, modifier = modifier) {
+    val alignment = if (isLandscape) Alignment.CenterStart else Alignment.Center
+    BoxWithConstraints(contentAlignment = alignment, modifier = modifier) {
         val checkout = content.checkout
         if (content.mode == ZoneMode.CHECKOUT && checkout != null) {
             CheckoutBanner(checkout, contentColor)
@@ -246,7 +256,8 @@ private fun ScoreArea(
                 val fit = minOf(
                     1f,
                     constraints.maxWidth.toFloat() / reference.width.coerceAtLeast(1),
-                    constraints.maxHeight.toFloat() / reference.height.coerceAtLeast(1),
+                    // One pixel less: the fitted line rounds to whole pixels and must not overflow the area.
+                    (constraints.maxHeight - 1).coerceAtLeast(1).toFloat() / reference.height.coerceAtLeast(1),
                 )
                 scoreSize * fit
             }
@@ -254,7 +265,7 @@ private fun ScoreArea(
                 text = content.remaining.toString(),
                 style = baseStyle.copy(fontSize = density.fixedSp(size)),
                 color = contentColor,
-                textAlign = TextAlign.Center,
+                textAlign = if (isLandscape) TextAlign.Start else TextAlign.Center,
                 maxLines = 1,
                 softWrap = false,
                 modifier = Modifier
@@ -291,7 +302,9 @@ private fun CheckoutBanner(checkout: CheckoutSummary, contentColor: Color) {
             color = colors.onAccent,
             maxLines = 1,
             autoSize = TextAutoSize.StepBased(maxFontSize = KosmoTheme.typography.banner.fontSize),
+            // Measured after the line under it: the banner shrinks to the height left in a low zone (U10).
             modifier = Modifier
+                .weight(1f, fill = false)
                 .clip(KosmoShapes.control)
                 .background(colors.accent)
                 .padding(horizontal = 16.dp, vertical = 4.dp),

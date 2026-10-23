@@ -35,6 +35,7 @@ import io.github.darkcosmos.kosmodarts.ui.game.VisitBoxText
 import io.github.darkcosmos.kosmodarts.ui.layout.TileVariant
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
+import io.github.darkcosmos.kosmodarts.ui.theme.LABEL_FIGURES
 import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 
 private val STRIP = 4.dp
@@ -115,7 +116,8 @@ private fun TileBody(content: TileContent, variant: TileVariant, modifier: Modif
             ScoreLine(score, box)
         }
         TileVariant.NARROW -> Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            name(Modifier.fillMaxWidth(), 1)
+            // T8: on two lines at most, as in landscape at 4 players, so at least 8 characters show before "…".
+            name(Modifier.fillMaxWidth(), TWO_LINE_NAME_MAX_LINES)
             ScoreLine(score, box)
             matchLine()
         }
@@ -181,7 +183,7 @@ private fun MatchLine(indicator: MatchIndicator, index: Int) {
     val description = indicatorDescription(indicator)
     Text(
         text = tileMatchText(indicator),
-        style = KosmoTheme.typography.label,
+        style = KosmoTheme.typography.label.copy(fontFeatureSettings = LABEL_FIGURES),
         color = KosmoTheme.colors.onBackgroundMuted,
         maxLines = 1,
         softWrap = false,

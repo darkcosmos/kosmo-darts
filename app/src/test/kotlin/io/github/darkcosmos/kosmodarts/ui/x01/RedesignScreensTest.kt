@@ -269,6 +269,14 @@ class RedesignScreensTest {
             assertTrue("$tag $rect below $root", rect.bottom <= root.bottom + EPSILON)
             assertTrue("$tag is empty", rect.height > 0f && rect.width > 0f)
         }
+        // U10: the action bar is pinned, so it is whole on screen even when the rest is scrolled back to the top.
+        node(GameTags.CURRENT_PLAYER).revealIfScrolled()
+        listOf(KeypadTags.UNDO, KeypadTags.NEXT_PLAYER).forEach { tag ->
+            val rect = unmerged(tag).fetchSemanticsNode().boundsInRoot
+            val minimum = with(composeRule.density) { MIN_TOUCH_DP.toPx() }
+            assertTrue("$tag $rect too low", rect.height >= minimum - EPSILON)
+            assertTrue("$tag $rect below $root", rect.bottom <= root.bottom + EPSILON)
+        }
     }
 
     /** U7: the setup content scrolls and "Start" stays pinned at the bottom, with 4 players at the largest size. */

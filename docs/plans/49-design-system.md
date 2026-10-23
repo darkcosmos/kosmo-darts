@@ -517,9 +517,9 @@ Deviations from the plan, to review:
    the policy's least zone height, and scrolls when the parts do not fit (so the estimates never clip anything). The
    policy's `isScrolling` is therefore an estimate. The score is fitted to its area for "888" (no jump with the
    digits). Plan claim "Pixel 7 at font scale 2.0 reaches no step": not kept. On the Pixel 7 mockup frame, scale
-   1.0 reaches no step; at the largest font size with Android 14 scaling the screen does not scroll but reaches the
-   size steps (keys 48, score smaller); with a linear 2.0 scale (Android 13 and older) the portrait screen with 4
-   players may scroll. `GameLayoutPolicyTest` states this.
+   1.0 reaches no step; at an effective text scale of 1.42 the screen does not scroll (`GameLayoutPolicyTest`); at the
+   largest font size (effective 1.5, see item 11) the portrait screen with 4 players scrolls under the pinned action
+   bar.
 3. Between legs: the winning checkout line ("CHECKOUT 141 · T20 T19 D12") is carried by the screen state after
    "Confirm leg"; it is not saved (ADR 0005 keeps leg summaries), so after a resume on the between-legs screen the
    line is absent (tested in `MatchResumeScreensTest`).
@@ -527,6 +527,7 @@ Deviations from the plan, to review:
    card text), `visit-total.md` VT11 (tiles instead of rows: the box may go under the score on a narrow tile at a
    large font size), `checkout-suggestions.md` CS9 (TalkBack reads in screen order, the traversal indices are gone).
 5. The zone hides the average before the player's first dart (the plan said "as today"; the old card showed "–").
+   To be listed under "Known limitations" in the PR description (A5).
 6. Name errors of the setup are the supporting text of the name field, inside its row; they are not red (red is for
    BUST only): accent underline and words.
 7. Display labels are upper case in the string resources (as the plan's table); player names are upper-cased in code
@@ -539,6 +540,31 @@ Deviations from the plan, to review:
    tests. `VisitTotalLayoutTest` allows one pixel of rounding on the score placement.
 10. The tiles of one line share the height of the tallest one (a two-line name in landscape at 4 players, a box
    under the score at a large font size), so the line reads as one band (seen on the captures).
+
+11. Code review fixes (U10 to U15, A4, T6 to T9):
+   - U10: the action bar ("Undo", "Next player" or the confirm button) is pinned under the scrolling part in both
+     orientations (`GameScreen`; `FillColumn` takes a top and a bottom padding), so it is always on screen. While a
+     checkout waits, `GameSpace.isCheckoutPending` lowers only `zoneMinHeightDp` (name, banner at 40 dp with its line,
+     dart slots; no score, no route area): the steps and the keypad do not change. `CurrentPlayerZone` drops the
+     route area in CHECKOUT mode and the banner shrinks to the height left. CS8 amended accordingly.
+   - Font scales: Compose scales large text non-linearly on every Android version, so the largest setting (2.0)
+     gives an effective scale of 1.5 for a 24 sp text, also in Robolectric (checked with `sdk = 33` too). A linear
+     2.0 does not happen in a Compose app. `GameScreenFitTest` checks the effective scale and, without scrolling,
+     "Undo" and the main action on screen at 412 × 915 (2 and 4 players), 360 × 640, 915 × 412 and 640 × 360, at
+     1.0 and at the largest size (1.5 ≥ 1.42); with a checkout at 412 × 915, 4 players, the largest size, the zone
+     is lower and the whole keypad and the action bar fit. Without a checkout at that size, 4 players, the keypad's
+     last rows and the tiles need a scroll (the action bar does not): the zone keeps its score floor and the
+     reserved route band (CS8, owner Q3).
+   - U11: `WordSafeText` (custom `TextAutoSize`): a label is drawn at the largest size where it fits with every line
+     break at a space; action bar buttons and keys use it (keys: one line per word, down to 8 dp). Keys have a
+     4 dp horizontal padding, clear of the active border.
+   - U12: `MatchHeader` puts the position on a second line, at the end, when both labels do not fit on one line.
+   - U13: in landscape the score stands at the start of its area, under the name (mockup 05).
+   - U14: the match chips and the tile match line use Saira's `zero` feature (`LABEL_FIGURES`, "tnum, zero").
+   - T8: narrow portrait tiles allow a two-line name, as landscape at 4 players; the policy counts two name lines
+     for both variants from text scale 1.3.
+   - A4: `VisitBox` derives its reference number from `X01Cues.MAX_TURN_SCORE`.
+   - The fitted score keeps one pixel of the area free (rounding of the measured line, seen on VT11 landscape).
 
 Known limitations found while building:
 - Robolectric honours the Saira width axis (`SairaWidthSpikeTest`: "501" at width 75 is about 75 % of width 100) but

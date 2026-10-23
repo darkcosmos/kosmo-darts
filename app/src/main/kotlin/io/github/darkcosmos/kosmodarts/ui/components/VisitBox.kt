@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Cues
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import io.github.darkcosmos.kosmodarts.ui.game.VisitBoxText
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
@@ -34,7 +35,7 @@ private val BOX_PADDING = 8.dp
 private val BOX_SLACK = 1.dp
 
 // VT11: a box fits BUST and this number, the highest visit total.
-private const val BOX_NUMBER_REFERENCE = "180"
+private val BOX_NUMBER_REFERENCE = X01Cues.MAX_TURN_SCORE.toString()
 
 /**
  * The visit total of a player (docs/rules/visit-total.md, VT8 to VT11; design system, `VisitBox`): no label, a
