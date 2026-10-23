@@ -30,7 +30,8 @@ class SaveLoaderTest {
         gameStore.content = validGame
         setupStore.content = validSetup
 
-        val expected = LoadResult(GameLoad.Valid(SaveFixtures.WAITING_CHECKOUT), SaveFixtures.setup(players = 3).toLastSetups())
+        val expected =
+            LoadResult(GameLoad.Valid(SaveFixtures.WAITING_CHECKOUT), SaveFixtures.setup(players = 3).toLastSetups())
 
         assertEquals(expected, loader.load())
         assertEquals(0, gameStore.deletes + setupStore.deletes)
