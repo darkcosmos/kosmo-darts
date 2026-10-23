@@ -219,7 +219,6 @@
     <string name="cricket_board_closed_cell">%1$s, %2$s: closed</string>
     <string name="cricket_board_column_current">%1$s, throwing</string>
     <string name="cricket_board_column_other">%1$s, %2$s</string>
-    <string name="cricket_board_column_current_visit">%1$s, %2$s</string>
     <string name="cricket_board_points">Points: %1$s</string>
     <string name="cricket_board_points_entry" translatable="false">%1$s %2$d</string>
     <string name="cricket_board_points_separator" translatable="false">", "</string>
