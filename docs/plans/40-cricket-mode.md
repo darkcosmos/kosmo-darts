@@ -663,6 +663,9 @@ code, they are read with `pluralStringResource`, never with a `%d marks` string.
     - the 4 column headers, with their names (ellipsis allowed) and visit boxes, the target label column and the
       points footer exist and are inside the root bounds once the board is scrolled to them;
     - the current player's header is on screen without scrolling;
+    - at 360 x 640, font scale 1.0, 4 players, with 25-Bull on (the zero-margin case of CR22): the board needs no
+      scrolling. Its scroll range is 0, and the header, all 7 rows and the points footer are inside the root bounds
+      without any scroll action;
     - the compact zone shows its points and darts;
   - the same fit assertions for the Cricket between-legs and end screens with 4 players, at 360 x 640 and at font
     scale 2.0 (review U3): every row of the ranking, the PTS and MPR MATCH columns and the action buttons can be
@@ -1052,6 +1055,11 @@ Suggested PR slicing (review A4, for main to put to Kosmo; not a decision):
 
 Cricket stays unreachable from the app until T10 adds the home card, so each PR leaves the app shippable. The other
 option is a single PR for the whole mission.
+
+Design review, round 2 (reviewed head `54a3842`): all four reviewers APPROVE. The ux-reviewer's two non-blocking
+notes are applied:
+- the Robolectric fit test at 360 x 640, font scale 1.0, 4 players, asserts that the board needs no scrolling;
+- the "Raté" check (U4) is phone check 14.
 
 ## Open questions
 
