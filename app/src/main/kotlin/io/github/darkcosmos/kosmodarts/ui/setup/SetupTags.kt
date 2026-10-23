@@ -16,6 +16,12 @@ object SetupTags {
     /** The scrolling content above the pinned "Start" (U7). */
     const val CONTENT: String = "setup_content"
 
+    /** The hint line under the Cricket variant choice (CR21). */
+    const val CRICKET_HINT: String = "setup_cricket_hint"
+
+    /** The "25-Bull" switch of the Cricket setup (CR21). */
+    const val CRICKET_BULL: String = "setup_cricket_bull"
+
     fun nameField(index: Int): String = "setup_name_$index"
 
     /** The remove cross of the row at [index] (M13, PC3). */

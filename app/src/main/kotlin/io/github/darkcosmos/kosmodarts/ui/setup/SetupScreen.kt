@@ -35,6 +35,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01ConfigError
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.components.ButtonKind
 import io.github.darkcosmos.kosmodarts.ui.components.DialogAction
 import io.github.darkcosmos.kosmodarts.ui.components.KosmoButton
@@ -93,11 +94,13 @@ fun SetupScreen(
             ) {
                 ScreenTopBar(
                     title = stringResource(R.string.setup_title),
-                    accentSuffix = stringResource(R.string.setup_title_mode),
+                    accentSuffix = stringResource(
+                        if (setup.mode == GameMode.CRICKET) R.string.cricket_title else R.string.setup_title_mode,
+                    ),
                     onBack = { onEvent(AppEvent.Back) },
                     backTag = SetupTags.BACK,
                 )
-                GameSettings(setup, onEvent)
+                if (setup.mode == GameMode.CRICKET) CricketSettingsSection(setup, onEvent) else GameSettings(setup, onEvent)
                 MatchSettings(setup, onEvent)
                 Players(setup, onEvent)
             }

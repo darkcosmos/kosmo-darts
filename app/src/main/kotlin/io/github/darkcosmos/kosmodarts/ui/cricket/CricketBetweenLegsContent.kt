@@ -38,15 +38,24 @@ fun CricketBetweenLegsScreen(
  * The format line of the Cricket between-legs and end screens: "CRICKET · STANDARD · WITHOUT 25-BULL · FIRST TO 3
  * LEGS" (CR22, M14); the Bull part only when it is out of play, the format part only for a match.
  */
-internal fun cricketFormatText(resources: Resources, config: CricketConfig, format: MatchFormat): String {
-    val variant = when (config.variant) {
+internal fun cricketFormatText(resources: Resources, config: CricketConfig, format: MatchFormat): String =
+    cricketFormatText(resources, config.variant, config.isBullInPlay, format)
+
+/** The same line from the [variant] and [isBullInPlay] alone, for the home card (CR20). */
+internal fun cricketFormatText(
+    resources: Resources,
+    variant: CricketVariant,
+    isBullInPlay: Boolean,
+    format: MatchFormat,
+): String {
+    val variantName = when (variant) {
         CricketVariant.STANDARD -> R.string.cricket_variant_standard
         CricketVariant.CUT_THROAT -> R.string.cricket_variant_cut_throat
     }
     val parts = listOfNotNull(
         resources.getString(R.string.cricket_title),
-        resources.getString(variant),
-        resources.getString(R.string.cricket_header_without_bull).takeIf { !config.isBullInPlay },
+        resources.getString(variantName),
+        resources.getString(R.string.cricket_header_without_bull).takeIf { !isBullInPlay },
         format.sets.takeIf { format.hasSets }
             ?.let { resources.getQuantityString(R.plurals.format_first_to_sets, it, it) },
         format.legsPerSet.takeUnless { format.isSingleGame }

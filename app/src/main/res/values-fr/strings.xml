@@ -6,6 +6,7 @@
     <string name="home_resume">REPRENDRE · À %1$s DE LANCER</string>
     <string name="home_saved_game_title">PARTIE EN COURS</string>
     <string name="mode_x01_description">501 ou 301, sortie double ou simple</string>
+    <string name="mode_cricket_description">Standard ou Cut-throat</string>
     <string name="new_game_confirm_title">Une partie est en cours</string>
     <string name="new_game_confirm_text">La supprimer et en commencer une nouvelle ?</string>
     <string name="new_game_confirm_delete">Supprimer</string>
@@ -28,6 +29,9 @@
     <!-- Setup screen -->
     <string name="setup_title">NOUVELLE PARTIE</string>
     <string name="setup_game_label">JEU</string>
+    <string name="setup_cricket_variant_label">VARIANTE</string>
+    <string name="setup_cricket_hint_standard">Vos points sont pour vous\u00A0; le plus haut score gagne.</string>
+    <string name="setup_cricket_hint_cut_throat">Vos points vont aux adversaires\u00A0; le plus bas score gagne.</string>
     <string name="setup_double_out">SORTIE DOUBLE</string>
     <string name="setup_single_out">SORTIE SIMPLE</string>
     <string name="setup_players_label">JOUEURS · ORDRE DE JEU</string>

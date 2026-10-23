@@ -14,6 +14,8 @@ import kotlin.random.Random
 internal fun editSetup(setup: SetupState, event: AppEvent, random: Random): SetupState = when (event) {
     is AppEvent.StartScoreSelected -> setup.withStartScore(event.score)
     is AppEvent.CheckoutRuleSelected -> setup.withCheckoutRule(event.rule)
+    is AppEvent.CricketVariantSelected -> setup.withCricketVariant(event.variant)
+    is AppEvent.BullInPlayToggled -> setup.withBullInPlay(event.isInPlay)
     is AppEvent.NameChanged -> setup.withName(event.index, event.name)
     AppEvent.PlayerAdded -> setup.withPlayerAdded()
     is AppEvent.PlayerRemoved -> setup.withPlayerRemoved(event.index)
@@ -24,12 +26,9 @@ internal fun editSetup(setup: SetupState, event: AppEvent, random: Random): Setu
     else -> setup
 }
 
-/**
- * The setup screen of [mode], prefilled with the last setup (R7, R13, R22). The Cricket settings and its start come
- * with docs/plans/40-cricket-mode.md, T10: until then, the setup of either mode is prefilled from the X01 settings.
- */
+/** The setup screen of [mode], prefilled with the last setup of that mode (R7, R13, R22, CR21). */
 internal fun AppState.toSetup(mode: GameMode): AppState =
-    copy(screen = Screen.Setup(SetupState.prefilled(lastSetup?.x01Setup).copy(mode = mode)))
+    copy(screen = Screen.Setup(SetupState.prefilled(lastSetup, mode)))
 
 /**
  * A new match from Start or Rematch: its roster and X01 settings become the last setup, and the settings of the other

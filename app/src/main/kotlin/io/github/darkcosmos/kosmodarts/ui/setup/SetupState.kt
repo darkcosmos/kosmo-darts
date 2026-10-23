@@ -1,13 +1,19 @@
 package io.github.darkcosmos.kosmodarts.ui.setup
 
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatchConfig
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
+import io.github.darkcosmos.kosmodarts.engine.cricket.InvalidCricketConfigException
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerListError
 import io.github.darkcosmos.kosmodarts.engine.player.Roster
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.InvalidX01ConfigException
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01ConfigError
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
+import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import kotlin.random.Random
 
@@ -21,8 +27,10 @@ import kotlin.random.Random
  * @property screenErrors errors of the last [start] attempt that are not about a name.
  * @property legsPerSet legs a player must win to win a set, from [MatchFormat.MIN] to [MatchFormat.MAX] (M13).
  * @property sets sets a player must win to win the match, from [MatchFormat.MIN] to [MatchFormat.MAX] (M13).
- * @property mode the mode of the "New game" that opened the setup (CR20). Only X01 can be started yet: the Cricket
- *   settings and start come with docs/plans/40-cricket-mode.md, T10.
+ * @property mode the mode of the "New game" that opened the setup (CR20): it decides the settings shown and the config
+ *   [start] returns. The start score and the checkout rule are X01 settings.
+ * @property cricketVariant Standard or Cut-throat (CR21), a Cricket setting.
+ * @property isBullInPlay whether the Bull is a target (CR21, "25-Bull"), a Cricket setting.
  */
 data class SetupState(
     val startScore: Int = X01Config.DEFAULT_START_SCORE,
@@ -33,6 +41,8 @@ data class SetupState(
     val legsPerSet: Int = MatchFormat.MIN,
     val sets: Int = MatchFormat.MIN,
     val mode: GameMode = GameMode.X01,
+    val cricketVariant: CricketVariant = CricketVariant.STANDARD,
+    val isBullInPlay: Boolean = true,
 ) {
     /** [names] with the color slots of their positions (PC5), for a setup typed in one go. */
     constructor(
@@ -110,16 +120,36 @@ data class SetupState(
     /** PC4: shuffles the throwing order with [random], injected so that tests are deterministic. */
     fun shuffled(random: Random): SetupState = edited(copy(roster = roster.shuffled(random)))
 
-    /** Validates the setup with the engine rules (rules C5, M1); the slots go with the names (PC5). */
+    /** CR21: Standard or Cut-throat. */
+    fun withCricketVariant(value: CricketVariant): SetupState = edited(copy(cricketVariant = value))
+
+    /** CR21: whether the Bull is a target. */
+    fun withBullInPlay(value: Boolean): SetupState = edited(copy(isBullInPlay = value))
+
+    /**
+     * Validates the setup of its [mode] with the engine rules (rules C5, M1, CR1); the slots go with the names (PC5).
+     */
     fun start(): SetupResult = try {
-        val config = X01Config(roster.names, startScore, checkoutRule)
-        SetupResult.Valid(X01MatchConfig(config, MatchFormat(legsPerSet, sets), roster.slots))
+        val format = MatchFormat(legsPerSet, sets)
+        when (mode) {
+            GameMode.X01 ->
+                SetupResult.Valid(X01MatchConfig(X01Config(roster.names, startScore, checkoutRule), format, roster.slots))
+            GameMode.CRICKET -> SetupResult.ValidCricket(
+                CricketMatchConfig(CricketConfig(roster.names, cricketVariant, isBullInPlay), format, roster.slots),
+            )
+        }
     } catch (e: InvalidX01ConfigException) {
-        val byField = e.violations
-            .flatMap { violation -> violation.playerIndices.map { it to violation.error } }
+        invalid(e.violations.map { it.error to it.playerIndices })
+    } catch (e: InvalidCricketConfigException) {
+        invalid(e.violations.map { it.error.toX01ConfigError() to it.playerIndices })
+    }
+
+    private fun invalid(errors: List<Pair<X01ConfigError, List<Int>>>): SetupResult.Invalid {
+        val byField = errors
+            .flatMap { (error, indices) -> indices.map { it to error } }
             .groupBy(keySelector = { it.first }, valueTransform = { it.second })
-        val screenLevel = e.violations.filter { it.playerIndices.isEmpty() }.map { it.error }
-        SetupResult.Invalid(copy(nameErrors = byField, screenErrors = screenLevel))
+        val screenLevel = errors.filter { it.second.isEmpty() }.map { it.first }
+        return SetupResult.Invalid(copy(nameErrors = byField, screenErrors = screenLevel))
     }
 
     private fun edited(state: SetupState): SetupState =
@@ -144,13 +174,47 @@ data class SetupState(
                 )
             }
             ?: SetupState()
+
+        /**
+         * The setup of [mode] prefilled with [lastSetups]: the shared roster with the last settings of that mode, or
+         * the defaults of that mode (rules R7, R13, R22, CR21).
+         */
+        fun prefilled(lastSetups: LastSetups?, mode: GameMode): SetupState = when (mode) {
+            GameMode.X01 -> prefilled(lastSetups?.x01Setup).copy(mode = mode)
+            GameMode.CRICKET -> lastSetups
+                ?.cricketSetup
+                ?.let {
+                    SetupState(
+                        roster = Roster.of(it.config.players, it.colorSlots),
+                        legsPerSet = it.format.legsPerSet,
+                        sets = it.format.sets,
+                        mode = mode,
+                        cricketVariant = it.config.variant,
+                        isBullInPlay = it.config.isBullInPlay,
+                    )
+                }
+                ?: SetupState(mode = mode)
+        }
     }
 }
 
 /** Outcome of [SetupState.start]. */
 sealed interface SetupResult {
+    /** A valid X01 setup. */
     data class Valid(val config: X01MatchConfig) : SetupResult
+
+    /** A valid Cricket setup (CR21). */
+    data class ValidCricket(val config: CricketMatchConfig) : SetupResult
 
     /** [setup] carries the errors to show. */
     data class Invalid(val setup: SetupState) : SetupResult
+}
+
+/** The setup error of a player list rule (rules C5, CR1: both modes share the list rules). */
+private fun PlayerListError.toX01ConfigError(): X01ConfigError = when (this) {
+    PlayerListError.NO_PLAYERS -> X01ConfigError.NO_PLAYERS
+    PlayerListError.TOO_MANY_PLAYERS -> X01ConfigError.TOO_MANY_PLAYERS
+    PlayerListError.BLANK_NAME -> X01ConfigError.BLANK_NAME
+    PlayerListError.NAME_TOO_LONG -> X01ConfigError.NAME_TOO_LONG
+    PlayerListError.DUPLICATE_NAME -> X01ConfigError.DUPLICATE_NAME
 }
