@@ -8,7 +8,10 @@ enum class TileVariant {
     /** Portrait, 3 per line (4 players): name, then score and box, then the match line. */
     NARROW,
 
-    /** Landscape, 2 and 3 players: everything on one line. */
+    /**
+     * Landscape, 2 and 3 players: laid out as [COMPACT_TWO_LINES] (U19: on one line the name lost its characters), with
+     * the larger tile score.
+     */
     COMPACT,
 
     /**
@@ -105,7 +108,7 @@ object GameLayoutPolicy {
     const val LANDSCAPE_ROUTE_SHARE = 0.6f
 
     /** Landscape tiles: vertical padding, lower than the portrait one, so the tiles fit a phone's height. */
-    const val TILE_PADDING_LANDSCAPE_VERTICAL = 6f
+    const val TILE_PADDING_LANDSCAPE_VERTICAL = 4f
 
     /** Share of the width the left column may take in landscape when the screen is narrower than the mockup. */
     private const val LEFT_COLUMN_MAX_SHARE = 0.55f
@@ -269,8 +272,8 @@ object GameLayoutPolicy {
             TileVariant.WIDE -> maxOf(name, matchLine) + TILE_SCORE_LINE
             // The names of these two variants may take two lines at large text sizes (U3, T8).
             TileVariant.NARROW -> name * labelLines(space) + TILE_SCORE_LINE + matchLine
-            TileVariant.COMPACT -> maxOf(name, TILE_SCORE_LINE)
-            TileVariant.COMPACT_TWO_LINES -> maxOf(name * labelLines(space), matchLine) + TILE_SCORE_LINE
+            TileVariant.COMPACT, TileVariant.COMPACT_TWO_LINES ->
+                maxOf(name * labelLines(space), matchLine) + TILE_SCORE_LINE
         }
         return when (variant) {
             // The strip stands at the start of a landscape tile, so it adds no height.

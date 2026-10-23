@@ -128,19 +128,13 @@ private fun TileBody(content: TileContent, variant: TileVariant, modifier: Modif
             ScoreLine(score, box)
             matchLine()
         }
-        TileVariant.COMPACT -> Row(
-            modifier = modifier,
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        TileVariant.COMPACT, TileVariant.COMPACT_TWO_LINES -> Column(
+            modifier,
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            name(Modifier.weight(1f), 1)
-            matchLine()
-            box()
-            score()
-        }
-        TileVariant.COMPACT_TWO_LINES -> Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            // U3: the name on two lines at most, so at least 8 characters show before "…"; the match line beside it
-            // keeps the tile on two lines (owner review of PR #57: lower tiles in landscape).
+            // U3, U19: the name on two lines at most, so at least 8 characters show before "…", never sharing its
+            // line with the score and the box; the match line beside it keeps the tile on two lines (owner review of
+            // PR #57: lower tiles in landscape).
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 name(Modifier.weight(1f), TWO_LINE_NAME_MAX_LINES)
                 matchLine()

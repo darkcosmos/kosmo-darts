@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
@@ -50,6 +51,8 @@ class ZoneLayoutTest {
     }
 
     private fun px(dp: Float): Float = with(composeRule.density) { dp.dp.toPx() }
+
+    private fun effectiveScale(): Float = with(composeRule.density) { 24.sp.toDp().value } / 24f
 
     /** Bounds as drawn, clipped by a scrolling column: a node partly below the fold is shorter than its layout. */
     private fun visible(tag: String): Rect =
@@ -111,11 +114,46 @@ class ZoneLayoutTest {
     @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
     fun `M6 landscape 800 x 360, 2 players in a match, tiles whole`() = checkLandscapeFit(2)
 
+    // U3: in landscape, at 2 and 3 players too, a long name keeps at least 8 characters before "…", tiles whole.
+
+    private fun checkLongNames(playerCount: Int) {
+        send(*startMatch(*LONG_NAMES.take(playerCount).toTypedArray()))
+        (1 until playerCount).forEach { player ->
+            val name = textLayout(GameTags.playerName(player))
+            val shown = name.getLineEnd(name.lineCount - 1, visibleEnd = true)
+            assertTrue("name $player shows $shown characters", shown >= MIN_NAME_CHARACTERS)
+            assertWhole(GameTags.tile(player))
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    fun `U3 landscape 800 x 360, 2 players, 8 name characters`() = checkLongNames(2)
+
+    @Test
+    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    fun `U3 landscape 800 x 360, 3 players, 8 name characters`() = checkLongNames(3)
+
+    @Test
+    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")
+    fun `U3 landscape 915 x 412, 2 players, 8 name characters`() = checkLongNames(2)
+
+    @Test
+    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")
+    fun `U3 landscape 915 x 412, 3 players, 8 name characters`() = checkLongNames(3)
+
     // CS7, CS8: the route on one line in landscape, clear of the score and the dart slots.
 
     @Test
     @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
-    fun `CS7 landscape route on one line, clear of the score and the darts`() {
+    fun `CS7 landscape route on one line, clear of the score and the darts`() = checkOneLineRoute(1f)
+
+    @Test
+    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi", fontScale = LARGEST_FONT_SCALE)
+    fun `CS7 landscape route on one line at the largest font size`() = checkOneLineRoute(LARGEST_EFFECTIVE)
+
+    private fun checkOneLineRoute(expectedScale: Float) {
+        assertEquals("effective text scale", expectedScale, effectiveScale(), SCALE_TOLERANCE)
         send(*startMatch(*NAMES.toTypedArray()), *ANN_AT_121)
         val darts = visible(GameTags.CHECKOUT_SUGGESTION)
         val label = visible(GameTags.CHECKOUT_ROUTE_LABEL)
@@ -174,7 +212,14 @@ class ZoneLayoutTest {
 
     @Test
     @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
-    fun `M15 landscape CHECKOUT banner centred and wide, clear of the other parts`() {
+    fun `M15 landscape CHECKOUT banner centred and wide, clear of the other parts`() = checkLandscapeBanner(1f)
+
+    @Test
+    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi", fontScale = LARGEST_FONT_SCALE)
+    fun `M15 landscape CHECKOUT banner at the largest font size`() = checkLandscapeBanner(LARGEST_EFFECTIVE)
+
+    private fun checkLandscapeBanner(expectedScale: Float) {
+        assertEquals("effective text scale", expectedScale, effectiveScale(), SCALE_TOLERANCE)
         send(
             *startMatch(*NAMES.toTypedArray()), *ANN_AT_121, *triple(20), *triple(11),
             AppEvent.MultiplierTapped(Multiplier.DOUBLE), AppEvent.NumberTapped(14),
@@ -202,6 +247,14 @@ class ZoneLayoutTest {
 
     private companion object {
         const val EPSILON = 1f
+        const val LARGEST_FONT_SCALE = 2.0f
+
+        /** The effective scale of a 24 sp text at the largest font size (non-linear scaling, see GameScreenFitTest). */
+        const val LARGEST_EFFECTIVE = 1.5f
+        const val SCALE_TOLERANCE = 0.01f
+        const val MIN_NAME_CHARACTERS = 8
+        val LONG_NAMES =
+            listOf("Maximilien-Alexandre", "Bartholomew Jonathan", "Anne-Charlotte Marie", "Jean-Baptiste Pierre")
         const val BAR_PADDING_DP = 8f
         const val ZONE_PADDING_DP = 12f
         const val INNER_GAP_DP = 8f

@@ -95,11 +95,12 @@ class GameLayoutPolicyTest {
     }
 
     /**
-     * U10: while a checkout waits the zone needs no score and no route, so its least height is lower, and nothing else
-     * changes (the keypad keeps its size when the banner appears).
+     * U10: while a checkout waits the zone needs no score and no route, so its least height never rises: it is lower,
+     * except in landscape at large text sizes where it equals the one-line route zone (owner review of PR #57); nothing
+     * else changes (the keypad keeps its size when the banner appears).
      */
     @Test
-    fun `a waiting checkout lowers only the zone minimum`() {
+    fun `a waiting checkout never raises the zone minimum and changes nothing else`() {
         listOf(PIXEL7_WIDTH to PIXEL7_HEIGHT, PIXEL7_HEIGHT to PIXEL7_WIDTH, 360f to 640f).forEach { (width, height) ->
             listOf(1f, 1.5f).forEach { scale ->
                 val normal = GameLayoutPolicy.of(GameSpace(width, height, scale, 4, isMatch = true))

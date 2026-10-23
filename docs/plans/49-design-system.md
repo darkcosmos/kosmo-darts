@@ -567,8 +567,9 @@ Deviations from the plan, to review:
    - The fitted score keeps one pixel of the area free (rounding of the measured line, seen on VT11 landscape).
 
 12. Owner review of PR #57 (Pixel 7, landscape inside its bars about 800 × 360 dp; tested at that size):
-   - Landscape tiles: at 4 players the match line moved beside the name (two lines in all), landscape tiles have a 6 dp
-     vertical padding (`GameLayoutPolicy.TILE_PADDING_LANDSCAPE_VERTICAL`); the policy's tile estimate now counts the
+   - Landscape tiles: at 4 players the match line moved beside the name (two lines in all); code review U19: the 2 and
+     3 player tile (`COMPACT`) takes the same two lines (its name was cut to one letter at 800 dp); landscape tiles
+     have a 4 dp vertical padding (6 made the Pixel 7 landscape frame reach step 1) (`GameLayoutPolicy.TILE_PADDING_LANDSCAPE_VERTICAL`); the policy's tile estimate now counts the
      match line (it was missing, so the left column scrolled and cut the tiles).
    - Landscape route: one line right of the score (`RouteArea(isSingleLine)`; darts shrink with `TextAutoSize`), on
      `LANDSCAPE_ROUTE_SHARE` (60 %) of the zone width, the score fitted to the rest; the reserved height is one line,
