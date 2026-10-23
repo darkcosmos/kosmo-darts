@@ -139,6 +139,10 @@ Vocabulary:
   summary says the mode (CR20).
 - R21. Resuming a Cricket game restores everything R4, R14, R15 and R19 restore for X01, with the CR25 zone for a
   pending win.
+- R22. The last setup keeps the shared roster (names, order, colors) and, per mode, its format and options (X01:
+  start score and checkout rule; Cricket: variant and 25-Bull; owner Q9). "Start" and "Rematch" write the roster and
+  the settings of their mode, and keep the settings of the other mode. A mode never started since the file was
+  written uses its defaults, with the shared roster.
 - R23. Format version 4 adds the mode line, and every write uses it. A file is rejected (the R9 message, file
   deleted; for the last setup, R10, ignored silently) when:
   - its version 4 mode line is missing or has an unknown value;
@@ -163,5 +167,3 @@ Vocabulary:
   score. A file that would be over the size limit of R9 is not written either (ADR 0008, "Size limit").
 - R25. A version 1 to 3 saved game or last setup is read as X01 (R16, R18), without any message. Cricket then uses its
   defaults, with the shared roster.
-
-R22 (the last setup per mode) is added with the per-mode last setup.

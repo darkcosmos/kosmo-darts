@@ -1120,3 +1120,17 @@ notes are applied:
   `version = VERSION_3`) until T6 gives it its v4 per-mode layout; `InitialState` sends a valid saved Cricket game to
   a plain Home (kept, not resumable) until T7 and T10 add its screens. Started by `developer-build-T5`, finished by
   `developer-build-T5-2`.
+- T6: `persistence/LastSetups.kt` (`SharedRoster` (validated names and slots; named so to avoid `ui/setup/Roster`),
+  `X01Settings`, `CricketSettings` (variant, bull, format), `LastSetups` with `x01Setup` and `cricketSetup` (roster +
+  settings or the mode defaults), `withX01`/`withCricket`, `afterX01`/`afterCricket` for T10); `LastSetupCodec`
+  writes version 4 (sections `mode=x01` then `mode=cricket`, at least one, then `players`/`player`/`colors`; layout
+  in ADR 0008 "Last setup file"), reads v1 to v3 as X01 with `cricket = null`; `BodyReader.isNext` (optional
+  sections); `SaveBody`/`CricketSaveBody` helpers made `internal` for reuse; `LoadResult.lastSetup`,
+  `Persistence.saveLastSetup`, `PersistenceEffect.SaveLastSetup(setups)`; R22 in `persistence.md`. Tests: new cases
+  in `LastSetupCodecTest` (v4 frozen lines, Cricket round trips, R23 mode-line rejections, CRC, R24 tokens and
+  names), `PersistenceEffectsTest` (X01 Start keeps the Cricket settings), `InitialStateTest` (no X01 section gives
+  the X01 defaults with the roster); `toLastSetups()` test helper in `SaveFixtures.kt`. Deviations:
+  `AppState.lastSetup` is `LastSetups?` (`null` before any start, as before); `AppReducer` and `SaveLoader` changed
+  too (`newMatchState(setup, previous)`, `prefilled(lastSetup?.x01Setup)`, loader type); test call sites of 10 other
+  test files adapted mechanically. The roster names are checked through `IllegalArgumentException`, which covers
+  both config exceptions.
