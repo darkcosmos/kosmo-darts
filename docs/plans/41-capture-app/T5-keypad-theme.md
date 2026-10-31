@@ -32,3 +32,10 @@ Engine rule D2 (no triple bull, no double outer bull) as already enforced by the
 sonnet. Why: copy with small adaptations (event type, resources).
 
 ## Implementation notes
+- Theme in `capture/ui/theme/` (player colors and animation settings dropped); keypad in `capture/ui/keypad/`
+  (`Keypad`, `KeypadKeys`, `KeypadTags`, copied `WordSafeText`); font `res/font/saira_variable.ttf`; strings en/fr.
+- Deviation: no `AppEvent`. `Keypad(isEnabled, onDart: (Dart) -> Unit, keyHeight, gap)` holds the Double/Triple
+  modifier itself (rememberSaveable); the pure logic is `KeypadState`/`KeypadTap` (`KeypadState.kt`), JVM-tested.
+  T6 passes `keyHeight = 42.dp` in landscape and `isEnabled` from the UI state.
+- UI tests replace the placeholder activity content with `activity.setContent` (the rule's setContent refuses).
+  Screenshots land in `capture/build/outputs/roborazzi/keypad_*.png`.

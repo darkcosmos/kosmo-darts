@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Kosmo Capture</string>
+    <string name="dart_single" translatable="false">%1$d</string>
+    <string name="dart_outer_bull" translatable="false">25</string>
+    <string name="dart_bull">BULL</string>
+    <string name="dart_miss">MISS</string>
+    <string name="key_double">DOUBLE</string>
+    <string name="key_triple">TRIPLE</string>
+    <string name="key_selected_mark" translatable="false">✓</string>
 </resources>
