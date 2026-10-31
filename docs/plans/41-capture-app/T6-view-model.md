@@ -41,3 +41,17 @@ Test names or comments cite the CP id.
 sonnet. Why: state holder with JVM tests, behavior fully specified.
 
 ## Implementation notes
+- Package `capture.ui`: `CaptureViewModel(clock, storage, settings, effects, setupProvider)` extends `androidx.lifecycle.ViewModel`
+  (T8 builds it with a factory), exposes `state: StateFlow<CaptureUiState>`; no coroutines inside, all calls on the
+  main thread. `CaptureEffects` has `startVideo(volley, target)`, `stopVideo(volley)`, `takePhoto(dart, target)`
+  (targets from `CaptureStorage`, folder already right).
+- T8 reports back with `onPermission`, `onCameraReady`, `onVideoStarted(volley)`, `onVideoFinalized(volley)` (must be
+  called for every stopped video, also after a failure: Saving ends only then), `onPhotoSaved/onPhotoFailed(number)`,
+  `onCameraError()`, `onScreenStopped(changingConfigurations)`. `setupProvider` gives the actual resolutions at Start.
+- UI events: `onStart`, `onDart(dart, gravity)`, `onUndo`, `onNextVolley`, `onStopRequested/Cancelled/Confirmed`,
+  `onDeleteAllRequested/Cancelled/Confirmed`, `onQuality`, `onErrorDismissed`, `onPhotoMessageShown` (clears
+  `photoFailure`, the dart number, after the snackbar).
+- Deviations: Delete all and quality are also disabled while saving. `CaptureError` (START, TRUTH_WRITE, CAMERA,
+  DELETE_ALL) puts the phase in ERROR once nothing is left to finalize; Start works again and clears it. A failed
+  `createTruthFile` at Start leaves no session. The readout shows volley 1 and empty slots outside a running session.
+- `DartLabel.Text("T20")`, `Bull` and `Miss` (the last two need string resources in T7/T8). Test: `CaptureViewModelTest`.
