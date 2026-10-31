@@ -40,3 +40,18 @@ to Q9, Q15, D2, D3, D7 of the root plan. `DARTS_PER_VOLLEY = 3` is a named const
 sonnet. Why: rules fully specified with their tests.
 
 ## Implementation notes
+- Package `capture.session`. `CaptureSession(truth: TruthSession?, videoStartNanos: Map<Int, Long>)` is immutable;
+  every function takes a `CaptureClock` and returns `CaptureOutcome(session, effects, refusal)`: `start(clock, setup,
+  existingFolders)`, `videoStarted(clock, volley)`, `dart(clock, dart, gravity)`, `photoSaved(clock, number)`,
+  `photoFailed(number)`, `undo`, `nextVolley`, `stop`, `interrupt`. Properties `running`, `volleyFull`,
+  `currentVolleyDarts`. Effects: `StartVideo(volley, file)`, `StopVideo(volley)`, `TakePhoto(dart, file)`.
+  Refusals: `NO_SESSION`, `ALREADY_RUNNING`, `VOLLEY_FULL`, `NOTHING_TO_UNDO` (state unchanged).
+- `CaptureSetup` (app, device, video, photo settings) is given at Start; T8 must pass the actual resolutions then.
+- Video positions use `videoStartNanos` per volley: T8 calls `videoStarted(clock, volley)` on the CameraX Start event.
+  A photo saved late is placed in the video of its own dart's volley. Stop/Interrupt/NextVolley end stamps carry the
+  position of the ended volley; the session end and volley start have none.
+- `photoFailed` changes no state (the photo is already null) and sets `CaptureOutcome.failedPhoto` for the message.
+- `CaptureCounters(session, total)`: `forNewSession()` then `after(truth)` moves the total by the change of the session
+  counter; `cleared()` for Delete all. Persisting the total is for the storage task.
+- `DARTS_PER_VOLLEY = 3` is a top-level public constant. Tests: `CaptureSessionTest`, `CaptureNamingTest`,
+  `CaptureCountersTest`, `FakeClock`. Padding 999/1000 is tested on `CaptureNaming`.
