@@ -177,7 +177,7 @@ the longest label of each language ("VALIDER LA PARTIE", "CONFIRM MATCH") pendin
 
 Landscape (Kosmo, Q1): the same board as in portrait (targets in rows, the buttons at the end of each row, on the
 right of the player cells, not turned), everything visible at once with no scrolling, the fonts may be slightly
-reduced. Layout (written for Q10 A, see Open questions; Q10 B only swaps the two columns of the screen):
+reduced. Layout (Kosmo, Q10 A: the board on the left, the zone and the action bar on the right):
 - top band, one height for both columns: on the left the `MatchHeader` ("CRICKET · STANDARD", M14 position) over the
   board's pinned column header (color strip, name, and the total in large type under the name); on the right the
   current player's zone, limited to the height of that band (Kosmo's suggestion);
@@ -400,8 +400,8 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
 - Files: `docs/rules/cricket.md`, `ui/cricket/CricketGameScreenState.kt`, `ui/app/AppState.kt`,
   `ui/app/CricketReducer.kt`, `res/values/strings.xml`, `res/values-fr/strings.xml`, `CricketGameScreenStateTest`,
   `CricketReducerTest`.
-- Depends on: approval of this addendum (Q7 and Q9 answered). Not on Q10: the order of the two landscape screen
-  columns is written into CR22 by R4.
+- Depends on: approval of this addendum (Q1 to Q7, Q9 and Q10 answered). CR22 is written in full here, landscape
+  included (Q10 A).
 - Done when: `./gradlew :app:testDebugUnitTest` and `./gradlew build` green; `kosmo-detekt` exits 0.
 - Model: sonnet
 - Why this model: a state holder extension and its JVM tests following the existing reducer pattern.
@@ -415,7 +415,7 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
   the top band (one height for the single-line zone and for the title plus the column header with totals), the
   fixed landscape text sizes, the dart cells at their minimum, the row height that shows every row without scrolling
   (32 dp floor) and the right column (at least 204 dp, with room under the zone for a two-line action bar at scale
-  2.0). The widths are the same for Q10 A and B (only the screen order differs, in R4). With
+  2.0) on the right of the board (Q10 A). With
   `CricketLayoutPolicyTest` rewritten (old cases about the label column and keypad rows removed only where the
   contract they prove is removed; each new case cites CR22).
 - Files: `ui/cricket/CricketLayoutPolicy.kt`, `CricketLayoutPolicyTest`.
@@ -448,15 +448,14 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
 
 ### R4 - Landscape screen
 
-- Goal: the landscape layout of section 4 (Kosmo, Q1), in the screen column order answered in Q10 (A: board on the
-  left, zone and action bar on the right; B: the reverse): the same board as portrait, not turned (player columns
+- Goal: the landscape layout of section 4 (Kosmo, Q1), with the board on the left and the zone and action bar on
+  the right (Kosmo, Q10 A): the same board as portrait, not turned (player columns
   then the button column, "RATÉ" alone at the top of the buttons), with no scrolling; the top band with the
   `MatchHeader` (and the S/M chips) over the column header with the totals, and beside it the single-line zone (name,
   MPR, minimal dart cells) of the same height; the existing action bar ("ANNULER" + "JOUEUR SUIVANT", scaled labels
-  on up to two lines) pinned at the bottom of the zone column; the fixed landscape text sizes; the landscape
-  paragraph of CR22 in `docs/rules/cricket.md` with the Q10 order; the system bars hidden while the Cricket game screen is shown
-  in landscape and restored when it leaves or turns to portrait (Q5 B, through the platform `Window.insetsController`,
-  available from API 30 = `minSdk`, no new dependency; the hide-or-show decision is a pure `SystemBarsPolicy`,
+  on up to two lines) pinned at the bottom of the zone column; the fixed landscape text sizes; the system bars
+  hidden while the Cricket game screen is shown in landscape and restored when it leaves or turns to portrait (Q5 B,
+  through the platform `Window.insetsController`, available from API 30 = `minSdk`, no new dependency; the hide-or-show decision is a pure `SystemBarsPolicy`,
   tested on the JVM); its Robolectric cases at 640 x 360 and 412 x 412, scale 1.0 and 2.0 (no scroll container,
   one-line zone, band heights equal, nothing clipped, buttons at least 48 dp wide and 32 dp tall, buttons on the right
   of the player cells, the action bar labels with "JOUEUR SUIVANT" and "VALIDER LA PARTIE" / "CONFIRM MATCH" not
@@ -465,7 +464,7 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
 - Files: `ui/cricket/CricketGameScreen.kt`, `CricketBoard.kt`, `CricketPlayerZone.kt` (single-line variant, the
   shared `DartSlots` unchanged so X01 is untouched), `ui/cricket/SystemBarsPolicy.kt` (new), `docs/rules/cricket.md`,
   `docs/design/design-system.md`, `SystemBarsPolicyTest` (new), `CricketScreenTest`, `CricketScreenshotTest`.
-- Depends on: R3, and Kosmo's answer to Q10.
+- Depends on: R3.
 - Done when: same checks as R3.
 - Model: sonnet
 - Why this model: it reuses the portrait board and the policy of R2, where the hard arithmetic is; the system bars
@@ -547,6 +546,10 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
 - Kosmo, Q9 B: the undo button stays in the bottom bar, as today ("ANNULER" then "JOUEUR SUIVANT" or the confirm
   label, the existing `ActionBar` unchanged); "RATÉ" stays alone at the top of the button column, over its whole
   width. The first proposal (undo next to "RATÉ", bar with "JOUEUR SUIVANT" only) is dropped; no undo icon is added.
+- Kosmo, Q10 A: in landscape the zone column stays on the right of the screen, as planned: the zone at the top
+  right, "ANNULER" / "JOUEUR SUIVANT" at the bottom right; the board (player columns, then the buttons) on the left,
+  so the target buttons sit in the middle of the screen. Applied in section 4 and tasks R1, R2 and R4; the mirrored
+  layout (zone column on the left) is dropped.
 - Developer, pending design review: the totals at the top of each column header, as the largest text of the board,
   in both orientations (no points row), because landscape has no room for a points row (not copied from the
   reference).
@@ -566,17 +569,7 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
 
 Product questions for Kosmo (in French, for main to relay):
 
-Q1 to Q7 and Q9: answered by Kosmo (see Decisions). Q8 was withdrawn.
-
-Raised by Q7 B (only task R4 waits for it; R1 to R3 can start; the answer only swaps the two columns of the
-landscape screen, the widths and heights stay the same):
-- Q10. En paysage, les boutons sont à droite des colonnes des joueurs (Q7). Mais l'écran paysage a aussi une
-  colonne avec ta zone (nom, MPR, fléchettes) et les boutons « ANNULER » / « JOUEUR SUIVANT ». Où la mettre ?
-  - A : à droite de l'écran, comme prévu jusqu'ici (zone en haut à droite, « ANNULER » / « JOUEUR SUIVANT » en bas
-    à droite). Les boutons des cibles se retrouvent alors au milieu de l'écran, juste à côté de « JOUEUR SUIVANT »
-    (proposition actuelle) ;
-  - B : à gauche de l'écran (zone en haut à gauche, « ANNULER » / « JOUEUR SUIVANT » en bas à gauche). Les boutons
-    des cibles sont alors tout au bord droit de l'écran, comme en portrait, mais « JOUEUR SUIVANT » passe à gauche.
+None. Q1 to Q7, Q9 and Q10 are answered by Kosmo (see Decisions); Q8 was withdrawn.
 
 ## Risks
 
