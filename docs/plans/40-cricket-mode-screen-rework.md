@@ -954,3 +954,18 @@ None. Q1 to Q7, Q9, Q10 and Q11 are answered by Kosmo (see Decisions); Q8 was wi
   `CricketTags.TITLE`; `Header`, `Zone`, `Board`, `Actions` are now `internal`. `CricketLayoutPolicy` and its test
   deleted. Captures: `board_*_landscape_fr` at 914 x 411, new `buttons_landscape_fr`, `win_pending_4p_landscape_fr`,
   `title_chips_4p_landscape_fr`. X01 captures `cmp`-identical.
+- R4b: no budget failed with a real 48 dp cutout inset (left or right, scales 1.0 and 2.0, 1 to 4 players, 6 and 7
+  rows, with and without the pending win: rows at least 48 dp, right column at least 340 dp, no node under the
+  cutout). Pieces: `ui/cricket/SystemBarsPolicy.kt` (`SystemBarsPolicy.decide`, `SystemBarsDecision` whose `padding`
+  is derived from `isHidden` so "hide" cannot come without `CUTOUT_ONLY`, `SystemBarsController`,
+  `WindowSystemBarsController` on `View.windowInsetsController`, `LocalSystemBarsController` (null in production,
+  the fake in tests) and the `SystemBarsEffect` `DisposableEffect`). `CricketGameScreen` decides from the unpadded
+  constraints (landscape when wider than tall), then pads `WindowInsets.displayCutout` (landscape) or `safeDrawing`
+  (portrait); `LandscapeGame` gets the space inside the padding plus `cutoutInsetDp` (left plus right) and gives the
+  policy the whole width, so the cutout is not counted twice. Deviation: the 866 dp qualifier cases are replaced by
+  914 dp cases with a 48 dp `displayCutout` dispatched to the view (`CricketLandscapeScreenTest`, plus the transient
+  bars case: status 24 dp and navigation 48 dp shown, no bound moves). Exit paths through `KosmoDartsApp` with a fake
+  controller in the new `CricketSystemBarsTest` (portrait, between legs, end, abandon then home, view removed); the
+  window controller's swipe behavior is checked there under Robolectric (the actual hiding only on the phone, step 10).
+  CR22 already had the text (R1); design system 6.5 got the sentence. No capture changed; X01 captures
+  `cmp`-identical.
