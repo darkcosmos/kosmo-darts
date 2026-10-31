@@ -13,9 +13,50 @@ Answer Kosmo's three comments on PR #60 (issue #40):
    double, triple) aligned with the target's row of the board, in portrait and in landscape. The board's first column
    (the target labels) is removed, since the buttons carry the target.
 
-The dartsmind screenshot given by Kosmo could not be viewed: its download is redirected to
-`github-production-user-asset-*.s3.amazonaws.com`, which is outside the sandbox allowlist (connection refused). Nothing
-in this plan is taken from it; the layout below is built only from Kosmo's words and answers.
+## Reference: the Dartsmind screen given by Kosmo
+
+Kosmo gave a Dartsmind Cricket screenshot (portrait, 3 players) as inspiration; it was added to the branch as a
+temporary file and is deleted by task R7, so no file of the repository points to it. What it shows:
+- the player columns on the left, the buttons on the right, about 40 % of the width;
+- each column header: the total, very large (the biggest text of the screen), the name under it, then "MPR: 0.0" on a
+  dark band; the current player's header has a red background and a small pointer; the others are grey;
+- a top strip with the three darts of the visit (dart icons), and no other player zone;
+- at the top of the button column, at the height of the headers: a wide "MISS" button and an undo button (arrow
+  icon);
+- one row per target, 20 to 15: three buttons all labeled with the number; the double has two dots under the number,
+  the triple three dots; the background goes from light (single) to darker gold (triple). The Bull row has two
+  buttons, "BULL" and "BULL" with two dots;
+- the button rows are the board rows: same top and bottom as the player cells, which are empty at the start;
+- at the bottom, "NEXT PLAYER" in a large gold button under the button column only; under the player columns, an
+  empty hatched area;
+- sizes, estimated from the image (1080 x 2134 px, about 411 x 813 dp if 2.625 px per dp): rows and buttons about
+  79 dp tall, buttons about 55 dp wide, the header block about 105 dp tall. With 3 players and no player zone, the rows
+  are much taller than our 48 dp floor.
+
+Kosmo's instruction: take from the reference only the organization of the buttons (aligned with the score rows) and
+its representation of the double and the triple. Everything else follows the answers Q1 to Q6 and the current design
+system (`docs/design/design-system.md`); no other visual choice is copied (colors, red header, gold gradient, hatched
+area, dart icons, fonts).
+
+Taken:
+- the button organization: one row of buttons per target, sharing the board row cell for cell (same top and bottom
+  as the player cells); three buttons for 20 to 15, two for the Bull; "RATÉ" and the undo button in the top cell of
+  the button column, at the height of the column headers (the undo place is confirmed with Q9);
+- the double/triple representation (Kosmo's clarification, replacing the "D20"/"T20" labels of the first version):
+  the three buttons all show the number; the double has two dots under it, the triple three dots; the single has
+  none. The Bull row follows the same representation: "BULL" (the 25, 1 mark) and "BULL" with two dots (the bull,
+  2 marks). Colors, fonts and key style are those of the design system's keys (the X01 keypad), not Dartsmind's
+  gradient. The dots carry the information, never a color alone; TalkBack reads « 20 », « Double 20 », « Triple 20 »,
+  « 25 », « Bull ».
+
+Difference with the first version of this plan: the labels were "20", "D20", "T20" and "25", "BULL"; they become
+the number with 0, 2 or 3 dots, and "BULL" with 0 or 2 dots. The dots are drawn (not characters), at a fixed size
+under the number, so they are not cut at large font scales.
+
+Not taken (Q1 to Q6 and the design system apply): no removal of our player zone (Q4 A); MPR only in the zone; the
+total in a red or grey header block; "NEXT PLAYER" under the button column only (ours stays the full-width
+`ActionBar`). The place of the totals (section 2) is not taken from the reference: it is a UX proposal of this plan.
+The side of the buttons differs (left in this plan, right in the reference): question Q7.
 
 ## Scope and out of scope
 
@@ -38,12 +79,20 @@ Out of scope:
 ### 1. Input: three buttons per target, inside the board
 
 Each target row starts with its own buttons, in the place of the removed label column:
-- rows 20 to 15: three buttons, single, double, triple. Labels: "20", "D20", "T20" (the single button also reads as
-  the row label). TalkBack: « 20 », « Double 20 », « Triple 20 » / "20", "Double 20", "Triple 20";
-- Bull row (only with 25-Bull on, CR1): two buttons sharing the width of the three: "25" (1 mark) and "BULL"
-  (2 marks). There is no triple bull on a dartboard, so no third button;
-- the footer row of the board starts with the "RATÉ" / "MISS" button, over the same width;
-- "ANNULER" (undo the last dart) stays in the action bar with "JOUEUR SUIVANT" (or the CR25 confirm label).
+- rows 20 to 15: three buttons, single, double, triple, each showing the number, with two drawn dots under it on the
+  double and three on the triple (Kosmo, from the reference); the single button also reads as the row label.
+  TalkBack: « 20 », « Double 20 », « Triple 20 » / "20", "Double 20", "Triple 20";
+- Bull row (only with 25-Bull on, CR1): two buttons sharing the width of the three: "BULL" (the 25, 1 mark) and
+  "BULL" with two dots (the bull, 2 marks); TalkBack « 25 » and « Bull ». There is no triple bull on a dartboard, so
+  no third button;
+- the top cell of the button column, at the height of the column headers (as in Dartsmind), holds "RATÉ" / "MISS"
+  (about two thirds of the width) and the undo button (an undo icon with the existing "ANNULER" text as its
+  TalkBack description, 48 dp wide at least);
+- the bottom action bar keeps only "JOUEUR SUIVANT" (or the CR25 confirm label), full width.
+
+The side of the buttons (left as proposed, or right as in the reference) and the place of the undo button are
+questions Q7 and Q9; the plan is written for the proposal above, and each answer only changes the order of the
+columns or the place of one button.
 
 One tap records one dart, there is no modifier state any more: `CricketGameScreenState.multiplier`,
 `toggleMultiplier`, the Cricket branch of `AppEvent.MultiplierTapped` and `CricketKeypad` are removed. A new
@@ -61,25 +110,24 @@ Alternatives considered:
 - the target buttons in a central column between players (classic chalkboard). Rejected: Kosmo asked to remove the
   *first* column, and with 3 or 4 players the columns would not be split evenly.
 
-### 2. Totals: a pinned footer row, large
+### 2. Totals: at the top of each column, the largest text of the board
 
-The total is removed from the zone (Kosmo comment 1). In the board, the points footer row:
-- is pinned at the bottom of the board (like the header is pinned at the top), so it never scrolls away;
-- is 48 dp tall (the height of the button rows, since it holds "RATÉ");
-- shows each total in `tileScore` (the large display style the zone used), in `onBackground`, centered in the
-  player's column, inside the current player's `accent` border;
-- picks its text size from the space: `CricketLayoutPolicy.totalTextSize(digits, columnWidth, labelScale)` returns
-  the largest of the sizes 28, 24, 20, 16, 14 sp whose line fits the column (digits x 0.6 em + 4 dp); a total is never
-  cut (CR22 rule kept);
-- in a solo game, shows no total: the "4/7" (closed targets) display is removed entirely (Kosmo, Q2); the footer
-  then holds only "RATÉ".
+The total is removed from the zone (Kosmo comment 1). In the board, each pinned column header shows, from top to bottom: the player's color strip (3 dp), the total, then the name (1 line,
+ellipsis). The total:
+- is the largest text of the board, in the display font, `onBackground`, centered, inside the current player's
+  `accent` border (with the "▶" kept before the current name);
+- picks its size from the space: `CricketLayoutPolicy.totalTextSize(digits, columnWidth, scale)` returns the largest
+  of 24, 20, 16, 14 sp in portrait (20, 16, 14 sp in landscape) whose line fits the column (digits x 0.6 em + 4 dp);
+  a total is never cut (CR22 rule kept);
+- is absent in a solo game: the "4/7" (closed targets) display is removed entirely (Kosmo, Q2); the solo header
+  shows only the strip and the name.
 
-In landscape the totals sit in the pinned column header instead, under each name (section 4), since a footer row does
-not fit there.
+There is no footer row any more. Same place in portrait and landscape.
 
-Alternatives for the UX review: (b) the total under the name in the pinned column header; (c) both. (a), the
-footer, is proposed because it keeps the column header small and puts the total next to "RATÉ", where the eye
-already is.
+Alternatives for the UX review: (b) a pinned footer row with the totals (the first version of this plan); (c) the
+total under the name. (a) is proposed: landscape has no room for a points row, so it gives one place in both
+orientations, it stays visible when the rows
+scroll at large font scales, and it is the same in both orientations.
 
 ### 3. Zone
 
@@ -95,14 +143,15 @@ Board columns: a button column then the player columns, which share the rest equ
   the player columns keep at least 76 dp each.
 - Rows: 48 dp at least (button floor), up to 56 dp; the text line of the 14 sp texts is still 22.5 dp x label scale,
   so a row is `max(48, 22.5 x scale + 2)`.
-- Column header: 3 dp strip + name line, as today; pinned. Footer: pinned, 48 dp at least.
-- Only the target rows scroll, between the pinned header and footer, when they do not fit at 48 dp.
+- Column header: 3 dp strip + total line (24 sp display font, about 38.5 dp) + name line (22.5 dp x label scale),
+  about 64 dp at scale 1.0; pinned. The button column's top cell ("RATÉ" and undo) has the same height, at least 48 dp.
+- Only the target rows scroll, under the pinned header, when they do not fit at 48 dp (portrait at large font scales).
 
 Portrait at 360 x 640 (about 568 dp usable), 4 players, 7 rows, scale 1.0, all at their minimums:
-top margin 4 + `MatchHeader` 24 + gap 4 + zone 68 + gap 4 + column header 25.5 + 7 rows x 48 (336) + footer 48 +
-gap 4 + action bar 48 + bottom margin 0 = 565.5 dp, which fits in 568 without scrolling (2.5 dp spare). Width: 360 -
-2 x 12 = 336 dp, so 336 - 144 = 192 dp, 48 dp per player column. With 2 players: 96 dp each; 3 players: 64 dp.
-Without the Bull row, 48 dp more for the rows. At scale 2.0 the rows region scrolls; header, footer, "RATÉ" and the
+top margin 4 + `MatchHeader` 24 + gap 4 + zone 68 + gap 4 + column header 64 + 7 rows x 48 (336) + gap 4 + action
+bar 48 + bottom margin 0 = 556 dp, which fits in 568 without scrolling (12 dp spare). Width: 360 - 2 x 12 = 336 dp,
+so 336 - 144 = 192 dp, 48 dp per player column. With 2 players: 96 dp each; 3 players: 64 dp. Without the Bull row,
+48 dp more for the rows. At scale 2.0 the rows region scrolls; the header with the totals, "RATÉ", undo and the
 action bar stay visible.
 
 Landscape (Kosmo, Q1): the same board as in portrait (targets in rows, buttons at the start of each row, not
@@ -113,8 +162,8 @@ turned), everything visible at once with no scrolling, the fonts may be slightly
 - the zone is one line: name (ellipsis), "MPR 2,4", then the visit's dart cells at their minimum size (about 28 dp
   tall, text 12 sp). The S/M chips (kept, Q4 A) move to the end of the `MatchHeader` line in landscape, since they do
   not fit on the zone's single line at 640 dp wide (for the UX review);
-- below the band: on the left the 6 or 7 target rows; on the right "RATÉ", "ANNULER" and "JOUEUR SUIVANT", pinned to
-  the bottom;
+- "RATÉ" and undo in the top cell of the button column, as in portrait (it is part of the band's height);
+- below the band: on the left the 6 or 7 target rows; on the right "JOUEUR SUIVANT", pinned to the bottom;
 - the landscape text sizes: board names, button labels and the `MatchHeader` at 12 sp instead of 14 sp, totals at
   20 sp at most (the "slightly reduced" font). To stay in one block at every system font size, the landscape board,
   zone and title use the existing "fixed" styles (`density.fixedSp`, as `scoreHuge` and `tileScore` already do), so
@@ -124,31 +173,38 @@ Height budget at 640 x 360 (about 336 dp usable), 7 rows, scale 1.0: top margin 
 line 19.5 + total line 30 = 72.5) + 7 rows = 336. The rows get (336 - 4 - 72.5) / 7 = 37 dp, under the 48 dp
 touch-target floor. On Kosmo's Pixel 7 (412 dp tall, about 370 dp usable with the system bars) the rows get about
 42 dp; with the system bars hidden in landscape, about 48 dp. No layout that shows the 7 rows at once keeps 48 dp
-buttons on a 360 dp tall screen: this is question Q5 for Kosmo, which R2 and R4 wait for.
+buttons on a 360 dp tall screen. Kosmo, Q5 B: the Cricket game screen hides the system bars in landscape (a swipe
+from the edge brings them back for a moment), and the rows take the whole height left, even under 48 dp on small
+phones; the policy never scrolls in landscape. Floor kept: 32 dp (rows and buttons never below, and the row text
+fits it at 12 sp fixed). The 48 dp exception is proposed to Kosmo for CLAUDE.md in the PR's "Proposed owner changes";
+no squad member edits CLAUDE.md.
 
 Width at 640 dp, 4 players: 616 dp after margins; buttons 3 x 48 = 144 dp + 4 x 64 dp = 400 dp for the board, a
 12 dp gap, 204 dp for the right column (zone line: name about 60 + MPR about 50 + 3 dart cells of 30 = 200 dp).
 
 ### 5. TalkBack order (CR23, replaces review U7's order)
 
-1. the column headers, the current player's first (« Anna, au lancer, dernière volée : 3 marques »), then the others;
-2. row by row from 20 to Bull: the row's buttons, then its cells in column order (a dead row: its buttons, then its
+Same order in portrait and landscape:
+1. the column headers, the current player's first, each with its total (« Anna, au lancer, 60 points, dernière
+   volée : 3 marques »; solo: no points), then the others in configuration order;
+2. « Raté », then the undo button (« Annuler »);
+3. row by row from 20 to Bull: the row's buttons, then its cells in column order (a dead row: its buttons, then its
    single merged node);
-3. the footer: « Raté », then « Points : Anna 60, Bob 40 » (solo: only « Raté »).
+4. the action bar.
 
-In landscape, the totals are read with each column header (« Anna, au lancer, 60 points ») and « Raté » comes after
-the rows, before the action bar.
+There is no points row any more.
 
 ## Files and types added or changed
 
 `app/src/main/kotlin/io/github/darkcosmos/kosmodarts/` (below, `ui/...`):
 - `ui/cricket/CricketGameScreenState.kt`: `throwDart`, `CricketTargetButton` (dart, label, description, enabled),
-  `buttonRows`, `footerTotals`; `multiplier`, `toggleMultiplier`, `throwNumber`, `throwOuterBull`, `throwBull`,
-  `areBullKeysEnabled` removed (R5); `zoneScoreOf` moves to the footer;
-- `ui/cricket/CricketLayoutPolicy.kt`: new contract (button column, 48 dp rows, pinned footer, zone 84/68,
-  `totalTextSize`, landscape top band and single-line zone, landscape row height per Q5);
-- `ui/cricket/CricketBoard.kt`: no label column; `CricketTargetButtons` per row; pinned footer with "RATÉ" and the
-  totals; dead-row strike over the cells only;
+  `buttonRows`, `headerTotals` (none in solo); `multiplier`, `toggleMultiplier`, `throwNumber`, `throwOuterBull`,
+  `throwBull`, `areBullKeysEnabled` removed (R5); `zoneScoreOf` removed (R5, R6);
+- `ui/cricket/CricketLayoutPolicy.kt`: new contract (button column, 48 dp rows in portrait, header with totals and
+  the "RATÉ"/undo cell, zone 84/68, `totalTextSize`, landscape top band, single-line zone, rows filling the height
+  with a 32 dp floor);
+- `ui/cricket/CricketBoard.kt`: no label column, no points row; header with the totals; the "RATÉ"/undo cell;
+  `CricketTargetButtons` per row; dead-row strike over the cells only;
 - `ui/cricket/CricketTargetButtons.kt` (new): the buttons of one row;
 - `ui/cricket/CricketGameScreen.kt`, `CricketPlayerZone.kt`, `CricketTags.kt`, `CricketSemantics.kt`;
 - `ui/cricket/CricketKeypad.kt`: deleted (R5);
@@ -172,25 +228,26 @@ Cricket game, each in portrait and landscape where marked:
 - turn waiting for "Next player": all buttons locked;
 - a dead row: muted, struck cells, buttons enabled;
 - 25-Bull off: no Bull row, so no 25/BULL buttons;
-- solo: no total anywhere on the game screen, footer with "RATÉ" only;
+- solo: no total anywhere on the game screen, nor on the home card;
 - landscape: single-line zone in the top band, totals in the column headers, no scrolling;
 - pending win (CR25), also by a non-thrower;
 - totals with 1, 3 and 4 digits in a 48 dp column;
-- font scale 2.0 with 4 players (rows scroll, footer and action bar pinned).
+- font scale 2.0 with 4 players (portrait: rows scroll, header with totals, "RATÉ", undo and action bar pinned;
+  landscape: no scroll, fixed sizes);
+- landscape with the system bars hidden, and after a swipe that brings them back.
 
 ### Strings (new, `values/` and `values-fr/`)
 
 | Strings | English | French |
 |---|---|---|
-| Double button label | "D%1$s" | identical |
-| Triple button label | "T%1$s" | identical |
+| Bull buttons label (both, the dots are drawn) | "BULL" | identical |
 | TalkBack, double | "Double %1$s" | « Double %1$s » |
 | TalkBack, triple | "Triple %1$s" | « Triple %1$s » |
-| TalkBack, landscape header total (plurals `cricket_header_points`) | one: "%1$d point"; other: "%1$d points" | one: « %1$d point »; other: « %1$d points » |
+| TalkBack, header total (plurals `cricket_header_points`) | one: "%1$d point"; other: "%1$d points" | one: « %1$d point »; other: « %1$d points » |
 
 "25", "BULL" and "RATÉ" / "MISS" reuse the existing strings. The X01 Double/Triple strings stay (X01 keypad).
-`cricket_closed_targets` ("%1$d/%2$d") leaves the game screen; it is removed in both languages only if Q6 removes it
-from the home card too.
+`cricket_closed_targets` ("%1$d/%2$d") is removed in both languages (Q2, Q6 A, task R6). The header total plurals
+are used in both orientations.
 
 ## Test plan
 
@@ -200,25 +257,31 @@ Rules cited: CR1, CR7, CR15, CR22, CR23, CR24, CR25 (new text).
 - `CricketGameScreenStateTest`: CR24 `throwDart` records D20 and T20 as one dart each; refuses 25 and Bull with
   25-Bull off; refuses any dart while a turn waits (CR7); a dart on a dead row is recorded; `buttonRows` gives 3
   buttons for 20 to 15 and 2 for Bull, none with 25-Bull off; buttons all disabled while a turn waits and enabled on a
-  dead row; `footerTotals` gives the points, and nothing in a solo game.
+  dead row; `headerTotals` gives the points, and nothing in a solo game.
 - `CricketReducerTest`: `CricketDartTapped` reaches `throwDart`; undo after a triple removes the triple.
 - `CricketLayoutPolicyTest` (CR22): portrait 360 x 568, 4 players, 7 rows, scale 1.0 does not scroll and sums to at
   most 568; every button is at least 48 x 48 at every player count and scale 1.0 to 2.0; player columns 48/64/96 dp
   at 4/3/2 players; scale 2.0 scrolls the rows only; `totalTextSize` for 1 to 5 digits at 48 and 96 dp, never above
   the column; landscape: at 640 x 336 and at about 412 x 370 (Pixel 7), 4 players, 7 rows, scale 1.0 and 2.0,
-  nothing scrolls, the top band has one height for the zone and for the title plus column header, and the row height
-  follows Q5 (its floor asserted).
+  nothing scrolls, the top band has one height for the zone and for the title plus column header, the rows fill the
+  height left (about 37 dp at 640 x 336, about 48 dp at 412 x 412 with the bars hidden) and never go under the 32 dp
+  floor.
 
 Robolectric (`CricketScreenTest`):
-- CR24: each button sends its dart (20, D20, T20, 25, BULL, RATÉ); no 25/BULL node with 25-Bull off; locked while a
+- CR24: each button sends its dart (20, D20, T20, 25, Bull, RATÉ); the single, double and triple show the same
+  number with 0, 2 and 3 dots, and their TalkBack texts differ; no Bull node with 25-Bull off; locked while a
   turn waits;
-- CR22: fit at 360 x 640 scale 1.0 with 4 players (no scroll), at scale 2.0 (rows scroll, footer, "RATÉ" and action bar
-  fully visible), landscape 640 x 360 at 1.0 and 2.0 with no scroll container; each button's bounds at least
-  48 x 48 dp (in landscape: the floor chosen in Q5); buttons vertically
-  aligned with their row's cells (same top and bottom); totals and button labels not clipped;
+- CR22: fit at 360 x 640 scale 1.0 with 4 players (no scroll), at scale 2.0 (rows scroll; header with totals,
+  "RATÉ", undo and action bar fully visible), landscape 640 x 360 at 1.0 and 2.0 with no scroll container; each
+  button's bounds at least 48 x 48 dp in portrait, at least 48 dp wide and 32 dp tall in landscape; buttons
+  vertically aligned with their row's cells (same top and bottom); the "RATÉ"/undo cell aligned with the headers;
+  totals and button labels not clipped;
 - CR22: the zone has no total and no "n/7", in a solo game too; nothing on the game screen shows "n/7";
 - CR22 landscape: zone on one line (name, MPR, darts in the same row of bounds), its height equal to the
   `MatchHeader` plus the column header; no scroll container on the screen;
+- CR22 landscape (Q5 B): the system bars are hidden while the landscape game screen is shown and restored when it
+  leaves (portrait, between legs, home), tested through a fake of the insets controller seam (the decision to hide
+  is a pure function of orientation and screen, tested on the JVM);
 - CR23: TalkBack order of section 5; dead-row merged node and strike node kept.
 
 Roborazzi captures (record only, Pixel 7, French unless stated), re-recorded: `board_2p_portrait_fr`,
@@ -226,8 +289,9 @@ Roborazzi captures (record only, Pixel 7, French unless stated), re-recorded: `b
 `board_4p_portrait_en`, `board_4p_portrait_fr_font200`, `board_4p_360x640_fr`, `board_4p_640x360_fr`, the dead rows
 (2 and 4 players, with the grayscale copy), solo, 25-Bull off, waiting turn, the three win captures. Removed:
 `modifier_triple_portrait_fr`, `keypad_with_bull_fr`, `keypad_without_bull_fr`. Added: `buttons_with_bull_fr`,
-`buttons_without_bull_fr` (board crops), `totals_4digits_4p_portrait_fr`. X01 captures checked with `cmp` against the
-baseline (see Out of scope).
+`buttons_without_bull_fr` (board crops), `totals_4digits_4p_portrait_fr`, `board_4p_412x412_landscape_fr` (Pixel 7
+with the bars hidden). The solo home capture of `CricketSetupScreenshotTest` is re-recorded without "4/7" (R6). X01
+captures checked with `cmp` against the baseline (see Out of scope).
 
 Local checks, every task: `./gradlew :game-engine:test`, `./gradlew :app:testDebugUnitTest`, `./gradlew build`,
 `kosmo-detekt` (exit 0).
@@ -236,63 +300,72 @@ Local checks, every task: `./gradlew :game-engine:test`, `./gradlew :app:testDeb
 
 Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; the other steps stay.
 1. Start a Cricket game with 2 players: there is no keypad and no Double/Triple key. Each row of the board starts with
-   "20", "D20", "T20" (Bull row: "25", "BULL"); the target column on the left is gone.
-2. Tap "T20": one dart, three marks for the player. Tap "D19", then "18": three darts in the zone.
-3. The zone shows the name, the MPR and the darts, but no total. The totals are in large type on the bottom row of
-   the board, next to "RATÉ", and always visible.
-4. "RATÉ" counts a miss; "ANNULER" removes the last dart, including a triple.
+   its three buttons: the number alone, the number with two dots (double), with three dots (triple); the Bull row
+   has "BULL" and "BULL" with two dots; the target column is gone; "RATÉ" and the
+   undo button sit at the top of the buttons, next to the names.
+2. Tap the triple 20: one dart, three marks for the player. Tap the double 19, then the single 18: three darts in the
+   zone.
+3. The zone shows the name, the MPR and the darts, but no total. Each total is in large type at the top of its
+   player's column, above the name, and always visible.
+4. "RATÉ" counts a miss; the undo button removes the last dart, including a triple.
 5. While "JOUEUR SUIVANT" waits, no target button reacts.
 6. Close the 20 for everyone: the 20 row is greyed and struck across the players' cells; its buttons still work and
    play the closed-sector sound.
 7. 25-Bull off: no Bull row and no 25/BULL buttons.
-8. Solo: no total and no "4/7" anywhere on the game screen; the bottom row only has "RATÉ".
+8. Solo: no total and no "4/7" on the game screen; leave the game, the home "resume" card shows no "4/7" either.
 9. 4 players on a small phone, portrait: every row and its buttons visible without scrolling; totals readable.
-10. Landscape with 4 players: the same board as in portrait, all 7 targets visible without scrolling; the player's
-    zone is one line (name, MPR, darts) at the top right, as tall as the title plus the names row; the totals are
-    under the names; buttons lined up with their target; nothing cut.
-11. Largest system font, 4 players, portrait: the rows scroll, but the names row, the totals row, "RATÉ" and "ANNULER" stay
-    visible.
-12. TalkBack: the headers, then each row's buttons (« Double 20 ») and cells, then « Raté » and the points.
+10. Landscape with 4 players: the status and navigation bars disappear; the same board as in portrait, all 7
+    targets visible without scrolling; the player's zone is one line (name, MPR, darts) at the top right, as tall as
+    the title plus the names row; totals above the names; buttons lined up with their target; nothing cut. A swipe
+    from the edge brings the bars back for a moment; back to portrait, the bars are back for good.
+11. Largest system font, 4 players, portrait: the rows scroll, but the names with their totals, "RATÉ", the undo
+    button and "JOUEUR SUIVANT" stay visible. In landscape, everything stays in one block.
+12. TalkBack: the headers with their totals, then « Raté » and « Annuler », then each row's buttons (« Double 20 »)
+    and cells.
 
 ## Tasks
 
 ### R1 - Rules text, dart buttons model and event
 
 - Goal: rewrite CR22 (zone without total and without "n/7", layout contract of section 4, portrait and landscape,
-  the landscape row floor per Q5), CR23 (no label column, buttons, totals in the pinned footer in portrait and in the
-  column header in landscape, TalkBack order of section 5) and CR24 (target buttons) in `docs/rules/cricket.md`, and
-  CR20 per Q6; add `throwDart`, `CricketTargetButton`, `buttonRows`, `footerTotals` (no total in solo) to
+  system bars hidden in landscape and rows down to 32 dp there, Q5 B), CR23 (no label column, no points row, totals
+  at the top of each column header, the "RATÉ"/undo cell, buttons, TalkBack order of section 5), CR24 (target
+  buttons with the dot representation, on the side answered in Q7) and CR20 (no "4/7" on the solo home card, Q6 A) in
+  `docs/rules/cricket.md`; add `throwDart`, `CricketTargetButton`, `buttonRows`, `headerTotals` (none in solo) to
   `CricketGameScreenState`; `AppEvent.CricketDartTapped` and its `CricketReducer` branch; the new strings. The old
   keypad and modifier stay working until R5, so the build stays green.
 - Files: `docs/rules/cricket.md`, `ui/cricket/CricketGameScreenState.kt`, `ui/app/AppState.kt`,
   `ui/app/CricketReducer.kt`, `res/values/strings.xml`, `res/values-fr/strings.xml`, `CricketGameScreenStateTest`,
   `CricketReducerTest`.
-- Depends on: approval of this addendum, answers to Q5 and Q6.
+- Depends on: approval of this addendum, answers to Q7 to Q9.
 - Done when: `./gradlew :app:testDebugUnitTest` and `./gradlew build` green; `kosmo-detekt` exits 0.
 - Model: sonnet
 - Why this model: a state holder extension and its JVM tests following the existing reducer pattern.
 
 ### R2 - Layout policy for the button board
 
-- Goal: rewrite `CricketLayoutPolicy` to the contract of section 4 (button column, 48 dp rows, pinned header and
-  footer, zone 84/68, `totalTextSize`, player column widths) in portrait, and in landscape the top band (one height
-  for the single-line zone and for the title plus the column header with totals), the fixed landscape text sizes, the
-  dart cells at their minimum and the row height that shows every row without scrolling (floor per Q5), with
+- Goal: rewrite `CricketLayoutPolicy` to the contract of section 4 (button column, 48 dp rows, pinned header with
+  the totals and the "RATÉ"/undo cell of the same height, zone 84/68, `totalTextSize`, player column widths) in
+  portrait, and in landscape (system bars hidden, Q5 B) the top band (one height for the single-line zone and for the
+  title plus the column header with totals), the fixed landscape text sizes, the dart cells at their minimum and the
+  row height that shows every row without scrolling (32 dp floor), with
   `CricketLayoutPolicyTest` rewritten (old cases about the label column and keypad rows removed only where the
   contract they prove is removed; each new case cites CR22).
 - Files: `ui/cricket/CricketLayoutPolicy.kt`, `CricketLayoutPolicyTest`.
-- Depends on: R1, answer to Q5.
+- Depends on: R1.
 - Done when: `./gradlew :app:testDebugUnitTest` and `./gradlew build` green; `kosmo-detekt` exits 0.
 - Model: opus
-- Why this model: the dp budget is tight in both orientations (2.5 dp spare in portrait at 360 x 640, no scrolling
+- Why this model: the dp budget is tight in both orientations (12 dp spare in portrait at 360 x 640, no scrolling
   allowed in landscape) and this contract needed two review rounds before (U1); the arithmetic and font-scale cases
   are subtle.
 
-### R3 - Portrait screen: buttons in the board, pinned totals, zone without total
+### R3 - Portrait screen: buttons in the board, totals on top, zone without total
 
-- Goal: `CricketBoard` without label column, `CricketTargetButtons` per row (sending `CricketDartTapped`), pinned
-  footer with "RATÉ" and the totals, dead-row strike over the cells only; `CricketPlayerZone` without total; portrait
-  `CricketGameScreen` without `CricketKeypad`; tags and TalkBack order; the Robolectric portrait cases and the
+- Goal: `CricketBoard` without label column and without points row, pinned header with the large totals and the
+  "RATÉ"/undo cell, `CricketTargetButtons` per row (sending `CricketDartTapped`, the number with 0, 2 or 3 drawn dots,
+  in the design system's key style), dead-row strike over the cells only; `CricketPlayerZone` without total; portrait `CricketGameScreen`
+  without `CricketKeypad`, action bar with "JOUEUR SUIVANT" only; tags and TalkBack order; the Robolectric portrait
+  cases and the
   portrait captures; `docs/design/design-system.md` (components table, 6.5 portrait).
 - Files: `ui/cricket/CricketBoard.kt`, `CricketTargetButtons.kt` (new), `CricketGameScreen.kt`,
   `CricketPlayerZone.kt`, `CricketTags.kt`, `CricketSemantics.kt`, `docs/design/design-system.md`,
@@ -307,20 +380,21 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
 
 - Goal: the landscape layout of section 4 (Kosmo, Q1): the same board as portrait, not turned, in the left column
   with no scrolling; the top band with the `MatchHeader` (and the S/M chips) over the column header with the totals,
-  and on its right the single-line zone (name, MPR, minimal dart cells) of the same height; "RATÉ", "ANNULER" and
-  "JOUEUR SUIVANT" pinned at the bottom right; the fixed landscape text sizes; the landscape TalkBack order; its
-  Robolectric cases at 640 x 360 and about 412 x 370, scale 1.0 and 2.0 (no scroll container, one-line zone, band
-  heights equal, nothing clipped, button floor per Q5); its captures; the 6.5 landscape paragraph of the design system.
-- Files: `ui/cricket/CricketGameScreen.kt`, `CricketBoard.kt` (header with totals), `CricketPlayerZone.kt`
-  (single-line variant), `ui/components/DartSlots` call site only (no change to the shared component, X01 untouched),
-  `docs/design/design-system.md`, `CricketScreenTest`, `CricketScreenshotTest`. If Q5 B: the system bars hidden
-  while the Cricket game screen is shown in landscape and restored when it leaves (through the window insets
-  controller of the platform, `Window.insetsController`, available from API 30 = `minSdk`; no new dependency), in
-  `CricketGameScreen.kt`.
-- Depends on: R3, answer to Q5.
+  and on its right the single-line zone (name, MPR, minimal dart cells) of the same height; "JOUEUR SUIVANT" pinned
+  at the bottom right; the fixed landscape text sizes; the system bars hidden while the Cricket game screen is shown
+  in landscape and restored when it leaves or turns to portrait (Q5 B, through the platform `Window.insetsController`,
+  available from API 30 = `minSdk`, no new dependency; the hide-or-show decision is a pure `SystemBarsPolicy`,
+  tested on the JVM); its Robolectric cases at 640 x 360 and 412 x 412, scale 1.0 and 2.0 (no scroll container,
+  one-line zone, band heights equal, nothing clipped, buttons at least 48 dp wide and 32 dp tall); its captures; the
+  6.5 landscape paragraph of the design system.
+- Files: `ui/cricket/CricketGameScreen.kt`, `CricketBoard.kt`, `CricketPlayerZone.kt` (single-line variant, the
+  shared `DartSlots` unchanged so X01 is untouched), `ui/cricket/SystemBarsPolicy.kt` (new),
+  `docs/design/design-system.md`, `SystemBarsPolicyTest` (new), `CricketScreenTest`, `CricketScreenshotTest`.
+- Depends on: R3.
 - Done when: same checks as R3.
 - Model: sonnet
-- Why this model: it reuses the portrait board and a fixed policy from R2; the hard arithmetic is already in R2.
+- Why this model: it reuses the portrait board and the policy of R2, where the hard arithmetic is; the system bars
+  are one platform call behind a tested pure decision.
 
 ### R5 - Remove the modifier keypad, finish tests and captures
 
@@ -339,7 +413,7 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
 - Model: sonnet
 - Why this model: mechanical removal, but across several test files where each case must be kept, not dropped.
 
-### R6 - Remove the solo "n/7" from the home card (only if Kosmo answers Q6 A)
+### R6 - Remove the solo "n/7" from the home card
 
 - Goal: the home resume card of a solo Cricket game no longer shows "4/7" (CR20 amended in R1): remove
   `ResumeSummary.PlayerScore.closedTargets`, its use in `ResumeCard.tileValue`, `CricketZoneScore.ClosedTargets` if
@@ -348,11 +422,22 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
   `CricketStatisticsTest`).
 - Files: `ui/home/ResumeSummary.kt`, `ui/components/ResumeCard.kt`, `ui/cricket/CricketGameScreenState.kt`,
   `res/values/strings.xml`, `res/values-fr/strings.xml`, `ResumeSummaryCricketTest`, `CricketSetupScreenshotTest`.
-- Depends on: R5, answer to Q6.
+- Depends on: R5 (Kosmo, Q6 A).
 - Done when: `./gradlew :app:testDebugUnitTest` and `./gradlew build` green; X01 captures `cmp`-identical; the
   `home_*` X01 captures unchanged; `kosmo-detekt` exits 0.
 - Model: haiku
 - Why this model: a fully specified removal of one display, with no design choice.
+
+### R7 - Delete Kosmo's reference screenshot
+
+- Goal: delete the Dartsmind PNG that Kosmo uploaded at the repository root in commit `aff3b27` ("Add files via
+  upload"), as Kosmo asked once the work is done. Check with `git grep` that no file of the repository names it.
+  Last commit of the rework, before the code review of the final head.
+- Files: the PNG at the repository root (deleted), this plan's Implementation notes.
+- Depends on: R6.
+- Done when: `git ls-files ':(glob)*.png'` (root only) lists nothing; `./gradlew build` green; `kosmo-detekt` exits 0.
+- Model: haiku
+- Why this model: one file deletion, fully specified.
 
 ## Decisions
 
@@ -366,57 +451,69 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
 - Kosmo, Q1 (landscape): the same board as portrait, not turned, everything visible in one block without scrolling,
   the font may be slightly reduced; to investigate: a zone limited to the height of the board header plus the
   "CRICKET · MODE" title, with the visit's dart cells at their minimum and name, MPR and darts on a single line.
-  Applied in section 4 and tasks R2 and R4; the touch-target conflict it creates is Q5.
-- Kosmo, Q2: the solo "4/7" display is useless and is removed: no total and no "n/7" on the solo game screen. Whether
-  the home card's "4/7" goes too is Q6.
+  Applied in section 4 and tasks R2 and R4.
+- Kosmo, Q2: the solo "4/7" display is useless and is removed: no total and no "n/7" on the solo game screen.
 - Kosmo, Q3 A: rule unchanged (CR1). With 25-Bull on, a Bull row with "25" and "BULL"; with it off, no Bull row and
   no Bull button. No engine or save change.
 - Kosmo, Q4 A: the zone keeps the name, the MPR, the set/leg chips and the visit's darts.
-- Developer, pending design review: in landscape the totals sit in the column header under each name (no room for a
-  footer row), the S/M chips move to the end of the `MatchHeader` line, and the landscape texts use the fixed styles
-  so the one-block layout holds at every font scale.
+- Kosmo, Q5 B: in landscape the Cricket game screen hides the system bars (a swipe from the edge brings them back),
+  and the buttons may go under 48 dp tall on small phones (32 dp floor in the policy). The 48 dp exception for this
+  screen in landscape is proposed in the PR's "Proposed owner changes"; CLAUDE.md is never edited by the squad.
+- Kosmo, Q6 A: the "4/7" is also removed from the solo home resume card (task R6, CR20 amended).
+- Kosmo, Dartsmind reference: added to the branch as a temporary file, to be deleted once the work is done (task R7);
+  no file that stays in the repository names it.
+- Kosmo, clarification on the reference: take only the organization of the buttons (aligned with the score rows) and
+  its representation of the double and the triple (the number with two or three dots); everything else follows
+  Q1 to Q6 and the design system. Applied: the "D20"/"T20" labels of the first version are replaced by the dots, and
+  the question about the labels (Q8 in an intermediate version) is withdrawn. Open: the side (Q7) and the undo
+  place (Q9), where the reference differs from this plan.
+- Developer, pending design review: the totals at the top of each column header, as the largest text of the board,
+  in both orientations (no points row), because landscape has no room for a points row (not copied from the
+  reference); "RATÉ" and undo in the button column's top cell, at the height of the headers, so the action bar keeps
+  only "JOUEUR SUIVANT" (subject to Q9).
+- Developer, pending design review: in landscape the S/M chips move to the end of the `MatchHeader` line, and the
+  landscape texts use the fixed styles so the one-block layout holds at every font scale.
 - Developer, pending design review: buttons of a dead row stay enabled (closed-sector sound, AN30); the strike crosses
   only the cells.
-- Developer, pending design review: "RATÉ" sits in the pinned footer, left of the totals, rather than in the action
-  bar, to keep the action bar's two buttons at their size.
 
 ## Open questions
 
 Product questions for Kosmo (in French, for main to relay):
 
-Q1 to Q4: answered by Kosmo (see Decisions).
+Q1 to Q6: answered by Kosmo (see Decisions).
 
-- Q5. En paysage, pour voir les 7 cibles d'un bloc sans défilement, chaque ligne (et donc chaque bouton) ne peut
-  mesurer qu'environ 37 dp de haut sur un petit téléphone (360 dp de haut) et environ 42 dp sur le Pixel 7. La règle
-  du projet demande des zones tactiles d'au moins 48 dp (CLAUDE.md, accessibilité).
-  - A : en paysage seulement, on accepte des boutons plus petits que 48 dp (37 à 42 dp de haut, 48 dp de large). Tout
-    tient d'un bloc sur tous les téléphones. Il faut que vous ajoutiez cette exception dans CLAUDE.md (proposé dans
-    la PR, section « Proposed owner changes »).
-  - B (recommandée) : en paysage, la partie masque les barres du système (plein écran, on les fait revenir d'un
-    glissement depuis le bord). Sur le Pixel 7, les boutons gardent environ 48 dp et tout tient d'un bloc ; sur les
-    téléphones plus petits, les boutons descendent sous 48 dp, avec la même exception à écrire dans CLAUDE.md.
-  - C : on garde 48 dp partout ; en paysage, les lignes du bas (15, Bull) demandent alors un petit défilement.
-- Q6. Le « 4/7 » du solo apparaît aussi sur la carte « Reprendre la partie » de l'accueil (à la place des points du
-  joueur).
-  - A (recommandée) : on le supprime aussi de l'accueil ; la carte n'affiche plus de score en solo ;
-  - B : on le garde sur l'accueil, on le supprime seulement de l'écran de jeu.
+Raised by the Dartsmind reference (R1 waits for them; each answer changes only a column order or the place of one
+button). The double/triple representation is not a question any more: Kosmo asked to take it from the reference.
+- Q7. De quel côté du tableau mettre les boutons ?
+  - A : à gauche, à la place de l'ancienne colonne des cibles (proposition actuelle) ;
+  - B : à droite, comme dans Dartsmind (plus près du pouce pour un droitier tenant le téléphone d'une main).
+- Q9. Où mettre le bouton d'annulation (dernière fléchette) ?
+  - A : en haut de la colonne des boutons, à côté de « RATÉ », comme dans Dartsmind ; la barre du bas ne garde que
+    « JOUEUR SUIVANT » (proposition actuelle) ;
+  - B : dans la barre du bas, « ANNULER » à côté de « JOUEUR SUIVANT », comme aujourd'hui ; « RATÉ » reste en haut.
 
 ## Risks
 
-- Portrait 360 x 640 with 4 players and the Bull: 2.5 dp spare at all minimums; the zone minimum (68 dp) must be
-  measured against the real name line and `DartSlots` (36 dp) height, or the rows scroll on small phones.
-- Player columns of 48 dp at 4 players: names get a strong ellipsis, totals of 4 digits fall to 20 sp, and at font
-  scale 2.0 even 3 digits may need 14 sp; to be asserted by the clipping tests.
-- Button labels "T20" in 48 dp at font scale 2.0 (about 46 dp of text): at the limit; the clipping test covers it.
-- Landscape touch targets: showing 7 rows in one block gives about 37 dp rows at 640 x 360 and about 42 dp on a
-  Pixel 7 with its system bars, under the 48 dp rule; Q5 decides. Hiding the system bars (Q5 B) also changes how the
-  player leaves the game screen (a swipe brings the bars back), to be checked on the phone.
+- Portrait 360 x 640 with 4 players and the Bull: 12 dp spare at all minimums; the zone minimum (68 dp) and the
+  header (about 64 dp with the total) must be measured against the real text lines, or the rows scroll on small
+  phones.
+- Player columns of 48 dp at 4 players: names get a strong ellipsis, totals of 4 digits fall to 16 to 20 sp, and at
+  font scale 2.0 even 3 digits may need 14 sp; to be asserted by the clipping tests.
+- Button labels: two digits plus drawn dots in a 48 x 48 dp button at font scale 2.0 (portrait): the number and the
+  dots must both fit the height; the clipping test covers it. In landscape (rows down to 32 dp), the dots are the
+  first thing to lose room: they keep a fixed size and the number shrinks first.
+- The dots are a new convention for the players: the phone check and the TalkBack texts confirm that the double and
+  the triple are told apart.
+- Landscape touch targets: about 37 dp tall at 640 x 360 and about 48 dp on a Pixel 7 with the bars hidden, accepted
+  by Kosmo (Q5 B) but against the CLAUDE.md 48 dp rule until he adds the exception; reviewers will see the conflict.
+- Hidden system bars: they must come back when the screen leaves landscape or the game (between legs, end, home,
+  abandon), or the rest of the app stays without bars; tested through `SystemBarsPolicy` and checked on the phone.
 - Landscape at font scale 2.0: with scaled texts the 14 sp line (45 dp) does not fit a 37 to 42 dp row; the plan uses
   fixed text sizes in landscape (no growth with the system font), an accessibility trade-off for the UX review.
 - Landscape single-line zone: in 204 dp, name (strong ellipsis), MPR and three minimal dart cells (about 30 dp each)
   just fit; "RATÉ" in a 30 dp cell at 12 sp and the "VICTOIRE" banner (CR25) in a band of about 72 dp must be checked
   by the clipping tests and captures.
-- Landscape totals under the names in 64 dp columns: 4-digit totals need 16 to 20 sp.
+- Landscape totals above the names in 64 dp columns: 4-digit totals need 16 to 20 sp.
 - About 25 existing Robolectric cases and 20 game captures use the keypad or the modifier and are rewritten; the
   X01 captures must stay byte-identical.
 
