@@ -47,8 +47,8 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
- * The Cricket game screen (docs/rules/cricket.md, CR22 to CR25) in French: the board buttons, the TalkBack texts
 /**
+ * The Cricket game screen (docs/rules/cricket.md, CR22 to CR25) in French: the board buttons, the TalkBack texts
  * and order, the dead rows (review T3) and the fit contract (reviews U1, T5), without any real screen: the state is
  * given directly.
  */
