@@ -995,3 +995,6 @@ None. Q1 to Q7, Q9, Q10 and Q11 are answered by Kosmo (see Decisions); Q8 was wi
   a solo game shows no score on its tile`. `CricketPlayerState.closedTargetCount` stays (engine). Captures: only
   `cricket_home_solo_fr` changed (the "2/7" is gone); the other 208 are byte-identical to the baseline recorded before
   R6.
+- R7: deleted the root PNG `Screenshot_20261031-112252.png` (Kosmo's Dartsmind reference, `git rm`). Before the
+  deletion, `git ls-files ':(glob)*.png'` listed only that file and `git grep Screenshot_20261031` found no reference
+  in the tree; no code, test or plan file changed. The Decisions section still describes the reference as deleted by R7.
