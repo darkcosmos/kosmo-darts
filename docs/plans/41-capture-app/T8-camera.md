@@ -47,7 +47,7 @@ sonnet. Why: CameraX wiring behind a tested interface, behavior fully specified.
   `VideoCapture<Recorder>` without audio, `ImageCapture` max quality and highest resolution; CameraX itself inserts the
   MediaStore rows, pending flag included, from `MediaStoreCaptureStorage.contentValues(target)` and
   `MediaStore.Downloads.EXTERNAL_CONTENT_URI`), `GravityReader`, `CaptureController` (is the `CaptureEffects` and the
-  camera listener; `attach(vm)`; `setup(app, device, quality)` builds the `CaptureSetup`). `capture.ui.CaptureReports` is
+  camera listener; `attach(vm)` for reports (effects are registered on the view model by the activity in `onCreate` and removed in `onDestroy`, so the view model never holds the activity); `setup(app, device, quality)` builds the `CaptureSetup`). `capture.ui.CaptureReports` is
   the interface the view model now implements (only `override` added, no logic change). `session.SystemCaptureClock`.
 - Deviations: no `bind` in the `CaptureCamera` interface (it needs Android types; it is on `CameraXCaptureCamera`).
   The `Start` event time is the clock read by the view model when the controller forwards the event on the main thread.

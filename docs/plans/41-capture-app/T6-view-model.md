@@ -41,13 +41,13 @@ Test names or comments cite the CP id.
 sonnet. Why: state holder with JVM tests, behavior fully specified.
 
 ## Implementation notes
-- Package `capture.ui`: `CaptureViewModel(clock, storage, settings, effects, setupProvider)` extends `androidx.lifecycle.ViewModel`
-  (T8 builds it with a factory), exposes `state: StateFlow<CaptureUiState>`; no coroutines inside, all calls on the
+- Package `capture.ui`: `CaptureViewModel(clock, storage, settings)` extends `androidx.lifecycle.ViewModel`
+  (T8 builds it with a factory; the camera side is registered with `attachEffects(effects, setupProvider)` and removed with `detachEffects(owner)`, which interrupts a running session; without a port Start does nothing), exposes `state: StateFlow<CaptureUiState>`; no coroutines inside, all calls on the
   main thread. `CaptureEffects` has `startVideo(volley, target)`, `stopVideo(volley)`, `takePhoto(dart, target)`
   (targets from `CaptureStorage`, folder already right).
 - T8 reports back with `onPermission`, `onCameraReady`, `onVideoStarted(volley)`, `onVideoFinalized(volley)` (must be
   called for every stopped video, also after a failure: Saving ends only then), `onPhotoSaved/onPhotoFailed(number)`,
-  `onCameraError()`, `onScreenStopped(changingConfigurations)`. `setupProvider` gives the actual resolutions at Start.
+  `onCameraError()`, `onScreenStopped(changingConfigurations)`. the `setupProvider` given to `attachEffects` gives the actual resolutions at Start.
 - UI events: `onStart`, `onDart(dart, gravity)`, `onUndo`, `onNextVolley`, `onStopRequested/Cancelled/Confirmed`,
   `onDeleteAllRequested/Cancelled/Confirmed`, `onQuality`, `onErrorDismissed`, `onPhotoMessageShown` (clears
   `photoFailure`, the dart number, after the snackbar).
