@@ -173,23 +173,40 @@ class CricketScreenshotTest {
     /** The tightest landscape case: 4 players, "VALIDER LA PARTIE", largest font (the board keeps its size). */
     @Test
     @Config(qualifiers = LANDSCAPE_FR, fontScale = 2.0f)
-    fun winPending4PlayersLandscape() = capture(
-        "win_pending_4p_landscape_fr",
-        CricketGameScreenState(
-            CricketSaveFixtures.match("Anna", "Bob", "Cid", "Dan").playLegWonBy(0),
-            isAwaitingConfirmation = true,
-        ),
-    )
+    fun winPending4PlayersLandscape() = capture("win_pending_4p_landscape_fr", winPendingState())
 
-    /** The longest title line: legs and sets, so the position and the S/M chips share the line (Q4 A, Q11 A). */
+    /** The top band, cropped: legs and sets, so the position and the S/M chips share the line (Q4 A, Q11 A, R11). */
     @Test
     @Config(qualifiers = LANDSCAPE_FR)
-    fun titleWithChips4PlayersLandscape() = capture(
-        "title_chips_4p_landscape_fr",
-        CricketGameScreenState(
-            CricketSaveFixtures.match("Anna", "Bob", "Cid", "Dan", legsPerSet = 3, sets = 3)
-                .throwing(*CricketSaveFixtures.darts("T20 19 D18")),
-        ),
+    fun band4PlayersLandscape() {
+        show(
+            CricketGameScreenState(
+                CricketSaveFixtures.match("Anna", "Bob", "Cid", "Dan", legsPerSet = 3, sets = 3)
+                    .throwing(*CricketSaveFixtures.darts("T20 19 D18")),
+            ),
+        )
+        composeRule.onNodeWithTag(CricketTags.BAND).captureRoboImage(path("band_4p_landscape_fr"))
+    }
+
+    /** The top band, cropped, with a won leg waiting for confirmation, in English (CR25, R12). */
+    @Test
+    @Config(qualifiers = LANDSCAPE_EN, fontScale = 2.0f)
+    fun bandWinPending4PlayersLandscapeEnglish() {
+        show(winPendingState())
+        composeRule.onNodeWithTag(CricketTags.BAND).captureRoboImage(path("band_win_pending_4p_landscape_en"))
+    }
+
+    /** The tall next key, cropped, with its confirm label "VALIDER LA PARTIE" (CR25, Q17 B, R12). */
+    @Test
+    @Config(qualifiers = LANDSCAPE_FR, fontScale = 2.0f)
+    fun nextKeyVerticalLandscape() {
+        show(winPendingState())
+        composeRule.onNodeWithTag(CricketTags.LANDSCAPE_NEXT).captureRoboImage(path("next_key_vertical_landscape_fr"))
+    }
+
+    private fun winPendingState() = CricketGameScreenState(
+        CricketSaveFixtures.match("Anna", "Bob", "Cid", "Dan").playLegWonBy(0),
+        isAwaitingConfirmation = true,
     )
 
     /** Ann has 1 020 points: the 4-digit totals in four columns (CR22). */
@@ -343,6 +360,7 @@ class CricketScreenshotTest {
 
         /** The Pixel 7 in landscape, the system bars hidden (CR22). */
         const val LANDSCAPE_FR = "fr-w914dp-h411dp-land-420dpi"
+        const val LANDSCAPE_EN = "en-w914dp-h411dp-land-420dpi"
         const val LUMA_RED = 0.299
         const val LUMA_GREEN = 0.587
         const val LUMA_BLUE = 0.114
