@@ -42,3 +42,21 @@ exposed". Test names or comments cite the CP id.
 sonnet. Why: platform code behind an interface, tests listed.
 
 ## Implementation notes
+- Package `capture.storage`. `CaptureStorage` is Android-free: `createTruthFile(folder): CaptureEntry(id, folder, name)`,
+  `writeTruth(entry, text)`, `photoTarget/videoTarget(folder, file): CaptureOutputTarget(folder, displayName,
+  relativePath, mimeType)`, `deleteAllOwnSessions(): Int`, `listOwnSessions(): Set<String>`. Failures are
+  `CaptureStorageException` (an `IOException`). `CAPTURE_ROOT = "Download/KosmoCapture/"`.
+- The camera targets are descriptions only: T8 creates the platform entries for CameraX (pending flag) from
+  `MediaStoreCaptureStorage.contentValues(target)` plus `MediaStore.Downloads.EXTERNAL_CONTENT_URI`, and must put the
+  video and photo in the folder returned by `CaptureNaming.sessionFolder`. Folder and file names are validated by regex
+  (session folder `YYYYMMDD-HHMMSS[-n]`, lowercase file names), so no path can be injected.
+- `CaptureSettings(file)` keeps quality and total in one `key=value` file (atomic move); `read()` gives `StoredSettings`
+  (defaults on a missing or corrupt file), `saveQuality`, `saveTotal`. T8 passes `File(filesDir, ...)`.
+- `TruthWriter(storage, settings).write(entry, truth, counters)` returns `TruthWriteResult(truthFailure, totalFailure)`;
+  both writes are attempted. T5/T8 show a message when `succeeded` is false. Delete all = `deleteAllOwnSessions()` then
+  `settings.saveTotal(counters.cleared().total)`; the quality is untouched.
+- Tests: `TruthWriterTest`, `CaptureSettingsTest`, `DeleteAllTest` (with `FakeCaptureStorage`: owner and pending per
+  entry), `MediaStoreCaptureStorageTest` under Robolectric with `FakeMediaProvider` registered as authority `media`.
+  Robolectric has no MediaStore provider, so ownership and real pending behavior are only simulated by that fake; the
+  real behavior stays with Kosmo's manual check.
+- `kosmo-detekt` does not analyse `:capture` (see T2 notes).
