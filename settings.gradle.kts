@@ -24,3 +24,4 @@ rootProject.name = "kosmo-darts"
 
 include(":app")
 include(":game-engine")
+include(":capture")

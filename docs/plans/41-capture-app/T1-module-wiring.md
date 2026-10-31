@@ -41,3 +41,19 @@ CP1 to CP13 (documentation only in this task).
 sonnet. Why: configuration and wiring copied from `:app`, plus checking a new dependency version.
 
 ## Implementation notes
+- CameraX 1.6.2 (latest stable: Google Maven `androidx/camera/camera-core/maven-metadata.xml` lists 1.6.2 as the last
+  non-pre-release; 1.7.0-rc01 and alphas ignored). One shared `camerax` version in the catalog.
+- `capture/build.gradle.kts` is `app/build.gradle.kts` with namespace/applicationId `...kosmodarts.capture`, CameraX
+  and `:game-engine`. `versionCode`/`versionName` copied. Sources are under `capture/src/main/kotlin`.
+- Launcher icon: foreground/monochrome vectors copied from `:app`; background teal `#FF00695C`. Window theme
+  `Theme.KosmoCapture`, colors `window_background`.
+- `docs/rules/capture.md` copies CP1 to CP13 from the root plan.
+- Manifest check on `capture-debug.apk` (aapt2 37.0.0): permissions `CAMERA`, plus `ACCESS_NETWORK_STATE` (added by
+  CameraX, not INTERNET) and `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` (AndroidX, own signature permission).
+  `uses-feature android.hardware.camera`, `allowBackup=false`. Components: `CaptureActivity` exported=true (launcher);
+  `androidx.camera.core.impl.MetadataHolderService` exported=false; `androidx.startup.InitializationProvider`
+  exported=false; `androidx.profileinstaller.ProfileInstallReceiver` exported=true with permission `android.permission.DUMP`
+  (AndroidX standard); `androidx.compose.ui.tooling.PreviewActivity` exported=true, debug builds only (ui-tooling,
+  `debugImplementation`, same as `:app`). Every component declares `exported`.
+- `:capture:dependencies --configuration debugRuntimeClasspath`: all five CameraX artifacts at 1.6.2 (no other version),
+  `:game-engine` present, no `:app`.
