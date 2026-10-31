@@ -256,8 +256,8 @@ reduced. Layout (Kosmo, Q10 A: the board on the left, the zone and the action ba
   S/M chips at its end) over the current player's zone, the two together limited to the height of the band (Kosmo's
   Q1 suggestion: a zone limited to the height of the board header plus the title). The title moves from above the
   board (earlier versions) to above the zone: with the title over the board the rows get (411 - 8 - 57 - 24) / 7 =
-  46.1 dp, under 48 dp; with the title in the right column they get 49.5 dp (developer, for the UX review; told to
-  Kosmo in question Q11);
+  46.1 dp, under 48 dp; with the title in the right column they get 49.5 dp (developer proposal, accepted by
+  Kosmo in Q11 A; the UX review judges its details);
 - the zone is one line: name (ellipsis), "MPR 2,4", then the visit's dart cells at their minimum size (about 28 dp
   tall). The S/M chips (kept, Q4 A) stay at the end of the `MatchHeader` line in landscape;
 - "RATÉ" alone in the top cell of the button column, as in portrait, at the height of the column headers (part of the
@@ -314,9 +314,8 @@ Conclusion: on the Pixel 7, 48 dp buttons with the 7 rows in one block (Q1) need
 fixed landscape texts, and the title in the right column. With the bars shown, the 7 rows either go under 48 dp (41
 to 45 dp, which would need the CLAUDE.md exception) or scroll (against Q1). So Q5 B is still needed, task R4b stays,
 and with this layout the 32 dp floor and the CLAUDE.md 48 dp exception are no longer needed: rows are 48 dp at least
-in both orientations. Kosmo confirms with question Q11 (Open questions); until he answers, the plan follows option A
-(this one). Spare at 7 rows with the bars hidden: 7 x 1.5 = 10.5 dp; R2's policy test and R4's Robolectric fit at
-914 x 411 prove it. Fallback (below the Pixel 7 only): the rows keep 48 dp and scroll under the pinned band, as in
+in both orientations. Kosmo chose this layout (Q11 A, see Decisions). Spare at 7 rows with the bars hidden:
+7 x 1.5 = 10.5 dp; R2's policy test and R4's Robolectric fit at 914 x 411 prove it. Fallback (below the Pixel 7 only): the rows keep 48 dp and scroll under the pinned band, as in
 portrait.
 
 Landscape width: 914 - 2 x 12 = 890 dp, minus a cutout of at most 48 dp on one side = 842 dp. Board at 4 players:
@@ -600,8 +599,7 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
   report to main.
 - Files: `ui/cricket/CricketBoardLayoutPolicy.kt` (new), `CricketBoardLayoutPolicyTest` (new),
   `docs/rules/cricket.md`.
-- Depends on: R1, and Kosmo's answer to Q11 (the landscape part follows the chosen option; under B or C main has
-  the plan revised first).
+- Depends on: R1 (the landscape part follows Kosmo's Q11 A).
 - Done when: `./gradlew :app:testDebugUnitTest` and `./gradlew build` green; `kosmo-detekt` exits 0.
 - Model: sonnet
 - Why this model: on the Pixel 7 the budgets have real spare (21 dp in the worst portrait case, 10.5 dp in
@@ -657,7 +655,7 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
 - Files: `ui/cricket/CricketGameScreen.kt`, `CricketBoard.kt`, `CricketPlayerZone.kt` (single-line variant, the
   shared `DartSlots` unchanged so X01 is untouched), `ui/cricket/CricketLayoutPolicy.kt` (deleted),
   `docs/design/design-system.md`, `CricketScreenTest`, `CricketScreenshotTest`, `CricketLayoutPolicyTest` (deleted).
-- Depends on: R3, and Q11 answered A.
+- Depends on: R3.
 - Done when: same checks as R3.
 - Model: sonnet
 - Why this model: it reuses the portrait board and the policy of R2; the layout follows section 4 without a new
@@ -752,7 +750,7 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
   screen in landscape is proposed in the PR's "Proposed owner changes"; CLAUDE.md is never edited by the squad.
   Status after Kosmo's Pixel 7 instruction (below): the hidden bars are kept (they are still needed for 48 dp rows on
   the Pixel 7); the "under 48 dp" part is no longer used, so the 32 dp floor and the proposed CLAUDE.md exception are
-  dropped, pending Kosmo's confirmation in Q11.
+  dropped, as Kosmo confirmed in Q11 A.
 - Kosmo, Q6 A: the "4/7" is also removed from the solo home resume card (task R6, CR20 amended).
 - Kosmo, Dartsmind reference: added to the branch as a temporary file, to be deleted once the work is done (task R7);
   no file that stays in the repository names it.
@@ -771,17 +769,18 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
   right, "ANNULER" / "JOUEUR SUIVANT" at the bottom right; the board (player columns, then the buttons) on the left,
   so the target buttons sit in the middle of the screen. Applied in section 4 and tasks R1, R2 and R4; the mirrored
   layout (zone column on the left) is dropped.
-- Developer, pending design review: the totals at the top of each column header, as the largest text of the board,
-  in both orientations (no points row), because landscape has no room for a points row (not copied from the
-  reference).
-- Developer, pending design review (consequence of Q7 B): TalkBack reads each row in reading order, its cells first
-  (each already names the target) and then its buttons, single, double, triple; the current player's header still
-  comes first (U7). The board uses start and end, so it would mirror in a right-to-left locale; none is shipped, so
-  left-to-right is not forced and no right-to-left test is added.
-- Developer, pending design review: in landscape the S/M chips move to the end of the `MatchHeader` line, and the
-  landscape texts use the fixed styles so the one-block layout holds at every font scale.
-- Developer, pending design review: buttons of a dead row stay enabled (closed-sector sound, AN30); the strike crosses
-  only the cells.
+- Developer, accepted in design review (plan approved at `39e9807`): the totals at the top of each column header, as
+  the largest text of the board, in both orientations (no points row), because landscape has no room for a points
+  row (not copied from the reference).
+- Developer, accepted in design review (consequence of Q7 B): TalkBack reads each row in reading order, its cells
+  first (each already names the target) and then its buttons, single, double, triple; the current player's header
+  still comes first (U7). The board uses start and end, so it would mirror in a right-to-left locale; none is
+  shipped, so left-to-right is not forced and no right-to-left test is added.
+- Developer, accepted in design review: in landscape the S/M chips move to the end of the `MatchHeader` line (which
+  is above the zone since Q11 A), and the landscape texts use the fixed styles so the one-block layout holds at every
+  font scale.
+- Developer, accepted in design review: buttons of a dead row stay enabled (closed-sector sound, AN30); the strike
+  crosses only the cells.
 
 Design review of `0c2b012` (security, architecture and tests approved; UX one blocking finding; confrontation
 additions from the test, architecture and security reviewers), applied in this version:
@@ -835,9 +834,9 @@ on 2 to 3 lines and the 4-player grid scrolled by 8 to 12 dp, see the measuremen
   360 x 640" and the 14 sp cap of the totals from scale 1.5 are replaced by "nothing scrolls on the Pixel 7"; the
   scroll of the rows stays only as a fallback for unsupported smaller screens, and rows never go under 48 dp.
 - Developer: landscape keeps 48 dp rows (49.5 dp at 7 rows) with the bars hidden (Q5 B kept), the fixed landscape
-  texts (kept, U5 kept) and the `MatchHeader` moved above the zone in the right column (new, for the UX review: with
+  texts (kept, U5 kept) and the `MatchHeader` moved above the zone in the right column (accepted by Kosmo, Q11 A: with
   the title over the board the rows would get 46.1 dp). The 32 dp floor and the CLAUDE.md 48 dp exception are
-  dropped (Q11 confirms); landscape names and title at 14 sp fixed instead of 12 sp.
+  dropped (Kosmo, Q11 A); landscape names and title at 14 sp fixed instead of 12 sp.
 - Developer: the landscape action bar is side by side as in portrait (173 dp per button at 4 players); review U3's
   stacking and the `ActionBar(isStacked)` parameter are dropped (U3's cause, a 204 dp right column at 640 dp wide,
   is gone); the 12 sp minimum label assertion of U3 stays.
@@ -850,28 +849,16 @@ on 2 to 3 lines and the 4-player grid scrolled by 8 to 12 dp, see the measuremen
   side, instead of 30 dp); the portrait fit is checked with 1, 2 and 4 players at 411 x 814.
 - R2 changes model (opus to sonnet): with real spare the policy is a plain distribution of measured values.
 - The CR22 contract text written in R1 (360 dp budgets, 32 dp floor, stacked bar, 204 dp column) is rewritten in R2.
+- Kosmo, Q11 A (asked after the Pixel 7 instruction; options were A: landscape full screen, B: bars shown with
+  buttons of about 41 to 45 dp and a CLAUDE.md exception, C: bars shown with 48 dp buttons and scrolling rows): the
+  Cricket game stays full screen in landscape (bars hidden, Q5 B kept, task R4b kept), every button is at least 48 dp
+  tall in both orientations, the title "CRICKET · STANDARD" moves to the top right above the player's zone, and no
+  CLAUDE.md exception is proposed (no "Proposed owner changes" entry for the 48 dp rule). On a screen smaller than the
+  Pixel 7 (unsupported) the rows scroll at 48 dp rather than shrink.
 
 ## Open questions
 
-Product questions for Kosmo (in French, for main to relay):
-
-Q1 to Q7, Q9 and Q10 are answered by Kosmo (see Decisions); Q8 was withdrawn.
-
-Q11 (après ta consigne « le plus petit téléphone est le Pixel 7 ») : en paysage, sur le Pixel 7, que préfères-tu ?
-Sur le Pixel 7, avec les barres du haut et du bas affichées, les 7 lignes de la grille ne tiennent d'un seul bloc que
-si les boutons font environ 41 à 45 dp de haut, donc moins que la règle des 48 dp du projet.
-- A (recommandé, ton choix Q5 B gardé) : le jeu en paysage reste en plein écran (barres masquées, un glissement du
-  bord les fait revenir un instant). Tout est visible d'un bloc et chaque bouton fait au moins 48 dp de haut, aussi
-  grand qu'en portrait. Pour gagner la place, le titre « CRICKET · STANDARD » passe en haut à droite, au-dessus de la
-  zone du joueur. Plus besoin d'exception à la règle des 48 dp. Sur un téléphone plus petit que le Pixel 7 (non pris
-  en charge), les lignes défileraient au lieu de rapetisser.
-- B : les barres restent affichées en paysage ; tout est visible d'un bloc, mais les boutons font environ 41 dp de
-  haut (navigation par gestes) à 45 dp (trois boutons). Il faudrait que tu ajoutes une exception à la règle des 48 dp
-  dans le fichier de règles du projet. Une tâche de moins (le masquage des barres).
-- C : les barres restent affichées et les boutons gardent 48 dp, mais les lignes de la grille défilent en paysage
-  (contraire à ta réponse Q1 « tout visible d'un bloc »). Une tâche de moins.
-Recommandation : A, qui garde ton choix Q5 B et donne en paysage des boutons aussi faciles à toucher qu'en portrait.
-Le plan suit A en attendant ta réponse.
+None. Q1 to Q7, Q9, Q10 and Q11 are answered by Kosmo (see Decisions); Q8 was withdrawn.
 
 ## Risks
 
@@ -893,8 +880,6 @@ Le plan suit A en attendant ta réponse.
   example the right column's title plus zone line growing past 57 dp) takes it; the policy test and R4's fit test at
   914 x 411 check the 48 dp floor. Until R4b lands, a real phone shows the bars in landscape and the rows are under
   48 dp (intermediate commits only, never in the PR head).
-- Q11 answered B or C: the landscape part of R2, R4 and R4b changes (B: rows under 48 dp, the CLAUDE.md exception
-  comes back and R4b goes; C: landscape scrolls and R4b goes); the plan is revised before R2.
 - Hidden system bars: they must come back when the screen leaves landscape or the game (between legs, end, home,
   abandon), or the rest of the app stays without bars; tested through `SystemBarsPolicy` and the fake controller,
   restored by the effect's `onDispose`, and checked on the phone.
@@ -907,7 +892,8 @@ Le plan suit A en attendant ta réponse.
   review with U5 and stated to Kosmo in the PR.
 - Landscape right column top: title line (24 dp) plus single-line zone (28 dp dart cells) in the 57 dp band, 5 dp
   of spare; the "VICTOIRE" banner (CR25) must fit the zone line; checked by the clipping tests and captures.
-- Landscape title moved above the zone (new): the UX review judges it; TalkBack keeps it first.
+- Landscape title moved above the zone (Kosmo, Q11 A): its details (alignment, chips) are for the UX review;
+  TalkBack keeps it first.
 - About 25 existing Robolectric cases and 20 game captures use the keypad or the modifier and are rewritten; the
   X01 captures must stay byte-identical.
 - Landscape action bar (Q9 B): side by side, 173 dp per button at 4 players; at scale 2.0 it takes about 151.5 of
