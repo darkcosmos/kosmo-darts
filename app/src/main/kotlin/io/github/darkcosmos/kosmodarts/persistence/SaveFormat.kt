@@ -45,11 +45,12 @@ internal class DecodedFile(val version: Int, val reader: BodyReader)
 
 /**
  * Line-based text format shared by the saved game and the last setup (docs/adr/0001-save-format.md; version 2:
- * docs/adr/0005-save-format-v2-match.md; version 3: docs/adr/0006-save-format-v3-colors.md).
+ * docs/adr/0005-save-format-v2-match.md; version 3: docs/adr/0006-save-format-v3-colors.md; version 4:
+ * docs/adr/0008-save-format-v4-modes.md).
  *
- * A file is: a kind line, a version line, body lines in a fixed order, a CRC-32 line covering every byte before it,
- * and an end line. Every value has a single canonical form, so that `decode(encode(x)) == x` and any other content is
- * rejected.
+ * A file is: a kind line, a version line, body lines in a fixed order (from version 4, the mode line comes first), a
+ * CRC-32 line covering every byte before it, and an end line. Every value has a single canonical form, so that
+ * `decode(encode(x)) == x` and any other content is rejected.
  */
 internal object SaveFormat {
 
@@ -59,11 +60,17 @@ internal object SaveFormat {
     /** Version 2: adds the match format and the confirmed legs (ADR 0005), still decoded. */
     const val VERSION_2: Int = 2
 
-    /** Version 3: adds the players' color slots (ADR 0006). Every write uses it. */
+    /** Version 3: adds the players' color slots (ADR 0006), still decoded. */
     const val VERSION_3: Int = 3
 
-    /** The version every write uses. */
-    const val VERSION: Int = VERSION_3
+    /** Version 4: adds the mode line and the Cricket saved game (ADR 0008, R23). */
+    const val VERSION_4: Int = 4
+
+    /** The version [encode] writes unless told otherwise. */
+    const val VERSION: Int = VERSION_4
+
+    /** Largest canonical integer of the format (five nines). Larger values are never written (R24). */
+    const val MAX_INTEGER: Int = 99_999
 
     private const val KIND_KEY = "kosmodarts"
     private const val VERSION_KEY = "version"
@@ -78,11 +85,11 @@ internal object SaveFormat {
     private val CANONICAL_INTEGER = Regex("0|[1-9][0-9]{0,${MAX_INTEGER_DIGITS - 1}}")
     private val CRC_LINE = Regex("$CRC_KEY=[0-9a-f]{$CRC_HEX_DIGITS}")
 
-    /** Encodes a file of the given [kind] with the [body] lines, in order. */
-    fun encode(kind: String, body: List<Pair<String, String>>): ByteArray {
+    /** Encodes a file of the given [kind] and [version] with the [body] lines, in order. */
+    fun encode(kind: String, body: List<Pair<String, String>>, version: Int = VERSION): ByteArray {
         val covered = buildString {
             appendLine(KIND_KEY, kind)
-            appendLine(VERSION_KEY, VERSION.toString())
+            appendLine(VERSION_KEY, version.toString())
             body.forEach { (key, value) -> appendLine(key, value) }
         }.toByteArray(StandardCharsets.UTF_8)
         val trailer = "$CRC_KEY=${crc32Hex(covered)}\n$END_LINE\n".toByteArray(StandardCharsets.UTF_8)
@@ -188,6 +195,9 @@ internal class BodyReader(private val lines: List<String>) {
         next++
         return line.substring(key.length + 1)
     }
+
+    /** Whether the next line exists and has the given [key], without consuming it (optional sections). */
+    fun isNext(key: String): Boolean = lines.getOrNull(next)?.startsWith("$key=") == true
 
     /** Checks that every line was read. */
     fun finish() {

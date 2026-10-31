@@ -1,7 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
 import androidx.annotation.VisibleForTesting
-import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executor
@@ -40,14 +39,18 @@ class Persistence(
         }
     }
 
-    /** Saves [saved] in the background. A game over [GameSaveCodec.MAX_DARTS] darts keeps the previous file (R12). */
-    fun saveGame(saved: SavedGame) {
+    /**
+     * Saves [saved], of any mode, in the background: it replaces the saved game (R20). A game that cannot be written
+     * ([GameSaveCodec.encode] gives `null`: over [GameSaveCodec.MAX_DARTS] darts, for instance) keeps the previous
+     * file (R12, R24).
+     */
+    fun saveGame(saved: StoredGame) {
         gameCodec.encode(saved)?.let(gameWriter::write)
     }
 
     fun deleteGame() = gameWriter.delete()
 
-    fun saveLastSetup(setup: X01MatchConfig) = setupWriter.write(setupCodec.encode(setup))
+    fun saveLastSetup(setups: LastSetups) = setupWriter.write(setupCodec.encode(setups))
 
     /** Waits until every read and write requested so far is done. For tests that check the files. */
     @VisibleForTesting

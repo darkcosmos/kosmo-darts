@@ -1,7 +1,10 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketCue
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketCues
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cues
+import io.github.darkcosmos.kosmodarts.ui.cricket.CricketGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 
 /**
@@ -36,6 +39,42 @@ private fun inGameCues(before: GameScreenState, event: AppEvent, after: GameScre
         dartsAfter == dartsBefore - 1 -> listOf(X01Cues.dartUndone)
         event == AppEvent.NextPlayerTapped && before.isAwaitingConfirmation && !after.isAwaitingConfirmation ->
             listOfNotNull(X01Cues.turnStart(after.game))
+        else -> emptyList()
+    }
+}
+
+/**
+ * The Cricket cues of the event that changed [before] into [after] (docs/rules/announcements.md, AN29 to AN32), at the
+ * same hook points as [gameCues] for X01 (AN7). Pure.
+ */
+fun cricketGameCues(before: AppState, event: AppEvent, after: AppState): List<CricketCue> {
+    val screenBefore = before.screen
+    val screenAfter = after.screen
+    return when {
+        // AN28, AN31: the first turn of the new leg, with the "throws first" line.
+        screenBefore is Screen.CricketBetweenLegs && screenAfter is Screen.CricketGame &&
+            event == AppEvent.NextLegTapped -> listOfNotNull(CricketCues.turnStart(screenAfter.game.game))
+        screenBefore !is Screen.CricketGame && screenAfter is Screen.CricketGame ->
+            if (screenAfter.isNewGame) listOfNotNull(CricketCues.turnStart(screenAfter.game.game)) else emptyList()
+        screenBefore is Screen.CricketGame && screenAfter is Screen.CricketGame ->
+            inCricketGameCues(screenBefore.game, event, screenAfter.game)
+        else -> emptyList()
+    }
+}
+
+private fun inCricketGameCues(
+    before: CricketGameScreenState,
+    event: AppEvent,
+    after: CricketGameScreenState,
+): List<CricketCue> {
+    val dartsBefore = before.game.darts.size
+    val dartsAfter = after.game.darts.size
+    return when {
+        // AN30, CR15: the closed-sector sound replaces the hit sound; AN27: the win cue tells what the leg decides.
+        dartsAfter == dartsBefore + 1 -> CricketCues.afterDart(before.match, after.match)
+        dartsAfter == dartsBefore - 1 -> listOf(CricketCues.dartUndone)
+        event == AppEvent.NextPlayerTapped && before.isAwaitingConfirmation && !after.isAwaitingConfirmation ->
+            listOfNotNull(CricketCues.turnStart(after.game))
         else -> emptyList()
     }
 }

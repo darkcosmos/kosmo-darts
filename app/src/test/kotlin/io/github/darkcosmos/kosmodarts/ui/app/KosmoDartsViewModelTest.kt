@@ -19,7 +19,7 @@ class KosmoDartsViewModelTest {
         val viewModel = KosmoDartsViewModel(Random(0), audioSettings = inMemoryAudioSettings())
         viewModel.addCueSink { cues += it }
         listOf(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.StartScoreSelected(301),
             AppEvent.NameChanged(0, "Ann"),
             AppEvent.NameChanged(1, "Bob"),

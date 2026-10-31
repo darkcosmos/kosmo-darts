@@ -87,6 +87,7 @@ class FakeSoundPlayer(
             SoundEffect.DART_CANCEL to 1_000L,
             SoundEffect.BUST to 1_910L,
             SoundEffect.ONE_EIGHTY to 4_000L,
+            SoundEffect.CLOSED_SECTOR to 1_000L,
             SoundEffect.VICTORY to 4_000L,
         )
     }

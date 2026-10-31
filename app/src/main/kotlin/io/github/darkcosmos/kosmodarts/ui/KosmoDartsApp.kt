@@ -6,6 +6,9 @@ import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.AppState
 import io.github.darkcosmos.kosmodarts.ui.app.Screen
 import io.github.darkcosmos.kosmodarts.ui.between.BetweenLegsScreen
+import io.github.darkcosmos.kosmodarts.ui.cricket.CricketBetweenLegsScreen
+import io.github.darkcosmos.kosmodarts.ui.cricket.CricketEndScreen
+import io.github.darkcosmos.kosmodarts.ui.cricket.CricketGameScreen
 import io.github.darkcosmos.kosmodarts.ui.end.EndScreen
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreen
 import io.github.darkcosmos.kosmodarts.ui.home.HomeScreen
@@ -39,5 +42,9 @@ fun KosmoDartsApp(
             )
         is Screen.End -> EndScreen(screen.match, onEvent)
         is Screen.Settings -> SettingsScreen(settings, onSettingsEvent, onBack = { onEvent(AppEvent.Back) })
+        is Screen.CricketGame -> CricketGameScreen(screen.game, onEvent, noVoiceNotice = screen.noVoiceNotice)
+        is Screen.CricketBetweenLegs ->
+            CricketBetweenLegsScreen(screen.match, onEvent, isAbandonDialogShown = screen.isAbandonDialogShown)
+        is Screen.CricketEnd -> CricketEndScreen(screen.match, onEvent)
     }
 }

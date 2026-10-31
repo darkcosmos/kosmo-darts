@@ -19,15 +19,20 @@ fun displayName(name: String, locale: Locale): String = name.uppercase(locale)
 @Composable
 fun displayName(name: String): String = displayName(name, LocalConfiguration.current.locales[0])
 
-/** M14, M19: "SET 2 · LEG 3", "LEG 3" with one set, or `null` in a single game. */
-fun positionText(resources: Resources, position: MatchPosition): String? {
+/**
+ * M14, M19: "SET 2 · LEG 3", "LEG 3" with one set, or `null` in a single game. With [isShort] the landscape wording
+ * ("S2 · L3", "L3"), for a title line that must stay on one line.
+ */
+fun positionText(resources: Resources, position: MatchPosition, isShort: Boolean = false): String? {
     val leg = position.legNumber ?: return null
-    return position.setNumber?.let { resources.getString(R.string.match_position_set_leg, it, leg) }
-        ?: resources.getString(R.string.match_position_leg, leg)
+    val setLeg = if (isShort) R.string.match_position_set_leg_short else R.string.match_position_set_leg
+    val legOnly = if (isShort) R.string.match_position_leg_short else R.string.match_position_leg
+    return position.setNumber?.let { resources.getString(setLeg, it, leg) } ?: resources.getString(legOnly, leg)
 }
 
 @Composable
-fun positionText(position: MatchPosition): String? = positionText(LocalResources.current, position)
+fun positionText(position: MatchPosition, isShort: Boolean = false): String? =
+    positionText(LocalResources.current, position, isShort)
 
 /** M14: the chips of the zone, "S1" (only with sets) and "L2". */
 fun chipTexts(resources: Resources, indicator: MatchIndicator): List<String> = listOfNotNull(

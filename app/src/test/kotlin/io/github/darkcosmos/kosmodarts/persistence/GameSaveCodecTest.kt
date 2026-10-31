@@ -155,17 +155,23 @@ class GameSaveCodecTest {
         assertEquals(ColorSlot.byPosition(2), saved.match.colorSlots)
     }
 
-    /** ADR 0006, R17: format version 3 of a single game whose players hold slots 2 and 1, exact bytes. */
-    @Test
-    fun `format v3 golden file of a single game`() {
-        val darts = listOf(Dart.triple(20), Dart.single(20), Dart.double(5))
+    /** A single game whose players hold slots 2 and 1, waiting for "Next player". */
+    private val singleGameWithSlots: SavedGame = run {
         val config = X01Config(listOf("Ann", "Clément"))
         val match = X01Match(
             X01MatchConfig(config, MatchFormat(), listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_1)),
             emptyList(),
-            X01Game(config, darts),
+            X01Game(config, listOf(Dart.triple(20), Dart.single(20), Dart.double(5))),
         )
-        val saved = SavedGame(match, isAwaitingNextPlayer = true)
+        SavedGame(match, isAwaitingNextPlayer = true)
+    }
+
+    /**
+     * ADR 0006, R17: format version 3 of a single game whose players hold slots 2 and 1, exact bytes written by the
+     * version 3 encoder. Frozen since version 4 (ADR 0008, R25): it keeps decoding the same, as X01.
+     */
+    @Test
+    fun `format v3 golden file of a single game`() {
         val golden = """
             kosmodarts=saved-game
             version=3
@@ -187,8 +193,36 @@ class GameSaveCodecTest {
 
         """.trimIndent().toByteArray(Charsets.UTF_8)
 
-        assertArrayEquals(golden, codec.encode(saved))
-        assertEquals(GameDecodeResult.Valid(saved), codec.decode(golden))
+        assertEquals(GameDecodeResult.Valid(singleGameWithSlots), codec.decode(golden))
+    }
+
+    /** ADR 0008, R23: format version 4 of the same game, exact bytes: the mode line, then the version 3 body. */
+    @Test
+    fun `format v4 golden file of a single game`() {
+        val golden = """
+            kosmodarts=saved-game
+            version=4
+            mode=x01
+            game=x01
+            start-score=501
+            checkout=double-out
+            legs-per-set=1
+            sets=1
+            players=2
+            player=QW5u
+            player=Q2zDqW1lbnQ=
+            colors=2 1
+            legs=0
+            darts=T20 20 D5
+            awaiting-next-player=true
+            between-legs=false
+            crc32=e5c018a7
+            end
+
+        """.trimIndent().toByteArray(Charsets.UTF_8)
+
+        assertArrayEquals(golden, codec.encode(singleGameWithSlots))
+        assertEquals(GameDecodeResult.Valid(singleGameWithSlots), codec.decode(golden))
     }
 
     /** ADR 0002, decision 3: a save is replayed once, in a single engine call, never dart by dart. */

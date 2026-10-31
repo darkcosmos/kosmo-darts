@@ -20,6 +20,7 @@ import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import io.github.darkcosmos.kosmodarts.ui.revealIfScrolled
@@ -165,7 +166,9 @@ class CheckoutSuggestionScreenTest {
     @Config(qualifiers = "+en-port")
     fun `CS4 single out`() {
         send(
-            AppEvent.NewGame, AppEvent.StartScoreSelected(301), AppEvent.CheckoutRuleSelected(CheckoutRule.SINGLE_OUT),
+            AppEvent.NewGame(GameMode.X01),
+            AppEvent.StartScoreSelected(301),
+            AppEvent.CheckoutRuleSelected(CheckoutRule.SINGLE_OUT),
             AppEvent.PlayerRemoved(1), AppEvent.NameChanged(0, "Ann"), AppEvent.StartRequested,
             *triple(20), *triple(20), AppEvent.NumberTapped(1), AppEvent.NextPlayerTapped,
         )
@@ -264,7 +267,7 @@ class CheckoutSuggestionScreenTest {
 
         /** One player, Ann, 301 double out. */
         val ANN_301: Array<AppEvent> = arrayOf(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.StartScoreSelected(301),
             AppEvent.PlayerRemoved(1),
             AppEvent.NameChanged(0, "Ann"),

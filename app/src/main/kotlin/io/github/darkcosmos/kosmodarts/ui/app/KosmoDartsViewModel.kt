@@ -37,7 +37,7 @@ class KosmoDartsViewModel(
      * death (rules R1, R14; ADR 0002).
      */
     val isOnGameScreen: Boolean
-        get() = mutableState.value.screen.let { it is Screen.Game || it is Screen.BetweenLegs }
+        get() = mutableState.value.screen.isGameOrBetweenLegs
 
     /** Called after an event changed the screen, before its cues are handed over (ADR 0004, decision 1). */
     var onScreenChanged: (Screen) -> Unit = {}
@@ -65,6 +65,8 @@ class KosmoDartsViewModel(
         if (after.screen::class != before.screen::class) onScreenChanged(after.screen)
         val cues = gameCues(before, event, after)
         if (cues.isNotEmpty()) cueSinks.toList().forEach { it.onCues(cues) }
+        val cricketCues = cricketGameCues(before, event, after)
+        if (cricketCues.isNotEmpty()) cueSinks.toList().forEach { it.onCricketCues(cricketCues) }
     }
 
     companion object {

@@ -10,5 +10,13 @@ data class NoVoiceNotice(val canInstall: Boolean)
  * device. Pure.
  */
 fun shouldShowNoVoiceNotice(screen: Screen, settings: AudioSettings): Boolean =
-    screen is Screen.Game && screen.isNewGame && screen.noVoiceNotice == null &&
+    screen.isNewGameShown && screen.noVoiceNoticeOrNull == null &&
         settings.voiceEnabled && !settings.noVoiceNoticeShown
+
+/** The open "no offline voice" message of a game screen of any mode, or `null` (AN16). */
+private val Screen.noVoiceNoticeOrNull: NoVoiceNotice?
+    get() = when (this) {
+        is Screen.Game -> noVoiceNotice
+        is Screen.CricketGame -> noVoiceNotice
+        else -> null
+    }

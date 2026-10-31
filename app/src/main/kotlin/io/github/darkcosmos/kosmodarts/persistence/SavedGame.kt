@@ -5,19 +5,19 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 
 /**
- * The game in progress as stored on the device (rules R4, R12, R14): the match, plus whether the last completed turn
- * of its current leg still waits for "Next player", and whether the between-legs screen is shown. Everything else is
- * derived by replay (docs/adr/0001-save-format.md, "Stored fields"; docs/adr/0005-save-format-v2-match.md). A
- * finished leg always waits: it is shown with the checkout dialog.
+ * The X01 game in progress as stored on the device (rules R4, R12, R14; [StoredGame]): the match, plus whether the
+ * last completed turn of its current leg still waits for "Next player", and whether the between-legs screen is shown.
+ * Everything else is derived by replay (docs/adr/0001-save-format.md, "Stored fields";
+ * docs/adr/0005-save-format-v2-match.md). A finished leg always waits: it is shown with the checkout dialog.
  *
  * Depends on the engine only: the conversions to and from the screens live on the UI side
  * (`ui/game/SavedGameScreen.kt`; ADR 0002, consequences).
  */
 data class SavedGame(
     val match: X01Match,
-    val isAwaitingNextPlayer: Boolean,
-    val isBetweenLegs: Boolean = false,
-) {
+    override val isAwaitingNextPlayer: Boolean,
+    override val isBetweenLegs: Boolean = false,
+) : StoredGame {
     /** A single game (docs/rules/match.md, M5): [game] is the only leg of a match in 1 leg and 1 set. */
     constructor(game: X01Game, isAwaitingNextPlayer: Boolean) :
         this(X01Match(X01MatchConfig(game.config), emptyList(), game), isAwaitingNextPlayer)
@@ -27,7 +27,7 @@ data class SavedGame(
         get() = match.currentLeg
 
     /** Whether both stored flags agree with the replayed match (see [isConsistent] and ADR 0005). */
-    val isConsistent: Boolean
+    override val isConsistent: Boolean
         get() = isConsistent(game, isAwaitingNextPlayer) && (!isBetweenLegs || isBetweenLegsPossible(match))
 
     companion object {

@@ -37,11 +37,13 @@ import io.github.darkcosmos.kosmodarts.ui.components.ScrollingScreen
 import io.github.darkcosmos.kosmodarts.ui.components.TwoColumnScreen
 import io.github.darkcosmos.kosmodarts.ui.components.WinnerZone
 import io.github.darkcosmos.kosmodarts.ui.components.WinnerZoneTags
-import io.github.darkcosmos.kosmodarts.ui.format.averageText
 import io.github.darkcosmos.kosmodarts.ui.format.dartsText
 import io.github.darkcosmos.kosmodarts.ui.format.displayName
 import io.github.darkcosmos.kosmodarts.ui.format.formatText
 import io.github.darkcosmos.kosmodarts.ui.format.positionText
+import io.github.darkcosmos.kosmodarts.ui.format.statisticBetweenDescription
+import io.github.darkcosmos.kosmodarts.ui.format.statisticHeader
+import io.github.darkcosmos.kosmodarts.ui.format.statisticText
 import io.github.darkcosmos.kosmodarts.ui.game.AbandonDialog
 import io.github.darkcosmos.kosmodarts.ui.game.CheckoutSummary
 import io.github.darkcosmos.kosmodarts.ui.layout.ScreenLayoutPolicy
@@ -68,10 +70,30 @@ fun BetweenLegsScreen(
     isAbandonDialogShown: Boolean = false,
     checkout: CheckoutSummary? = null,
 ) {
-    val state = BetweenLegsState.of(match, checkout)
+    BetweenLegsContent(
+        state = BetweenLegsState.of(match, checkout),
+        formatLine = formatText(match.config.startScore, match.config.checkoutRule, match.format),
+        onEvent = onEvent,
+        modifier = modifier,
+        isAbandonDialogShown = isAbandonDialogShown,
+    )
+}
+
+/**
+ * The between-legs layout of any mode, drawn from [state] (X01: [BetweenLegsScreen]; Cricket:
+ * `CricketBetweenLegsScreen`). [formatLine] is the mode's format line.
+ */
+@Composable
+fun BetweenLegsContent(
+    state: BetweenLegsState,
+    formatLine: String,
+    onEvent: (AppEvent) -> Unit,
+    modifier: Modifier = Modifier,
+    isAbandonDialogShown: Boolean = false,
+) {
     val format: @Composable ColumnScope.() -> Unit = {
         Text(
-            text = formatText(match.config.startScore, match.config.checkoutRule, match.format),
+            text = formatLine,
             style = KosmoTheme.typography.label,
             color = KosmoTheme.colors.onBackgroundMuted,
         )
@@ -84,7 +106,7 @@ fun BetweenLegsScreen(
             tags = WinnerZoneTags(BetweenLegsTags.TITLE, BetweenLegsTags.WINNER, BetweenLegsTags.CHECKOUT),
             detail = state.checkout?.let {
                 stringResource(R.string.between_checkout, it.points, dartsText(it.darts))
-            },
+            } ?: state.winnerPoints?.let { stringResource(R.string.between_points, it) },
             modifier = Modifier.fillMaxWidth().testTag(BetweenLegsTags.WINNER_ZONE),
         )
     }
@@ -105,7 +127,7 @@ fun BetweenLegsScreen(
                 top = format,
                 start = {
                     winner()
-                    NextStarterBar(state, match)
+                    NextStarterBar(state)
                 },
                 end = {
                     MatchScoreboard(state)
@@ -119,7 +141,7 @@ fun BetweenLegsScreen(
                     format()
                     winner()
                     MatchScoreboard(state)
-                    NextStarterBar(state, match)
+                    NextStarterBar(state)
                 },
                 buttons = { nextLeg() },
             )
@@ -147,16 +169,16 @@ private fun MatchScoreboard(state: BetweenLegsState) {
         ScoreCell(stringResource(R.string.match_sets_label), tag = BetweenLegsTags.SETS_HEADER)
             .takeIf { state.hasSets },
         ScoreCell(stringResource(R.string.match_legs_short), tag = BetweenLegsTags.LEGS_HEADER),
-        ScoreCell(stringResource(R.string.match_average_header), width = AVERAGE_WIDTH),
+        ScoreCell(statisticHeader(state.mode), width = AVERAGE_WIDTH),
     )
     val separator = stringResource(R.string.checkout_spoken_separator)
     val rows = state.rows.mapIndexed { index, row ->
-        val average = averageText(row.average)
+        val average = statisticText(state.mode, row.average)
         val description = listOfNotNull(
             displayName(row.name),
             row.setsWon?.let { stringResource(R.string.match_score_sets, it) },
             stringResource(R.string.match_score_legs, row.legsWon),
-            stringResource(R.string.game_average, average),
+            statisticBetweenDescription(state.mode, average),
         ).joinToString(separator)
         ScoreboardRow(
             name = row.name,
@@ -180,9 +202,8 @@ private fun MatchScoreboard(state: BetweenLegsState) {
 
 /** "SET 2 · LEG 4 ▌ CID STARTS": the next leg's position (M19) and its starter (M6), one TalkBack item. */
 @Composable
-private fun NextStarterBar(state: BetweenLegsState, match: X01Match) {
+private fun NextStarterBar(state: BetweenLegsState) {
     val colors = KosmoTheme.colors
-    val starter = match.currentLeg.startingPlayerIndex
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
@@ -201,7 +222,7 @@ private fun NextStarterBar(state: BetweenLegsState, match: X01Match) {
             Modifier
                 .width(NEXT_MARK_WIDTH)
                 .height(NEXT_MARK_HEIGHT)
-                .background(PlayerPalette.colorOf(match.colorSlots[starter], colors)),
+                .background(PlayerPalette.colorOf(state.nextStarterSlot, colors)),
         )
         Text(
             text = stringResource(R.string.between_starts, displayName(state.nextStarterName)),

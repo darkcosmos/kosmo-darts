@@ -9,6 +9,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import org.junit.Rule
 import org.junit.Test
@@ -126,14 +127,15 @@ class VisitTotalScreenshotTest {
         val NEXT = AppEvent.NextPlayerTapped
 
         /** 501, Ann and Bob: every box at 0. */
-        val START: Array<AppEvent> = arrayOf(AppEvent.NewGame, *names("Ann", "Bob"), AppEvent.StartRequested)
+        val START: Array<AppEvent> =
+            arrayOf(AppEvent.NewGame(GameMode.X01), *names("Ann", "Bob"), AppEvent.StartRequested)
 
         /** Ann scored 50; Bob has thrown T20. */
         val TWO_PLAYERS: Array<AppEvent> = arrayOf(*START, *singles(20, 15, 15), NEXT, *triple(20))
 
         /** 501, four players: Ann 50, Bob 180, Cid 15, Dan has thrown T19. */
         val FOUR_PLAYERS: Array<AppEvent> = arrayOf(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.PlayerAdded,
             AppEvent.PlayerAdded,
             *names("Ann", "Bob", "Cid", "Dan"),
@@ -149,7 +151,7 @@ class VisitTotalScreenshotTest {
          * only (VT13).
          */
         val BUST: Array<AppEvent> = arrayOf(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.StartScoreSelected(301),
             *names("Ann", "Bob"),
             AppEvent.StartRequested,
@@ -162,7 +164,7 @@ class VisitTotalScreenshotTest {
         val ONE_EIGHTY: Array<AppEvent> = arrayOf(*START, *triple(20), *triple(20), *triple(20))
 
         private val LONG_NAMES_SETUP: Array<AppEvent> = arrayOf(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.StartScoreSelected(301),
             AppEvent.PlayerAdded,
             AppEvent.PlayerAdded,

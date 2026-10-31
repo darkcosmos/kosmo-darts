@@ -9,6 +9,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import org.junit.Rule
 import org.junit.Test
@@ -105,7 +106,7 @@ class CheckoutSuggestionScreenshotTest {
 
         /** One player, Ann, 301 double out, at the start: no suggestion. */
         val START: Array<AppEvent> = arrayOf(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.StartScoreSelected(301),
             AppEvent.PlayerRemoved(1),
             AppEvent.NameChanged(0, "Ann"),
@@ -122,7 +123,7 @@ class CheckoutSuggestionScreenshotTest {
 
         /** Four players, 301: Ann leaves 170, the others miss, Ann is back with 170 left. */
         val FOUR_PLAYERS_AT_170: Array<AppEvent> = arrayOf(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.StartScoreSelected(301),
             AppEvent.PlayerAdded,
             AppEvent.PlayerAdded,

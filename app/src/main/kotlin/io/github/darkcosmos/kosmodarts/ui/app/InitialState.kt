@@ -2,7 +2,10 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.persistence.GameLoad
 import io.github.darkcosmos.kosmodarts.persistence.LoadResult
+import io.github.darkcosmos.kosmodarts.persistence.SavedCricketGame
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.persistence.StoredGame
+import io.github.darkcosmos.kosmodarts.ui.cricket.toGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 
@@ -15,8 +18,9 @@ import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 fun initialState(load: LoadResult, wasOnGameScreen: Boolean): AppState {
     val screen = when (val game = load.game) {
         GameLoad.Absent -> Screen.Home()
-        is GameLoad.Valid -> if (wasOnGameScreen) game.saved.toScreen() else Screen.Home(resumableGame = game.saved)
-        is GameLoad.Invalid -> Screen.Setup(SetupState.prefilled(load.lastSetup), isRestoreFailedShown = true)
+        // R14, R21: after a process kill the game screen comes back, else the home screen offers the saved game.
+        is GameLoad.Valid -> game.saved.let { if (wasOnGameScreen) it.toScreen() else Screen.Home(resumableGame = it) }
+        is GameLoad.Invalid -> Screen.Setup(SetupState.prefilled(load.lastSetup?.x01Setup), isRestoreFailedShown = true)
     }
     return AppState(screen = screen, lastSetup = load.lastSetup)
 }
@@ -24,3 +28,13 @@ fun initialState(load: LoadResult, wasOnGameScreen: Boolean): AppState {
 /** R14: the screen the saved game was on: the between-legs screen (owner Q6 ii), else the game screen. */
 fun SavedGame.toScreen(): Screen =
     if (isBetweenLegs) Screen.BetweenLegs(match) else Screen.Game(toGameScreenState())
+
+/** R14, R21: the screen the saved Cricket game was on: between legs, else the Cricket game screen. */
+fun SavedCricketGame.toScreen(): Screen =
+    if (isBetweenLegs) Screen.CricketBetweenLegs(match) else Screen.CricketGame(toGameScreenState())
+
+/** R14, R21: the screen the saved game of either mode was on. */
+fun StoredGame.toScreen(): Screen = when (this) {
+    is SavedGame -> toScreen()
+    is SavedCricketGame -> toScreen()
+}

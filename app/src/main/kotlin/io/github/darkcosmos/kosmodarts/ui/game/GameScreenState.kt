@@ -1,6 +1,8 @@
 package io.github.darkcosmos.kosmodarts.ui.game
 
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
+import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
+import io.github.darkcosmos.kosmodarts.engine.match.MatchScore
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -62,17 +64,7 @@ data class GameScreenState(
      * count: a pending checkout is not won yet.
      */
     val indicators: List<MatchIndicator>?
-        get() = if (match.format.isSingleGame) {
-            null
-        } else {
-            val score = match.score
-            score.legsWonInSet.indices.map { player ->
-                MatchIndicator(
-                    setsWon = score.setsWon[player].takeIf { match.format.hasSets },
-                    legsWon = score.legsWonInSet[player],
-                )
-            }
-        }
+        get() = MatchIndicator.of(match.score)
 
     /** The completed turn waiting for confirmation, or `null`. */
     val pendingTurn: X01Turn?
@@ -192,7 +184,21 @@ data class GameScreenState(
  * @property setsWon sets won, or `null` when the match has a single set (no set mention anywhere).
  * @property legsWon legs won in the current set.
  */
-data class MatchIndicator(val setsWon: Int?, val legsWon: Int)
+data class MatchIndicator(val setsWon: Int?, val legsWon: Int) {
+    companion object {
+        /** M14: one indicator per player of [score], in configuration order, or `null` in a single game. */
+        fun of(score: MatchScore): List<MatchIndicator>? = if (score.format.isSingleGame) {
+            null
+        } else {
+            score.legsWonInSet.indices.map { player ->
+                MatchIndicator(
+                    setsWon = score.setsWon[player].takeIf { score.format.hasSets },
+                    legsWon = score.legsWonInSet[player],
+                )
+            }
+        }
+    }
+}
 
 /** What the current player's zone shows (docs/design/design-system.md, 6.1 to 6.3). */
 enum class ZoneMode {
@@ -213,19 +219,25 @@ enum class ZoneMode {
 data class MatchPosition(val setNumber: Int?, val legNumber: Int?) {
     companion object {
         /** The leg in progress of [match]. */
-        fun current(match: X01Match): MatchPosition =
-            of(match, match.score.currentSetNumber, match.score.currentLegNumber)
+        fun current(match: X01Match): MatchPosition = current(match.score)
 
         /** The last confirmed leg of [match], or `null` before the first one (between legs, M16). */
-        fun lastLeg(match: X01Match): MatchPosition? {
-            val set = match.score.lastLegSetNumber
-            val leg = match.score.lastLegNumber
-            return if (set == null || leg == null) null else of(match, set, leg)
+        fun lastLeg(match: X01Match): MatchPosition? = lastLeg(match.score)
+
+        /** The leg in progress of a match with [score], whatever its mode (X01 or Cricket). */
+        fun current(score: MatchScore): MatchPosition =
+            of(score.format, score.currentSetNumber, score.currentLegNumber)
+
+        /** The last confirmed leg of a match with [score], or `null` before the first one (M16). */
+        fun lastLeg(score: MatchScore): MatchPosition? {
+            val set = score.lastLegSetNumber
+            val leg = score.lastLegNumber
+            return if (set == null || leg == null) null else of(score.format, set, leg)
         }
 
-        private fun of(match: X01Match, set: Int, leg: Int): MatchPosition = when {
-            match.format.isSingleGame -> MatchPosition(null, null)
-            match.format.hasSets -> MatchPosition(set, leg)
+        private fun of(format: MatchFormat, set: Int, leg: Int): MatchPosition = when {
+            format.isSingleGame -> MatchPosition(null, null)
+            format.hasSets -> MatchPosition(set, leg)
             else -> MatchPosition(null, leg)
         }
     }

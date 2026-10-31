@@ -34,7 +34,7 @@ internal class MatchScript {
         startScore: Int = 301,
         singleOut: Boolean = true,
     ): MatchScript {
-        send(AppEvent.NewGame)
+        send(AppEvent.NewGame(GameMode.X01))
         repeat(names.size - 2) { send(AppEvent.PlayerAdded) }
         if (names.size == 1) send(AppEvent.PlayerRemoved(1))
         names.forEachIndexed { index, name -> send(AppEvent.NameChanged(index, name)) }

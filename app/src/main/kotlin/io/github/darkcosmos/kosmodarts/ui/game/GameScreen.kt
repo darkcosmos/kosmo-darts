@@ -270,7 +270,7 @@ private fun GameActions(
 }
 
 @Composable
-private fun confirmLabel(outcome: LegOutcome): String = when (outcome) {
+internal fun confirmLabel(outcome: LegOutcome): String = when (outcome) {
     LegOutcome.LEG -> stringResource(R.string.checkout_confirm_leg)
     LegOutcome.SET -> stringResource(R.string.checkout_confirm_set)
     LegOutcome.MATCH -> stringResource(R.string.checkout_confirm_match)

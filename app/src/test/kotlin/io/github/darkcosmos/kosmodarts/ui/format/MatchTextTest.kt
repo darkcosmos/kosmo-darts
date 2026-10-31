@@ -27,6 +27,8 @@ class MatchTextTest {
         assertEquals("SET 2 · LEG 3", positionText(resources, MatchPosition(2, 3)))
         assertEquals("LEG 3", positionText(resources, MatchPosition(null, 3)))
         assertNull(positionText(resources, MatchPosition(null, null)))
+        assertEquals("S2 · L3", positionText(resources, MatchPosition(2, 3), isShort = true))
+        assertEquals("L3", positionText(resources, MatchPosition(null, 3), isShort = true))
         assertEquals(listOf("S1", "L2"), chipTexts(resources, MatchIndicator(1, 2)))
         assertEquals(listOf("L2"), chipTexts(resources, MatchIndicator(null, 2)))
         assertEquals("S0 · L1", tileMatchText(resources, MatchIndicator(0, 1)))
@@ -41,6 +43,8 @@ class MatchTextTest {
         assertEquals("MANCHE 3", positionText(resources, MatchPosition(null, 3)))
         assertEquals(listOf("S1", "M2"), chipTexts(resources, MatchIndicator(1, 2)))
         assertEquals("S0 · M1", tileMatchText(resources, MatchIndicator(0, 1)))
+        assertEquals("S2 · M3", positionText(resources, MatchPosition(2, 3), isShort = true))
+        assertEquals("M3", positionText(resources, MatchPosition(null, 3), isShort = true))
     }
 
     @Test

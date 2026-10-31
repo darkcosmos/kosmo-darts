@@ -19,6 +19,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import org.junit.Assert.assertEquals
@@ -270,7 +271,7 @@ class ZoneLayoutTest {
 
         /** From home: 301 double out, 3 legs per set and 3 sets (tiles with their match line), [names], Start. */
         fun startMatch(vararg names: String): Array<AppEvent> = buildList {
-            add(AppEvent.NewGame)
+            add(AppEvent.NewGame(GameMode.X01))
             add(AppEvent.StartScoreSelected(301))
             repeat(names.size - 2) { add(AppEvent.PlayerAdded) }
             names.forEachIndexed { index, name -> add(AppEvent.NameChanged(index, name)) }

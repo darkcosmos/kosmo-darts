@@ -1,44 +1,26 @@
 package io.github.darkcosmos.kosmodarts.ui.game
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.selected
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
-import io.github.darkcosmos.kosmodarts.ui.components.WordSafeText
-import io.github.darkcosmos.kosmodarts.ui.components.wordCount
-import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.States
-import io.github.darkcosmos.kosmodarts.ui.theme.fixedSp
 
 private const val NUMBERS_PER_ROW = 5
-private val ACTIVE_BORDER = 2.dp
 
 /** Rows of the keypad: four rows of numbers, then Double, Triple, 25, Bull and Miss (design system, `Keypad`). */
 const val KEYPAD_ROWS: Int = 5
@@ -99,8 +81,18 @@ fun Keypad(
 @Composable
 private fun RowScope.SpecialKeys(game: GameScreenState, tap: (AppEvent) -> Unit, locked: Boolean) {
     val numberStyle = KosmoTheme.typography.keypad
-    ModifierKey(game, Multiplier.DOUBLE, stringResource(R.string.key_double), KeypadTags.DOUBLE, tap)
-    ModifierKey(game, Multiplier.TRIPLE, stringResource(R.string.key_triple), KeypadTags.TRIPLE, tap)
+    listOf(
+        Triple(Multiplier.DOUBLE, R.string.key_double, KeypadTags.DOUBLE),
+        Triple(Multiplier.TRIPLE, R.string.key_triple, KeypadTags.TRIPLE),
+    ).forEach { (multiplier, label, tag) ->
+        ModifierKey(
+            isActive = game.multiplier == multiplier,
+            isEnabled = game.isKeypadEnabled,
+            label = stringResource(label),
+            tag = tag,
+            onClick = { tap(AppEvent.MultiplierTapped(multiplier)) },
+        )
+    }
     Key(
         text = stringResource(R.string.dart_outer_bull),
         tag = KeypadTags.OUTER_BULL,
@@ -127,91 +119,3 @@ private fun RowScope.SpecialKeys(game: GameScreenState, tap: (AppEvent) -> Unit,
         onClick = { tap(AppEvent.MissTapped) },
     )
 }
-
-/** Double or Triple (owner X1, U8): the active one shows a check mark and an inner border, and is "selected". */
-@Composable
-private fun RowScope.ModifierKey(
-    game: GameScreenState,
-    multiplier: Multiplier,
-    label: String,
-    tag: String,
-    tap: (AppEvent) -> Unit,
-) {
-    val isActive = game.multiplier == multiplier
-    val mark = stringResource(R.string.key_selected_mark)
-    Key(
-        text = if (isActive) "$mark $label" else label,
-        tag = tag,
-        style = KosmoTheme.typography.keypadLabel,
-        enabled = game.isKeypadEnabled,
-        isLocked = !game.isKeypadEnabled,
-        isActive = isActive,
-        modifier = Modifier.semantics {
-            selected = isActive
-            // TalkBack reads the label, not the check mark: the selected state already says it.
-            contentDescription = label
-        },
-        onClick = { tap(AppEvent.MultiplierTapped(multiplier)) },
-    )
-}
-
-@Composable
-private fun RowScope.Key(
-    text: String,
-    tag: String,
-    style: TextStyle,
-    enabled: Boolean,
-    isLocked: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isActive: Boolean = false,
-    isOutlined: Boolean = false,
-) {
-    val colors = KosmoTheme.colors
-    val container = when {
-        isActive -> colors.accent
-        isOutlined -> Color.Transparent
-        else -> colors.surfaceHigh
-    }
-    val content = when {
-        isActive -> colors.onAccent
-        isOutlined -> colors.onBackgroundMuted
-        else -> colors.onBackground
-    }
-    // A key disabled inside an unlocked keypad (bull keys with a modifier) is at 40 %; a locked keypad is dimmed as a
-    // whole, so its keys keep their colors under the keypad alpha.
-    val disabledAlpha = if (isLocked) 1f else States.DISABLED_ALPHA
-    Button(
-        onClick = onClick,
-        enabled = enabled,
-        shape = KosmoShapes.control,
-        colors = ButtonDefaults.buttonColors(
-            containerColor = container,
-            contentColor = content,
-            disabledContainerColor = container.copy(alpha = container.alpha * disabledAlpha),
-            disabledContentColor = content.copy(alpha = disabledAlpha),
-        ),
-        border = when {
-            isActive -> BorderStroke(ACTIVE_BORDER, colors.onBackground)
-            isOutlined -> BorderStroke(1.dp, colors.outline)
-            else -> null
-        },
-        // Clear of the 2 dp border of the active key (U11).
-        contentPadding = PaddingValues(horizontal = ACTIVE_BORDER + 2.dp, vertical = 2.dp),
-        modifier = modifier
-            .weight(1f)
-            .fillMaxHeight()
-            .testTag(tag),
-    ) {
-        // U11: the whole word is always shown ("DOUBLE", never "DOUB"); "✓ DOUBLE" may only wrap at its space.
-        WordSafeText(
-            text = text,
-            style = style,
-            maxLines = wordCount(text),
-            minFontSize = LocalDensity.current.fixedSp(KEY_MIN_FONT),
-        )
-    }
-}
-
-/** Least size (dp) of a key label: small keys on short landscape screens shrink their label rather than cut it. */
-private const val KEY_MIN_FONT = 8f

@@ -20,12 +20,24 @@ object MatchRanking {
      */
     fun rank(score: MatchScore, tieBreak: List<Int>): List<MatchRank> {
         require(tieBreak.size == score.playerCount) { "One tie-break value per player expected" }
+        return rank(score, compareBy { tieBreak[it] })
+    }
+
+    /**
+     * The match winner first, then the others by sets won (more is better), then by legs won over the whole match,
+     * then by [tieBreak] (M20). Players equal on every criterion share a rank and the next rank is skipped
+     * (1, 2, 2, 4). Sorted by rank, then by configuration order.
+     *
+     * @param tieBreak orders player indices by the mode tie-break, a player ahead coming first. It may chain several
+     *   criteria, each with its own direction (Cricket, CR16: points in the last leg, then board marks); players it
+     *   compares as equal stay tied.
+     */
+    fun rank(score: MatchScore, tieBreak: Comparator<Int>): List<MatchRank> {
         val order = compareBy<Int>(
             { if (it == score.winnerIndex) 0 else 1 },
             { -score.setsWon[it] },
             { -score.legsWonTotal[it] },
-            { tieBreak[it] },
-        )
+        ).then(tieBreak)
         val players = 0 until score.playerCount
         return players
             .map { player ->

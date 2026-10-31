@@ -21,6 +21,7 @@ import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.game.GameTags
 import org.junit.Assert.assertEquals
@@ -224,7 +225,7 @@ class VisitTotalLayoutTest {
          * "Next player".
          */
         val CID_180_WAITING: Array<AppEvent> = arrayOf(
-            AppEvent.NewGame,
+            AppEvent.NewGame(GameMode.X01),
             AppEvent.StartScoreSelected(301),
             AppEvent.PlayerAdded,
             AppEvent.PlayerAdded,

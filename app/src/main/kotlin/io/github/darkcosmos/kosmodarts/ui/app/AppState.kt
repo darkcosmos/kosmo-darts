@@ -1,11 +1,16 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
+import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
-import io.github.darkcosmos.kosmodarts.persistence.SavedGame
+import io.github.darkcosmos.kosmodarts.persistence.LastSetups
+import io.github.darkcosmos.kosmodarts.persistence.StoredGame
+import io.github.darkcosmos.kosmodarts.ui.cricket.CricketGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.game.CheckoutSummary
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
@@ -14,9 +19,14 @@ import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 sealed interface Screen {
     /**
      * @property resumableGame the saved game shown in the summary, with "Resume game" (rule R2), or `null`.
-     * @property isNewGameDialogShown whether "New game" asks to delete the saved game (rule R3).
+     * @property newGameDialogMode the mode of the "New game" that asks to delete the saved game (rules R3, R20), or
+     *   `null` while the confirmation is closed; confirming it opens the setup of that mode.
      */
-    data class Home(val resumableGame: SavedGame? = null, val isNewGameDialogShown: Boolean = false) : Screen
+    data class Home(val resumableGame: StoredGame? = null, val newGameDialogMode: GameMode? = null) : Screen {
+        /** Whether "New game" asks to delete the saved game (rule R3). */
+        val isNewGameDialogShown: Boolean
+            get() = newGameDialogMode != null
+    }
 
     /** @property isRestoreFailedShown whether the "saved game could not be resumed" message is open (rule R9). */
     data class Setup(val setup: SetupState, val isRestoreFailedShown: Boolean = false) : Screen
@@ -57,17 +67,49 @@ sealed interface Screen {
         val game: X01Game
             get() = match.currentLeg
     }
+
+    /**
+     * The Cricket game screen (docs/rules/cricket.md, CR22 to CR25).
+     *
+     * @property isNewGame whether "Start" or "Rematch" opened this screen, rather than a resume (AN4, AN16, AN31).
+     * @property noVoiceNotice the open "no offline voice" message (AN16), or `null`. Neither is saved.
+     */
+    data class CricketGame(
+        val game: CricketGameScreenState,
+        val isNewGame: Boolean = false,
+        val noVoiceNotice: NoVoiceNotice? = null,
+    ) : Screen
+
+    /**
+     * Between two legs of a Cricket match (M16, CR26). [match] already has the leg confirmed and its next leg started,
+     * with no dart; the winner detail is read from its last confirmed leg.
+     *
+     * @property isAbandonDialogShown whether the "Abandon the game?" confirmation is open.
+     */
+    data class CricketBetweenLegs(val match: CricketMatch, val isAbandonDialogShown: Boolean = false) : Screen
+
+    /** End of a finished Cricket match (M17, CR27); a single game is a match of one leg. [match] is not confirmed. */
+    data class CricketEnd(val match: CricketMatch) : Screen
 }
+
+/** Whether [this] is a game screen of any mode, the between-legs screens included (R1, R14; ADR 0002). */
+val Screen.isGameOrBetweenLegs: Boolean
+    get() = this is Screen.Game || this is Screen.BetweenLegs || this is Screen.CricketGame ||
+        this is Screen.CricketBetweenLegs
+
+/** Whether [this] is a game screen opened by "Start" or "Rematch", of any mode (AN4, AN16). */
+val Screen.isNewGameShown: Boolean
+    get() = (this is Screen.Game && isNewGame) || (this is Screen.CricketGame && isNewGame)
 
 /**
  * Whole UI state of the app.
  *
- * @property lastSetup configuration and match format of the last game started (Start or Rematch), to prefill the
- *   next setup (rules R7, R13).
+ * @property lastSetup the shared roster and, per mode, the settings of the last game started in that mode (Start or
+ *   Rematch), to prefill the next setup (rules R7, R13, R22); `null` before any game was started.
  */
 data class AppState(
     val screen: Screen = Screen.Home(),
-    val lastSetup: X01MatchConfig? = null,
+    val lastSetup: LastSetups? = null,
 )
 
 /** Everything the user can do. An event that does not apply to the current screen is ignored. */
@@ -75,8 +117,8 @@ sealed interface AppEvent {
     /** System back. */
     data object Back : AppEvent
 
-    /** "New game" on the home and end screens. */
-    data object NewGame : AppEvent
+    /** "New game" of [mode] on the home and end screens (CR20). */
+    data class NewGame(val mode: GameMode) : AppEvent
 
     /** "Resume game" on the home screen (rule R2). */
     data object ResumeTapped : AppEvent
@@ -93,6 +135,12 @@ sealed interface AppEvent {
     data class StartScoreSelected(val score: Int) : AppEvent
 
     data class CheckoutRuleSelected(val rule: CheckoutRule) : AppEvent
+
+    /** Standard or Cut-throat in the Cricket setup (CR21). */
+    data class CricketVariantSelected(val variant: CricketVariant) : AppEvent
+
+    /** The "25-Bull" switch of the Cricket setup (CR21). */
+    data class BullInPlayToggled(val isInPlay: Boolean) : AppEvent
 
     data class NameChanged(val index: Int, val name: String) : AppEvent
 
@@ -115,6 +163,9 @@ sealed interface AppEvent {
 
     /** Double or Triple key. */
     data class MultiplierTapped(val multiplier: Multiplier) : AppEvent
+
+    /** A target button of the Cricket board: one tap, one [dart] (CR24). */
+    data class CricketDartTapped(val dart: Dart) : AppEvent
 
     data object OuterBullTapped : AppEvent
 

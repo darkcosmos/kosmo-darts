@@ -8,7 +8,7 @@ the prefix AN so that they never collide with the X01 rules (`docs/rules/x01.md`
 Vocabulary:
 - *Cue*: a semantic event produced by `:game-engine` (dart hit, bust, turn start...). It carries no text and no sound.
 - *Voice*: an announcement spoken by Android's text-to-speech (TTS) engine.
-- *Sound*: one of the six sound effects of `app/src/main/res/raw/`.
+- *Sound*: one of the seven sound effects of `app/src/main/res/raw/`.
 - *Usable voice*: see AN12.
 
 ## Owner evolutions after the tests on the Pixel (PR #33 review, 2026-10-19)
@@ -173,8 +173,8 @@ They complete or replace the issue body; in case of contradiction they prevail.
 
 ## Credits
 
-- AN24. The six sounds of `app/src/main/res/raw/` (since A.2, `sfx_victory` replaced `sfx_game_shot` and
-  `sfx_big_fish`) were all generated with ElevenLabs (A.3) and are listed in `docs/sounds/CREDITS.md` with their
+- AN24. The seven sounds of `app/src/main/res/raw/` (since A.2, `sfx_victory` replaced `sfx_game_shot` and
+  `sfx_big_fish`; `sfx_closed_cricket_sector` was added for Cricket, AN30) were all generated with ElevenLabs (A.3) and are listed in `docs/sounds/CREDITS.md` with their
   tool, plan and generation date. The ElevenLabs
   free plan requires the mention "elevenlabs.io", which is also in the app (AN13). The files are used as delivered on
   the `assets/sound-effects` branch; its normalization commit evened out their levels (E5). The app applies no gain, except the reduced volume of `sfx_victory` (A.3, AN9).
@@ -213,3 +213,21 @@ They complete or replace the issue body; in case of contradiction they prevail.
     the same leg, set and match rules for the sound.
 - AN28. "Next leg" produces a turn start cue for the new leg's starter, with the "throws first" line (AN4, owner
   Q5). Its voice waits for the end of any announcement in progress (AN10).
+
+## Cricket (issue #40, `docs/rules/cricket.md`)
+
+Cricket has its own cue type, `CricketCue`, so that the X01 cues (bust, 180, turn score, remaining score) stay as they
+are.
+
+- AN29. The Cricket cues are produced by `CricketCues` at the same hook points as the X01 ones (AN7): a *hit* (at
+  least one mark on a target that was not dead before the dart), a *closed-sector hit* (AN30), a *miss* (0 marks,
+  CR2), an *undo* (AN6, AN23), a *turn start* and a *win*.
+- AN30. `sfx_closed_cricket_sector` plays instead of the hit sound for a closed-sector hit (CR15: a dart with at
+  least one mark on a target already closed by every player before this dart; the dart that completes the closure
+  plays the hit sound). The cue is decided on the game as it was before the dart, so an undone closing dart, thrown
+  again, is a normal hit. Any other dart with marks plays the hit sound, and a dart with 0 marks plays the miss
+  sound. With "Call each dart" on, a closed-sector hit is still called after its sound (AN25).
+- AN31. The turn start is the phrase of AN4 and AN8 without the checkout suffix. The leg, set and victory voice
+  (AN27) and the victory sound (only on a match win, A.2) follow the outcome of the winning dart (M7). The winner
+  is the player the dart makes win, who may not be the thrower (CR9).
+- AN32. In Cricket there is no turn score, no 180, no bust and no remaining-score announcement.

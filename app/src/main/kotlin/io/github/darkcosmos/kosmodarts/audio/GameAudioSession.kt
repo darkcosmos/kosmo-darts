@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.audio
 
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketCue
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
 import io.github.darkcosmos.kosmodarts.settings.AudioSettings
 import io.github.darkcosmos.kosmodarts.ui.app.CueSink
@@ -19,6 +20,8 @@ class GameAudioSession(
     private val player = AnnouncementPlayer(sounds, speaker ?: SilentSpeaker, scheduler, settings)
 
     override fun onCues(cues: List<X01Cue>) = cues.forEach { player.play(CueScript.of(it, phrases)) }
+
+    override fun onCricketCues(cues: List<CricketCue>) = cues.forEach { player.play(CueScript.of(it, phrases)) }
 
     /** AN21: stops everything and frees the engine and the sounds. */
     fun release() {

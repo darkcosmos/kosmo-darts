@@ -22,7 +22,7 @@ class SettingsNavigationTest {
 
     @Test
     fun `AN13 the gear does nothing while the new game dialog is open`() {
-        val home = AppState(screen = Screen.Home(SaveFixtures.MID_TURN, isNewGameDialogShown = true))
+        val home = AppState(screen = Screen.Home(SaveFixtures.MID_TURN, newGameDialogMode = GameMode.X01))
         assertEquals(home, reducer.reduce(home, AppEvent.SettingsTapped))
     }
 
@@ -52,7 +52,10 @@ class SettingsNavigationTest {
     @Test
     fun `AN13 other events on Settings change nothing`() {
         val settings = AppState(screen = Screen.Settings(Screen.Home()))
-        listOf(AppEvent.NewGame, AppEvent.ResumeTapped, AppEvent.NumberTapped(20), AppEvent.SettingsTapped).forEach {
+        val events = listOf(
+            AppEvent.NewGame(GameMode.X01), AppEvent.ResumeTapped, AppEvent.NumberTapped(20), AppEvent.SettingsTapped,
+        )
+        events.forEach {
             assertEquals(settings, reducer.reduce(settings, it))
         }
     }
