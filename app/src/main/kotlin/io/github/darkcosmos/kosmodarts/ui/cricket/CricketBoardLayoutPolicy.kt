@@ -72,6 +72,63 @@ data class CricketLandscapeSpace(
 )
 
 /**
+ * Portrait split of revision 2 (plan R2.1): the board's sizes and the zone's height.
+ *
+ * @property board the board's sizes (rows 48 to 56 dp).
+ * @property zoneHeightDp height of the player zone: all the height the header and the rows leave.
+ * @property showsTotal whether the zone's middle is tall enough (`ZONE_TOTAL_MIN`) to show the big total; false means
+ *   the two-line zone (name line, dart cells), the total staying in the column header.
+ * @property totalAreaHeightDp height left for the big total (zone minus its fixed parts), 0 when [showsTotal] is false.
+ */
+data class CricketPortraitSplit(
+    val board: CricketBoardLayout,
+    val zoneHeightDp: Float,
+    val showsTotal: Boolean,
+    val totalAreaHeightDp: Float,
+)
+
+/**
+ * Landscape layout of revision 2 (plan R2.2): top band, header row, rows, action column, bars hidden.
+ *
+ * @property board the board's sizes; its rows are 42 to 56 dp, its miss cell is the "RATE" key.
+ * @property bandHeightDp the top band, from the top edge.
+ * @property headerRowHeightDp height of the header row ("RATE", "ANNULER" and the column headers), 48 dp at least.
+ * @property boardWidthDp width of the player columns and of the button column.
+ * @property actionColumnWidthDp width of the action column ("ANNULER" and the tall "JOUEUR SUIVANT").
+ * @property undoWidthDp width of "ANNULER".
+ * @property nextKeyHeightDp height of the tall next key: the visible height of the rows.
+ * @property rowsViewportHeightDp height under the band and the header row, up to the bottom margin.
+ */
+data class CricketLandscapeBandLayout(
+    val board: CricketBoardLayout,
+    val bandHeightDp: Float,
+    val headerRowHeightDp: Float,
+    val boardWidthDp: Float,
+    val actionColumnWidthDp: Float,
+    val undoWidthDp: Float,
+    val nextKeyHeightDp: Float,
+    val rowsViewportHeightDp: Float,
+)
+
+/**
+ * Measured dp values of the landscape screen of revision 2: [cutoutInsetDp] is the display cutout on one side and
+ * [headerHeightDp] the board's two-line column header (strip, total, name).
+ */
+data class CricketLandscapeBandSpace(
+    val screenWidthDp: Float,
+    val screenHeightDp: Float,
+    val cutoutInsetDp: Float,
+    val headerHeightDp: Float,
+    val playerCount: Int,
+    val rowCount: Int,
+)
+
+/** The portrait zone's fixed part: 2 x 6 dp padding, the name line, 2 x 8 dp gaps and the 46 dp dart cells. */
+fun zoneFixedHeightDp(nameLineDp: Float): Float =
+    2 * CricketBoardLayoutPolicy.ZONE_PADDING + nameLineDp + 2 * CricketBoardLayoutPolicy.ZONE_GAP +
+        CricketBoardLayoutPolicy.ZONE_DART_CELL
+
+/**
  * Sizes of the Cricket board for the Pixel 7 (411 x 914 dp, docs/rules/cricket.md CR22, plan section 4). It does no
  * font-scale arithmetic: the screen measures the texts with Compose and passes dp values. No Compose type here, so it
  * is tested on the JVM.
@@ -104,6 +161,22 @@ object CricketBoardLayoutPolicy {
     const val BODY_LINE_BASE = 22.5f
     const val ZONE_HEIGHT = 84f
     const val ZONE_GROWTH_MAX = 1.5f
+
+    /** Tolerance for float comparisons of heights computed from a division. */
+    private const val EPSILON = 0.001f
+
+    /** Revision 2, portrait zone: the total needs 32 dp; fixed parts of the zone (padding, gaps, dart cells). */
+    const val ZONE_TOTAL_MIN = 32f
+    const val ZONE_PADDING = 6f
+    const val ZONE_GAP = 8f
+    const val ZONE_DART_CELL = 46f
+
+    /** Revision 2, landscape: band, action column, row floor (Kosmo, Q14 B), key floor, bottom margin. */
+    const val LANDSCAPE_BAND = 44f
+    const val LANDSCAPE_ACTION_WIDTH = 120f
+    const val LANDSCAPE_ROW_MIN = 42f
+    const val LANDSCAPE_BOTTOM_MARGIN = 4f
+    const val LANDSCAPE_KEY_MIN = 48f
 
     /** A digit is 0.6 em wide; the line has 4 dp of padding. Only here: callers never repeat them. */
     const val DIGIT_EM = 0.6f
@@ -163,6 +236,77 @@ object CricketBoardLayoutPolicy {
         rowCount: Int,
     ): CricketBoardLayout =
         layout(screenWidthDp - 2 * SIDE_MARGIN, boardHeightDp, headerHeightDp, playerCount, rowCount)
+
+    /**
+     * Revision 2 portrait (plan R2.1). [availableHeightDp] is the height shared by the zone and the board (the screen
+     * minus margins, `MatchHeader`, gaps and the action bar). The rows give up their extra height first so that the
+     * total keeps [ZONE_TOTAL_MIN]; the zone takes all the height left. When even 48 dp rows leave the total less than
+     * that, the zone is the two-line zone (no total). Below the two-line zone the rows keep 48 dp and scroll.
+     */
+    fun portraitSplit(
+        screenWidthDp: Float,
+        availableHeightDp: Float,
+        headerHeightDp: Float,
+        nameLineDp: Float,
+        playerCount: Int,
+        rowCount: Int,
+    ): CricketPortraitSplit {
+        val fixed = zoneFixedHeightDp(nameLineDp)
+        val rowHeight = ((availableHeightDp - headerHeightDp - fixed - ZONE_TOTAL_MIN) / rowCount)
+            .coerceIn(ROW_HEIGHT_MIN, ROW_HEIGHT_MAX)
+        val zone = availableHeightDp - headerHeightDp - rowHeight * rowCount
+        val scrolls = zone < fixed - EPSILON
+        val zoneHeight = if (scrolls) fixed else zone
+        val area = zoneHeight - fixed
+        val showsTotal = !scrolls && area >= ZONE_TOTAL_MIN - EPSILON
+        val (playerWidth, buttonColumn) = columnWidths(screenWidthDp - 2 * SIDE_MARGIN, playerCount)
+        return CricketPortraitSplit(
+            board = CricketBoardLayout(
+                rowHeightDp = rowHeight,
+                scrolls = scrolls,
+                playerColumnWidthDp = playerWidth,
+                buttonColumnWidthDp = buttonColumn,
+                buttonWidthDp = buttonColumn / 3,
+                missCellWidthDp = buttonColumn,
+                missCellHeightDp = max(headerHeightDp, ROW_HEIGHT_MIN),
+            ),
+            zoneHeightDp = zoneHeight,
+            showsTotal = showsTotal,
+            totalAreaHeightDp = if (showsTotal) area else 0f,
+        )
+    }
+
+    /**
+     * Revision 2 landscape (plan R2.2, bars hidden): band, header row (the measured header, 48 dp at least), rows
+     * 42 to 56 dp (they scroll below 42 dp), 56 dp buttons, a 12 dp gap and the 120 dp action column. The player
+     * columns share the width left.
+     */
+    fun landscapeBand(space: CricketLandscapeBandSpace): CricketLandscapeBandLayout = with(space) {
+        val headerRow = max(headerHeightDp, LANDSCAPE_KEY_MIN)
+        val viewport = screenHeightDp - LANDSCAPE_BOTTOM_MARGIN - LANDSCAPE_BAND - headerRow
+        val rowHeight = (viewport / rowCount).coerceIn(LANDSCAPE_ROW_MIN, ROW_HEIGHT_MAX)
+        val scrolls = viewport < LANDSCAPE_ROW_MIN * rowCount - EPSILON
+        val width = screenWidthDp - 2 * SIDE_MARGIN - cutoutInsetDp
+        val playerWidth = (width - BUTTON_COLUMN_WIDTH_MAX - BOARD_GAP - LANDSCAPE_ACTION_WIDTH) / playerCount
+        CricketLandscapeBandLayout(
+            board = CricketBoardLayout(
+                rowHeightDp = rowHeight,
+                scrolls = scrolls,
+                playerColumnWidthDp = playerWidth,
+                buttonColumnWidthDp = BUTTON_COLUMN_WIDTH_MAX,
+                buttonWidthDp = BUTTON_WIDTH_MAX,
+                missCellWidthDp = BUTTON_COLUMN_WIDTH_MAX,
+                missCellHeightDp = headerRow,
+            ),
+            bandHeightDp = LANDSCAPE_BAND,
+            headerRowHeightDp = headerRow,
+            boardWidthDp = playerWidth * playerCount + BUTTON_COLUMN_WIDTH_MAX,
+            actionColumnWidthDp = LANDSCAPE_ACTION_WIDTH,
+            undoWidthDp = LANDSCAPE_ACTION_WIDTH,
+            nextKeyHeightDp = if (scrolls) viewport else rowHeight * rowCount,
+            rowsViewportHeightDp = viewport,
+        )
+    }
 
     /** Landscape (bars hidden), see [CricketLandscapeSpace]. */
     fun landscape(space: CricketLandscapeSpace): CricketLandscapeLayout = with(space) {

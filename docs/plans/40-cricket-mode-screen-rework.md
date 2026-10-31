@@ -1486,3 +1486,10 @@ bar and the 340 dp right column no longer apply after R11):
 - R7: deleted the root PNG `Screenshot_20261031-112252.png` (Kosmo's Dartsmind reference, `git rm`). Before the
   deletion, `git ls-files ':(glob)*.png'` listed only that file and `git grep Screenshot_20261031` found no reference
   in the tree; no code, test or plan file changed. The Decisions section still describes the reference as deleted by R7.
+- R8: CR22 and CR23 of `docs/rules/cricket.md` rewritten (Q2 reversal for the portrait zone, Q9 B reversal and Q10 A/Q11 A
+  replacement for landscape, Q14 B 42 dp floor, Q16 A, Q17 B). `CricketBoardLayoutPolicy` gains `portraitSplit`
+  (`CricketPortraitSplit`, `zoneFixedHeightDp`) and `landscapeBand` (`CricketLandscapeBandSpace`,
+  `CricketLandscapeBandLayout`) with `ZONE_TOTAL_MIN`, `LANDSCAPE_BAND`, `LANDSCAPE_ACTION_WIDTH`,
+  `LANDSCAPE_ROW_MIN`; the old `portrait`, `landscape` and `portraitZoneHeightDp` stay until R9 and R11. Tests added to
+  `CricketBoardLayoutPolicyTest`, none removed or weakened. All budgets of R2.1 and R2.2 hold with the fixtures. Name
+  line heights (28.9, 37.0, 42.0, 50.0 dp) are still the plan's estimates; R9 measures them.

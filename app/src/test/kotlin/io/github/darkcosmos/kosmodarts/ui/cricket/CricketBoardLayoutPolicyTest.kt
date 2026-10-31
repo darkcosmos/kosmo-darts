@@ -262,4 +262,221 @@ class CricketBoardLayoutPolicyTest {
         assertEquals(168f, layout.board.buttonColumnWidthDp, 0.01f)
         assertEquals(472f, layout.boardWidthDp, 0.01f)
     }
+
+    // ---- Revision 2 (plan R2.1 and R2.2; Q2 reversal for the portrait zone, Q14 B 42 dp landscape floor) ----
+
+    /** Scale, name line (18 sp, estimated), column header (strip + total + body line), A for the one-line bar. */
+    private data class SplitFixture(
+        val scale: Float,
+        val nameLine: Float,
+        val bodyLine: Float,
+        val totalLine: Float,
+        val matchHeader: Float,
+        val oneLineBar: Float,
+        val pendingBar: Float,
+    )
+
+    private val splitFixtures = listOf(
+        SplitFixture(1.0f, 28.9f, 22.5f, 37.5f, 24f, 48f, 71.5f),
+        SplitFixture(1.3f, 37.0f, 30.2f, 41.3f, 32.2f, 82f, 115f),
+        SplitFixture(1.5f, 42.0f, 35.3f, 43.8f, 37.7f, 88.5f, 125f),
+        SplitFixture(2.0f, 50.0f, 41.8f, 56.3f, 44.6f, 110.5f, 151.5f),
+    )
+
+    private fun split(
+        f: SplitFixture,
+        bar: Float,
+        players: Int = 4,
+        rows: Int = 7,
+        screenHeight: Float = 814f,
+    ): CricketPortraitSplit {
+        val header = CricketBoardLayoutPolicy.columnHeaderHeightDp(if (players > 1) f.totalLine else null, f.bodyLine)
+        val available = screenHeight - 34f - f.matchHeader - bar
+        return CricketBoardLayoutPolicy.portraitSplit(411f, available, header, f.nameLine, players, rows)
+    }
+
+    /** CR22 (R2.1): rows 48 to 56 dp, zone = A - header - rows, a total of 32 dp at least, nothing scrolls. */
+    @Test
+    fun `portraitSplit keeps rows 48 to 56 and a zone total of 32 dp`() {
+        for (f in splitFixtures) {
+            for (players in 1..4) {
+                for (rows in listOf(6, 7)) {
+                    for (bar in listOf(f.oneLineBar, f.pendingBar)) assertSplitInvariants(f, bar, players, rows)
+                }
+            }
+        }
+    }
+
+    private fun assertSplitInvariants(f: SplitFixture, bar: Float, players: Int, rows: Int) {
+        val s = split(f, bar, players, rows)
+        val header = CricketBoardLayoutPolicy.columnHeaderHeightDp(if (players > 1) f.totalLine else null, f.bodyLine)
+        val a = 780f - f.matchHeader - bar
+        val label = "scale ${f.scale}, bar $bar, $players players, $rows rows"
+        assertFalse(label, s.board.scrolls)
+        assertTrue(label, s.board.rowHeightDp in 48f..56f)
+        assertEquals(label, a - header - s.board.rowHeightDp * rows, s.zoneHeightDp, 0.01f)
+        val twoLine = f.scale == 2.0f && bar == f.pendingBar && players > 1 && rows == 7
+        if (!twoLine) {
+            assertTrue(label, s.showsTotal)
+            assertTrue(label, s.totalAreaHeightDp >= 32f - 0.01f)
+        }
+    }
+
+    /** CR22 (R2.1): the rows of the plan table (4 players, 7 rows) and the zone heights. */
+    @Test
+    fun `portraitSplit matches the plan table`() {
+        val expected = listOf(
+            Triple(splitFixtures[0], splitFixtures[0].oneLineBar, 56f to 253f),
+            Triple(splitFixtures[0], splitFixtures[0].pendingBar, 56f to 229.5f),
+            Triple(splitFixtures[1], splitFixtures[1].oneLineBar, 56f to 199.3f),
+            Triple(splitFixtures[1], splitFixtures[1].pendingBar, 56f to 166.3f),
+            Triple(splitFixtures[2], splitFixtures[2].oneLineBar, 56f to 179.7f),
+            Triple(splitFixtures[2], splitFixtures[2].pendingBar, 55.3f to 148f),
+            Triple(splitFixtures[3], splitFixtures[3].oneLineBar, 52.6f to 156f),
+            Triple(splitFixtures[3], splitFixtures[3].pendingBar, 48f to 146.9f),
+        )
+        for ((f, bar, rowsAndZone) in expected) {
+            val s = split(f, bar)
+            assertEquals("rows, scale ${f.scale}, bar $bar", rowsAndZone.first, s.board.rowHeightDp, 0.1f)
+            assertEquals("zone, scale ${f.scale}, bar $bar", rowsAndZone.second, s.zoneHeightDp, 0.3f)
+        }
+    }
+
+    /** CR22 (R2.1): scale 2.0 with a pending win is the two-line zone (22.9 dp left), the total stays in the header. */
+    @Test
+    fun `portraitSplit falls back to the two-line zone at scale 2 with a pending win`() {
+        val f = splitFixtures[3]
+        val s = split(f, f.pendingBar)
+        assertFalse(s.showsTotal)
+        assertEquals(0f, s.totalAreaHeightDp, 0.0f)
+        assertEquals(48f, s.board.rowHeightDp, 0.01f)
+        assertFalse(s.board.scrolls)
+        assertEquals(22.9f, s.zoneHeightDp - zoneFixedHeightDp(f.nameLine), 0.2f)
+    }
+
+    /** CR22 (R2.1): the zone's fixed part is 2 x 6 + name line + 2 x 8 + 46 dp of dart cells. */
+    @Test
+    fun `zone fixed height`() {
+        assertEquals(102.9f, zoneFixedHeightDp(28.9f), 0.01f)
+        assertEquals(124f, zoneFixedHeightDp(50f), 0.01f)
+    }
+
+    /** CR22 (R2.1): the column widths are those of portrait, and the "RATE" cell the header's height. */
+    @Test
+    fun `portraitSplit column widths and miss cell`() {
+        val f = splitFixtures[0]
+        val s = split(f, f.oneLineBar)
+        assertEquals(61f, s.board.playerColumnWidthDp, 0.5f)
+        assertEquals(144f, s.board.buttonColumnWidthDp, 0.5f)
+        assertEquals(63f, s.board.missCellHeightDp, 0.01f)
+    }
+
+    /** CR22 (R2.1): a smaller screen keeps 48 dp rows and scrolls only below the two-line zone. */
+    @Test
+    fun `portraitSplit on a small screen keeps 48 dp rows and scrolls under the two-line zone`() {
+        val f = splitFixtures[0]
+        val s = split(f, f.oneLineBar, screenHeight = 600f)
+        assertTrue(s.board.scrolls)
+        assertEquals(48f, s.board.rowHeightDp, 0.01f)
+        assertFalse(s.showsTotal)
+        assertEquals(zoneFixedHeightDp(f.nameLine), s.zoneHeightDp, 0.01f)
+    }
+
+    /** CR22 (R2.1): the solo header has no total line, so there is more room and the zone is taller. */
+    @Test
+    fun `portraitSplit solo has a taller zone than four players`() {
+        val f = splitFixtures[1]
+        val solo = split(f, f.pendingBar, players = 1)
+        val four = split(f, f.pendingBar, players = 4)
+        assertTrue(solo.zoneHeightDp >= four.zoneHeightDp)
+        assertTrue(solo.showsTotal)
+    }
+
+    private fun band(
+        cutout: Float = 0f,
+        players: Int = 4,
+        rows: Int = 7,
+        header: Float = 58.5f,
+        height: Float = 411f,
+    ) = CricketBoardLayoutPolicy.landscapeBand(CricketLandscapeBandSpace(914f, height, cutout, header, players, rows))
+
+    /** CR22 (R2.2): band 44, header row 58.5, rows 43.5 dp at 7 and 50.75 dp at 6, 42 dp at least, no scroll. */
+    @Test
+    fun `landscapeBand rows fit the 411 dp height`() {
+        for (cutout in listOf(0f, 48f)) {
+            for (players in 1..4) {
+                val seven = band(cutout, players, 7)
+                val six = band(cutout, players, 6)
+                assertEquals(44f, seven.bandHeightDp, 0.0f)
+                assertEquals(58.5f, seven.headerRowHeightDp, 0.01f)
+                assertEquals(43.5f, seven.board.rowHeightDp, 0.01f)
+                assertEquals(50.75f, six.board.rowHeightDp, 0.01f)
+                assertTrue(seven.board.rowHeightDp >= CricketBoardLayoutPolicy.LANDSCAPE_ROW_MIN)
+                assertFalse(seven.board.scrolls)
+                assertFalse(six.board.scrolls)
+                assertTrue(44f + seven.headerRowHeightDp + 7 * seven.board.rowHeightDp + 4f <= 411f + 0.01f)
+                assertEquals(304.5f, seven.nextKeyHeightDp, 0.01f)
+                assertEquals(304.5f, six.nextKeyHeightDp, 0.01f)
+            }
+        }
+    }
+
+    /** CR22 (R2.2): a header 10 dp taller than estimated still gives 42 dp rows; a smaller height scrolls at 42 dp. */
+    @Test
+    fun `landscapeBand tolerates a taller header and scrolls on a small height`() {
+        val taller = band(header = 68.5f)
+        assertTrue(taller.board.rowHeightDp >= 42f)
+        assertFalse(taller.board.scrolls)
+        val small = band(height = 360f)
+        assertTrue(small.board.scrolls)
+        assertEquals(42f, small.board.rowHeightDp, 0.01f)
+        assertEquals(small.rowsViewportHeightDp, small.nextKeyHeightDp, 0.01f)
+    }
+
+    /** CR22 (R2.2): the header row is 48 dp at least. */
+    @Test
+    fun `landscapeBand header row is 48 dp at least`() {
+        val s = band(header = 30f)
+        assertEquals(48f, s.headerRowHeightDp, 0.01f)
+        assertEquals(48f, s.board.missCellHeightDp, 0.01f)
+    }
+
+    /** CR22 (R2.2): player columns share the width left, 135.5/180.7/271/542 dp with a 48 dp cutout. */
+    @Test
+    fun `landscapeBand player columns`() {
+        val withCutout = mapOf(4 to 135.5f, 3 to 180.67f, 2 to 271f, 1 to 542f)
+        val without = mapOf(4 to 147.5f, 3 to 196.67f, 2 to 295f, 1 to 590f)
+        for ((players, width) in withCutout) {
+            assertEquals(width, band(48f, players).board.playerColumnWidthDp, 0.05f)
+        }
+        for ((players, width) in without) {
+            assertEquals(width, band(0f, players).board.playerColumnWidthDp, 0.05f)
+        }
+    }
+
+    /** CR22 (R2.2): button column 168 dp (56 dp buttons), "RATE" 168 dp, undo and action column 120 dp. */
+    @Test
+    fun `landscapeBand button action and miss columns`() {
+        val s = band(48f)
+        assertEquals(168f, s.board.buttonColumnWidthDp, 0.01f)
+        assertEquals(56f, s.board.buttonWidthDp, 0.01f)
+        assertTrue(s.board.buttonWidthDp >= 48f)
+        assertEquals(168f, s.board.missCellWidthDp, 0.01f)
+        assertEquals(120f, s.actionColumnWidthDp, 0.01f)
+        assertEquals(120f, s.undoWidthDp, 0.01f)
+        assertEquals(135.5f * 4 + 168f, s.boardWidthDp, 0.05f)
+        // 12 dp side margins, the board, a 12 dp gap, the action column
+        val used = s.boardWidthDp + CricketBoardLayoutPolicy.BOARD_GAP + s.actionColumnWidthDp
+        assertEquals(914f - 24f - 48f, used, 0.05f)
+    }
+
+    /** CR22: portrait keeps its 48 dp floor, whatever the screen. */
+    @Test
+    fun `portrait never returns rows under 48 dp`() {
+        for (height in listOf(500f, 600f, 700f, 814f)) {
+            for (f in splitFixtures) {
+                assertTrue(split(f, f.pendingBar, screenHeight = height).board.rowHeightDp >= 48f)
+            }
+        }
+    }
 }
