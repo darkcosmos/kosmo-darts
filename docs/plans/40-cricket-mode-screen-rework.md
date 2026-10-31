@@ -941,3 +941,16 @@ None. Q1 to Q7, Q9, Q10 and Q11 are answered by Kosmo (see Decisions); Q8 was wi
   `modifier_triple`, `keypad_*`, `board_4p_360x640`/`640x360`; added `buttons_with_bull`/`buttons_without_bull`,
   `totals_4digits_4p_portrait_fr`, `dead_row_locked_2p_portrait_fr`, `win_pending_4p_portrait_fr_font200`. The X01
   captures are `cmp`-identical to the ones recorded at e5ba601.
+- R4: landscape at 914 x 411 dp, 1 to 4 players, 6 and 7 rows, with and without the pending-win bar, font scales 1.0
+  and 2.0, full width and 866 dp wide (48 dp cutout simulated): no scroll, rows at 49.2 dp, band about 58.5 dp
+  (`CricketLandscapeScreenTest`, Robolectric). Deviations: the S/M chips in the title use the 14 sp `label`
+  (`labelLarge` made the band 64.8 dp and the BULL row 47.2 dp); the landscape dart text is `LANDSCAPE_DART_SP` 14
+  (18 did not fit a 24 dp slot); the win banner has no vertical padding on the single line; `cutoutInsetDp` is 0 in
+  `LandscapeGame` (R4b passes the real one). Open question for Kosmo: 4 players, Bull off, legs and sets, in French,
+  the title wraps (mode 225.5 dp, position 108.6 dp, chips about 55 dp, right column 358 dp) and the position falls 9
+  dp into the zone; the test fixture uses a single game for that case (comment in `game`). Pieces:
+  `CricketLandscapeScreen.kt` (`LandscapeGame`, `TitleRow`, `FixedTextSizes`: board, title and zone use
+  `Density(fontScale = 1f)`, the action bar is put back in the outer density), `CricketPlayerZone(isSingleLine)`,
+  `CricketTags.TITLE`; `Header`, `Zone`, `Board`, `Actions` are now `internal`. `CricketLayoutPolicy` and its test
+  deleted. Captures: `board_*_landscape_fr` at 914 x 411, new `buttons_landscape_fr`, `win_pending_4p_landscape_fr`,
+  `title_chips_4p_landscape_fr`. X01 captures `cmp`-identical.
