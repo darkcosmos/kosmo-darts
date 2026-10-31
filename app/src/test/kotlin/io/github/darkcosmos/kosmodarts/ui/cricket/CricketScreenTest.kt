@@ -519,18 +519,6 @@ class CricketScreenTest {
         assertEquals("CONFIRM MATCH", actionBarLayout(GameTags.CONFIRM).layoutInput.text.text)
     }
 
-    // Landscape (interim, the full suite comes with the landscape screen).
-
-    @Test
-    @Config(qualifiers = "fr-w914dp-h411dp-land-420dpi")
-    fun `CR22 landscape 914 x 411 the board, Miss and the action bar are on screen`() {
-        show(match(fourPlayers, darts = listOf("T20")))
-        listOf(
-            KeypadTags.MISS, KeypadTags.UNDO, KeypadTags.NEXT_PLAYER, CricketTags.columnHeader(0),
-            CricketTags.dartButton(Dart.triple(20)),
-        ).forEach { assertTrue(it, isInsideRoot(it)) }
-    }
-
     // Win (CR25).
 
     @Test

@@ -93,7 +93,7 @@ class CricketScreenshotTest {
     fun zoneWithMiss() = capture("zone_miss_2p_portrait_fr", game("Anna", "Bob", darts = "T20 5"))
 
     @Test
-    @Config(qualifiers = "+fr-land")
+    @Config(qualifiers = LANDSCAPE_FR)
     fun board2PlayersLandscape() = capture("board_2p_landscape_fr", game("Anna", "Bob", darts = "T20 19 D18"))
 
     @Test
@@ -101,7 +101,7 @@ class CricketScreenshotTest {
     fun board4PlayersPortrait() = capture("board_4p_portrait_fr", FOUR.invoke())
 
     @Test
-    @Config(qualifiers = "+fr-land")
+    @Config(qualifiers = LANDSCAPE_FR)
     fun board4PlayersLandscape() = capture("board_4p_landscape_fr", FOUR.invoke())
 
     @Test
@@ -157,6 +157,36 @@ class CricketScreenshotTest {
         show(game("Anna", "Bob", isBullInPlay = false))
         composeRule.onNodeWithTag(CricketTags.BOARD).captureRoboImage(path("buttons_without_bull_fr"))
     }
+
+    /** The board with its buttons in landscape, Bull on (CR22, CR24). */
+    @Test
+    @Config(qualifiers = LANDSCAPE_FR)
+    fun buttonsLandscape() {
+        show(game("Anna", "Bob"))
+        composeRule.onNodeWithTag(CricketTags.BOARD).captureRoboImage(path("buttons_landscape_fr"))
+    }
+
+    /** The tightest landscape case: 4 players, "VALIDER LA PARTIE", largest font (the board keeps its size). */
+    @Test
+    @Config(qualifiers = LANDSCAPE_FR, fontScale = 2.0f)
+    fun winPending4PlayersLandscape() = capture(
+        "win_pending_4p_landscape_fr",
+        CricketGameScreenState(
+            CricketSaveFixtures.match("Anna", "Bob", "Cid", "Dan").playLegWonBy(0),
+            isAwaitingConfirmation = true,
+        ),
+    )
+
+    /** The longest title line: legs and sets, so the position and the S/M chips share the line (Q4 A, Q11 A). */
+    @Test
+    @Config(qualifiers = LANDSCAPE_FR)
+    fun titleWithChips4PlayersLandscape() = capture(
+        "title_chips_4p_landscape_fr",
+        CricketGameScreenState(
+            CricketSaveFixtures.match("Anna", "Bob", "Cid", "Dan", legsPerSet = 3, sets = 3)
+                .throwing(*CricketSaveFixtures.darts("T20 19 D18")),
+        ),
+    )
 
     /** Ann has 1 020 points: the 4-digit totals in four columns (CR22). */
     @Test
@@ -306,6 +336,9 @@ class CricketScreenshotTest {
     private companion object {
         const val SCREENSHOT_DIR_PROPERTY = "kosmodarts.screenshot.dir"
         const val DEFAULT_SCREENSHOT_DIR = "build/outputs/roborazzi"
+
+        /** The Pixel 7 in landscape, the system bars hidden (CR22). */
+        const val LANDSCAPE_FR = "fr-w914dp-h411dp-land-420dpi"
         const val LUMA_RED = 0.299
         const val LUMA_GREEN = 0.587
         const val LUMA_BLUE = 0.114

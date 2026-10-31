@@ -74,7 +74,7 @@ data class CricketLandscapeSpace(
 /**
  * Sizes of the Cricket board for the Pixel 7 (411 x 914 dp, docs/rules/cricket.md CR22, plan section 4). It does no
  * font-scale arithmetic: the screen measures the texts with Compose and passes dp values. No Compose type here, so it
- * is tested on the JVM. The old [CricketLayoutPolicy] stays until the landscape screen stops using it.
+ * is tested on the JVM.
  */
 object CricketBoardLayoutPolicy {
 
@@ -94,6 +94,11 @@ object CricketBoardLayoutPolicy {
     const val GAP = 6f
     const val LANDSCAPE_MARGIN = 4f
     const val LANDSCAPE_TITLE_GAP = 4f
+
+    /** Landscape zone line (name, MPR, dart slots), the fixed dart text size in it, and the S/M chips' padding. */
+    const val LANDSCAPE_ZONE_LINE = 28f
+    const val LANDSCAPE_DART_SP = 14f
+    const val CHIPS_VERTICAL_PADDING = 4f
 
     /** The 14 sp body line at font scale 1.0, and the portrait zone height that goes with it. */
     const val BODY_LINE_BASE = 22.5f

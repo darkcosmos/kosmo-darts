@@ -6,15 +6,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -37,6 +41,8 @@ import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.LocalAnimationSettings
 import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
+import io.github.darkcosmos.kosmodarts.ui.theme.LocalKosmoTypography
+import io.github.darkcosmos.kosmodarts.ui.theme.fixedSp
 import io.github.darkcosmos.kosmodarts.ui.theme.zoneColorAnimationSpec
 
 private val ZONE_PADDING_VERTICAL = 6.dp
@@ -44,6 +50,10 @@ private val ZONE_PADDING_HORIZONTAL = 10.dp
 private val INNER_GAP = 8.dp
 private val COMPACT_SLOT_HEIGHT = 36.dp
 private val BANNER_PADDING = 8.dp
+private val BANNER_PADDING_VERTICAL = 2.dp
+private val SINGLE_LINE_PADDING_VERTICAL = 2.dp
+private val SINGLE_LINE_SLOT_HEIGHT = 24.dp
+private val SINGLE_LINE_SLOTS_WIDTH = 148.dp
 
 /** Everything the compact zone of the Cricket game screen shows (CR22, CR25). */
 class CricketZoneContent(
@@ -62,9 +72,12 @@ class CricketZoneContent(
  * (MPR), the S/M chips; line 2: the dart slots (the darts that give a mark, a miss for the
  * others). While a win is pending (CR25) a white "VICTORY" banner takes the place of the MPR on line 1: the compact
  * zone has no route area, and the banner replaces the X01 CHECKOUT banner. Its height is given by the layout policy.
+ *
+ * With [isSingleLine] (landscape, CR22) everything stands on one line: name, MPR or banner, then the dart slots at
+ * their minimum size; the S/M chips are then drawn by the screen, at the end of the title line.
  */
 @Composable
-fun CricketPlayerZone(content: CricketZoneContent, modifier: Modifier = Modifier) {
+fun CricketPlayerZone(content: CricketZoneContent, modifier: Modifier = Modifier, isSingleLine: Boolean = false) {
     val colors = KosmoTheme.colors
     val animate = LocalAnimationSettings.current.areAnimationsEnabled()
     val background by animateColorAsState(
@@ -84,21 +97,63 @@ fun CricketPlayerZone(content: CricketZoneContent, modifier: Modifier = Modifier
             .semantics { isTraversalGroup = true }
             .clip(KosmoShapes.card)
             .background(background)
-            .padding(horizontal = ZONE_PADDING_HORIZONTAL, vertical = ZONE_PADDING_VERTICAL),
+            .padding(
+                horizontal = ZONE_PADDING_HORIZONTAL,
+                vertical = if (isSingleLine) SINGLE_LINE_PADDING_VERTICAL else ZONE_PADDING_VERTICAL,
+            ),
     ) {
-        NameLine(content, contentColor)
-        DartLine(content)
+        if (isSingleLine) {
+            SingleLine(content, contentColor)
+        } else {
+            NameLine(content, contentColor)
+            DartLine(content)
+        }
+    }
+}
+
+/** Landscape: name and MPR (or the banner), then the three dart slots with a smaller, fixed dart text. */
+@Composable
+private fun SingleLine(content: CricketZoneContent, contentColor: Color) {
+    val typography = KosmoTheme.typography
+    val density = LocalDensity.current
+    val small = typography.copy(
+        dart = typography.dart.copy(fontSize = density.fixedSp(CricketBoardLayoutPolicy.LANDSCAPE_DART_SP)),
+    )
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(INNER_GAP),
+        modifier = Modifier.fillMaxHeight(),
+    ) {
+        NameLine(content, contentColor, Modifier.weight(1f), isSingleLine = true)
+        CompositionLocalProvider(LocalKosmoTypography provides small) {
+            DartSlots(
+                darts = content.turnDarts,
+                nextDartIndex = content.nextDartIndex,
+                isFinalDartHighlighted = false,
+                modifier = Modifier.width(SINGLE_LINE_SLOTS_WIDTH),
+                slotHeight = SINGLE_LINE_SLOT_HEIGHT,
+            )
+        }
     }
 }
 
 @Composable
-private fun NameLine(content: CricketZoneContent, contentColor: Color) {
+private fun NameLine(
+    content: CricketZoneContent,
+    contentColor: Color,
+    modifier: Modifier = Modifier,
+    isSingleLine: Boolean = false,
+) {
     val typography = KosmoTheme.typography
     val toThrow = stringResource(R.string.game_to_throw, content.name)
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(INNER_GAP)) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(INNER_GAP),
+        modifier = modifier,
+    ) {
         Text(
             text = displayName(content.name),
-            style = typography.labelLarge,
+            style = if (isSingleLine) typography.label else typography.labelLarge,
             color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -111,7 +166,7 @@ private fun NameLine(content: CricketZoneContent, contentColor: Color) {
                 },
         )
         if (content.isVictory) {
-            WinBanner()
+            WinBanner(isSingleLine)
         } else {
             Text(
                 text = content.stat.text,
@@ -121,19 +176,19 @@ private fun NameLine(content: CricketZoneContent, contentColor: Color) {
                 modifier = Modifier.testTag(CricketTags.ZONE_STAT),
             )
         }
-        content.indicator?.let { Chips(it, content.index) }
+        if (!isSingleLine) content.indicator?.let { Chips(it, content.index) }
     }
 }
 
 /** CR25: the white banner (text `background`), as the filled visit box. */
 @Composable
-private fun WinBanner() {
+private fun WinBanner(isSingleLine: Boolean) {
     val colors = KosmoTheme.colors
     Box(
         modifier = Modifier
             .clip(KosmoShapes.control)
             .background(colors.onBackground)
-            .padding(horizontal = BANNER_PADDING, vertical = 2.dp)
+            .padding(horizontal = BANNER_PADDING, vertical = if (isSingleLine) 0.dp else BANNER_PADDING_VERTICAL)
             .testTag(CricketTags.WIN_BANNER),
     ) {
         Text(

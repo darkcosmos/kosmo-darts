@@ -14,6 +14,9 @@ object CricketTags {
     /** The rows of the board (they scroll only on a screen smaller than the Pixel 7). */
     const val BOARD_ROWS: String = "cricket_board_rows"
 
+    /** The landscape title line over the zone (mode, position, S/M chips). */
+    const val TITLE: String = "cricket_title"
+
     /** The white "VICTORY" banner of the zone (CR25). */
     const val WIN_BANNER: String = "cricket_win_banner"
 

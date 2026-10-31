@@ -5,15 +5,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.keepScreenOn
@@ -41,14 +37,11 @@ import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.Spacing
 import io.github.darkcosmos.kosmodarts.ui.theme.States
 
-/** The height of a landscape zone line until the landscape screen is reworked (dart cells at their minimum). */
-private const val LANDSCAPE_ZONE_LINE_DP = 28f
-
 /**
  * Cricket game screen (docs/rules/cricket.md, CR22 to CR25). Portrait, top to bottom: header, compact zone, the board
- * with its buttons, the action bar. Landscape: the board on the left; header, zone and action bar on the right. The
- * sizes come from [CricketBoardLayoutPolicy], from values the screen measures with Compose. The screen stays on, and
- * system back opens "Abandon the game?" (M15).
+ * with its buttons, the action bar. Landscape ([LandscapeGame]): the board on the left; title, zone and action bar on
+ * the right. The sizes come from [CricketBoardLayoutPolicy], from values the screen measures with Compose. The screen
+ * stays on, and system back opens "Abandon the game?" (M15).
  */
 @Composable
 fun CricketGameScreen(
@@ -115,54 +108,9 @@ private fun PortraitGame(game: CricketGameScreenState, onEvent: (AppEvent) -> Un
     }
 }
 
-/** Interim landscape layout (rework in the landscape task): the same board, the zone and the bar on the right. */
-@Composable
-private fun LandscapeGame(
-    game: CricketGameScreenState,
-    onEvent: (AppEvent) -> Unit,
-    screenWidthDp: Float,
-    screenHeightDp: Float,
-) {
-    val label = KosmoTheme.typography.label
-    val titleLine = rememberLineHeightDp(label)
-    val zoneHeight = CricketBoardLayoutPolicy.portraitZoneHeightDp(titleLine)
-    val players = game.game.config.players.size
-    val header = rememberHeaderMetrics(
-        game.headerTotals,
-        CricketBoardLayoutPolicy.PLAYER_COLUMN_WIDTH,
-        CricketBoardLayoutPolicy.LANDSCAPE_TOTAL_SIZES_SP,
-    )
-    val layout = CricketBoardLayoutPolicy.landscape(
-        CricketLandscapeSpace(
-            screenWidthDp, screenHeightDp, 0f, header.heightDp, titleLine, LANDSCAPE_ZONE_LINE_DP,
-            players, game.game.config.targets.size,
-        ),
-    )
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(CricketBoardLayoutPolicy.BOARD_GAP.dp),
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag(CricketTags.SCREEN)
-            .padding(horizontal = Spacing.screenHorizontal, vertical = CricketBoardLayoutPolicy.LANDSCAPE_MARGIN.dp),
-    ) {
-        Column(Modifier.width(layout.boardWidthDp.dp).fillMaxHeight()) {
-            Board(game, layout.board, header, onEvent)
-        }
-        Column(
-            verticalArrangement = Arrangement.spacedBy(CricketBoardLayoutPolicy.GAP.dp),
-            modifier = Modifier.weight(1f).fillMaxHeight(),
-        ) {
-            Header(game, Modifier.fillMaxWidth())
-            Zone(game, Modifier.height(zoneHeight.dp).fillMaxWidth())
-            Spacer(Modifier.weight(1f))
-            Actions(game, onEvent)
-        }
-    }
-}
-
 /** "CRICKET · STANDARD" (CR22), then "SANS 25-BULL" when the Bull is not in play, and the M14 position. */
 @Composable
-private fun Header(game: CricketGameScreenState, modifier: Modifier) {
+internal fun Header(game: CricketGameScreenState, modifier: Modifier) {
     val config = game.game.config
     val resources = LocalResources.current
     val variant = when (config.variant) {
@@ -185,7 +133,7 @@ private fun Header(game: CricketGameScreenState, modifier: Modifier) {
 
 /** The zone of the highlighted player: the one whose turn waits, the winner of a pending win, else the thrower. */
 @Composable
-private fun Zone(game: CricketGameScreenState, modifier: Modifier) {
+internal fun Zone(game: CricketGameScreenState, modifier: Modifier, isSingleLine: Boolean = false) {
     val index = game.highlightedPlayerIndex ?: 0
     val locale = LocalConfiguration.current.locales[0]
     val mpr = formatMpr(game.mprOf(index), locale, stringResource(R.string.game_average_none))
@@ -201,11 +149,12 @@ private fun Zone(game: CricketGameScreenState, modifier: Modifier) {
             nextDartIndex = game.nextDartIndex,
         ),
         modifier = modifier,
+        isSingleLine = isSingleLine,
     )
 }
 
 @Composable
-private fun Board(
+internal fun Board(
     game: CricketGameScreenState,
     layout: CricketBoardLayout,
     header: CricketHeaderMetrics,
@@ -234,7 +183,7 @@ private fun Board(
  * "Confirm leg", "Confirm set" or "Confirm match". "Undo" removes the winning dart.
  */
 @Composable
-private fun Actions(game: CricketGameScreenState, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
+internal fun Actions(game: CricketGameScreenState, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
     val undo = BarAction(stringResource(R.string.key_undo), KeypadTags.UNDO, game.canUndo) {
         onEvent(AppEvent.UndoTapped)
     }
