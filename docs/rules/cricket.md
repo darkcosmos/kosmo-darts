@@ -76,8 +76,8 @@ Vocabulary:
     "Standard ou Cut-throat";
   - a saved Cricket game shows in `ResumeCard` the format line "CRICKET · CUT-THROAT", followed by "· SANS 25-BULL"
     when 25-Bull is off and by the M14 format text in a match;
-  - the mini tiles show each player's points, or his closed targets "4/7" ("4/6" without the Bull) in a solo game
-    (Q8 A), plus "S n · M n" in a match;
+  - the mini tiles show each player's points, and nothing in a solo game (no "4/7": owner, PR #60 review, Q6 A), plus
+    "S n · M n" in a match;
   - the button says "REPRENDRE · À X DE LANCER" (M18).
 - CR21. Setup: the title is "CRICKET", followed by:
   - "VARIANTE": a `SegmentedChoice`, Standard / Cut-throat, with one hint line under it in `onBackgroundMuted` for the
@@ -92,88 +92,97 @@ Vocabulary:
   - "COMMENCER".
 
   The setup is prefilled with the shared roster and the last Cricket settings (R22).
-- CR22. Game screen, from top to bottom in portrait:
+- CR22. Game screen, in portrait from top to bottom:
   - the `MatchHeader` ("CRICKET · STANDARD" and the M14 position);
-  - a compact `CurrentPlayerZone`: name, "MPR 2,4", the S/M chips, points (or "4/7" solo) and the `DartSlots`. A dart
-    is shown only if it gives a mark (CR2); a dart that gives none is shown as a miss (owner review of the Cricket
-    screen). There is no visit box;
-  - the `CricketBoard`;
-  - the `CricketKeypad`;
-  - the `ActionBar` ("ANNULER", "JOUEUR SUIVANT").
+  - a compact `CurrentPlayerZone`: line 1, the name, "MPR 2,4" and the S/M chips; line 2, the `DartSlots`, or the
+    white "VICTOIRE" banner of CR25. The zone shows no total and no "n/7", in a solo game either (owner, PR #60
+    review, Q2, Q4 A). A dart is shown only if it gives a mark (CR2); a dart that gives none is shown as a miss. There
+    is no visit box;
+  - the `CricketBoard` with its target buttons (CR23, CR24);
+  - the `ActionBar` ("ANNULER", "JOUEUR SUIVANT" or the CR25 confirm label), unchanged from the other game screens.
 
-  No `PlayerTile`s: the board carries every player.
+  No `PlayerTile`s: the board carries every player. There is no separate keypad.
 
   Layout contract, computed by a pure `CricketLayoutPolicy` and asserted by the fit tests:
-  - Fixed parts, which never scroll and are always fully visible: the `CricketKeypad` and the `ActionBar` (with
-    "ANNULER") are pinned to the bottom. Keys: 3 rows, 54 dp shrinking to 48 dp, never below. The action bar is 58 dp
-    shrinking to 48 dp. Gaps go from 6 to 4 dp, as in the X01 policy.
-  - Compact zone, 96 dp tall, minimum 76 dp:
-    - line 1: name (1 line, ellipsis), "MPR 2,4", S/M chips;
-    - line 2: points in `tileScore` instead of `scoreHuge`, then `DartSlots` (no visit box).
-
-    At font scale 2.0 the zone may grow up to 1.5 times its height, and the name keeps 1 line with an ellipsis.
-  - Board:
-    - it takes the remaining height;
-    - its cells are display-only, so they are not touch targets and may be under 48 dp;
-    - row height = max(24 dp, text line + 2 dp), 32 dp by default; the text line of the 14 sp board texts is taken as
-      22.5 dp times the font scale of a 14 sp text (the display font has tall metrics, review U1);
-    - column header = 3 dp strip + name line (22.5 dp times the font scale), with no visit box under the name;
-    - the points footer row has the same height as the other rows.
-
-    When the rows at their minimum do not fit, the board region alone scrolls vertically, with its column header kept
-    on top (sticky). The current player's column is always on screen, since all columns are always visible
-    horizontally.
-  - Columns: a target label column of 40 dp at scale 1.0, wide enough for "BULL" at every scale (2.5 em of the 14 sp
-    label size + 5 dp, never truncated), then the players share the rest equally: about
-    76 dp each at 360 dp wide with 4 players. A name in a column header takes 1 line, cut with an ellipsis; the
-    TalkBack text always has the full name. Points take one line and are never cut.
-  - Portrait, at 360 x 640 (about 568 dp usable), 4 players, scale 1.0: header 24 + zone 76 + keypad 152 + action bar
-    48 + margins 16 = 316 dp, which leaves about 252 dp for the board. That is the column header 54 + 7 rows of 24.75 +
-    footer 24.75 = 252 dp, so it fits without scrolling at the minimums. At scale 2.0, the board scrolls.
-  - Landscape (640 x 360, about 336 dp usable):
-    - left column: the header and the board, which scrolls vertically when needed;
-    - right column: the compact zone, the keypad and the action bar, with the last two pinned to the bottom. The zone
-      gives way first, down to its minimum, and then scrolls by itself, never the keypad.
-  - Nothing essential is cut: keys, action bar, marks and points are never truncated. Only player names get an
-    ellipsis, and only the board region and, in landscape, the zone may scroll.
+  - Board columns, from start to end: the player columns, which share the width left equally, then the button column
+    (3 x 48 dp at least, up to 3 x 56 dp while the player columns keep 76 dp each), at the end of the row, on the
+    right of the screen. Player columns are 48, 64 and 96 dp at 4, 3 and 2 players at 360 dp wide.
+  - Rows are 48 dp at least (the buttons are touch targets), `max(48, 22.5 x font scale + 2)`. The column header is
+    pinned: 3 dp strip, the total, the name (about 64 dp at scale 1.0); in a solo game it has no total line. The top
+    cell of the button column ("RATÉ" alone) has the header's height and the button column's width.
+  - Only the target rows scroll, under the pinned header, when they do not fit (portrait at large font scales); at
+    least 4 full rows stay visible at every font scale up to 2.0. The header, "RATÉ", the zone and the action bar
+    never scroll.
+  - Compact zone, 84 dp tall, minimum 68 dp in portrait; the name keeps 1 line with an ellipsis.
+  - Action bar: the existing `ActionBar`; portrait, side by side, 162 dp per button at 360 dp wide; labels at least
+    12 sp at every font scale (a word is never cut).
+  - Portrait, at 360 x 640 (about 568 dp usable), 4 players, 7 rows, scale 1.0, no scrolling: 4 + `MatchHeader` 24 + 4
+    + zone 68 + 4 + header 64 + 7 x 48 + 4 + action bar 48 = 556 dp.
+  - Landscape (640 x 360 and up, Kosmo, Q1 and Q10 A): the same board, not turned, everything visible without scrolling
+    (the fonts may be slightly reduced: board texts at 12 sp, totals at 20 sp at most, fixed sizes that do not follow
+    the system font size). On the left, the `MatchHeader` (the S/M chips at its end) over the board; on the right, the
+    zone limited to the height of that band, on one line (name, MPR, the visit's darts), and at the bottom the action
+    bar with its two buttons stacked ("ANNULER" above the primary button, at least 204 dp wide each). The right column
+    is at least 204 dp wide at 640 dp and is separated from the board by 12 dp. The rows fill the height left, down to
+    32 dp (about 37 dp at 640 x 336), never scrolling.
+  - System bars and display cutout in landscape (owner Q5 B): the Cricket game screen hides the system bars while it
+    is shown in landscape (a swipe from the edge brings them back for a moment, over the content, without moving
+    it) and shows them again on every exit (portrait, between legs, end, abandon, home). The content is then padded
+    with the display cutout insets only, so nothing goes under the camera hole; in portrait and everywhere else the
+    padding is the safe drawing insets, as before. The decision is a pure `SystemBarsPolicy` (hide always comes with
+    cutout-only padding). Buttons may be under 48 dp tall there, down to 32 dp (owner Q5 B).
+  - Nothing essential is cut: buttons, action bar, marks and totals are never truncated; only player names get an
+    ellipsis.
 
   The contract is also written in `docs/design/design-system.md`.
 - CR23. `CricketBoard`:
-  - rows: 20 to 15, then Bull (no Bull row with 25-Bull off); one column per player, in configuration order;
-  - a column header with the player's color strip and name only: the last visit of a player is no longer shown under
-    his name (owner review of the Cricket screen, replacing precision P2); TalkBack still reads it;
+  - rows: 20 to 15, then Bull (no Bull row with 25-Bull off); one column per player, in configuration order; there
+    is no label column and no points row (owner, PR #60 review);
+  - a column header, pinned, with from top to bottom the player's color strip, his total and his name. The total is
+    the largest text of the board (display font, `onBackground`, 24 sp down to 14 sp as the column and the font scale
+    require, 20 sp at most in landscape, never cut) and is absent in a solo game. The last visit of a player is not
+    shown (TalkBack still reads it);
+  - at the top of the button column, at the height of the headers, the "RATÉ" key alone, over the whole width of the
+    column; it records a miss (CR24);
   - cells: empty, `/`, `X` or `Ⓧ`;
-  - a footer row with the points, absent in a solo game;
   - the current player's column has an `accent` border and a "▶" before his name;
   - a dead row (CR15, owner complement to O1) is struck through and in a less visible color, so that only the rows
     still in play read clearly:
-    - one horizontal line of 2 dp in `onBackgroundMuted` crosses the whole row: the target label and every player's
-      cell;
-    - the label and the marks switch from `onBackground` to `onBackgroundMuted`, an existing token that keeps the
-      design system's 4.5:1 rule; no opacity is applied to the text. The live rows stay in `onBackground`;
+    - one horizontal line of 2 dp in `onBackgroundMuted` crosses the player cells of the row, not its buttons;
+    - the marks switch from `onBackground` to `onBackgroundMuted`, an existing token that keeps the design system's
+      4.5:1 rule; no opacity is applied to the text. The live rows stay in `onBackground`;
     - the row keeps its height and its marks (`Ⓧ` for everyone), so the board does not move when a row dies;
+    - its buttons stay enabled and keep a muted style (the label in `onBackgroundMuted` on `surfaceHigh`), which
+      does not look like a locked key (CR24);
     - the strike-through line carries the information, and the color only adds to it.
 
   No information is carried by color alone. TalkBack:
   - a live cell is read as « 20, Anna : 2 marques » / "20, Anna: 2 marks", and « 20, Anna : fermée » /
     "20, Anna: closed" at 3 marks;
-  - a dead row is one merged node, read once as « 20 : fermée par tous, ne compte plus » / "20: closed by everyone,
-    no longer scores", without reading its cells one by one;
+  - a dead row's cells are one merged node, read once as « 20 : fermée par tous, ne compte plus » / "20: closed by
+    everyone, no longer scores", without reading its cells one by one; its buttons are read after it;
   - when a row dies, nothing extra is announced: the sound (AN30) and the visual change are the feedback;
-  - reading order:
-    1. the column headers, starting with the current player's (« Anna, au lancer, dernière volée : 3 marques »), then
-       the others in configuration order;
-    2. the rows from 20 down to Bull, each row read cell by cell in column order (a dead row as its single merged
-       node);
-    3. the points row last (« Points : Anna 60, Bob 40 »).
-  - mark counts use plurals in both languages.
-- CR24. `CricketKeypad`:
-  - 20 to 15, `25`, `Bull`, `Raté`, plus the one-shot modifiers Double and Triple (the X01 keypad pattern: single by
-    default, so there is no "Simple" key);
-  - `25` and `Bull` are absent with 25-Bull off, and disabled while a modifier is active, exactly as in X01 (Q11 A,
-    O2 A);
-  - every key is locked while a turn waits, as in X01;
-  - keys are at least 48 dp.
+  - reading order, the same in portrait and in landscape:
+    1. the column headers, starting with the current player's (« Anna, au lancer, 60 points, dernière volée : 3
+       marques »; no points in a solo game), then the others in configuration order;
+    2. « Raté »;
+    3. the rows from 20 down to Bull; in each row first its cells in column order (a dead row as its merged node),
+       then its buttons from start to end (« 20 », « Double 20 », « Triple 20 »);
+    4. the action bar: « Annuler », then the primary button.
+  - mark counts and the header points use plurals in both languages.
+- CR24. Target buttons (`CricketTargetButtons`), in the button column of the board, at the end of each row:
+  - one tap records one dart, there is no modifier state. Rows 20 to 15 have three buttons, single, double, triple,
+    from start to end, each showing the number, with two dots under it on the double and three on the triple;
+    TalkBack « 20 », « Double 20 », « Triple 20 » / "20", "Double 20", "Triple 20";
+  - the Bull row (only with 25-Bull on, CR1) has two buttons sharing the width: "BULL" (the 25, one mark, TalkBack
+    « 25 ») and "BULL" with two dots (the bull, two marks, TalkBack « Bull »); there is no triple bull (rule D2);
+  - "RATÉ" (CR23) records a miss; "ANNULER" of the action bar undoes the last dart (CR11);
+  - a dart is refused (ignored: no state change, no sound) while a turn waits for "Next player" (CR7), while a win is
+    pending until "Confirm" or "Undo" (CR25), and for the 25 and the Bull with 25-Bull off (CR1);
+  - every button is locked (35 % opacity) while a turn waits or a win is pending; a dead row's buttons stay enabled
+    (a dart there is a real dart, AN30);
+  - each button's touch area is the whole cell, at least 48 x 48 dp in portrait (48 dp wide and the row height, 32 dp
+    at least, in landscape); the drawn key is inset by 2 dp on each side, so neighbours show a 4 dp gap.
 - CR25. Win: no dialog. The zone shows the winner, also when the winning dart was thrown by another player (CR9), with
   a white "VICTOIRE" banner in the route area (in place of the X01 CHECKOUT banner). The action bar reads "ANNULER" /
   "VALIDER LA MANCHE", "VALIDER LE SET" or "VALIDER LA PARTIE", with the M15 labels (Q6 A). "ANNULER" undoes the
