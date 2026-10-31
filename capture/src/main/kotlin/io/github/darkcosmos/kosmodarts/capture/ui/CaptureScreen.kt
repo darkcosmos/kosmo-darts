@@ -92,14 +92,14 @@ fun CaptureScreen(
     if (state.deleteAllConfirmVisible) DeleteAllDialog(actions.onDeleteAllConfirmed, actions.onDeleteAllCancelled)
 }
 
-/** Rule CP13: the message is a live region, stays at least 4 s (short duration with an action) and has a dismiss. */
+/** Rule CP13: the message is a live region, stays at least 4 s (long duration with an action) and has a dismiss. */
 @Composable
 private fun PhotoFailureMessage(failed: Boolean, host: SnackbarHostState, onShown: () -> Unit) {
     val message = stringResource(R.string.photo_failure)
     val dismiss = stringResource(R.string.photo_failure_dismiss)
     LaunchedEffect(failed) {
         if (failed) {
-            host.showSnackbar(message = message, actionLabel = dismiss, duration = SnackbarDuration.Short)
+            host.showSnackbar(message = message, actionLabel = dismiss, duration = SnackbarDuration.Long)
             onShown()
         }
     }
@@ -170,7 +170,7 @@ private fun ErrorMessage(error: CaptureError, onDismiss: () -> Unit) {
         Text(
             text = stringResource(message),
             style = KosmoTheme.typography.body,
-            color = KosmoTheme.colors.danger,
+            color = KosmoTheme.colors.dangerText,
             modifier = Modifier.weight(1f).testTag(CaptureTags.ERROR_MESSAGE),
         )
         TextButton(
@@ -227,7 +227,7 @@ private fun RecIndicator() {
         Text(
             text = stringResource(R.string.rec_label),
             style = KosmoTheme.typography.label,
-            color = KosmoTheme.colors.danger,
+            color = KosmoTheme.colors.dangerText,
         )
     }
 }
@@ -264,7 +264,7 @@ private fun StartStopButton(state: CaptureUiState, actions: CaptureActions) {
             onClick = actions.onStopRequested,
             enabled = state.startStopEnabled,
             contentPadding = BUTTON_PADDING,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = KosmoTheme.colors.danger),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = KosmoTheme.colors.dangerText),
             border = BorderStroke(States.selectionBorder, KosmoTheme.colors.danger),
             modifier = modifier,
         ) { Text(stringResource(R.string.action_stop), style = KosmoTheme.typography.button) }
@@ -321,20 +321,26 @@ private fun QualityOption(quality: VideoQuality, tag: String, state: CaptureUiSt
 private fun qualityLabel(quality: VideoQuality): Int =
     if (quality == VideoQuality.UHD) R.string.quality_uhd else R.string.quality_fhd
 
+/** Readout and keypad scroll if the screen is too small; the Undo and Next volley row stays pinned below them. */
 @Composable
 private fun KeypadColumn(state: CaptureUiState, actions: CaptureActions, modifier: Modifier) {
-    Column(
-        modifier = modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(KEY_GAP),
-    ) {
-        VolleyReadout(state)
-        Keypad(
-            isEnabled = state.keypadEnabled,
-            onDart = actions.onDart,
-            keyHeight = CONTROL_HEIGHT,
-            gap = KEY_GAP,
-        )
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(SPACING)) {
+    Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(KEY_GAP)) {
+        Column(
+            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(KEY_GAP),
+        ) {
+            VolleyReadout(state)
+            Keypad(
+                isEnabled = state.keypadEnabled,
+                onDart = actions.onDart,
+                keyHeight = CONTROL_HEIGHT,
+                gap = KEY_GAP,
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().testTag(CaptureTags.ACTION_ROW),
+            horizontalArrangement = Arrangement.spacedBy(SPACING),
+        ) {
             ActionButton(R.string.action_undo, state.undoEnabled, false, Modifier.weight(1f).testTag(CaptureTags.UNDO), actions.onUndo)
             ActionButton(
                 R.string.action_next_volley,

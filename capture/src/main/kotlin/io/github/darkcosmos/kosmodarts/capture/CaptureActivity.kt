@@ -85,7 +85,7 @@ class CaptureActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val storage = MediaStoreCaptureStorage(contentResolver)
+        val storage = MediaStoreCaptureStorage(applicationContext.contentResolver)
         camera = CameraXCaptureCamera(this, storage)
         controller = CaptureController(camera)
         gravity = GravityReader(getSystemService(Context.SENSOR_SERVICE) as SensorManager?)
@@ -93,14 +93,14 @@ class CaptureActivity : ComponentActivity() {
         viewModel = ViewModelProvider.create(
             this,
             viewModelFactory {
-                initializer {
-                    CaptureViewModel(SystemCaptureClock, storage, settings, controller) {
-                        controller.setup(appInfo(), deviceInfo(), viewModel.state.value.quality)
-                    }
-                }
+                initializer { CaptureViewModel(SystemCaptureClock, storage, settings) }
             },
         )[CaptureViewModel::class]
         controller.attach(viewModel)
+        // The view model outlives this activity: the camera side is registered here and unregistered in onDestroy.
+        viewModel.attachEffects(controller) {
+            controller.setup(appInfo(), deviceInfo(), viewModel.state.value.quality)
+        }
         getSystemService(DisplayManager::class.java).registerDisplayListener(displayListener, null)
 
         val actions = CaptureActions.of(viewModel, ::requestCamera, ::openAppSettings)
@@ -149,6 +149,8 @@ class CaptureActivity : ComponentActivity() {
 
     override fun onDestroy() {
         getSystemService(DisplayManager::class.java).unregisterDisplayListener(displayListener)
+        // Ends a running session visibly (INTERRUPTED) and drops every reference to this activity.
+        viewModel.detachEffects(controller)
         super.onDestroy()
     }
 

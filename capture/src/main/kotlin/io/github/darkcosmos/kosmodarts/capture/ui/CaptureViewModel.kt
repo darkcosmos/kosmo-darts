@@ -23,16 +23,17 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * State holder of the capture screen (rules CP2 to CP13). It owns the [CaptureSession] of the running session, writes
  * the truth file after every event, sends camera work to [effects] and exposes everything the screen shows as
- * [state]. Calls come from the main thread only; [setupProvider] gives the session setup (with the actual resolutions)
- * at Start.
+ * [state]. Calls come from the main thread only. The view model outlives the activity, so the camera side is a port the
+ * activity registers with [attachEffects] and unregisters with [detachEffects]; the port also gives the session setup
+ * (with the actual resolutions) at Start. Without a port no session can start.
  */
 class CaptureViewModel(
     private val clock: CaptureClock,
     private val storage: CaptureStorage,
     private val settings: CaptureSettings,
-    private val effects: CaptureEffects,
-    private val setupProvider: () -> CaptureSetup,
 ) : ViewModel(), CaptureReports {
+    private var effects: CaptureEffects? = null
+    private var setupProvider: (() -> CaptureSetup)? = null
     private val writer = TruthWriter(storage, settings)
     private var session = CaptureSession()
     private var entry: CaptureEntry? = null
@@ -61,6 +62,28 @@ class CaptureViewModel(
         state = mutableState.asStateFlow()
     }
 
+    /** Registers the camera side of the current activity (replaces the previous one, if any). */
+    fun attachEffects(effects: CaptureEffects, setupProvider: () -> CaptureSetup) {
+        this.effects = effects
+        this.setupProvider = setupProvider
+    }
+
+    /**
+     * Unregisters [owner], the camera side of a destroyed activity (ignored if another one is registered since).
+     * A running session is ended (INTERRUPTED, the
+     * recording is asked to stop) first, so no video is left open and the screen never shows a dead recording.
+     */
+    fun detachEffects(owner: CaptureEffects) = update {
+        if (effects !== owner) return@update
+        if (session.running) {
+            stopConfirmVisible = false
+            apply(session.interrupt(clock))
+        }
+        effects = null
+        setupProvider = null
+        cameraReady = false
+    }
+
     /** Camera permission changed. */
     fun onPermission(value: CameraPermission) = update { permission = value }
 
@@ -69,10 +92,11 @@ class CaptureViewModel(
 
     /** Rule CP1: Start session. */
     fun onStart() = update {
+        val provider = setupProvider ?: return@update
         if (!isIdle() || !cameraReady || permission != CameraPermission.GRANTED) return@update
         error = null
         counters = counters.forNewSession()
-        val outcome = session.start(clock, setupProvider(), ownFolders())
+        val outcome = session.start(clock, provider(), ownFolders())
         val folder = outcome.session.truth?.session ?: return@update
         val created = try {
             storage.createTruthFile(folder)
@@ -197,12 +221,14 @@ class CaptureViewModel(
         error = CaptureError.TRUTH_WRITE
         if (session.running) {
             session = session.interrupt(clock).also { dispatch(it.effects) }.session
-            session.truth?.let { runCatching { writer.write(target, it, counters) } }
+            // TruthWriter reports its IO failures in the result and never throws one; the failure is already shown.
+            session.truth?.let { writer.write(target, it, counters) }
         }
     }
 
     private fun dispatch(list: List<CaptureEffect>) {
         val folder = session.truth?.session ?: return
+        val effects = effects ?: return
         list.forEach { effect ->
             when (effect) {
                 is CaptureEffect.StartVideo -> effects.startVideo(effect.volley, storage.videoTarget(folder, effect.file))

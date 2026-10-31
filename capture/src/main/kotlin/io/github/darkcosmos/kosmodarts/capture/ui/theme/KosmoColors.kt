@@ -23,6 +23,8 @@ data class KosmoColors(
     val onAccent: Color,
     val accentDim: Color,
     val danger: Color,
+    /** [danger] is too dark for text on [background] (about 2.9:1); this lighter red is used for danger text. */
+    val dangerText: Color,
     val onDanger: Color,
 ) {
     companion object {
@@ -39,6 +41,7 @@ data class KosmoColors(
             onAccent = Color(0xFF0A0F1E),
             accentDim = Color(0xFF2A2410),
             danger = Color(0xFFB3261E),
+            dangerText = Color(0xFFFF8A80),
             onDanger = Color(0xFFFFFFFF),
         )
     }

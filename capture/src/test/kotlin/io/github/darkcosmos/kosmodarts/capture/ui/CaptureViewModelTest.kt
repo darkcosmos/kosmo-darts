@@ -56,8 +56,9 @@ class CaptureViewModelTest {
 
     private fun settings() = CaptureSettings(folder.root.resolve("settings.txt"))
 
-    private fun viewModel(): CaptureViewModel = CaptureViewModel(clock, storage, settings(), effects) { setup }
+    private fun viewModel(): CaptureViewModel = CaptureViewModel(clock, storage, settings())
         .also {
+            it.attachEffects(effects) { setup }
             it.onPermission(CameraPermission.GRANTED)
             it.onCameraReady(true)
         }

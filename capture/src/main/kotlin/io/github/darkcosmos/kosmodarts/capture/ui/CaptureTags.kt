@@ -5,6 +5,7 @@ object CaptureTags {
     const val START_STOP = "capture_start_stop"
     const val NEXT_VOLLEY = "capture_next_volley"
     const val UNDO = "capture_undo"
+    const val ACTION_ROW = "capture_action_row"
     const val DELETE_ALL = "capture_delete_all"
     const val QUALITY = "capture_quality"
     const val QUALITY_UHD = "capture_quality_uhd"

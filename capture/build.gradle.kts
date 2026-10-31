@@ -84,8 +84,6 @@ tasks.withType<Test>().configureEach {
 dependencies {
     implementation(project(":game-engine"))
 
-    implementation(project(":game-engine"))
-
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)

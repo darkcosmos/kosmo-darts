@@ -44,8 +44,9 @@ internal fun testViewModel(settingsFile: File): CaptureViewModel {
         video = VideoSettings(VideoQuality.UHD, Resolution(3840, 2160)),
         photo = PhotoSettings(Resolution(4080, 3072), TimestampSource.REALTIME),
     )
-    return CaptureViewModel(FakeClock(), FakeCaptureStorage(), CaptureSettings(settingsFile), NoopEffects()) { setup }
+    return CaptureViewModel(FakeClock(), FakeCaptureStorage(), CaptureSettings(settingsFile))
         .also {
+            it.attachEffects(NoopEffects()) { setup }
             it.onPermission(CameraPermission.GRANTED)
             it.onCameraReady(true)
         }

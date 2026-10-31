@@ -8,6 +8,8 @@ import io.github.darkcosmos.kosmodarts.capture.truth.DeviceInfo
 import io.github.darkcosmos.kosmodarts.capture.truth.EndReason
 import io.github.darkcosmos.kosmodarts.capture.truth.Resolution
 import io.github.darkcosmos.kosmodarts.capture.truth.TimestampSource
+import io.github.darkcosmos.kosmodarts.capture.truth.TruthDecodeResult
+import io.github.darkcosmos.kosmodarts.capture.truth.TruthJson
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoQuality
 import io.github.darkcosmos.kosmodarts.capture.ui.CameraPermission
 import io.github.darkcosmos.kosmodarts.capture.ui.CapturePhase
@@ -35,7 +37,8 @@ class CaptureControllerTest {
 
     private fun viewModel(): CaptureViewModel {
         val settings = CaptureSettings(folder.root.resolve("settings.txt"))
-        vm = CaptureViewModel(clock, storage, settings, controller) {
+        vm = CaptureViewModel(clock, storage, settings)
+        vm.attachEffects(controller) {
             controller.setup(AppInfo("io.github.darkcosmos.kosmodarts.capture", "0.1.0"), DeviceInfo("Google", "Pixel 7", 37), VideoQuality.UHD)
         }
         controller.attach(vm)
@@ -45,6 +48,66 @@ class CaptureControllerTest {
     }
 
     private fun lastTruth(): String = storage.writes.last()
+
+    private fun setupFor(c: CaptureController) = {
+        c.setup(AppInfo("io.github.darkcosmos.kosmodarts.capture", "0.1.0"), DeviceInfo("Google", "Pixel 7", 37), VideoQuality.UHD)
+    }
+
+    @Test
+    fun `CP9 a second attach routes the effects to the new controller only and a real stop closes the recording once`() {
+        val vm = viewModel()
+        vm.onStart()
+        vm.onDart(t20)
+        // Rotation by 180 degrees: configuration change stop, then the new activity registers its own camera side.
+        vm.onScreenStopped(true)
+        val newCamera = FakeCaptureCamera()
+        val newController = CaptureController(newCamera)
+        newController.attach(vm)
+        vm.attachEffects(newController, setupFor(newController))
+        val oldCalls = camera.calls.toList()
+        assertEquals(CapturePhase.RUNNING, vm.state.value.phase)
+        assertTrue(camera.isRecording(1))
+        vm.onDart(t20)
+        vm.onNextVolley()
+        assertEquals(oldCalls, camera.calls)
+        assertEquals(listOf("photo dart-002.jpg", "stop 1", "start volley-002.mp4"), newCamera.calls)
+        vm.onScreenStopped(false)
+        assertEquals(CapturePhase.IDLE, vm.state.value.phase)
+        assertEquals(listOf("photo dart-002.jpg", "stop 1", "start volley-002.mp4", "stop 2"), newCamera.calls)
+        assertEquals(oldCalls, camera.calls)
+        assertTrue(lastTruth().contains(EndReason.INTERRUPTED.name))
+    }
+
+    @Test
+    fun `CP9 detaching the effects of a destroyed activity ends the session and closes the recording`() {
+        val vm = viewModel()
+        vm.onStart()
+        vm.onDart(t20)
+        vm.detachEffects(controller)
+        assertFalse(camera.isRecording(1))
+        assertEquals(CapturePhase.IDLE, vm.state.value.phase)
+        assertTrue(lastTruth().contains(EndReason.INTERRUPTED.name))
+        // Nothing reaches the old camera any more, and no session starts without a camera side.
+        val calls = camera.calls.toList()
+        vm.onCameraReady(true)
+        vm.onStart()
+        assertEquals(calls, camera.calls)
+        assertEquals(CapturePhase.IDLE, vm.state.value.phase)
+    }
+
+    @Test
+    fun `CP9 a late detach of the old controller does not unregister the new one`() {
+        val vm = viewModel()
+        val newCamera = FakeCaptureCamera()
+        val newController = CaptureController(newCamera)
+        newController.attach(vm)
+        vm.attachEffects(newController, setupFor(newController))
+        vm.detachEffects(controller)
+        vm.onStart()
+        assertEquals(listOf("start volley-001.mp4"), newCamera.calls)
+        assertTrue(camera.calls.isEmpty())
+    }
+
 
     @Test
     fun `CP1 Start opens volley 001 and each dart takes its photo`() {
@@ -106,10 +169,10 @@ class CaptureControllerTest {
         camera.timestampSource = TimestampSource.UNKNOWN
         val vm = viewModel()
         vm.onStart()
-        val truth = lastTruth()
-        assertTrue(truth.contains("1920"))
-        assertTrue(truth.contains("4000"))
-        assertTrue(truth.contains("unknown", ignoreCase = true))
+        val decoded = TruthJson.decode(lastTruth()) as TruthDecodeResult.Success
+        assertEquals(Resolution(1920, 1080), decoded.session.video.resolution)
+        assertEquals(Resolution(4000, 3000), decoded.session.photo.resolution)
+        assertEquals(TimestampSource.UNKNOWN, decoded.session.photo.timestampSource)
     }
 
     @Test

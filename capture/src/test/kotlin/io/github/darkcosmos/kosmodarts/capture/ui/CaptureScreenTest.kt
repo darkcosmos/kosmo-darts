@@ -140,7 +140,7 @@ class CaptureScreenTest {
     }
 
     @Test
-    fun `CP13 the photo failure message is a snackbar shown at least 4 seconds with a dismiss action`() {
+    fun `CP13 the photo failure message is a snackbar shown at least 4 seconds (long duration) with a dismiss action`() {
         var shown = 0
         composeRule.mainClock.autoAdvance = false
         composeRule.showState(
@@ -153,7 +153,7 @@ class CaptureScreenTest {
         composeRule.mainClock.advanceTimeBy(3_000)
         composeRule.onNodeWithTag(CaptureTags.PHOTO_SNACKBAR).assertExists()
         composeRule.onNodeWithTag(CaptureTags.PHOTO_SNACKBAR_DISMISS).assertHeightIsAtLeast(42.dp).assertWidthIsAtLeast(48.dp)
-        composeRule.mainClock.advanceTimeBy(2_000)
+        composeRule.mainClock.advanceTimeBy(7_000)
         composeRule.onNodeWithTag(CaptureTags.PHOTO_SNACKBAR).assertDoesNotExist()
         assertEquals(1, shown)
     }
