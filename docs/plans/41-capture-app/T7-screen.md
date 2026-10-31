@@ -39,3 +39,14 @@ CP2, CP3, CP6, CP7, CP8, CP13. Root plan "Screens and states": layout, height bu
 sonnet. Why: screen from a specified layout and height budget.
 
 ## Implementation notes
+- `capture.ui`: `CaptureScreen(state, actions: CaptureActions, preview, modifier)`; `CaptureActions` is a lambda bundle,
+  `CaptureActions.of(viewModel, onAllowCamera, onOpenSettings)` builds it (T8 supplies the permission lambdas).
+  `CaptureDialogs.kt` (Stop, Delete all), `PermissionPanel`, `CaptureTags`. Strings added in en and fr.
+- `CaptureActivity` shows a static idle `CaptureUiState` with no-op actions and an empty preview: T8 must create the
+  view model and replace it. Insets: `safeDrawing` padding around the screen.
+- Additions beyond the plan table: `error_delete_all` message for `CaptureError.DELETE_ALL`, Dismiss buttons (error
+  banner, snackbar; fr "Fermer"). Photo snackbar: `SnackbarDuration.Short` with an action (4 s), live region.
+- Control row is a `FlowRow` (wraps at 640x360); right column scrolls vertically as a safety net, and at 640x360 the
+  Next volley button is slightly cut at the bottom without scrolling (about 8dp over budget).
+- Tests: `CaptureScreenTest` (behavior, harness in `CaptureScreenHarness.kt`), `CaptureScreenshotsTest` (60 images
+  `capture_<state>_<size>_<lang>.png` in `capture/build/outputs/roborazzi/`). Roborazzi qualifiers: language first.

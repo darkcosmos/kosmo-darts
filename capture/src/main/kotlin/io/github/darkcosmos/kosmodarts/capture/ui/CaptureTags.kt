@@ -1,0 +1,35 @@
+package io.github.darkcosmos.kosmodarts.capture.ui
+
+/** Test tags of the capture screen. */
+object CaptureTags {
+    const val START_STOP = "capture_start_stop"
+    const val NEXT_VOLLEY = "capture_next_volley"
+    const val UNDO = "capture_undo"
+    const val DELETE_ALL = "capture_delete_all"
+    const val QUALITY = "capture_quality"
+    const val QUALITY_UHD = "capture_quality_uhd"
+    const val QUALITY_FHD = "capture_quality_fhd"
+    const val READOUT = "capture_readout"
+    const val VOLLEY_FULL_HINT = "capture_volley_full_hint"
+    const val SLOT_PREFIX = "capture_slot_"
+    const val REC = "capture_rec"
+    const val PREVIEW = "capture_preview"
+    const val STATUS_LINE = "capture_status_line"
+    const val SESSION_COUNT = "capture_session_count"
+    const val TOTAL_COUNT = "capture_total_count"
+    const val SAVING = "capture_saving"
+    const val ERROR_MESSAGE = "capture_error"
+    const val ERROR_DISMISS = "capture_error_dismiss"
+    const val PERMISSION_PANEL = "capture_permission_panel"
+    const val PERMISSION_BUTTON = "capture_permission_button"
+    const val PHOTO_SNACKBAR = "capture_photo_snackbar"
+    const val PHOTO_SNACKBAR_DISMISS = "capture_photo_snackbar_dismiss"
+    const val STOP_DIALOG = "capture_stop_dialog"
+    const val STOP_CONFIRM = "capture_stop_confirm"
+    const val STOP_CANCEL = "capture_stop_cancel"
+    const val DELETE_DIALOG = "capture_delete_dialog"
+    const val DELETE_CONFIRM = "capture_delete_confirm"
+    const val DELETE_CANCEL = "capture_delete_cancel"
+
+    fun slot(index: Int): String = "$SLOT_PREFIX$index"
+}
