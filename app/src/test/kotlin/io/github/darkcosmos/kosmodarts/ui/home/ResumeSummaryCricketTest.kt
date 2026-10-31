@@ -12,7 +12,6 @@ import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.persistence.confirmLegsWonBy
 import io.github.darkcosmos.kosmodarts.persistence.throwing
-import io.github.darkcosmos.kosmodarts.ui.cricket.CricketZoneScore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -51,20 +50,12 @@ class ResumeSummaryCricketTest {
         assertEquals("Ann", summary.highlightedPlayer)
     }
 
-    /** CR20 (Q8 A): a solo game shows the closed targets, "n" of the 7 targets with the Bull. */
+    /** CR20, Q6 A: a solo game shows no score on its tile, so the card shows no "n/7" either. */
     @Test
-    fun `CR20 a solo game shows the closed targets`() {
+    fun `CR20 Q6 A a solo game shows no score on its tile`() {
         val summary = ResumeSummary.of(saved(match("Ann").throwing(*CricketSaveFixtures.darts("T20 T19"))))
 
-        assertEquals(listOf(CricketZoneScore.ClosedTargets(2, 7)), summary.players.map { it.closedTargets })
-    }
-
-    /** CR20: without the Bull, a solo game counts 6 targets. */
-    @Test
-    fun `CR20 a solo game without the Bull counts six targets`() {
-        val summary = ResumeSummary.of(saved(match("Ann", isBullInPlay = false)))
-
-        assertEquals(listOf(CricketZoneScore.ClosedTargets(0, 6)), summary.players.map { it.closedTargets })
+        assertEquals(listOf<Int?>(null), summary.players.map { it.remaining })
     }
 
     /** CR20, M18: in a match, each player's sets and legs. */

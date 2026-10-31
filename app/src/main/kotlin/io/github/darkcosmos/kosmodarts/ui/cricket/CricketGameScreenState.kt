@@ -184,14 +184,6 @@ enum class CricketZoneMode {
     VICTORY,
 }
 
-/** The score of the zone (CR22): points, or the closed targets "4/7" in a solo game (owner Q8, D6). */
-sealed interface CricketZoneScore {
-    data class Points(val points: Int) : CricketZoneScore
-
-    /** [closed] targets out of the [total] targets in play (6 or 7, CR1), read from the engine (review A2). */
-    data class ClosedTargets(val closed: Int, val total: Int) : CricketZoneScore
-}
-
 /**
  * One row of the Cricket board (CR23).
  *
@@ -199,16 +191,3 @@ sealed interface CricketZoneScore {
  * @property isDead whether every player has closed [target] (CR15).
  */
 data class CricketBoardRow(val target: CricketTarget, val marks: List<Int>, val isDead: Boolean)
-
-/**
- * CR22, owner D6: the points of the player at [index], or his closed targets in a solo game. An extension, so that the
- * class stays under the detekt function limit until R5 and R6 remove it.
- */
-fun CricketGameScreenState.zoneScoreOf(index: Int): CricketZoneScore {
-    val player = game.state.players[index]
-    return if (game.config.players.size == 1) {
-        CricketZoneScore.ClosedTargets(player.closedTargetCount, game.config.targets.size)
-    } else {
-        CricketZoneScore.Points(player.points)
-    }
-}

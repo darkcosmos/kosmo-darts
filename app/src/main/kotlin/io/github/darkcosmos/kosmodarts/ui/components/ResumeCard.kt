@@ -132,8 +132,5 @@ private fun formatLine(summary: ResumeSummary): String = when (val game = summar
         cricketFormatText(LocalResources.current, game.variant, game.isBullInPlay, summary.format)
 }
 
-/** The score of a tile: the remaining or scored points, or the closed targets "4/7" of a solo Cricket game (CR20). */
-@Composable
-private fun tileValue(player: ResumeSummary.PlayerScore): String = player.closedTargets
-    ?.let { stringResource(R.string.cricket_closed_targets, it.closed, it.total) }
-    ?: player.remaining.toString()
+/** The score of a tile: the remaining or scored points, or nothing in a solo Cricket game (CR20, Q6 A). */
+private fun tileValue(player: ResumeSummary.PlayerScore): String = player.remaining?.toString().orEmpty()

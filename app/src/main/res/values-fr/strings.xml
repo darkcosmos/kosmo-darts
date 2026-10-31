@@ -208,7 +208,6 @@
     <string name="cricket_zone_mpr">MPR %1$s</string>
     <string name="cricket_mpr_description">Marques par tour %1$s</string>
     <string name="cricket_points_description">Points %1$d</string>
-    <string name="cricket_closed_targets" translatable="false">%1$d/%2$d</string>
     <string name="cricket_win_banner">VICTOIRE</string>
     <string name="cricket_board_dead_row">%1$s\u00A0: fermée par tous, ne compte plus</string>
     <string name="cricket_board_closed_cell">%1$s, %2$s\u00A0: fermée</string>

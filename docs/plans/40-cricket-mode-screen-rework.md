@@ -987,3 +987,11 @@ None. Q1 to Q7, Q9, Q10 and Q11 are answered by Kosmo (see Decisions); Q8 was wi
   no cue / writes nothing". `CricketResumeScreensTest` and `CricketScreenshotTest` used neither the keypad nor the
   modifier any more. The captures `modifier_triple`, `keypad_*` and the 360 x 640 board captures went in R3; all the
   planned captures exist; the 209 captures recorded before R5 are byte-identical after it (X01 included).
+- R6: removed `CricketZoneScore` and `zoneScoreOf` (nothing else used them), `ResumeSummary.PlayerScore.closedTargets`,
+  the `closedTargets` branch of `ResumeCard.tileValue` and `cricket_closed_targets` in both languages. Deviation:
+  `PlayerScore.remaining` is now `Int?`, `null` in a solo game, so the solo tile shows no score at all (CR20, Q6 A)
+  instead of "0". The removed cases (`CR22 owner D6` of `CricketGameScreenStateTest`, the two solo closed-targets
+  cases of `ResumeSummaryCricketTest`) follow from Kosmo's Q2 and Q6 A (review T5); the replacement case is `CR20 Q6 A
+  a solo game shows no score on its tile`. `CricketPlayerState.closedTargetCount` stays (engine). Captures: only
+  `cricket_home_solo_fr` changed (the "2/7" is gone); the other 208 are byte-identical to the baseline recorded before
+  R6.

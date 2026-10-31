@@ -158,18 +158,6 @@ class CricketGameScreenStateTest {
         CricketGameScreenState(match.playLegWonBy(0), isAwaitingConfirmation = true)
 
     @Test
-    fun `CR22 owner D6 the zone shows points, or the closed targets in a solo game`() {
-        val duel = screen().tripleOf(20).throwDart(Dart.single(20))
-        assertEquals(CricketZoneScore.Points(20), duel.zoneScoreOf(0))
-        assertEquals(CricketZoneScore.Points(0), duel.zoneScoreOf(1))
-
-        val solo = screen(CricketSaveFixtures.match("Ann")).tripleOf(20).tripleOf(19)
-        assertEquals(CricketZoneScore.ClosedTargets(2, 7), solo.zoneScoreOf(0))
-        val soloNoBull = screen(CricketSaveFixtures.match("Ann", isBullInPlay = false)).tripleOf(20)
-        assertEquals(CricketZoneScore.ClosedTargets(1, 6), soloNoBull.zoneScoreOf(0))
-    }
-
-    @Test
     fun `CR24 one tap records one dart, a double or a triple included`() {
         val state = screen().throwDart(Dart.double(20)).throwDart(Dart.triple(20))
 

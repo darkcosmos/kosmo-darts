@@ -226,7 +226,6 @@
     <string name="between_points" translatable="false">%1$d PTS</string>
     <string name="cricket_mpr_description">Marks per round %1$s</string>
     <string name="cricket_points_description">Points %1$d</string>
-    <string name="cricket_closed_targets" translatable="false">%1$d/%2$d</string>
     <string name="cricket_win_banner">VICTORY</string>
     <string name="cricket_board_dead_row">%1$s: closed by everyone, no longer scores</string>
     <string name="cricket_board_closed_cell">%1$s, %2$s: closed</string>

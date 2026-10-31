@@ -7,9 +7,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.persistence.SavedCricketGame
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.persistence.StoredGame
-import io.github.darkcosmos.kosmodarts.ui.cricket.CricketZoneScore
 import io.github.darkcosmos.kosmodarts.ui.cricket.toGameScreenState
-import io.github.darkcosmos.kosmodarts.ui.cricket.zoneScoreOf
 import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 
 /** The game of the "Game in progress" card: what its format line shows (rules M18, CR20). */
@@ -46,20 +44,18 @@ data class ResumeSummary(
         get() = (game as? ResumeGame.X01)?.checkoutRule
 
     /**
-     * @property remaining in the current leg for X01; the points scored in Cricket (CR20).
-     * @property closedTargets in a solo Cricket game, the targets closed out of those in play, which the tile shows
-     *   instead of the points (CR20, Q8 A); `null` otherwise.
+     * @property remaining in the current leg for X01; the points scored in Cricket (CR20); `null` in a solo Cricket
+     *   game, whose tile shows no score (CR20, Q6 A).
      * @property slot the player's color slot (PC9).
      * @property setsWon sets won, or `null` in a single game or with one set (M18).
      * @property legsWon legs won in the current set, or `null` in a single game (M18), as on the tiles (M14).
      */
     data class PlayerScore(
         val name: String,
-        val remaining: Int,
+        val remaining: Int?,
         val slot: ColorSlot,
         val setsWon: Int? = null,
         val legsWon: Int? = null,
-        val closedTargets: CricketZoneScore.ClosedTargets? = null,
     )
 
     companion object {
@@ -107,14 +103,13 @@ data class ResumeSummary(
                 format = screen.match.format,
                 players = config.players.mapIndexed { index, name ->
                     val indicator = indicators?.get(index)
-                    val score = screen.zoneScoreOf(index)
                     PlayerScore(
                         name = name,
-                        remaining = (score as? CricketZoneScore.Points)?.points ?: 0,
+                        // A solo game shows no score on its tile (CR20, Q6 A).
+                        remaining = if (config.players.size == 1) null else screen.game.state.players[index].points,
                         slot = screen.colorSlots[index],
                         setsWon = indicator?.setsWon,
                         legsWon = indicator?.legsWon,
-                        closedTargets = score as? CricketZoneScore.ClosedTargets,
                     )
                 },
                 highlightedPlayer = config.players[highlighted],
