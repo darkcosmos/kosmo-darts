@@ -23,12 +23,8 @@ object CricketTags {
     /** The keypad of the screen. */
     const val KEYPAD: String = "cricket_keypad"
 
-    private fun id(target: CricketTarget): String = target.name.lowercase()
-
     /** One target row. */
     fun row(target: CricketTarget): String = "cricket_row_${id(target)}"
-
-    private fun id(dart: Dart): String = "${dart.segment}_${dart.multiplier.name.lowercase()}"
 
     /** The touch area of the button that records [dart]: the whole cell of its row. */
     fun dartButton(dart: Dart): String = "cricket_button_${id(dart)}"
@@ -57,3 +53,7 @@ object CricketTags {
     /** The total of a player, at the top of his column header (absent in a solo game). */
     fun columnTotal(player: Int): String = "cricket_column_total_$player"
 }
+
+private fun id(target: CricketTarget): String = target.name.lowercase()
+
+private fun id(dart: Dart): String = "${dart.segment}_${dart.multiplier.name.lowercase()}"

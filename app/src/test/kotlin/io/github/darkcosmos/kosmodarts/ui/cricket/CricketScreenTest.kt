@@ -40,7 +40,6 @@ import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -48,10 +47,10 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+ * The Cricket game screen (docs/rules/cricket.md, CR22 to CR25) in French: the board buttons, the TalkBack texts
 /**
- * The Cricket game screen (docs/rules/cricket.md, CR22 to CR25) in French: the board buttons, the TalkBack texts and order,
- * the dead rows (review T3) and the fit contract (reviews U1, T5), without any real screen: the state is given
- * directly.
+ * and order, the dead rows (review T3) and the fit contract (reviews U1, T5), without any real screen: the state is
+ * given directly.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -347,7 +346,8 @@ class CricketScreenTest {
         fun tagsOf(node: SemanticsNode): List<String> =
             listOfNotNull(node.config.getOrNull(SemanticsProperties.TestTag)) + node.children.flatMap(::tagsOf)
         val tags = tagsOf(row)
-        assertTrue(tags.indexOf(CricketTags.cell(CricketTarget.TWENTY, 3)) < tags.indexOf(CricketTags.dartButton(Dart.single(20))))
+        val cell = tags.indexOf(CricketTags.cell(CricketTarget.TWENTY, 3))
+        assertTrue(cell < tags.indexOf(CricketTags.dartButton(Dart.single(20))))
         node(CricketTags.columnHeader(1))
             .assertContentDescriptionEquals("Bob, au lancer, 0 point, Volée en cours\u00A0: 0 marque")
     }
@@ -418,9 +418,8 @@ class CricketScreenTest {
         show(if (isWinPending) pendingWin(names(players)) else match(names(players), darts = listOf("T20")))
 
         val rowsNode = node(CricketTags.BOARD_ROWS).fetchSemanticsNode()
-        assertNull("$label: the rows scroll", rowsNode.config.getOrNull(SemanticsProperties.VerticalScrollAxisRange)?.let {
-            it.takeIf { range -> range.maxValue() > 0f }
-        })
+        val range = rowsNode.config.getOrNull(SemanticsProperties.VerticalScrollAxisRange)
+        assertTrue("$label: the rows scroll", range == null || range.maxValue() <= 0f)
         (0 until players).forEach { player ->
             assertTrue("$label: header $player", isInsideRoot(CricketTags.columnHeader(player)))
             assertTextNotClipped(CricketTags.columnName(player), ellipsis = true)

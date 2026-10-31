@@ -932,7 +932,7 @@ None. Q1 to Q7, Q9, Q10 and Q11 are answered by Kosmo (see Decisions); Q8 was wi
   (scaled texts, `portraitZoneHeightDp`, `LANDSCAPE_ZONE_LINE_DP` 28; R4 replaces it, only one 914 x 411 sanity test);
   the 25 button and the Bull button both read "BULL" (the 25 has 0 dots, the Bull 2), as `dart_bull` is the only label
   (TalkBack says « 25 » and « Bull »). Pieces: `CricketTargetButtons.kt` (`CricketTargetButtons`, `BoardKey`,
-  `KeyTags`, `Dots`), `CricketBoardMetrics.kt` (`rememberHeaderMetrics`, `rememberLineHeightDp`, `CricketHeaderMetrics`),
+  `KeyTags`, `Dots`), `CricketHeaderMetrics.kt` (`rememberHeaderMetrics`, `rememberLineHeightDp`, `CricketHeaderMetrics`),
   `CricketBoard(content, layout, header, onDart, onMiss)` with `HeaderRow`/`MissCell`/`BoardRow` (header row height is
   `layout.missCellHeightDp`), `PortraitGame` in `CricketGameScreen.kt`; tags `dartButton`/`dartKey`/`dartDots`/
   `columnTotal`; `CricketSemantics.DotCount`; `boardPoints`, `POINTS_ROW`, `ZONE_SCORE`, `rowLabel` removed. Tests:
