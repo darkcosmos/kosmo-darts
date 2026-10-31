@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.cricket
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketGame
+import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMarks
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTarget
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTurn
@@ -76,6 +77,13 @@ data class CricketGameScreenState(
             val pending = pendingTurn ?: return game.state.players[highlighted].currentTurnDarts
             return if (pending.playerIndex == highlighted) pending.darts else emptyList()
         }
+
+    /**
+     * The darts the zone shows (CR2): a dart that gives no mark is shown as a miss, so only the darts that score keep
+     * their name.
+     */
+    val zoneDarts: List<Dart>
+        get() = highlightedTurnDarts.map { if (CricketMarks.of(it, game.config).count > 0) it else Dart.MISS }
 
     /** The dart slot of the next dart (underlined in `accent`), or `null` while a turn waits. */
     val nextDartIndex: Int?

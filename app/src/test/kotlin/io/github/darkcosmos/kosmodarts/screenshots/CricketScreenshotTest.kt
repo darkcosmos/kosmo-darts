@@ -86,6 +86,11 @@ class CricketScreenshotTest {
     @Config(qualifiers = "+fr-port")
     fun board2PlayersPortrait() = capture("board_2p_portrait_fr", game("Anna", "Bob", darts = "T20 19 D18"))
 
+    /** Owner review: the zone shows T20, then a miss for a dart that gives no mark (5), as the X01 darts. */
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun zoneWithMiss() = capture("zone_miss_2p_portrait_fr", game("Anna", "Bob", darts = "T20 5"))
+
     @Test
     @Config(qualifiers = "+fr-land")
     fun board2PlayersLandscape() = capture("board_2p_landscape_fr", game("Anna", "Bob", darts = "T20 19 D18"))

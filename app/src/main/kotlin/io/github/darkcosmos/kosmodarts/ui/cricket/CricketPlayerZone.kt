@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +24,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
-import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVisit
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.ui.components.Chips
@@ -57,14 +55,13 @@ class CricketZoneContent(
     val score: String,
     val turnDarts: List<Dart>,
     val nextDartIndex: Int?,
-    val visit: CricketVisit,
 )
 
 /**
  * The current player's compact zone (CR22): in the player's color. Line 1: name (one line, ellipsis), the [ZoneStat]
- * (MPR), the S/M chips; line 2: the score in `tileScore`, the dart slots and the filled box of the visit's marks. While
- * a win is pending (CR25) a white "VICTORY" banner takes the place of the MPR on line 1: the compact zone has no route
- * area, and the banner replaces the X01 CHECKOUT banner. Its height is given by the layout policy.
+ * (MPR), the S/M chips; line 2: the score in `tileScore` and the dart slots (the darts that give a mark, a miss for the
+ * others). While a win is pending (CR25) a white "VICTORY" banner takes the place of the MPR on line 1: the compact
+ * zone has no route area, and the banner replaces the X01 CHECKOUT banner. Its height is given by the layout policy.
  */
 @Composable
 fun CricketPlayerZone(content: CricketZoneContent, modifier: Modifier = Modifier) {
@@ -167,13 +164,6 @@ private fun ScoreLine(content: CricketZoneContent, contentColor: Color) {
             isFinalDartHighlighted = false,
             modifier = Modifier.weight(1f),
             slotHeight = COMPACT_SLOT_HEIGHT,
-        )
-        CricketMarksBox(
-            visit = content.visit,
-            isFilled = true,
-            style = KosmoTheme.typography.visit,
-            tag = GameTags.visitTotal(content.index),
-            modifier = Modifier.height(COMPACT_SLOT_HEIGHT),
         )
     }
 }

@@ -97,6 +97,17 @@ class CricketScreenTest {
 
     // Keypad (CR24).
 
+    /** Owner review: the zone shows the darts of the visit (a miss when a dart gives no mark), not a visit box. */
+    @Test
+    fun `CR2 CR22 the zone shows the scoring darts and a miss, without a visit box`() {
+        show(match(listOf("Ann", "Bob")).toggleMultiplier(Multiplier.TRIPLE).throwNumber(20).throwNumber(5))
+
+        node(GameTags.dartSlot(0)).assertContentDescriptionEquals("Fléchette 1 : T20")
+        node(GameTags.dartSlot(1)).assertContentDescriptionEquals("Fléchette 2 : RATÉ")
+        node(GameTags.dartSlot(2)).assertContentDescriptionEquals("Fléchette 3 : pas encore lancée")
+        node(GameTags.visitTotal(0)).assertDoesNotExist()
+    }
+
     @Test
     fun `CR24 the keys send the right events`() {
         show(match(listOf("Ann", "Bob"), darts = listOf("T20")))
@@ -237,7 +248,7 @@ class CricketScreenTest {
         (0..3).forEach { player ->
             node(CricketTags.columnHeader(player)).assertExists()
             node(CricketTags.columnName(player)).assertExists()
-            node(CricketTags.columnVisit(player)).assertExists()
+            node("cricket_column_visit_$player").assertDoesNotExist()
             node(CricketTags.points(player)).assertExists()
         }
         node(CricketTags.rowLabel(CricketTarget.TWENTY)).assertExists()
@@ -287,7 +298,6 @@ class CricketScreenTest {
         CricketTarget.entries.forEach { assertTextNotClipped(CricketTags.rowLabel(it)) }
         (0..3).forEach { player ->
             assertTextNotClipped(CricketTags.columnName(player), ellipsis = true)
-            assertTextNotClipped(CricketTags.columnVisit(player))
         }
     }
 

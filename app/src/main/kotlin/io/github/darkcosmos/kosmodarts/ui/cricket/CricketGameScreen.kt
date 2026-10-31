@@ -184,9 +184,8 @@ private fun Zone(game: CricketGameScreenState, modifier: Modifier) {
             indicator = game.indicators?.get(index),
             isVictory = game.zoneMode == CricketZoneMode.VICTORY,
             score = score,
-            turnDarts = game.highlightedTurnDarts,
+            turnDarts = game.zoneDarts,
             nextDartIndex = game.nextDartIndex,
-            visit = game.visits[index],
         ),
         modifier = modifier,
     )

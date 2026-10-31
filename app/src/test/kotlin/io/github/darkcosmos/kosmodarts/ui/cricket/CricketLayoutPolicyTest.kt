@@ -39,12 +39,12 @@ class CricketLayoutPolicyTest {
         assertEquals(CricketLayoutPolicy.ACTION_BAR_HEIGHT_MIN, layout.actionBarMinHeightDp)
         assertEquals(CricketLayoutPolicy.GAP_MIN, layout.gapDp)
         assertEquals(CricketLayoutPolicy.ZONE_HEIGHT_MIN, layout.zoneHeightDp)
-        assertEquals(24.75f, layout.rowHeightDp, 0.001f)
-        assertEquals(54f, layout.columnHeaderHeightDp, 0.001f)
+        assertEquals(27.8125f, layout.rowHeightDp, 0.001f)
+        assertEquals(25.5f, layout.columnHeaderHeightDp, 0.001f)
         assertFalse(layout.boardScrolls)
-        // header 24 + zone 76 + keypad 152 + action bar 48 + 16 of margins and gaps + the board 252 = 568.
+        // header 24 + zone 76 + keypad 152 + action bar 48 + 20 of margins and gaps + the board 248 = 568.
         val total = layout.headerHeightDp + layout.zoneHeightDp + (3 * layout.keyHeightDp + 2 * layout.gapDp) +
-            layout.actionBarMinHeightDp + layout.topMarginDp + layout.bottomMarginDp + 3 * layout.gapDp +
+            layout.actionBarMinHeightDp + layout.topMarginDp + layout.bottomMarginDp + 4 * layout.gapDp +
             layout.columnHeaderHeightDp + 8 * layout.rowHeightDp
         assertEquals(568f, total, 0.001f)
     }
@@ -88,22 +88,16 @@ class CricketLayoutPolicyTest {
         assertEquals(47f, CricketLayoutPolicy.rowFloor(2f))
     }
 
-    /** Review U1: the header follows the real line heights, with a gap between the name and the visit box. */
+    /** Review U1: the header follows the real line heights (strip and name line; no visit box under the names). */
     @Test
-    fun `the column header grows with the font scale and leaves a gap`() {
+    fun `the column header grows with the font scale`() {
         listOf(1f, 1.3f, 1.5f, 2f).forEach { scale ->
-            val box = CricketLayoutPolicy.visitBoxHeight(scale)
-            val nameLine = 22.5f * scale
-
-            assertTrue(box >= nameLine)
             assertEquals(
-                CricketLayoutPolicy.HEADER_STRIP + nameLine + CricketLayoutPolicy.HEADER_GAP + box,
+                CricketLayoutPolicy.HEADER_STRIP + 22.5f * scale,
                 CricketLayoutPolicy.columnHeaderHeight(scale),
                 0.001f,
             )
         }
-        assertTrue(CricketLayoutPolicy.HEADER_GAP >= 2f)
-        assertEquals(26.5f, CricketLayoutPolicy.visitBoxHeight(1f))
     }
 
     /** Review U2: "BULL" at the label text size fits the label column at every font scale (2.5 em, wide). */

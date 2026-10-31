@@ -30,6 +30,22 @@ class CricketGameScreenStateTest {
 
     private fun CricketGameScreenState.tripleOf(number: Int) = toggleMultiplier(Multiplier.TRIPLE).throwNumber(number)
 
+    /** CR2: the zone shows a dart only if it gives a mark; any other dart is shown as a miss. */
+    @Test
+    fun `CR2 the zone darts keep the darts that give a mark and show the others as a miss`() {
+        val state = screen().tripleOf(20).throwNumber(5).throwOuterBull()
+
+        assertEquals(listOf(Dart.triple(20), Dart.MISS, Dart.OUTER_BULL), state.zoneDarts)
+        assertEquals(listOf(Dart.triple(20), Dart.single(5), Dart.OUTER_BULL), state.highlightedTurnDarts)
+    }
+
+    @Test
+    fun `CR2 a number below 15 is shown as a miss`() {
+        val state = screen(CricketSaveFixtures.match("Ann", "Bob", isBullInPlay = false)).throwNumber(14)
+
+        assertEquals(listOf(Dart.MISS), state.zoneDarts)
+    }
+
     @Test
     fun `CR7 CR24 the third dart locks the keypad until Next player`() {
         val waiting = screen().throwing(20, 19, 18)

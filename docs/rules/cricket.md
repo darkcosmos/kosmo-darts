@@ -94,8 +94,9 @@ Vocabulary:
   The setup is prefilled with the shared roster and the last Cricket settings (R22).
 - CR22. Game screen, from top to bottom in portrait:
   - the `MatchHeader` ("CRICKET · STANDARD" and the M14 position);
-  - a compact `CurrentPlayerZone`: name, "MPR 2,4", the S/M chips, points (or "4/7" solo), `DartSlots` and the filled
-    `VisitBox` with the marks of the visit;
+  - a compact `CurrentPlayerZone`: name, "MPR 2,4", the S/M chips, points (or "4/7" solo) and the `DartSlots`. A dart
+    is shown only if it gives a mark (CR2); a dart that gives none is shown as a miss (owner review of the Cricket
+    screen). There is no visit box;
   - the `CricketBoard`;
   - the `CricketKeypad`;
   - the `ActionBar` ("ANNULER", "JOUEUR SUIVANT").
@@ -108,7 +109,7 @@ Vocabulary:
     shrinking to 48 dp. Gaps go from 6 to 4 dp, as in the X01 policy.
   - Compact zone, 96 dp tall, minimum 76 dp:
     - line 1: name (1 line, ellipsis), "MPR 2,4", S/M chips;
-    - line 2: points in `tileScore` instead of `scoreHuge`, then `DartSlots` and the filled `VisitBox`.
+    - line 2: points in `tileScore` instead of `scoreHuge`, then `DartSlots` (no visit box).
 
     At font scale 2.0 the zone may grow up to 1.5 times its height, and the name keeps 1 line with an ellipsis.
   - Board:
@@ -116,9 +117,7 @@ Vocabulary:
     - its cells are display-only, so they are not touch targets and may be under 48 dp;
     - row height = max(24 dp, text line + 2 dp), 32 dp by default; the text line of the 14 sp board texts is taken as
       22.5 dp times the font scale of a 14 sp text (the display font has tall metrics, review U1);
-    - column header = 3 dp strip + name line (22.5 dp times the font scale) + 2 dp gap + a compact outlined `VisitBox`
-      (max(26, name line + 4) dp tall, `label` text, one digit
-      since a visit gives at most 9 marks);
+    - column header = 3 dp strip + name line (22.5 dp times the font scale), with no visit box under the name;
     - the points footer row has the same height as the other rows.
 
     When the rows at their minimum do not fit, the board region alone scrolls vertically, with its column header kept
@@ -141,8 +140,8 @@ Vocabulary:
   The contract is also written in `docs/design/design-system.md`.
 - CR23. `CricketBoard`:
   - rows: 20 to 15, then Bull (no Bull row with 25-Bull off); one column per player, in configuration order;
-  - a column header with the player's color strip and name, and his outlined `VisitBox` with the marks of his last
-    visit (owner precision P2, replacing "Préc.");
+  - a column header with the player's color strip and name only: the last visit of a player is no longer shown under
+    his name (owner review of the Cricket screen, replacing precision P2); TalkBack still reads it;
   - cells: empty, `/`, `X` or `Ⓧ`;
   - a footer row with the points, absent in a solo game;
   - the current player's column has an `accent` border and a "▶" before his name;

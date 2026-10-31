@@ -51,9 +51,6 @@ object CricketTags {
     /** The name inside a column header. */
     fun columnName(player: Int): String = "cricket_column_name_$player"
 
-    /** The outlined visit box of a column header. */
-    fun columnVisit(player: Int): String = "cricket_column_visit_$player"
-
     /** The points of a player in the footer row. */
     fun points(player: Int): String = "cricket_points_$player"
 }

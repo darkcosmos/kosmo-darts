@@ -1193,3 +1193,8 @@ notes are applied:
   of the 160 PNGs of the `e7372f8` baseline, 145 are byte-identical (`cmp`) and the 15 others are exactly the `home_*`
   and `match_home_summary_portrait_en` ones, which gain the Cricket card (intended); no other X01 capture changed.
   The 17 steps of "How Kosmo verifies on the phone" match what was built.
+- Owner review (after the rebase, no task id): the zone's white visit box and the outlined visit box under the board
+  headers are removed. The zone shows the darts through `CricketGameScreenState.zoneDarts` (a dart that gives no mark,
+  CR2, is shown as MISS / RATÉ, the X01 text); `CricketMarksBox` is gone, `visitDescription` stays for TalkBack in
+  `CricketVisitDescription.kt`. The layout policy lost `visitBoxHeight` and `HEADER_GAP` (header = strip + name line),
+  and `GAPS_PORTRAIT` is 4 (the portrait column has four gaps between its five children; it was 3).

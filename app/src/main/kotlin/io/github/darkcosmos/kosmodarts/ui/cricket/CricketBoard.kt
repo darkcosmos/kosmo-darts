@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -112,13 +111,13 @@ private fun HeaderRow(content: CricketBoardContent, layout: CricketLayout) {
     Row(Modifier.fillMaxWidth().height(layout.columnHeaderHeightDp.dp)) {
         Box(Modifier.width(layout.labelColumnWidthDp.dp))
         content.names.indices.forEach { player ->
-            HeaderCell(player, content, layout, Modifier.weight(1f).fillMaxHeight())
+            HeaderCell(player, content, Modifier.weight(1f).fillMaxHeight())
         }
     }
 }
 
 @Composable
-private fun HeaderCell(player: Int, content: CricketBoardContent, layout: CricketLayout, modifier: Modifier) {
+private fun HeaderCell(player: Int, content: CricketBoardContent, modifier: Modifier) {
     val colors = KosmoTheme.colors
     val isCurrent = player == content.currentIndex
     val name = content.names[player]
@@ -156,14 +155,6 @@ private fun HeaderCell(player: Int, content: CricketBoardContent, layout: Cricke
             overflow = TextOverflow.Ellipsis,
             autoSize = TextAutoSize.StepBased(minFontSize = NAME_MIN_FONT, maxFontSize = NAME_MAX_FONT),
             modifier = Modifier.fillMaxWidth().weight(1f).testTag(CricketTags.columnName(player)),
-        )
-        Spacer(Modifier.height(CricketLayoutPolicy.HEADER_GAP.dp))
-        CricketMarksBox(
-            visit = visit,
-            isFilled = false,
-            style = KosmoTheme.typography.label,
-            tag = CricketTags.columnVisit(player),
-            modifier = Modifier.height(layout.visitBoxHeightDp.dp),
         )
     }
 }

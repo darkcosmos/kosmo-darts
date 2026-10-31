@@ -42,7 +42,6 @@ data class CricketLayout(
     val headerHeightDp: Float,
     val rowHeightDp: Float,
     val columnHeaderHeightDp: Float,
-    val visitBoxHeightDp: Float,
     val labelColumnWidthDp: Float,
     val playerColumnWidthDp: Float,
     val boardWidthDp: Float,
@@ -81,9 +80,6 @@ object CricketLayoutPolicy {
     /** The text size of the row labels in sp: small enough for "BULL" to fit its column at every font scale. */
     const val ROW_LABEL_TEXT_SIZE = 14f
 
-    /** Gap between the player name and the outlined visit box of a column header, in dp. */
-    const val HEADER_GAP = 2f
-
     /** The width of one player's column at least, and the one the landscape board column is sized for. */
     const val PLAYER_COLUMN_WIDTH = 76f
 
@@ -104,25 +100,18 @@ object CricketLayoutPolicy {
     private const val ROW_PADDING = 2f
     const val HEADER_STRIP = 3f
     private const val HEADER_NAME_LINE = 22.5f
-    private const val VISIT_BOX_HEIGHT_MIN = 26f
-    private const val VISIT_BOX_PADDING = 4f
     private const val BULL_WIDTH_EM = 2.5f
     private const val LABEL_PADDING = 5f
     private const val ZONE_GROWTH_MAX = 1.5f
     private const val LANDSCAPE_BOARD_MAX_SHARE = 0.55f
-    private const val GAPS_PORTRAIT = 3
+    private const val GAPS_PORTRAIT = 4
     private const val GAPS_LANDSCAPE_RIGHT = 2
 
     /** Height of a board row at the floor: `max(24, text line + 2)` (CR22). */
     fun rowFloor(textScale: Float): Float = max(ROW_HEIGHT_MIN, ROW_TEXT_LINE * textScale + ROW_PADDING)
 
-    /** Height of the outlined visit box of a column header: its text line plus padding, 22 dp at least (review U1). */
-    fun visitBoxHeight(textScale: Float): Float =
-        max(VISIT_BOX_HEIGHT_MIN, HEADER_NAME_LINE * textScale + VISIT_BOX_PADDING)
-
-    /** Height of the column header: strip, name line, a small gap and the visit box, all from real line heights. */
-    fun columnHeaderHeight(textScale: Float): Float =
-        HEADER_STRIP + HEADER_NAME_LINE * textScale + HEADER_GAP + visitBoxHeight(textScale)
+    /** Height of the column header: the color strip and the name line, from the real line height. */
+    fun columnHeaderHeight(textScale: Float): Float = HEADER_STRIP + HEADER_NAME_LINE * textScale
 
     /** The compact zone grows up to 1.5 times its height at font scale 2.0 and more (CR22). */
     fun zoneGrowth(textScale: Float): Float =
@@ -210,7 +199,7 @@ object CricketLayoutPolicy {
         private val keypadHeight: Float
             get() = KEYPAD_ROWS * keyHeightDp + (KEYPAD_ROWS - 1) * gapDp
 
-        /** Everything but the header and the board, in portrait: zone, keypad, action bar, margins, three gaps. */
+        /** Everything but the header and the board, in portrait: zone, keypad, action bar, margins and four gaps. */
         fun portraitFixedHeight(): Float =
             zoneHeightDp + keypadHeight + actionBarMinHeightDp + topMarginDp + bottomMarginDp + GAPS_PORTRAIT * gapDp
 
@@ -236,7 +225,6 @@ object CricketLayoutPolicy {
             headerHeightDp = header,
             rowHeightDp = rowHeight,
             columnHeaderHeightDp = columnHeaderHeight(textScale),
-            visitBoxHeightDp = visitBoxHeight(textScale),
             labelColumnWidthDp = widths.label,
             playerColumnWidthDp = widths.player,
             boardWidthDp = widths.board,
