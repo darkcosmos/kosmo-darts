@@ -32,7 +32,7 @@ class CaptureViewModel(
     private val settings: CaptureSettings,
     private val effects: CaptureEffects,
     private val setupProvider: () -> CaptureSetup,
-) : ViewModel() {
+) : ViewModel(), CaptureReports {
     private val writer = TruthWriter(storage, settings)
     private var session = CaptureSession()
     private var entry: CaptureEntry? = null
@@ -145,19 +145,19 @@ class CaptureViewModel(
     fun onPhotoMessageShown() = update { photoFailure = null }
 
     /** Rule CP10: the video of [volley] reported its `Start` event. */
-    fun onVideoStarted(volley: Int) = update { apply(session.videoStarted(clock, volley)) }
+    override fun onVideoStarted(volley: Int) = update { apply(session.videoStarted(clock, volley)) }
 
     /** The video of [volley] is finalized (written, or failed): the saving state ends with the last one. */
-    fun onVideoFinalized(volley: Int) = update { finalizing -= volley }
+    override fun onVideoFinalized(volley: Int) = update { finalizing -= volley }
 
     /** Rule CP13: the photo of dart [number] was saved. */
-    fun onPhotoSaved(number: Int) = update { apply(session.photoSaved(clock, number)) }
+    override fun onPhotoSaved(number: Int) = update { apply(session.photoSaved(clock, number)) }
 
     /** Rule CP13: the photo of dart [number] failed; the dart stays counted and the session goes on. */
-    fun onPhotoFailed(number: Int) = update { apply(session.photoFailed(number)) }
+    override fun onPhotoFailed(number: Int) = update { apply(session.photoFailed(number)) }
 
     /** Rule CP9: the camera or the recording failed; the session ends without confirmation. */
-    fun onCameraError() = update {
+    override fun onCameraError() = update {
         if (session.running) {
             error = CaptureError.CAMERA
             apply(session.interrupt(clock))

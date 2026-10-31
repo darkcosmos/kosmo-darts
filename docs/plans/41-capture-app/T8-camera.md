@@ -43,3 +43,24 @@ output in Implementation notes; `git diff origin/main -- app` empty; `kosmo-dete
 sonnet. Why: CameraX wiring behind a tested interface, behavior fully specified.
 
 ## Implementation notes
+- `capture.camera`: `CaptureCamera` + `CaptureCameraListener` (Android-free), `CameraXCaptureCamera` (Preview,
+  `VideoCapture<Recorder>` without audio, `ImageCapture` max quality and highest resolution; CameraX itself inserts the
+  MediaStore rows, pending flag included, from `MediaStoreCaptureStorage.contentValues(target)` and
+  `MediaStore.Downloads.EXTERNAL_CONTENT_URI`), `GravityReader`, `CaptureController` (is the `CaptureEffects` and the
+  camera listener; `attach(vm)`; `setup(app, device, quality)` builds the `CaptureSetup`). `capture.ui.CaptureReports` is
+  the interface the view model now implements (only `override` added, no logic change). `session.SystemCaptureClock`.
+- Deviations: no `bind` in the `CaptureCamera` interface (it needs Android types; it is on `CameraXCaptureCamera`).
+  The `Start` event time is the clock read by the view model when the controller forwards the event on the main thread.
+  The activity rebinds when quality or permission changes and after each `onStop`; `onStop` calls `onScreenStopped`
+  then `onCameraReady(false)`. Display rotation uses a `DisplayListener` (a 180 degree flip raises no configuration change).
+  Camera `stopVideo` with no open recording reports finalized at once; a recording error reports `onCameraError` then
+  finalized.
+- Not provable here (no device, Robolectric has no CameraX/MediaStore): `MediaStoreOutputOptions` on the Downloads
+  collection, real resolutions (video from `QualitySelector.getResolution`, photo from `ImageCapture.resolutionInfo`; if
+  either is null the camera reports not ready), timestamp source via `Camera2CameraInfo`. Kosmo checks on the Pixel 7.
+- Manifest check on `capture-debug.apk` unchanged from T1: permissions `CAMERA`, `ACCESS_NETWORK_STATE`,
+  `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`; `allowBackup=false`; activities (`CaptureActivity`, ui-tooling
+  `PreviewActivity` debug) exported=true, service exported=false, provider exported=false, `ProfileInstallReceiver`
+  exported=true. `:capture:dependencies --configuration debugRuntimeClasspath`: five CameraX artifacts at 1.6.2, `:game-engine`,
+  no `:app`. `git diff origin/main -- app` empty.
+- Tests: `CaptureControllerTest` with `FakeCaptureCamera` (real view model, `FakeCaptureStorage`).
