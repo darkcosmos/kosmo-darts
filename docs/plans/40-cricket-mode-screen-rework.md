@@ -927,3 +927,17 @@ None. Q1 to Q7, Q9, Q10 and Q11 are answered by Kosmo (see Decisions); Q8 was wi
   reused at 411 dp (single-line heights do not depend on width; the 1.3 and 1.5 values and the total em are
   estimates, stated in the test). Rule text CR22/CR24 in `docs/rules/cricket.md` rewritten for the Pixel 7. No budget
   of section 4 failed. Line 819 of Decisions (915 x 412) corrected to 914 x 411.
+- R3: no budget of section 4 failed: at 411 x 814 dp, 1/2/4 players, scales 1.0/1.3/1.5/2.0, with and without the
+  pending-win bar, nothing scrolls (`CricketScreenTest`, Robolectric). Deviations: the landscape screen is interim
+  (scaled texts, `portraitZoneHeightDp`, `LANDSCAPE_ZONE_LINE_DP` 28; R4 replaces it, only one 914 x 411 sanity test);
+  the 25 button and the Bull button both read "BULL" (the 25 has 0 dots, the Bull 2), as `dart_bull` is the only label
+  (TalkBack says « 25 » and « Bull »). Pieces: `CricketTargetButtons.kt` (`CricketTargetButtons`, `BoardKey`,
+  `KeyTags`, `Dots`), `CricketBoardMetrics.kt` (`rememberHeaderMetrics`, `rememberLineHeightDp`, `CricketHeaderMetrics`),
+  `CricketBoard(content, layout, header, onDart, onMiss)` with `HeaderRow`/`MissCell`/`BoardRow` (header row height is
+  `layout.missCellHeightDp`), `PortraitGame` in `CricketGameScreen.kt`; tags `dartButton`/`dartKey`/`dartDots`/
+  `columnTotal`; `CricketSemantics.DotCount`; `boardPoints`, `POINTS_ROW`, `ZONE_SCORE`, `rowLabel` removed. Tests:
+  `CricketScreenTest` (new, 411 x 814), `CricketBoardStyleTest`, fixture `annScoring`. Still to do by R4:
+  `CricketLayoutPolicy` and its test; by R5: `CricketKeypad.kt` and `CricketTags.KEYPAD`. Captures: removed
+  `modifier_triple`, `keypad_*`, `board_4p_360x640`/`640x360`; added `buttons_with_bull`/`buttons_without_bull`,
+  `totals_4digits_4p_portrait_fr`, `dead_row_locked_2p_portrait_fr`, `win_pending_4p_portrait_fr_font200`. The X01
+  captures are `cmp`-identical to the ones recorded at e5ba601.
