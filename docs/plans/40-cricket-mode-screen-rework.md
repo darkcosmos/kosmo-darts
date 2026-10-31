@@ -787,3 +787,10 @@ None. Q1 to Q7, Q9 and Q10 are answered by Kosmo (see Decisions); Q8 was withdra
 ## Implementation notes
 
 (One line per task: task id, deviations, where the main pieces live.)
+
+- R1: no deviation. Rules CR20, CR22 to CR24 rewritten in `docs/rules/cricket.md`; `throwDart`, `buttonRows`,
+  `headerTotals` in `CricketGameScreenState`, `CricketTargetButton` and `buttonRow` in `CricketTargetButtonModel.kt`
+  (`buttonRows` maps `boardRows`' targets to `buttonRow`); `AppEvent.CricketDartTapped` goes through
+  `CricketReducer.playCricket`; strings `cricket_button_double`, `cricket_button_triple`, plural `cricket_header_points`
+  added (the "BULL" label reuses `dart_bull`, TalkBack « 25 » / « Bull » reuse `dart_outer_bull` / `announce_dart_bull`);
+  `FrenchStringsTest` plural list now includes `cricket_header_points`. `cricket_closed_targets` is still there (R6).

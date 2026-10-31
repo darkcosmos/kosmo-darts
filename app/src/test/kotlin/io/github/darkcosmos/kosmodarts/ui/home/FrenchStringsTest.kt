@@ -125,7 +125,12 @@ class FrenchStringsTest {
                     element.getAttribute("name") to
                         (0 until items.length).map { (items.item(it) as org.w3c.dom.Element).getAttribute("quantity") }
                 }
-            val expected = setOf("cricket_cell_marks", "cricket_current_visit_marks", "cricket_last_visit_marks")
+            val expected = setOf(
+                "cricket_cell_marks",
+                "cricket_current_visit_marks",
+                "cricket_last_visit_marks",
+                "cricket_header_points",
+            )
             assertEquals(expected, quantities.keys)
             quantities.forEach { (name, found) ->
                 assertEquals("$path $name", true, found.containsAll(listOf("one", "other")))

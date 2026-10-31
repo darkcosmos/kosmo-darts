@@ -188,6 +188,92 @@ class CricketGameScreenStateTest {
     }
 
     @Test
+    fun `CR24 one tap records one dart, a double or a triple included`() {
+        val state = screen().throwDart(Dart.double(20)).throwDart(Dart.triple(20))
+
+        assertEquals(listOf(Dart.double(20), Dart.triple(20)), state.game.darts)
+        assertEquals(Multiplier.SINGLE, state.multiplier)
+    }
+
+    @Test
+    fun `CR1 CR24 throwDart refuses the 25 and the Bull with 25-Bull off`() {
+        val noBull = screen(CricketSaveFixtures.match("Ann", "Bob", isBullInPlay = false))
+
+        assertSame(noBull, noBull.throwDart(Dart.OUTER_BULL))
+        assertSame(noBull, noBull.throwDart(Dart.BULL))
+        val withBull = screen().throwDart(Dart.OUTER_BULL).throwDart(Dart.BULL)
+        assertEquals(listOf(Dart.OUTER_BULL, Dart.BULL), withBull.game.darts)
+    }
+
+    @Test
+    fun `CR7 CR24 throwDart refuses any dart while a turn waits`() {
+        val waiting = screen().throwDart(Dart.single(20)).throwDart(Dart.MISS).throwDart(Dart.MISS)
+
+        assertTrue(waiting.isAwaitingConfirmation)
+        assertSame(waiting, waiting.throwDart(Dart.triple(20)))
+    }
+
+    @Test
+    fun `CR25 CR24 throwDart refuses any dart while a win is pending`() {
+        val win = pendingWin(CricketSaveFixtures.match("Ann", "Bob"))
+
+        assertTrue(win.isWinPending)
+        assertSame(win, win.throwDart(Dart.single(20)))
+        assertSame(win, win.throwDart(Dart.MISS))
+    }
+
+    @Test
+    fun `CR15 CR24 a dart on a dead row is recorded`() {
+        val annDone = screen().throwDart(Dart.triple(20)).throwDart(Dart.MISS).throwDart(Dart.MISS).nextPlayer()
+        val bobClosing = annDone.throwDart(Dart.triple(20))
+
+        assertTrue(bobClosing.boardRows[0].isDead)
+        assertTrue(bobClosing.buttonRows[0].all { it.isEnabled })
+        val after = bobClosing.throwDart(Dart.single(20))
+        assertEquals(bobClosing.game.darts.size + 1, after.game.darts.size)
+    }
+
+    @Test
+    fun `CR24 buttonRows give single double triple per number and 25 then Bull for the Bull row`() {
+        val rows = screen().buttonRows
+
+        assertEquals(7, rows.size)
+        assertEquals(
+            listOf(Dart.single(20), Dart.double(20), Dart.triple(20)),
+            rows[0].map { it.dart },
+        )
+        assertEquals(listOf(0, 2, 3), rows[0].map { it.dotCount })
+        assertEquals(listOf(Dart.single(15), Dart.double(15), Dart.triple(15)), rows[5].map { it.dart })
+        assertEquals(listOf(Dart.OUTER_BULL, Dart.BULL), rows[6].map { it.dart })
+        assertEquals(listOf(0, 2), rows[6].map { it.dotCount })
+    }
+
+    @Test
+    fun `CR1 CR24 buttonRows have no Bull row with 25-Bull off`() {
+        val rows = screen(CricketSaveFixtures.match("Ann", "Bob", isBullInPlay = false)).buttonRows
+
+        assertEquals(6, rows.size)
+        assertTrue(rows.all { row -> row.none { it.dart.segment >= Dart.OUTER_BULL_SEGMENT } })
+    }
+
+    @Test
+    fun `CR7 CR25 CR15 buttons are locked while a turn waits or a win is pending, never on a dead row`() {
+        val open = screen()
+        assertTrue(open.buttonRows.flatten().all { it.isEnabled })
+
+        val waiting = open.throwDart(Dart.single(20)).throwDart(Dart.MISS).throwDart(Dart.MISS)
+        assertTrue(waiting.buttonRows.flatten().none { it.isEnabled })
+
+        assertTrue(pendingWin(CricketSaveFixtures.match("Ann", "Bob")).buttonRows.flatten().none { it.isEnabled })
+    }
+
+    @Test
+    fun `CR23 headerTotals gives the points of each player, and null in a solo game`() {
+        assertEquals(listOf(20, 0), screen().tripleOf(20).throwNumber(20).headerTotals)
+        assertNull(screen(CricketSaveFixtures.match("Ann")).headerTotals)
+    }
+
+    @Test
     fun `CR23 the points row is absent in a solo game`() {
         assertEquals(listOf(0, 0), screen().boardPoints)
         assertNull(screen(CricketSaveFixtures.match("Ann")).boardPoints)

@@ -99,6 +99,25 @@ class CricketReducerTest {
     }
 
     @Test
+    fun `CR24 CricketDartTapped records one dart, and undo after a triple removes the triple`() {
+        val tapped = inGame().after(AppEvent.CricketDartTapped(Dart.triple(20)), AppEvent.CricketDartTapped(Dart.BULL))
+        assertEquals(listOf(Dart.triple(20), Dart.BULL), (tapped.screen as Screen.CricketGame).game.game.darts)
+
+        val undone = inGame().after(AppEvent.CricketDartTapped(Dart.triple(20)), AppEvent.UndoTapped)
+        assertEquals(emptyList<Dart>(), (undone.screen as Screen.CricketGame).game.game.darts)
+    }
+
+    @Test
+    fun `CR1 CR25 CricketDartTapped is ignored for a 25 or Bull with 25-Bull off and while a win is pending`() {
+        val noBull = inGame(CricketSaveFixtures.match("Ann", "Bob", isBullInPlay = false))
+        val tapped = noBull.after(AppEvent.CricketDartTapped(Dart.OUTER_BULL), AppEvent.CricketDartTapped(Dart.BULL))
+        assertEquals(noBull, tapped)
+
+        val win = withPendingWin(duel)
+        assertEquals(win, win.after(AppEvent.CricketDartTapped(Dart.single(20))))
+    }
+
+    @Test
     fun `M15 Finish does nothing while no win is pending`() {
         val state = inGame()
 

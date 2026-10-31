@@ -9,6 +9,7 @@ import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.ui.cricket.CricketZoneScore
 import io.github.darkcosmos.kosmodarts.ui.cricket.toGameScreenState
+import io.github.darkcosmos.kosmodarts.ui.cricket.zoneScoreOf
 import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 
 /** The game of the "Game in progress" card: what its format line shows (rules M18, CR20). */

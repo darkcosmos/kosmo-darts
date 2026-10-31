@@ -87,6 +87,7 @@ private fun finishCricket(game: CricketGameScreenState): Screen = when (game.win
 private fun playCricket(game: CricketGameScreenState, event: AppEvent): CricketGameScreenState = when (event) {
     AppEvent.Back -> game.withAbandonDialog(shown = true)
     AppEvent.AbandonDismissed -> game.withAbandonDialog(shown = false)
+    is AppEvent.CricketDartTapped -> game.throwDart(event.dart)
     is AppEvent.NumberTapped -> game.throwNumber(event.number)
     is AppEvent.MultiplierTapped -> game.toggleMultiplier(event.multiplier)
     AppEvent.OuterBullTapped -> game.throwOuterBull()

@@ -116,16 +116,6 @@ data class CricketGameScreenState(
     /** CR13: marks per round of the player at [index] over the whole match, or `null` before his first dart. */
     fun mprOf(index: Int): Double? = match.playerStats[index].marksPerRound
 
-    /** CR22, owner D6: the points of the player at [index], or his closed targets in a solo game. */
-    fun zoneScoreOf(index: Int): CricketZoneScore {
-        val player = game.state.players[index]
-        return if (game.config.players.size == 1) {
-            CricketZoneScore.ClosedTargets(player.closedTargetCount, game.config.targets.size)
-        } else {
-            CricketZoneScore.Points(player.points)
-        }
-    }
-
     /**
      * CR14, CR23: one visit per player, in configuration order. While a turn waits, the engine current player has not
      * thrown yet, so he shows his last completed visit (VT6), like the X01 visit boxes.
@@ -155,6 +145,23 @@ data class CricketGameScreenState(
     /** CR23: each player's points for the footer row, or `null` in a solo game (no points row). */
     val boardPoints: List<Int>?
         get() = game.state.players.map { it.points }.takeIf { it.size > 1 }
+
+    /** CR24: the buttons of each row of [boardRows], same order; all locked while a turn waits or a win is pending. */
+    val buttonRows: List<List<CricketTargetButton>>
+        get() = game.config.targets.map { buttonRow(it, isEnabled = isKeypadEnabled) }
+
+    /** CR23: each player's points for the header totals, or `null` in a solo game (no total). */
+    val headerTotals: List<Int>?
+        get() = game.state.players.map { it.points }.takeIf { it.size > 1 }
+
+    /**
+     * CR24: records [dart] (one tap, one dart). Ignored while a turn waits (CR7), while a win is pending (CR25), and
+     * for the 25 and the Bull with 25-Bull off (CR1).
+     */
+    fun throwDart(dart: Dart): CricketGameScreenState {
+        val isBullDart = dart.segment == Dart.OUTER_BULL_SEGMENT || dart.segment == Dart.BULL_SEGMENT
+        return if (isBullDart && !areBullKeysShown) this else record(dart)
+    }
 
     /** Activates [modifier], or cancels it if it is already active. */
     fun toggleMultiplier(modifier: Multiplier): CricketGameScreenState = if (isKeypadEnabled) {
@@ -216,3 +223,16 @@ sealed interface CricketZoneScore {
  * @property isDead whether every player has closed [target] (CR15).
  */
 data class CricketBoardRow(val target: CricketTarget, val marks: List<Int>, val isDead: Boolean)
+
+/**
+ * CR22, owner D6: the points of the player at [index], or his closed targets in a solo game. An extension, so that the
+ * class stays under the detekt function limit until R5 and R6 remove it.
+ */
+fun CricketGameScreenState.zoneScoreOf(index: Int): CricketZoneScore {
+    val player = game.state.players[index]
+    return if (game.config.players.size == 1) {
+        CricketZoneScore.ClosedTargets(player.closedTargetCount, game.config.targets.size)
+    } else {
+        CricketZoneScore.Points(player.points)
+    }
+}

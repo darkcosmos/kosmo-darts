@@ -3,6 +3,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
+import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
@@ -162,6 +163,9 @@ sealed interface AppEvent {
 
     /** Double or Triple key. */
     data class MultiplierTapped(val multiplier: Multiplier) : AppEvent
+
+    /** A target button of the Cricket board: one tap, one [dart] (CR24). */
+    data class CricketDartTapped(val dart: Dart) : AppEvent
 
     data object OuterBullTapped : AppEvent
 
