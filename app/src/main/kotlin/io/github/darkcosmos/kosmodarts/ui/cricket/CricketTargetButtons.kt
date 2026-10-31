@@ -118,8 +118,8 @@ internal class KeyTags(val touchArea: String, val key: String)
 
 /**
  * One key of the board's button column. The touch area is the whole cell (48 x 48 dp at least); the drawn key is inset
- * by [KEY_INSET] inside it. [isOutlined] is the transparent "Miss" key. A disabled key is drawn at
- * [States.LOCKED_KEYPAD_ALPHA]; an enabled one is at full opacity, dead or not.
+ * by [KEY_INSET] inside it. [isOutlined] is the transparent "Miss" key, [isPrimary] the `accent` landscape next key. A
+ * disabled key is drawn at [States.LOCKED_KEYPAD_ALPHA]; an enabled one is at full opacity, dead or not.
  */
 @Composable
 internal fun BoardKey(
@@ -129,6 +129,7 @@ internal fun BoardKey(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isOutlined: Boolean = false,
+    isPrimary: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colors = KosmoTheme.colors
@@ -153,7 +154,13 @@ internal fun BoardKey(
                 .padding(KEY_INSET)
                 .alpha(if (isEnabled) 1f else States.LOCKED_KEYPAD_ALPHA)
                 .clip(shape)
-                .background(if (isOutlined) Color.Transparent else colors.surfaceHigh)
+                .background(
+                    when {
+                        isOutlined -> Color.Transparent
+                        isPrimary -> colors.accent
+                        else -> colors.surfaceHigh
+                    },
+                )
                 .then(outline)
                 .testTag(tags.key),
         ) {

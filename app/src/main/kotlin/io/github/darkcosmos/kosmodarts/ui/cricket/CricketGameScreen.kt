@@ -44,8 +44,9 @@ import io.github.darkcosmos.kosmodarts.ui.theme.States
 
 /**
  * Cricket game screen (docs/rules/cricket.md, CR22 to CR25). Portrait, top to bottom: header, compact zone, the board
- * with its buttons, the action bar. Landscape ([LandscapeGame]): the board on the left; title, zone and action bar on
- * the right. The sizes come from [CricketBoardLayoutPolicy], from values the screen measures with Compose. The screen
+ * with its buttons, the action bar. Landscape ([LandscapeGame]): the top band (title, single-line zone), then the board
+ * over the whole width with "Undo" and the tall next key at its right end. The sizes come from
+ * [CricketBoardLayoutPolicy], from values the screen measures with Compose. The screen
  * stays on, and system back opens "Abandon the game?" (M15).
  */
 @Composable
@@ -134,7 +135,19 @@ private fun PortraitGame(game: CricketGameScreenState, onEvent: (AppEvent) -> Un
 
 /** "CRICKET · STANDARD" (CR22), then "SANS 25-BULL" when the Bull is not in play, and the M14 position. */
 @Composable
-internal fun Header(game: CricketGameScreenState, modifier: Modifier, isShortPosition: Boolean = false) {
+internal fun Header(game: CricketGameScreenState, modifier: Modifier) {
+    Box(modifier) {
+        MatchHeader(
+            mode = headerMode(game),
+            position = positionText(game.headerPosition),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+/** "CRICKET · STANDARD", with "SANS 25-BULL" when the Bull is not in play (CR22). */
+@Composable
+internal fun headerMode(game: CricketGameScreenState): String {
     val config = game.game.config
     val resources = LocalResources.current
     val variant = when (config.variant) {
@@ -146,13 +159,7 @@ internal fun Header(game: CricketGameScreenState, modifier: Modifier, isShortPos
         resources.getString(variant),
         resources.getString(R.string.cricket_header_without_bull).takeIf { !config.isBullInPlay },
     )
-    Box(modifier) {
-        MatchHeader(
-            mode = parts.joinToString(resources.getString(R.string.format_separator)),
-            position = positionText(game.headerPosition, isShortPosition),
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
+    return parts.joinToString(resources.getString(R.string.format_separator))
 }
 
 /** The zone of the highlighted player: the one whose turn waits, the winner of a pending win, else the thrower. */
@@ -191,6 +198,8 @@ internal fun Board(
     layout: CricketBoardLayout,
     header: CricketHeaderMetrics,
     onEvent: (AppEvent) -> Unit,
+    modifier: Modifier = Modifier,
+    actions: CricketBoardActions? = null,
 ) {
     CricketBoard(
         content = CricketBoardContent(
@@ -207,6 +216,8 @@ internal fun Board(
         header = header,
         onDart = { onEvent(AppEvent.CricketDartTapped(it)) },
         onMiss = { onEvent(AppEvent.MissTapped) },
+        modifier = modifier,
+        actions = actions,
     )
 }
 
@@ -216,6 +227,13 @@ internal fun Board(
  */
 @Composable
 internal fun Actions(game: CricketGameScreenState, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
+    val (undo, primary) = actionsOf(game, onEvent)
+    ActionBar(undo, primary, minHeight = States.minTouchTarget, modifier = modifier.fillMaxWidth())
+}
+
+/** The two actions, the same in both orientations: "Undo", then "Next player" or the confirm button (CR25). */
+@Composable
+internal fun actionsOf(game: CricketGameScreenState, onEvent: (AppEvent) -> Unit): Pair<BarAction, BarAction> {
     val undo = BarAction(stringResource(R.string.key_undo), KeypadTags.UNDO, game.canUndo) {
         onEvent(AppEvent.UndoTapped)
     }
@@ -227,5 +245,5 @@ internal fun Actions(game: CricketGameScreenState, onEvent: (AppEvent) -> Unit, 
     } else {
         BarAction(confirmLabel(outcome), GameTags.CONFIRM, isEnabled = true) { onEvent(AppEvent.FinishGameTapped) }
     }
-    ActionBar(undo, primary, minHeight = States.minTouchTarget, modifier = modifier.fillMaxWidth())
+    return undo to primary
 }

@@ -84,9 +84,12 @@ class CricketBoardLayoutPolicyTest {
         }
     }
 
-    /** CR24: every button is at least 48 x 48 dp, at every player count and scale, in both orientations. */
+    /**
+     * CR24: in portrait every button is at least 48 x 48 dp, at every player count and scale; in landscape (Kosmo,
+     * Q14 B) at least 48 dp wide and 42 dp tall.
+     */
     @Test
-    fun `buttons are at least 48 dp`() {
+    fun `buttons are at least 48 dp, 42 dp tall in landscape`() {
         for (f in fixtures) {
             for (players in 1..4) {
                 val layout = portrait(f, players, 7)
@@ -95,10 +98,12 @@ class CricketBoardLayoutPolicyTest {
                 assertEquals(layout.buttonColumnWidthDp / 3, layout.buttonWidthDp, 0.001f)
             }
         }
-        for (players in 1..4) {
-            val layout = CricketBoardLayoutPolicy.landscape(landscapeSpace(players = players)).board
-            assertTrue(layout.buttonWidthDp >= 48f)
-            assertTrue(layout.rowHeightDp >= 48f)
+        for (cutout in listOf(0f, 48f)) {
+            for (players in 1..4) {
+                val layout = band(cutout, players).board
+                assertTrue(layout.buttonWidthDp >= 48f)
+                assertTrue(layout.rowHeightDp >= CricketBoardLayoutPolicy.LANDSCAPE_ROW_MIN)
+            }
         }
     }
 
@@ -154,95 +159,16 @@ class CricketBoardLayoutPolicyTest {
         assertTrue(fallback.isFixed)
     }
 
-    /** CR22 fallback: below the Pixel 7 the rows scroll alone and keep 48 dp, in portrait and landscape. */
+    /** CR22 fallback: below the Pixel 7 the rows scroll alone and keep 48 dp in portrait, 42 dp in landscape. */
     @Test
-    fun `rows scroll and keep 48 dp when they do not fit`() {
+    fun `rows scroll and keep their floor when they do not fit`() {
         val header = CricketBoardLayoutPolicy.columnHeaderHeightDp(37.5f, 22.5f)
         val portrait = CricketBoardLayoutPolicy.portraitSplit(360f, header + 7 * 48f + 10f, header, 28.9f, 4, 7).board
         assertTrue(portrait.scrolls)
         assertEquals(48f, portrait.rowHeightDp, 0.001f)
-        val landscape = CricketBoardLayoutPolicy.landscape(landscapeSpace(height = 355f)).board
+        val landscape = band(height = 355f).board
         assertTrue(landscape.scrolls)
-        assertEquals(48f, landscape.rowHeightDp, 0.001f)
-    }
-
-    private fun landscapeSpace(
-        width: Float = 914f,
-        height: Float = 411f,
-        cutout: Float = 0f,
-        players: Int = 4,
-        rows: Int = 7,
-    ) = CricketLandscapeSpace(
-        screenWidthDp = width,
-        screenHeightDp = height,
-        cutoutInsetDp = cutout,
-        headerHeightDp = 3f + 31.3f + 22.5f,
-        titleLineDp = 24f,
-        zoneLineDp = 28f,
-        playerCount = players,
-        rowCount = rows,
-    )
-
-    /** CR22 landscape: 914 x 411 dp, bars hidden, nothing scrolls, 49.5 dp rows at 7 rows, capped at 56 dp at 6. */
-    @Test
-    fun `landscape Pixel 7 rows`() {
-        for (cutout in listOf(0f, 48f)) {
-            for (players in 1..4) {
-                val seven = CricketBoardLayoutPolicy.landscape(landscapeSpace(cutout = cutout, players = players))
-                assertFalse(seven.board.scrolls)
-                assertEquals(49.5f, seven.board.rowHeightDp, 0.1f)
-                val sixRows = landscapeSpace(cutout = cutout, players = players, rows = 6)
-                val six = CricketBoardLayoutPolicy.landscape(sixRows)
-                assertFalse(six.board.scrolls)
-                assertEquals(56f, six.board.rowHeightDp, 0.001f)
-            }
-        }
-    }
-
-    /** CR22 landscape: one band height for the board header and the right column's title plus zone line. */
-    @Test
-    fun `landscape band is the taller of the header and the title plus zone`() {
-        val normal = CricketBoardLayoutPolicy.landscape(landscapeSpace())
-        assertEquals(56.8f, normal.bandHeightDp, 0.01f)
-        assertEquals(normal.bandHeightDp, normal.board.missCellHeightDp, 0.01f)
-        val tallZone = CricketBoardLayoutPolicy.landscape(landscapeSpace().copy(zoneLineDp = 40f))
-        assertEquals(68f, tallZone.bandHeightDp, 0.01f)
-    }
-
-    /** CR22 landscape: right column at least 340 dp with a 48 dp cutout, 12 dp gap, 173 dp per bar button at 4. */
-    @Test
-    fun `landscape right column`() {
-        for (cutout in listOf(0f, 48f)) {
-            for (players in 1..4) {
-                val layout = CricketBoardLayoutPolicy.landscape(landscapeSpace(cutout = cutout, players = players))
-                assertTrue(layout.rightColumnWidthDp >= 340f)
-                val used = 2 * CricketBoardLayoutPolicy.SIDE_MARGIN + cutout + layout.boardWidthDp +
-                    CricketBoardLayoutPolicy.BOARD_GAP + layout.rightColumnWidthDp
-                assertEquals(914f, used, 0.01f)
-            }
-        }
-        val four = CricketBoardLayoutPolicy.landscape(landscapeSpace(players = 4))
-        assertEquals(358f + 48f, four.rightColumnWidthDp, 0.01f)
-        val fourWithCutout = CricketBoardLayoutPolicy.landscape(landscapeSpace(cutout = 48f, players = 4))
-        assertEquals(358f, fourWithCutout.rightColumnWidthDp, 0.01f)
-        assertTrue(fourWithCutout.barButtonWidthDp >= 173f)
-    }
-
-    /** CR22 landscape: under the band there is room for the 151.5 dp bar of scale 2.0 with "VALIDER LA PARTIE". */
-    @Test
-    fun `landscape holds the tallest bar`() {
-        val layout = CricketBoardLayoutPolicy.landscape(landscapeSpace())
-        assertEquals(340f, layout.barRoomHeightDp, 0.5f)
-        assertTrue(layout.barRoomHeightDp >= 151.5f)
-    }
-
-    /** CR22 landscape: the board's columns are the button column last, 76 dp players, 56 dp buttons. */
-    @Test
-    fun `landscape board columns`() {
-        val layout = CricketBoardLayoutPolicy.landscape(landscapeSpace())
-        assertEquals(76f, layout.board.playerColumnWidthDp, 0.01f)
-        assertEquals(168f, layout.board.buttonColumnWidthDp, 0.01f)
-        assertEquals(472f, layout.boardWidthDp, 0.01f)
+        assertEquals(42f, landscape.rowHeightDp, 0.001f)
     }
 
     // ---- Revision 2 (plan R2.1 and R2.2; Q2 reversal for the portrait zone, Q14 B 42 dp landscape floor) ----
@@ -448,6 +374,16 @@ class CricketBoardLayoutPolicyTest {
         }
         for ((players, width) in without) {
             assertEquals(width, band(0f, players).board.playerColumnWidthDp, 0.05f)
+        }
+        // The screen measures the header with this width before it calls landscapeBand: the same value.
+        for (cutout in listOf(0f, 48f)) {
+            for (players in 1..4) {
+                assertEquals(
+                    band(cutout, players).board.playerColumnWidthDp,
+                    CricketBoardLayoutPolicy.landscapePlayerColumnWidthDp(914f, cutout, players),
+                    0.001f,
+                )
+            }
         }
     }
 

@@ -44,8 +44,8 @@ import io.github.darkcosmos.kosmodarts.ui.game.MatchIndicator
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.LocalAnimationSettings
-import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 import io.github.darkcosmos.kosmodarts.ui.theme.LocalKosmoTypography
+import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 import io.github.darkcosmos.kosmodarts.ui.theme.fixedSp
 import io.github.darkcosmos.kosmodarts.ui.theme.zoneColorAnimationSpec
 
@@ -55,9 +55,14 @@ private val INNER_GAP = 8.dp
 private val COMPACT_SLOT_HEIGHT = 36.dp
 private val BANNER_PADDING = 8.dp
 private val BANNER_PADDING_VERTICAL = 2.dp
-private val SINGLE_LINE_PADDING_VERTICAL = 2.dp
-private val SINGLE_LINE_SLOT_HEIGHT = 24.dp
-private val SINGLE_LINE_SLOTS_WIDTH = 148.dp
+
+/** The single-line zone of the landscape band (R2.2): it fills the band's 36 dp, as tall as its dart cells. */
+private val SINGLE_LINE_PADDING_VERTICAL = 0.dp
+private val SINGLE_LINE_SLOT_HEIGHT = 36.dp
+private val SINGLE_LINE_SLOTS_WIDTH = 180.dp
+
+/** The dart text of the band's 36 dp cells, fixed like every landscape text. */
+private const val SINGLE_LINE_DART_SP = 20f
 
 /** Everything the compact zone of the Cricket game screen shows (CR22, CR25). */
 class CricketZoneContent(
@@ -81,8 +86,8 @@ class CricketZoneContent(
  * others). While a win is pending (CR25) a white "VICTORY" banner takes the place of the MPR on line 1: the compact
  * zone has no route area, and the banner replaces the X01 CHECKOUT banner. Its height is given by the layout policy.
  *
- * With [isSingleLine] (landscape, CR22) everything stands on one line: name, MPR or banner, then the dart slots at
- * their minimum size; the S/M chips are then drawn by the screen, at the end of the title line.
+ * With [isSingleLine] (the landscape band, CR22) everything stands on one line: name, MPR or banner, then the 36 dp
+ * dart cells; the S/M chips are then drawn by the band, at the end of its title.
  */
 @Composable
 fun CricketPlayerZone(
@@ -167,21 +172,20 @@ private fun BigNumber(content: CricketZoneContent, contentColor: Color, modifier
     }
 }
 
-/** Landscape: name and MPR (or the banner), then the three dart slots with a smaller, fixed dart text. */
+/** Landscape band: the 18 sp name and the MPR (or the banner), then the three 36 dp dart cells at the end (Q15 A). */
 @Composable
 private fun SingleLine(content: CricketZoneContent, contentColor: Color) {
     val typography = KosmoTheme.typography
     val density = LocalDensity.current
-    val small = typography.copy(
-        dart = typography.dart.copy(fontSize = density.fixedSp(CricketBoardLayoutPolicy.LANDSCAPE_DART_SP)),
-    )
+    // The standard dart text (26 sp, about 41 dp tall) does not fit a 36 dp cell: the band uses a fixed, smaller one.
+    val band = typography.copy(dart = typography.dart.copy(fontSize = density.fixedSp(SINGLE_LINE_DART_SP)))
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(INNER_GAP),
         modifier = Modifier.fillMaxHeight(),
     ) {
         NameLine(content, contentColor, Modifier.weight(1f), isSingleLine = true)
-        CompositionLocalProvider(LocalKosmoTypography provides small) {
+        CompositionLocalProvider(LocalKosmoTypography provides band) {
             DartSlots(
                 darts = content.turnDarts,
                 nextDartIndex = content.nextDartIndex,
@@ -210,7 +214,7 @@ private fun NameLine(
     ) {
         Text(
             text = displayName(content.name),
-            style = if (isSingleLine) typography.label else typography.labelLarge,
+            style = typography.labelLarge,
             color = contentColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

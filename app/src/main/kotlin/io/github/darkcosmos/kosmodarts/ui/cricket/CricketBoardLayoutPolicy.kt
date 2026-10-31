@@ -1,7 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.cricket
 
 import kotlin.math.max
-import kotlin.math.min
 
 /**
  * A candidate size of a column total: [sizeSp] and the em of that size measured in dp at the current font scale (the
@@ -34,41 +33,6 @@ data class CricketBoardLayout(
     val buttonWidthDp: Float,
     val missCellWidthDp: Float,
     val missCellHeightDp: Float,
-)
-
-/**
- * Sizes of the Cricket screen in landscape (bars hidden), in dp.
- *
- * @property board the board's sizes; its header is the band.
- * @property bandHeightDp one height for the board header and for the right column's title plus zone line.
- * @property boardWidthDp width of the board (player columns then button column).
- * @property rightColumnWidthDp width of the right column (title, zone, action bar), after the [CricketBoardLayoutPolicy.BOARD_GAP].
- * @property barButtonWidthDp width of each of the two side-by-side action bar buttons.
- * @property barRoomHeightDp height under the band for the action bar.
- */
-data class CricketLandscapeLayout(
-    val board: CricketBoardLayout,
-    val bandHeightDp: Float,
-    val boardWidthDp: Float,
-    val rightColumnWidthDp: Float,
-    val barButtonWidthDp: Float,
-    val barRoomHeightDp: Float,
-)
-
-/**
- * Measured dp values of the landscape screen (bars hidden): [cutoutInsetDp] is the display cutout on one side,
- * [headerHeightDp] the board's column header, [titleLineDp] and [zoneLineDp] the right column's title and
- * single-line zone.
- */
-data class CricketLandscapeSpace(
-    val screenWidthDp: Float,
-    val screenHeightDp: Float,
-    val cutoutInsetDp: Float,
-    val headerHeightDp: Float,
-    val titleLineDp: Float,
-    val zoneLineDp: Float,
-    val playerCount: Int,
-    val rowCount: Int,
 )
 
 /**
@@ -149,13 +113,6 @@ object CricketBoardLayoutPolicy {
     const val TOP_MARGIN = 8f
     const val BOTTOM_MARGIN = 8f
     const val GAP = 6f
-    const val LANDSCAPE_MARGIN = 4f
-    const val LANDSCAPE_TITLE_GAP = 4f
-
-    /** Landscape zone line (name, MPR, dart slots), the fixed dart text size in it, and the S/M chips' padding. */
-    const val LANDSCAPE_ZONE_LINE = 28f
-    const val LANDSCAPE_DART_SP = 14f
-    const val CHIPS_VERTICAL_PADDING = 4f
 
     /** Tolerance for float comparisons of heights computed from a division. */
     private const val EPSILON = 0.001f
@@ -251,6 +208,14 @@ object CricketBoardLayoutPolicy {
     }
 
     /**
+     * Width of each player column in landscape (plan R2.2): what the side margins, the cutout, the button column, the
+     * gap and the action column leave, shared by the players. The screen needs it before it measures the header.
+     */
+    fun landscapePlayerColumnWidthDp(screenWidthDp: Float, cutoutInsetDp: Float, playerCount: Int): Float =
+        (screenWidthDp - 2 * SIDE_MARGIN - cutoutInsetDp - BUTTON_COLUMN_WIDTH_MAX - BOARD_GAP -
+            LANDSCAPE_ACTION_WIDTH) / playerCount
+
+    /**
      * Revision 2 landscape (plan R2.2, bars hidden): band, header row (the measured header, 48 dp at least), rows
      * 42 to 56 dp (they scroll below 42 dp), 56 dp buttons, a 12 dp gap and the 120 dp action column. The player
      * columns share the width left.
@@ -260,8 +225,7 @@ object CricketBoardLayoutPolicy {
         val viewport = screenHeightDp - LANDSCAPE_BOTTOM_MARGIN - LANDSCAPE_BAND - headerRow
         val rowHeight = (viewport / rowCount).coerceIn(LANDSCAPE_ROW_MIN, ROW_HEIGHT_MAX)
         val scrolls = viewport < LANDSCAPE_ROW_MIN * rowCount - EPSILON
-        val width = screenWidthDp - 2 * SIDE_MARGIN - cutoutInsetDp
-        val playerWidth = (width - BUTTON_COLUMN_WIDTH_MAX - BOARD_GAP - LANDSCAPE_ACTION_WIDTH) / playerCount
+        val playerWidth = landscapePlayerColumnWidthDp(screenWidthDp, cutoutInsetDp, playerCount)
         CricketLandscapeBandLayout(
             board = CricketBoardLayout(
                 rowHeightDp = rowHeight,
@@ -279,43 +243,6 @@ object CricketBoardLayoutPolicy {
             undoWidthDp = LANDSCAPE_ACTION_WIDTH,
             nextKeyHeightDp = if (scrolls) viewport else rowHeight * rowCount,
             rowsViewportHeightDp = viewport,
-        )
-    }
-
-    /** Landscape (bars hidden), see [CricketLandscapeSpace]. */
-    fun landscape(space: CricketLandscapeSpace): CricketLandscapeLayout = with(space) {
-        val band = max(headerHeightDp, titleLineDp + LANDSCAPE_TITLE_GAP + zoneLineDp)
-        val boardWidth = PLAYER_COLUMN_WIDTH * playerCount + BUTTON_COLUMN_WIDTH_MAX
-        val rightWidth = screenWidthDp - 2 * SIDE_MARGIN - cutoutInsetDp - boardWidth - BOARD_GAP
-        val boardHeight = screenHeightDp - 2 * LANDSCAPE_MARGIN - band
-        CricketLandscapeLayout(
-            board = layout(boardWidth, boardHeight + band, band, playerCount, rowCount),
-            bandHeightDp = band,
-            boardWidthDp = boardWidth,
-            rightColumnWidthDp = rightWidth,
-            barButtonWidthDp = (rightWidth - BAR_GAP) / 2,
-            barRoomHeightDp = boardHeight - GAP,
-        )
-    }
-
-    private fun layout(
-        boardWidthDp: Float,
-        boardHeightDp: Float,
-        headerHeightDp: Float,
-        playerCount: Int,
-        rowCount: Int,
-    ): CricketBoardLayout {
-        val (playerWidth, buttonColumn) = columnWidths(boardWidthDp, playerCount)
-        val rowsRoom = boardHeightDp - headerHeightDp
-        val rowHeight = (rowsRoom / rowCount).coerceIn(ROW_HEIGHT_MIN, ROW_HEIGHT_MAX)
-        return CricketBoardLayout(
-            rowHeightDp = rowHeight,
-            scrolls = rowsRoom < ROW_HEIGHT_MIN * rowCount,
-            playerColumnWidthDp = playerWidth,
-            buttonColumnWidthDp = buttonColumn,
-            buttonWidthDp = buttonColumn / 3,
-            missCellWidthDp = buttonColumn,
-            missCellHeightDp = max(headerHeightDp, ROW_HEIGHT_MIN),
         )
     }
 }

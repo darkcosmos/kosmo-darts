@@ -14,8 +14,17 @@ object CricketTags {
     /** The rows of the board (they scroll only on a screen smaller than the Pixel 7). */
     const val BOARD_ROWS: String = "cricket_board_rows"
 
-    /** The landscape title line over the zone (mode, position, S/M chips). */
+    /** The landscape title, at the start of the band (mode, short position, S/M chips). */
     const val TITLE: String = "cricket_title"
+
+    /** The landscape top band (R2.2): the title, then the single-line zone of the current player. */
+    const val BAND: String = "cricket_band"
+
+    /** The landscape "Undo" key, right of "Miss" in the header row (Kosmo, Q16 A). */
+    const val LANDSCAPE_UNDO: String = "cricket_landscape_undo"
+
+    /** The landscape tall key under "Undo": next player, or the CR25 confirm button (Kosmo, Q17 B). */
+    const val LANDSCAPE_NEXT: String = "cricket_landscape_next"
 
     /** The white "VICTORY" banner of the zone (CR25). */
     const val WIN_BANNER: String = "cricket_win_banner"

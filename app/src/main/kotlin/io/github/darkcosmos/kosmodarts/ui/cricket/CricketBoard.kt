@@ -4,7 +4,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,6 +45,7 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTarget
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVisit
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
+import io.github.darkcosmos.kosmodarts.ui.components.BarAction
 import io.github.darkcosmos.kosmodarts.ui.format.displayName
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
@@ -54,6 +57,11 @@ private val COLUMN_BORDER = 2.dp
 private val MARK_SIZE = 18.dp
 private val MARK_STROKE = 2.dp
 private const val ROWS_TRAVERSAL_INDEX = 100f
+private const val NEXT_TRAVERSAL_INDEX = 200f
+
+/** The vertical label's room in the tall key: 12 dp at both ends of the line, 8 dp on its sides. */
+private val NEXT_LABEL_PADDING_ALONG = 12.dp
+private val NEXT_LABEL_PADDING_ACROSS = 8.dp
 
 /**
  * Everything the board shows, mapped by the game screen from its state.
@@ -90,10 +98,23 @@ fun CricketBoard(
     onDart: (Dart) -> Unit,
     onMiss: () -> Unit,
     modifier: Modifier = Modifier,
+    actions: CricketBoardActions? = null,
 ) {
     val colors = KosmoTheme.colors
     val texts = remember(content.rows) { CricketBoardText.of(content.rows) }
     val scroll = if (layout.scrolls) Modifier.verticalScroll(rememberScrollState()) else Modifier
+    val rows = Modifier
+        .testTag(CricketTags.BOARD_ROWS)
+        .semantics {
+            isTraversalGroup = true
+            traversalIndex = ROWS_TRAVERSAL_INDEX
+        }
+        .then(scroll)
+    val rowsContent: @Composable ColumnScope.() -> Unit = {
+        content.rows.forEachIndexed { index, row ->
+            BoardRow(row, texts[index], content.buttons[index], content, layout, onDart)
+        }
+    }
     Column(
         modifier = modifier
             .testTag(CricketTags.BOARD)
@@ -101,37 +122,93 @@ fun CricketBoard(
             .clip(KosmoShapes.card)
             .background(colors.surface),
     ) {
-        HeaderRow(content, layout, header, onMiss)
-        Column(
-            modifier = Modifier
-                .weight(1f, fill = false)
-                .testTag(CricketTags.BOARD_ROWS)
-                .semantics {
-                    isTraversalGroup = true
-                    traversalIndex = ROWS_TRAVERSAL_INDEX
-                }
-                .then(scroll),
-        ) {
-            content.rows.forEachIndexed { index, row ->
-                BoardRow(row, texts[index], content.buttons[index], content, layout, onDart)
+        HeaderRow(content, layout, header, onMiss, actions)
+        if (actions == null) {
+            Column(modifier = Modifier.weight(1f, fill = false).then(rows), content = rowsContent)
+        } else {
+            Row(Modifier.weight(1f, fill = false)) {
+                Column(modifier = Modifier.weight(1f).then(rows), content = rowsContent)
+                Spacer(Modifier.width(CricketBoardLayoutPolicy.BOARD_GAP.dp))
+                NextKey(actions, Modifier.width(actions.widthDp.dp).height(actions.nextHeightDp.dp))
             }
         }
     }
 }
 
-/** The pinned header: a column per player (strip, total, name), then "Miss" over the button column (CR22, Q9 B). */
+/**
+ * The landscape action keys of the board (R2.2, Kosmo Q16 A and Q17 B): [undo] right of "Miss" in the header row, and
+ * [next] (next player, or the CR25 confirm button) as one tall key right of the rows, [nextHeightDp] tall; both
+ * [widthDp] wide, after the 12 dp gap. Their tags are the drawn keys'; the touch areas are `LANDSCAPE_UNDO` and
+ * `LANDSCAPE_NEXT`.
+ */
+class CricketBoardActions(
+    val undo: BarAction,
+    val next: BarAction,
+    val widthDp: Float,
+    val nextHeightDp: Float,
+)
+
+/**
+ * The pinned header: a column per player (strip, total, name), then "Miss" over the button column (CR22, Q9 B); in
+ * landscape, "Undo" after the 12 dp gap.
+ */
 @Composable
 private fun HeaderRow(
     content: CricketBoardContent,
     layout: CricketBoardLayout,
     header: CricketHeaderMetrics,
     onMiss: () -> Unit,
+    actions: CricketBoardActions?,
 ) {
     Row(Modifier.fillMaxWidth().height(layout.missCellHeightDp.dp)) {
         content.names.indices.forEach { player ->
             HeaderCell(player, content, header, Modifier.weight(1f).fillMaxHeight())
         }
         MissCell(content, layout, onMiss)
+        actions?.let {
+            Spacer(Modifier.width(CricketBoardLayoutPolicy.BOARD_GAP.dp))
+            UndoKey(it.undo, (content.names.size + 2).toFloat(), Modifier.width(it.widthDp.dp).fillMaxHeight())
+        }
+    }
+}
+
+/** "Undo", the word at the fixed 20 sp `button` size, read right after "Miss" (CR23, R2.2). */
+@Composable
+private fun UndoKey(action: BarAction, order: Float, modifier: Modifier) {
+    BoardKey(
+        description = action.text,
+        tags = KeyTags(CricketTags.LANDSCAPE_UNDO, action.tag),
+        isEnabled = action.isEnabled,
+        onClick = action.onClick,
+        modifier = modifier.semantics { traversalIndex = order },
+    ) {
+        Text(
+            text = action.text,
+            style = KosmoTheme.typography.button,
+            color = KosmoTheme.colors.onBackground,
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
+}
+
+/** The tall next key, its label turned a quarter-turn at the fixed 28 sp `keypad` size, read after the rows (CR23). */
+@Composable
+private fun NextKey(actions: CricketBoardActions, modifier: Modifier) {
+    val action = actions.next
+    BoardKey(
+        description = action.text,
+        tags = KeyTags(CricketTags.LANDSCAPE_NEXT, action.tag),
+        isEnabled = action.isEnabled,
+        onClick = action.onClick,
+        isPrimary = true,
+        modifier = modifier.semantics { traversalIndex = NEXT_TRAVERSAL_INDEX },
+    ) {
+        VerticalKeyLabel(
+            text = action.text,
+            style = KosmoTheme.typography.keypad.copy(color = KosmoTheme.colors.onAccent),
+            modifier = Modifier.padding(horizontal = NEXT_LABEL_PADDING_ACROSS, vertical = NEXT_LABEL_PADDING_ALONG),
+        )
     }
 }
 
