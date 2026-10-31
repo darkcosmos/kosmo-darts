@@ -33,7 +33,7 @@ To suggest a change here, use the "Proposed owner changes" section of your PR de
 
 - No hardcoded user-facing strings in code: use resources.
 - `values/` is English (default, fallback), `values-fr/` is French. Always update both in the same PR.
-- Accessibility: content descriptions on icons, touch targets of at least 48dp, sufficient contrast in dark theme.
+- Accessibility: content descriptions on icons, touch targets of at least 48dp (exception: in landscape, buttons may be 42dp tall), sufficient contrast in dark theme.
 
 ## Tests
 
