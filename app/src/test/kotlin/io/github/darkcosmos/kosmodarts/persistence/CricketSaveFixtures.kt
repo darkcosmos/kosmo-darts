@@ -134,3 +134,19 @@ internal fun CricketMatch.playLegWonByScoring20(winner: Int): CricketMatch {
     }
     return match
 }
+
+/**
+ * Ann (player 0) throws a T20 on each dart of [rounds] rounds while every other player misses: she closes the 20 with
+ * the first dart then scores 60 per dart (1 020 points after six rounds, 4 digits).
+ */
+internal fun CricketMatch.annScoring(rounds: Int): CricketMatch {
+    val others = currentLeg.state.players.size - 1
+    var match = this
+    repeat(rounds) {
+        repeat(DARTS_PER_TURN) { match = match.throwDart(Dart.triple(20)) }
+        repeat(others * DARTS_PER_TURN) { match = match.throwDart(Dart.MISS) }
+    }
+    return match
+}
+
+private const val DARTS_PER_TURN = 3

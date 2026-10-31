@@ -274,9 +274,9 @@ class CricketGameScreenStateTest {
     }
 
     @Test
-    fun `CR23 the points row is absent in a solo game`() {
-        assertEquals(listOf(0, 0), screen().boardPoints)
-        assertNull(screen(CricketSaveFixtures.match("Ann")).boardPoints)
+    fun `CR23 headerTotals starts at zero for each player and is absent in a solo game`() {
+        assertEquals(listOf(0, 0), screen().headerTotals)
+        assertNull(screen(CricketSaveFixtures.match("Ann")).headerTotals)
     }
 
     @Test

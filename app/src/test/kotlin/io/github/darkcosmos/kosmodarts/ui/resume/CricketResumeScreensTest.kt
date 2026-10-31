@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTarget
+import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.ui.cricket.CricketTags
@@ -139,7 +140,7 @@ class CricketResumeScreensTest {
         }
         key(SetupTags.START).performClick()
         assertOnCricketScreen()
-        key(CricketTags.KEYPAD).assertIsDisplayed()
+        key(CricketTags.dartButton(Dart.triple(20))).assertIsDisplayed()
 
         process.killInBackgroundAndReturn()
 
