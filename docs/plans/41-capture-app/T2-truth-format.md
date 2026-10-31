@@ -38,3 +38,26 @@ builds values through the engine `Dart` constructor (segment 0 miss, 1 to 20, 25
 opus. Why: case "new stored format" (schema, strict decoder, version policy that phase 0b depends on).
 
 ## Implementation notes
+- Public API (`capture.truth`): `TruthJson.encode(session): String`, `TruthJson.decode(text): TruthDecodeResult`
+  (`Success(session)` or `Failure(message)` with a JSON path such as `$.volleys[0].darts[1].voided`), constants
+  `FORMAT`, `VERSION`, `CLOCK`, `MAX_TEXT_BYTES` (10 MiB of UTF-8, checked before parsing). `UtcFormat.format/parse`.
+- Model: `TruthSession` (in `TruthSession.kt` with the small types `AppInfo`, `DeviceInfo`, `VideoSettings`,
+  `PhotoSettings` and enums `EndReason`, `VideoQuality` (UHD/FHD), `TimestampSource` (UNKNOWN/REALTIME)),
+  `TruthVolley`, `TruthDart` + `TruthPhoto` (added type: photo file plus its stamp), `Stamp`, `Gravity` (Floats),
+  `Resolution`. `TruthDart.voided` and `TruthVolley.empty` are derived properties (from `voidedAt` and the darts);
+  the decoder rejects a file whose flags contradict the data.
+- Invariants enforced by `require` in the constructors (T3 must respect them): `Stamp.utc` whole milliseconds
+  (use `Instant.truncatedTo(ChronoUnit.MILLIS)`) within years 0000 to 9999, `monotonicNanos >= 0`, position null or
+  `>= 0`; `startedAt`, `endedAt` and volley `start` have a null position; `endedAt` and `endReason` both null or
+  both set; at least one volley; volley indexes 1..n; dart numbers 1..N across volleys; every volley but the last
+  has an `end`, and the last too once `endedAt` is set; dart number >= 1. The CP3 limit of 3 darts is not checked
+  here (T3).
+- Deviation from the outline: start stamps (`startedAt`, `endedAt`, volley `start`) have no `videoPositionMs` key;
+  event stamps (`end`, `entry`, `voidedAt`, `photo`) always have it (null allowed). Unknown keys are rejected.
+- Internal pieces: `JsonParser` (strict RFC 8259, depth limit 32), `JsonWriter` (pretty, no trailing newline),
+  `JsonFields` (typed access + unknown-field check), `TruthEncoder`, `TruthDecoder`, `TruthFormatException`.
+- Tests: `UtcFormatTest`, `TruthJsonRoundTripTest`, `TruthJsonGoldenTest` (its `GOLDEN` text is the example in
+  `docs/camera/capture-format.md`; update both together), `TruthJsonRejectTest`, fixtures in `TruthFixtures`.
+- `kosmo-detekt` does not analyse `:capture` (input `app/src:game-engine/src`, Q13); lines kept within 120 columns.
+- Open for T8: the volley video start monotonic time is not stored, so events with a null position cannot be placed
+  in the video; the format doc says so.
