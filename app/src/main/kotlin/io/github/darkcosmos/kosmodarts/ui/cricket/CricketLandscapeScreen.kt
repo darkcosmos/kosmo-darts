@@ -38,9 +38,9 @@ private val TITLE_CHIPS_GAP = 8.dp
 /**
  * Landscape (CR22, plan section 4): the board on the left, the title over the single-line zone on the right, the
  * action bar at the bottom of that column. The board, the title and the zone use fixed text sizes (they ignore the font
- * scale, so the rows stay at 48 dp or more); the action bar keeps the scaled `button` style. The padding is the one of
- * the caller (the bars' and cutout insets, see the system bars task), [screenWidthDp] and [screenHeightDp] are what
- * is left inside it.
+ * scale, so the rows stay at 48 dp or more); the action bar keeps the scaled `button` style. The bars are hidden and
+ * the caller pads the display cutout only ([SystemBarsPolicy]): [screenWidthDp] and [screenHeightDp] are what is left
+ * inside that padding, [cutoutInsetDp] its left plus right width.
  */
 @Composable
 internal fun LandscapeGame(
@@ -48,6 +48,7 @@ internal fun LandscapeGame(
     onEvent: (AppEvent) -> Unit,
     screenWidthDp: Float,
     screenHeightDp: Float,
+    cutoutInsetDp: Float,
 ) {
     val outerDensity = LocalDensity.current
     val outerTypography = KosmoTheme.typography
@@ -62,7 +63,8 @@ internal fun LandscapeGame(
         )
         val layout = CricketBoardLayoutPolicy.landscape(
             CricketLandscapeSpace(
-                screenWidthDp, screenHeightDp, 0f, header.heightDp, titleLine,
+                // The policy takes the whole screen width and removes the cutout from it.
+                screenWidthDp + cutoutInsetDp, screenHeightDp, cutoutInsetDp, header.heightDp, titleLine,
                 CricketBoardLayoutPolicy.LANDSCAPE_ZONE_LINE, players, game.game.config.targets.size,
             ),
         )

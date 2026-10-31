@@ -9,11 +9,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.keepScreenOn
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -56,16 +61,32 @@ fun CricketGameScreen(
             .background(KosmoTheme.colors.background)
             .keepScreenOn(),
     ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
-            if (maxWidth > maxHeight) {
-                LandscapeGame(game, onEvent, maxWidth.value, maxHeight.value)
-            } else {
-                PortraitGame(game, onEvent, maxWidth.value)
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val bars = SystemBarsPolicy.decide(isLandscape = maxWidth > maxHeight, isCricketGame = true)
+            SystemBarsEffect(bars)
+            val insets = when (bars.padding) {
+                InsetsPadding.SAFE_DRAWING -> WindowInsets.safeDrawing
+                InsetsPadding.CUTOUT_ONLY -> WindowInsets.displayCutout
+            }
+            BoxWithConstraints(modifier = Modifier.fillMaxSize().windowInsetsPadding(insets)) {
+                if (bars.isHidden) {
+                    LandscapeGame(game, onEvent, maxWidth.value, maxHeight.value, horizontalDp(insets))
+                } else {
+                    PortraitGame(game, onEvent, maxWidth.value)
+                }
             }
         }
         if (game.isAbandonDialogShown) AbandonDialog(onEvent)
         noVoiceNotice?.let { NoVoiceDialog(it, onEvent) }
     }
+}
+
+/** The left plus right [insets], in dp: in landscape, the display cutout on the side of the camera hole. */
+@Composable
+private fun horizontalDp(insets: WindowInsets): Float {
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+    return (insets.getLeft(density, direction) + insets.getRight(density, direction)) / density.density
 }
 
 @Composable

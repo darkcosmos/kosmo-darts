@@ -12,6 +12,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTarget
@@ -31,12 +34,13 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import kotlin.math.roundToInt
 
 /**
  * The Cricket game screen in landscape on the Pixel 7 with its bars hidden (914 x 411 dp, docs/rules/cricket.md CR22,
  * plan section 4): the fit with no scrolling, rows and buttons of at least 48 dp, one band height on both sides, the
  * single-line zone, whole texts, the action bar, and the TalkBack order. Without any real screen: the state is given
- * directly. The 48 dp cutout is simulated with a screen 48 dp narrower (866 dp), as the policy takes it from the width.
+ * directly. The 48 dp display cutout and the bars shown by a swipe are `WindowInsets` sent to the screen's view.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -51,12 +55,41 @@ class CricketLandscapeScreenTest {
     /** The player the zone shows in the current case. */
     private var zoneIndex = 0
 
+    /** The side of the simulated 48 dp display cutout of the current test, or `null` for none. */
+    private var cutoutSide: CutoutSide? = null
+
+    private var view: ComposeView? = null
+
     private fun show(state: CricketGameScreenState) {
         composeRule.runOnUiThread {
             val view = ComposeView(composeRule.activity)
             view.setContent { KosmoDartsTheme { CricketGameScreen(state, onEvent = {}) } }
             composeRule.activity.setContentView(view)
+            this.view = view
         }
+        composeRule.waitForIdle()
+        cutoutSide?.let { dispatchInsets(it, isBarShown = false) }
+    }
+
+    /**
+     * Sends [side]'s 48 dp display cutout to the screen, and with [isBarShown] the bars a swipe shows for a moment
+     * (24 dp status bar at the top, 48 dp navigation bar on the other side), as `WindowInsets` would on a phone.
+     */
+    private fun dispatchInsets(side: CutoutSide, isBarShown: Boolean) {
+        val cutout = px(CUTOUT_DP).roundToInt()
+        val builder = WindowInsetsCompat.Builder().setInsets(
+            WindowInsetsCompat.Type.displayCutout(),
+            if (side == CutoutSide.LEFT) Insets.of(cutout, 0, 0, 0) else Insets.of(0, 0, cutout, 0),
+        )
+        if (isBarShown) {
+            val navigation = px(CUTOUT_DP).roundToInt()
+            builder.setInsets(WindowInsetsCompat.Type.statusBars(), Insets.of(0, px(24f).roundToInt(), 0, 0))
+            builder.setInsets(
+                WindowInsetsCompat.Type.navigationBars(),
+                if (side == CutoutSide.LEFT) Insets.of(0, 0, navigation, 0) else Insets.of(navigation, 0, 0, 0),
+            )
+        }
+        composeRule.runOnUiThread { ViewCompat.dispatchApplyWindowInsets(checkNotNull(view), builder.build()) }
         composeRule.waitForIdle()
     }
 
@@ -145,6 +178,26 @@ class CricketLandscapeScreenTest {
         assertTitleAndZone(label, pending)
         assertButtons(label, isBullInPlay)
         assertBar(label, pending)
+        cutoutSide?.let { assertOutOfCutout(label, it) }
+    }
+
+    /** Every node of the screen is out of the cutout of [side]; the right column keeps 340 dp (U1, plan section 4). */
+    private fun assertOutOfCutout(label: String, side: CutoutSide) {
+        val screen = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
+        fun check(node: SemanticsNode) {
+            val rect = node.boundsInRoot
+            val isUnder = if (side == CutoutSide.LEFT) {
+                rect.left < screen.left + px(CUTOUT_DP) - 1f
+            } else {
+                rect.right > screen.right - px(CUTOUT_DP) + 1f
+            }
+            // A node of no size draws nothing, so it cannot sit under the cutout.
+            assertFalse("$label: $rect under the $side cutout", isUnder && !rect.isEmpty)
+            node.children.forEach(::check)
+        }
+        check(node(CricketTags.SCREEN).fetchSemanticsNode())
+        val rightColumn = bounds(CricketTags.TITLE).width / px(1f)
+        assertTrue("$label: right column $rightColumn dp, 340 at least", rightColumn >= 340f - 0.5f)
     }
 
     /** One band height: the board header and the title plus the zone have the same top and bottom. */
@@ -276,12 +329,40 @@ class CricketLandscapeScreenTest {
         assertEveryCase()
 
     @Test
-    @Config(qualifiers = "fr-w866dp-h411dp-land-420dpi")
-    fun `CR22 landscape with a 48 dp cutout (866 dp wide) fits, 1 to 4 players`() = assertEveryCase()
+    fun `CR22 U1 landscape with a 48 dp cutout on the left fits, nothing under it, 1 to 4 players`() {
+        cutoutSide = CutoutSide.LEFT
+        assertEveryCase()
+    }
 
     @Test
-    @Config(qualifiers = "fr-w866dp-h411dp-land-420dpi", fontScale = 2.0f)
-    fun `CR22 landscape with a 48 dp cutout at scale 2 fits`() = assertEveryCase()
+    fun `CR22 U1 landscape with a 48 dp cutout on the right fits, nothing under it, 1 to 4 players`() {
+        cutoutSide = CutoutSide.RIGHT
+        assertEveryCase()
+    }
+
+    @Test
+    @Config(fontScale = 2.0f)
+    fun `CR22 U1 landscape with a 48 dp cutout at scale 2 fits, on either side`() {
+        CutoutSide.entries.forEach { side ->
+            cutoutSide = side
+            assertEveryCase()
+        }
+    }
+
+    @Test
+    fun `CR22 U1 the bars a swipe shows for a moment go over the screen, nothing moves`() {
+        CutoutSide.entries.forEach { side ->
+            cutoutSide = side
+            show(game(players = 4, isBullInPlay = true, pending = false))
+            val tags = listOf(CricketTags.SCREEN, CricketTags.BOARD, GameTags.CURRENT_PLAYER, KeypadTags.UNDO)
+            val before = tags.map(::bounds)
+            assertTrue("$side: the cutout reached the screen", bounds(CricketTags.SCREEN).width < px(914f - 40f))
+
+            dispatchInsets(side, isBarShown = true)
+
+            tags.zip(before).forEach { (tag, rect) -> assertEquals("$side: $tag moved", rect, bounds(tag)) }
+        }
+    }
 
     @Test
     @Config(qualifiers = "en-w914dp-h411dp-land-420dpi", fontScale = 2.0f)
@@ -325,5 +406,13 @@ class CricketLandscapeScreenTest {
             ?: 0f
         assertTrue("title $title before the board $board", title < board)
         assertTrue(bounds(CricketTags.BOARD).left < bounds(GameTags.CURRENT_PLAYER).left)
+    }
+
+    /** The side of the camera hole, depending on which way the phone is turned. */
+    private enum class CutoutSide { LEFT, RIGHT }
+
+    private companion object {
+        /** The widest cutout the plan assumes on the Pixel 7 (section 4). */
+        const val CUTOUT_DP = 48f
     }
 }
