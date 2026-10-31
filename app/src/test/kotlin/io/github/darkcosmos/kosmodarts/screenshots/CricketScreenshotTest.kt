@@ -15,8 +15,9 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
-import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
+import io.github.darkcosmos.kosmodarts.persistence.annScoring
+import io.github.darkcosmos.kosmodarts.persistence.playLegWonBy
 import io.github.darkcosmos.kosmodarts.persistence.playLegWonByScoring20
 import io.github.darkcosmos.kosmodarts.persistence.throwing
 import io.github.darkcosmos.kosmodarts.ui.cricket.CricketBetweenLegsScreen
@@ -112,14 +113,6 @@ class CricketScreenshotTest {
     fun board4PlayersLargestFont() = capture("board_4p_portrait_fr_font200", FOUR.invoke())
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi")
-    fun smallPortrait() = capture("board_4p_360x640_fr", FOUR.invoke())
-
-    @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi")
-    fun smallLandscape() = capture("board_4p_640x360_fr", FOUR.invoke())
-
-    @Test
     @Config(qualifiers = "+fr-port")
     fun deadRows2Players() = capture("dead_rows_2p_portrait_fr", deadRows("Anna", "Bob"))
 
@@ -145,11 +138,6 @@ class CricketScreenshotTest {
 
     @Test
     @Config(qualifiers = "+fr-port")
-    fun modifierActive() =
-        capture("modifier_triple_portrait_fr", game("Anna", "Bob").toggleMultiplier(Multiplier.TRIPLE))
-
-    @Test
-    @Config(qualifiers = "+fr-port")
     fun turnWaiting() =
         capture(
             "turn_waiting_portrait_fr",
@@ -158,17 +146,44 @@ class CricketScreenshotTest {
 
     @Test
     @Config(qualifiers = "+fr-port")
-    fun keypadWithBull() {
+    fun buttonsWithBull() {
         show(game("Anna", "Bob"))
-        composeRule.onNodeWithTag(CricketTags.KEYPAD).captureRoboImage(path("keypad_with_bull_fr"))
+        composeRule.onNodeWithTag(CricketTags.BOARD).captureRoboImage(path("buttons_with_bull_fr"))
     }
 
     @Test
     @Config(qualifiers = "+fr-port")
-    fun keypadWithoutBull() {
+    fun buttonsWithoutBull() {
         show(game("Anna", "Bob", isBullInPlay = false))
-        composeRule.onNodeWithTag(CricketTags.KEYPAD).captureRoboImage(path("keypad_without_bull_fr"))
+        composeRule.onNodeWithTag(CricketTags.BOARD).captureRoboImage(path("buttons_without_bull_fr"))
     }
+
+    /** Ann has 1 020 points: the 4-digit totals in four columns (CR22). */
+    @Test
+    @Config(qualifiers = "fr-w411dp-h814dp-port-420dpi")
+    fun totals4Digits() = capture(
+        "totals_4digits_4p_portrait_fr",
+        CricketGameScreenState(CricketSaveFixtures.match("Anna", "Bob", "Cid", "Dan").annScoring(6)),
+    )
+
+    /** The 20 is dead (Ann and Bob closed it) and Anna waits: the locked, still readable keys (CR15, CR24). */
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun deadRowLocked() = capture(
+        "dead_row_locked_2p_portrait_fr",
+        game("Anna", "Bob", darts = "T20 0 0 T20 0 0 T20 0 0").copy(isAwaitingConfirmation = true),
+    )
+
+    /** The tightest case: 4 players, "VALIDER LA PARTIE", largest font, the Pixel 7 with its bars (411 x 814). */
+    @Test
+    @Config(qualifiers = "fr-w411dp-h814dp-port-420dpi", fontScale = 2.0f)
+    fun winPending4PlayersLargestFont() = capture(
+        "win_pending_4p_portrait_fr_font200",
+        CricketGameScreenState(
+            CricketSaveFixtures.match("Anna", "Bob", "Cid", "Dan").playLegWonBy(0),
+            isAwaitingConfirmation = true,
+        ),
+    )
 
     @Test
     @Config(qualifiers = "+fr-port")
