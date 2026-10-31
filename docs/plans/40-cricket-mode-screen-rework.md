@@ -13,23 +13,22 @@ Answer Kosmo's three comments on PR #60 (issue #40):
    double, triple) aligned with the target's row of the board, in portrait and in landscape. The board's first column
    (the target labels) is removed, since the buttons carry the target.
 
-Revision 2 (Kosmo's review of PR #60 at `73e5ed7`, see "Revision 2" below and Decisions), tasks R8 to R12:
+Revision 2 (Kosmo's review of PR #60 at `73e5ed7`, see "Revision 2" below and Decisions), tasks R8 to R13:
 4. portrait: a bigger current-player zone on several lines, showing the current player's total again, so that the
    empty space between the board and the bottom bar is used;
 5. landscape: no player zone; a top band across the whole screen holds the information (mode, set/leg, MPR, darts of
    the visit); the board takes the whole width left; "ANNULER" next to "RATÉ" and "JOUEUR SUIVANT" just below it, on
    the right edge, over the whole remaining height.
 
-## Revision 2: portrait zone with the total, landscape top band (R8 to R12)
+## Revision 2: portrait zone with the total, landscape top band (R8 to R13)
 
 This section supersedes, for revision 2, the parts of sections 2, 3, 4 and 5 that it names; everything else stays.
-Product choices that Kosmo did not make are Q12 to Q17 (Open questions): the layout below shows the recommended
-option of each and changes if Kosmo picks another.
+Kosmo answered Q12 to Q17 (see Decisions): Q12 A, Q13 A, Q14 B, Q15 A, Q16 A, Q17 B; the layout below follows them.
 
 ### Second reference: Dartsmind in landscape
 
 Kosmo pushed a second Dartsmind screenshot (landscape, 4 players), as a temporary file at the repository root (commit
-`63c5860`, "Add files via upload"); task R12 deletes it and no file that stays in the repository names it. It is
+`63c5860`, "Add files via upload"); task R13 deletes it and no file that stays in the repository names it. It is
 used only for the organization of the top band and of the two action buttons. What it shows (2400 x 1080 px, about
 914 x 411 dp at 2.625 px per dp):
 - a top band over the whole width, about 46 dp tall: the mode title on the left (an app icon, "STANDARD CRICKET"),
@@ -45,12 +44,14 @@ used only for the organization of the top band and of the two action buttons. Wh
 
 Taken: a band at the top over the whole width with the match information; the board under it over the whole width
 left; the undo key on the right of "RATÉ" in the header row; "JOUEUR SUIVANT" in the same column below, over all the
-remaining height. Not taken: the colors, red header, gold key, fonts, icons, the MPR line in every column header
-(Q15), rows under 48 dp (Q14), the cut Bull row.
+remaining height; a band of about the reference's height, the total above the name in the column headers and rows
+of about 44 dp (Q14 B). Not taken: the colors, red header, gold key, fonts, icons, the undo arrow (Q16 A: the word
+"ANNULER"), the horizontal two-line "NEXT PLAYER" (Q17 B: vertical text), the MPR line in every column header (Q15 A),
+the cut Bull row (our 7 rows are always whole).
 
 ### R2.1 Portrait: a zone on several lines with the current player's total
 
-Kosmo reverses Q2 for the portrait zone only: the zone shows the current player's total again. Proposed zone (Q12 A,
+Kosmo reverses Q2 for the portrait zone only: the zone shows the current player's total again. Zone (Kosmo, Q12 A,
 like the X01 zone, `CurrentPlayerZone`), from top to bottom:
 1. name line, as today: the name (`labelLarge`, ellipsis), "MPR 2,4" (or the CR25 "VICTOIRE" banner), the S/M
    chips at the end;
@@ -60,11 +61,13 @@ like the X01 zone, `CurrentPlayerZone`), from top to bottom:
    plural `cricket_header_points`);
 3. the visit's three dart cells at the standard height `DART_SLOT_HEIGHT` (46 dp, as X01) instead of the compact 36 dp.
 
-Solo (Q2 still applies: no total on the solo screen): see Q12 (recommended: the MPR in the big style in the middle).
+Solo (Q2 still applies: no total on the solo screen; Kosmo, Q12 A): the middle of the zone shows the MPR in the same
+big style instead of the total: a small "MPR" label (`label`) above the value, the value fitted like the total on the
+reference "8,8" (one decimal, as today); the name line then has no MPR. Tag `CricketTags.ZONE_MPR`, TalkBack
+« MPR 2,4 » as today. The two-line fallback keeps the MPR on the name line.
 
-The column-header totals of the board stay in portrait (section 2, unchanged), the current player's included: the
-other players' totals are only there, and the board does not change between orientations (Q13 A recommended; the
-current player's total is then shown twice, large in the zone and in his column).
+The column-header totals of the board stay in portrait (section 2, unchanged), the current player's included (Kosmo,
+Q13 A): his total is shown twice, large in the zone and in his column.
 
 Height split (new, in `CricketBoardLayoutPolicy`): the screen gives the zone and the board one height `A` (the
 screen minus the margins, `MatchHeader`, gaps and the action bar, as today). Rule:
@@ -102,46 +105,64 @@ Q9 B for landscape only: "ANNULER" goes next to "RATÉ", "JOUEUR SUIVANT" just b
 bar).
 
 Layout, from top to bottom (bars hidden, cutout padding on its side as today, R4b unchanged):
-- top band, over the whole width, `LANDSCAPE_BAND` = 24 dp, one line of fixed 14 sp texts (recommended content and
-  order, Q15 A): on the left "CRICKET · STANDARD", the short position "S2 · M3" and the S/M chips (today's landscape
-  title row, `Header(isShortPosition = true)`); then, in the current player's color, the single-line zone of today
-  without its vertical padding: "NAME", "MPR 2,4" (or "VICTOIRE"), the three dart cells (24 dp) at the right end, as in
-  the reference. The name takes the flexible width (ellipsis);
-- the header row, `ROW_HEIGHT_MIN` = 48 dp: the player column headers on one line (Q14 A: strip, "▶ NAME" with
-  ellipsis, the total at the end in the display font, fixed, up to 24 sp, `totalTextSize` with the landscape
-  candidates 24, 20, 16, 14), then "RATÉ" over the three button columns, then "ANNULER" (text label, `key_undo`, Q16
-  A) in the action column;
-- the target rows, 48 dp at 7 rows (56 dp at 6), the player cells then the three buttons; on their right, after the
-  12 dp gap, "JOUEUR SUIVANT" (or the CR25 confirm label) as one tall key over the whole height of the rows (336 dp),
-  its label on two or three lines, broken only between words (Q17 A).
+- top band, over the whole width, `LANDSCAPE_BAND` = 44 dp (about the reference's 46 dp, Q14 B), 4 dp vertical
+  padding, one line, fixed texts (Kosmo, Q15 A): on the left "CRICKET · STANDARD", the short position "S2 · M3" and
+  the S/M chips (today's landscape title row, `Header(isShortPosition = true)`, 14 sp, chips with their normal
+  padding, 26.5 dp); then, on the current player's color, the single-line zone: the name (`labelLarge`, 18 sp fixed,
+  ellipsis, the flexible width), "MPR 2,4" (or "VICTOIRE"), and the three dart cells at the compact 36 dp height at
+  the right end, as in the reference;
+- the header row: the player column headers as today in landscape (R4: strip, the total above the name, totals 20 sp
+  at most, fixed; about 58.5 dp measured), then "RATÉ" over the three button columns, then "ANNULER" (the word,
+  `key_undo`, Kosmo Q16 A) in the action column; both keys as tall as the header row (at least 48 dp);
+- the target rows, the player cells then the three buttons, 42 dp at least (the new landscape floor, Kosmo Q14 B),
+  43.5 dp at 7 rows on the Pixel 7, 50.75 dp at 6; on their right, after the 12 dp gap, "JOUEUR SUIVANT" (or the CR25
+  confirm label) as one tall key over the whole height of the rows, its label in vertical text (Kosmo, Q17 B, below).
 
-Height at 914 x 411 (bars hidden, the cutout takes width only): band 24 + header row 48 + 7 x 48 = 408 dp, 3 dp of
-spare (bottom margin). The band and the header row have fixed heights (policy constants, `Modifier.height`), and all
-landscape texts are fixed (`density.fixedSp`), so the sum does not depend on the font scale; the 4 dp top and bottom
-margins and the 4 dp title gap of R4 are dropped. 6 rows: 56 dp each (capped), 0 dp spare. A two-line header (total
-above the name, 57 dp as today) or a band like the reference (46 dp) would put the rows under 48 dp: Q14.
+Height at 914 x 411 (bars hidden, the cutout takes width only), fixed texts, so the same at every font scale:
+top margin 0 (the band starts at the top edge) + band 44 + header row 58.5 + rows + bottom margin 4. The rows get
+(411 - 4 - 44 - 58.5) / 7 = 43.5 dp at 7 rows, 50.75 dp at 6 (under the 56 dp cap). Spare above the 42 dp floor at
+7 rows: 304.5 - 7 x 42 = 10.5 dp (a band or header up to 10 dp taller than estimated still holds). Below the floor
+(unsupported screens) the rows keep 42 dp and scroll under the pinned band and header, as the portrait fallback.
+
+Landscape touch-target contract (Kosmo, Q14 B; the CLAUDE.md exception is proposed in the PR, see Decisions):
+- target buttons (20 to Bull): height at least 42 dp (`LANDSCAPE_ROW_MIN`), width 56 dp (at least 48 dp), touch area
+  the full cell; the drawn key inset 2 dp on each side, so a 4 dp gap between keys, horizontally and between rows;
+- "RATÉ", "ANNULER" and "JOUEUR SUIVANT": at least 48 x 48 dp (58.5 dp tall, 120 dp and 304.5 dp);
+- the 12 dp gap between the triples and the action column, and the dead/locked contrast rules (section 1), unchanged;
+- portrait: the 48 dp floor unchanged.
 
 Width at 914 dp: 914 - 2 x 12 (side margins) - cutout (0 or 48) = 890 or 842 dp. Button column 168 dp (3 x 56),
 12 dp gap, action column `LANDSCAPE_ACTION_WIDTH` = 120 dp; the player columns share the rest: 542 dp with the
 cutout, 590 dp without, so 135.5 (147.5) dp per column at 4 players, 180.7 at 3, 271 at 2, 542 at 1 (today 76 dp).
-In a 135.5 dp header: a 4-digit total at 24 sp takes 4 x 0.6 x 24 + 4 = 61.6 dp, about 66 dp is left for "▶ NAME".
-The "RATÉ" cell is 168 x 48 dp, "ANNULER" 120 x 48 dp, "JOUEUR SUIVANT" 120 x 336 dp (at least 48 x 48 everywhere).
+The two-line headers are wider than today's 76 dp, so names are cut less. The "RATÉ" cell is 168 x 58.5 dp,
+"ANNULER" 120 x 58.5 dp, "JOUEUR SUIVANT" 120 x 304.5 dp.
 
-Band width: title, position and chips about 390 dp (R4 measures: mode 225.5, position 108.6, chips about 55), dart
-cells 148 dp, MPR about 70 dp, gaps 3 x 12: the name keeps about 200 dp at 842 dp. The chips must fit 24 dp (today
-22.5 dp line plus 2 x 2 dp padding = 26.5 dp): in the band their vertical padding is 0 (R10 asserts no clipping).
+Band width at 842 dp: title, position and chips about 390 dp (R4 measured: mode 225.5, position 108.6, chips about
+55), three 36 dp dart cells about 180 dp, MPR about 70 dp, gaps 4 x 12: the name keeps about 155 dp at 18 sp.
 
-Action labels in landscape: the `button` style at a fixed 20 sp (they no longer follow the font scale in landscape,
-like the rest of the landscape screen, U5 extended): "ANNULER" about 77 dp in a 96 dp label width (120 - 2 x 12);
-"JOUEUR SUIVANT" on two lines, "VALIDER LA PARTIE" / "VALIDER LA MANCHE" / "CONFIRM MATCH" on two or three lines,
-word-safe (U11), never under 12 sp. The `ActionBar` component is not used in landscape any more and is not changed.
+"ANNULER": the `button` style at a fixed 20 sp, horizontal, about 77 dp in a 96 dp label width (120 - 2 x 12).
+
+"JOUEUR SUIVANT", vertical text (Kosmo, Q17 B):
+- rotation: a quarter-turn counter-clockwise, the label reads from bottom to top (as the labels of a vertical chart
+  axis); the same on both landscape sides, since Android lays the screen out again when the phone is turned over;
+- the text is laid out with the key's height as its line length (a layout modifier that swaps the constraints, then
+  draws rotated), so the measurement, the word-safe wrapping and the clipping tests work on the real rotated size;
+- size: fixed `keypad` style, 28 sp, not following the font scale (U5 extended to the landscape action keys);
+  available line length 304.5 - 2 x 12 = 280 dp; the longest labels, "VALIDER LA PARTIE" and "VALIDER LA MANCHE"
+  (17 characters), about 17 x 0.55 x 28 = 262 dp, fit on one line; "JOUEUR SUIVANT" about 216 dp, "CONFIRM MATCH" and
+  "NEXT PLAYER" shorter. If a label is wider than measured here, it breaks between words onto two vertical lines
+  (two 28 sp lines, about 88 dp, fit the 96 dp width), then shrinks, never under 20 sp; R10 asserts every label at
+  28 sp on one line or, failing that, at least 20 sp and broken only between words, and stops and reports if not;
+- TalkBack: unchanged, the key reads its label (« Joueur suivant », « Valider la partie », ...), a button role, the
+  rotation is visual only.
+The `ActionBar` component is not used in landscape any more and is not changed.
 
 TalkBack order in landscape (CR23, replaces section 5 for landscape): the band (title, position, then the current
 player: name, MPR, darts), the column headers (current player first), « Raté », « Annuler », then row by row its cells
 then its buttons, then « Joueur suivant » (or the confirm label). Portrait order unchanged except that the zone now
 reads the total after the name line.
 
-Risks of this layout: see Risks (3 dp of spare, rounded screen corners, chips in 24 dp, a tap near the gap).
+Risks of this layout: see Risks (rows under 48 dp, rounded screen corners, vertical text, a tap near the gap).
 
 ## Reference: the Dartsmind screen given by Kosmo
 
@@ -530,27 +551,31 @@ reading order would mirror with the layout (no such locale is shipped).
   `CricketScreenshotTest`, `CricketGameCuesTest`, `CricketPersistenceEffectsTest`, `CricketResumeScreensTest`
   (the last three only where they use the modifier or keypad tags).
 
-Revision 2 (R8 to R12):
+Revision 2 (R8 to R13):
 - `ui/cricket/CricketBoardLayoutPolicy.kt`: new `portraitSplit(...)` (rows, zone height, whether the zone shows its
   total, R2.1; constants `ZONE_TOTAL_MIN`, the zone's fixed parts) and a new landscape function for R2.2 (constants
-  `LANDSCAPE_BAND`, `LANDSCAPE_ACTION_WIDTH`; player columns from the width left; header row 48 dp; rows; spare).
+  `LANDSCAPE_BAND` 44 dp, `LANDSCAPE_ACTION_WIDTH` 120 dp, `LANDSCAPE_ROW_MIN` 42 dp; player columns from the width
+  left; header row from the measured two-line header, at least 48 dp; rows 42 to 56 dp; scroll fallback below 42).
   The old `landscape(CricketLandscapeSpace)`, `CricketLandscapeLayout` fields of the zone column (`rightColumnWidthDp`,
-  `barButtonWidthDp`, `barRoomHeightDp`) and `portraitZoneHeightDp` are removed once unused (R10, R9);
-- `ui/cricket/CricketPlayerZone.kt`: the portrait multi-line variant (name line, fitted total, 46 dp dart cells) and
-  the two-line fallback; the single-line variant without vertical padding, reused in the band;
-- `ui/cricket/CricketZoneTotal.kt` (new, R9): the fitted total (the X01 `ScoreArea` method, Cricket copy; the X01 file
-  is not changed so its captures stay byte-identical);
+  `barButtonWidthDp`, `barRoomHeightDp`) and `portraitZoneHeightDp` are removed once unused (R11, R9);
+- `ui/cricket/CricketPlayerZone.kt`: the portrait multi-line variant (name line, fitted total or solo MPR, 46 dp dart
+  cells) and the two-line fallback; the single-line variant with an 18 sp name and 36 dp dart cells, used in the band;
+- `ui/cricket/CricketZoneTotal.kt` (new, R9): the fitted big number (total, or the solo MPR; the X01 `ScoreArea`
+  method, Cricket copy; the X01 file is not changed so its captures stay byte-identical);
+- `ui/cricket/VerticalKeyLabel.kt` (new, R10): the quarter-turn label of the tall key (constraints swapped, word-safe,
+  28 sp fixed down to 20 sp);
 - `ui/cricket/CricketGameScreenState.kt` (or the zone content mapping): the zone content gets `total: Int?` (`null` in
   solo), from `headerTotals`;
 - `ui/cricket/CricketGameScreen.kt` (`PortraitGame`: the zone takes the split height, the board its own height);
 - `ui/cricket/CricketLandscapeScreen.kt` (`LandscapeGame`: band, board, action column; `TitleRow` reused in the band);
-  `ui/cricket/CricketTopBand.kt` (new, R10); `ui/cricket/CricketBoard.kt` (one-line header variant, the undo cell
-  after "RATÉ" and the tall next-player key in landscape); `CricketHeaderMetrics.kt` (one-line header);
-  `CricketTags.kt` (`ZONE_TOTAL`, `BAND`, `LANDSCAPE_UNDO`, `LANDSCAPE_NEXT`);
+  `ui/cricket/CricketTopBand.kt` (new, R11); `ui/cricket/CricketBoard.kt` (the undo cell after "RATÉ" and the tall
+  next-player key in landscape; rows down to 42 dp in landscape; the column header unchanged);
+  `CricketTags.kt` (`ZONE_TOTAL`, `ZONE_MPR`, `BAND`, `LANDSCAPE_UNDO`, `LANDSCAPE_NEXT`);
 - `docs/rules/cricket.md` (CR22, CR23), `docs/design/design-system.md` (components table, 6.5);
 - tests: `CricketBoardLayoutPolicyTest`, `CricketGameScreenStateTest`, `CricketScreenTest`,
-  `CricketLandscapeScreenTest`, `CricketScreenshotTest`; `CricketSystemBarsTest` should not change (run as is);
-- the root PNG of `63c5860` (deleted, R12).
+  `CricketLandscapeScreenTest`, `VerticalKeyLabelTest` (new), `CricketScreenshotTest`; `CricketSystemBarsTest`
+  should not change (run as is);
+- the root PNG of `63c5860` (deleted, R13).
 No new string: "ANNULER" reuses `key_undo`, the totals reuse `cricket_header_points`.
 
 ## Data read, stored or exposed
@@ -581,12 +606,13 @@ Cricket game, each in portrait and landscape where marked:
 Revision 2 (replaces the landscape items above and the portrait zone item):
 - portrait, 2 and 4 players, scale 1.0: the zone on several lines with the large total, no empty space between the
   board and the bottom bar; scale 2.0 without a pending win: the total still in the zone (at least 32 dp tall); scale
-  2.0 with a pending win: the two-line zone without its total; solo: no total in the zone (Q12);
-- landscape, 1 to 4 players, Bull on and off: the band at the top over the whole width (title, position, chips, then
-  the player's name, MPR and darts in his color), no zone column; one-line column headers ("▶ NAME" and the total);
-  "RATÉ" then "ANNULER" in the header row; "JOUEUR SUIVANT" tall on the right of the rows; rows of 48 dp (7 rows) or
-  56 dp (6 rows), nothing scrolls, with and without a 48 dp cutout on either side;
-- landscape, pending win: "VICTOIRE" in the band, "VALIDER LA PARTIE" in the tall key, "ANNULER" by "RATÉ".
+  2.0 with a pending win: the two-line zone without its total; solo: no total, the MPR large in the middle (Q12 A);
+- landscape, 1 to 4 players, Bull on and off: the 44 dp band at the top over the whole width (title, position, chips,
+  then the player's name, MPR and darts in his color), no zone column; column headers as today (total above the
+  name); "RATÉ" then "ANNULER" in the header row; "JOUEUR SUIVANT" tall on the right of the rows, label in vertical
+  text; rows of 43.5 dp (7 rows) or 50.75 dp (6 rows), at least 42 dp, nothing scrolls, with and without a 48 dp
+  cutout on either side;
+- landscape, pending win: "VICTOIRE" in the band, "VALIDER LA PARTIE" (vertical) in the tall key, "ANNULER" by "RATÉ".
 
 ### Strings (new, `values/` and `values-fr/`)
 
@@ -693,37 +719,48 @@ captures checked with `cmp` against the baseline (see Out of scope).
 Local checks, every task: `./gradlew :game-engine:test`, `./gradlew :app:testDebugUnitTest`, `./gradlew build`,
 `kosmo-detekt` (exit 0).
 
-Revision 2 (R8 to R11; the cases above that contradict it are rewritten, never dropped silently: each rewritten or
+Revision 2 (R8 to R12; the cases above that contradict it are rewritten, never dropped silently: each rewritten or
 removed case is named in the task's Implementation notes line with the decision it follows, Q2 reversal for the
-portrait zone, Q9 B reversal and Q10 A/Q11 A replacement for landscape):
+portrait zone, Q9 B reversal and Q10 A/Q11 A replacement and Q14 B 42 dp floor for landscape):
 - `CricketBoardLayoutPolicyTest` (CR22): `portraitSplit` with the fixtures of the R2.1 table (scales 1.0, 1.3, 1.5,
   2.0; one-line and pending bar): rows 48 to 56 dp, zone = A - header - rows, the zone's total area at least 32 dp in
   every case except scale 2.0 with the pending bar (two-line zone, no total), no scroll; the same with 1, 2 and 3
   players, solo (no total line in the header), 6 rows; a smaller `A` (unsupported screen) keeps 48 dp rows and
   scrolls only below the two-line zone. Landscape (R2.2): 914 x 411, cutout 0 and 48 dp, 1 to 4 players, 6 and 7
-  rows: band 24 dp, header row 48 dp, rows 48 dp (7) and 56 dp (6), band + header + rows at most 411, no scroll;
-  player columns 135.5/180.7/271/542 dp with the cutout (147.5/196.7/295/590 without); button column 168 dp; action
-  column 120 dp after a 12 dp gap; "RATÉ" 168 x 48, undo 120 x 48, next 120 x rows height; every key at least 48 x 48;
-  `totalTextSize` in a 135.5 dp one-line header for 1 to 4 digits with the name keeping at least 60 dp.
+  rows, header fixture 58.5 dp: band 44 dp, header row max(header, 48), rows 43.5 dp (7) and 50.75 dp (6), at least
+  `LANDSCAPE_ROW_MIN` 42 dp, band + header + rows + 4 dp at most 411, no scroll; a header 10 dp taller still gives
+  42 dp rows; a smaller height scrolls the rows at 42 dp; player columns 135.5/180.7/271/542 dp with the cutout
+  (147.5/196.7/295/590 without); button column 168 dp (buttons 56 dp wide, at least 48); action column 120 dp after a
+  12 dp gap; "RATÉ" 168 dp and undo 120 dp wide, both the header row's height (at least 48); next key 120 dp x the
+  rows' height; portrait keeps its 48 dp floor (a portrait case never returns rows under 48).
 - `CricketGameScreenStateTest`: the zone content's `total` is the current player's points (the same value as his
-  `headerTotals` entry, one source, review A1) and `null` in solo; it follows undo and the change of player.
+  `headerTotals` entry, one source, review A1) and `null` in solo; it follows undo and the change of player; in solo
+  the zone content carries the MPR for the big display.
 - Robolectric portrait (`CricketScreenTest`, 411 x 814, Pixel 7 width): CR22, the zone shows `ZONE_TOTAL` with the
   current player's total and TalkBack « 60 points » (2 and 4 players, scales 1.0, 1.3, 1.5, 2.0 without pending win,
   1.0 and 1.5 with it); at 2.0 with the pending win the zone has no `ZONE_TOTAL` and nothing scrolls; the zone's bottom
   is within 6 dp of the board's top, and the board's bottom within 6 dp of the action bar's top (no empty space, the
   gap of the column); the total is not clipped and its size does not change when the digits change (1 to 4 digits);
-  solo: no `ZONE_TOTAL` (and the Q12 solo choice); the column-header totals still present (Q13 A); the TalkBack order
+  solo: no `ZONE_TOTAL`, `ZONE_MPR` shown large with « MPR 2,4 » and no MPR on the name line (Q12 A), the two-line
+  fallback with the MPR on the name line; the column-header totals still present (Q13 A); the TalkBack order
   of the zone (name line, total, darts). Replaces "CR22: the zone has no total" (Q2 reversed for the portrait zone).
 - Robolectric landscape (`CricketLandscapeScreenTest`, 914 x 411, scale 1.0 and 2.0, cutout 0 and 48 dp on each
   side, 1 to 4 players, 6 and 7 rows, with and without the pending win): no scroll container; no `CURRENT_PLAYER`
-  zone node outside the band; `BAND` spans the width inside the padding and is 24 dp tall, its texts not clipped
-  (title, position, chips, name, MPR or "VICTOIRE", the three dart cells); one-line headers 48 dp, totals and names
-  not clipped; "RATÉ" right of the last player header and `LANDSCAPE_UNDO` right of "RATÉ", same top and bottom;
-  `LANDSCAPE_NEXT` under the undo key, same left and right, from the top of the first row to the bottom of the last;
-  every key at least 48 x 48, gaps of keys at least 2 dp; the labels "ANNULER", "JOUEUR SUIVANT", "VALIDER LA
-  PARTIE", "VALIDER LA MANCHE", "CONFIRM MATCH" not clipped, broken only between words, at least 12 sp; nothing under
-  the cutout; transient bars move nothing; TalkBack order of R2.2. Replaces the cases of the zone column (one-line
-  zone in the right column, title above the zone, side-by-side bar in the right column, right column 340 dp).
+  zone node outside the band; `BAND` at the top, spanning the width inside the padding, 44 dp tall, its texts not
+  clipped (title, position, chips, name, MPR or "VICTOIRE", the three dart cells, the darts at its right end); column
+  headers with the total above the name, not clipped; "RATÉ" right of the last player header and `LANDSCAPE_UNDO`
+  right of "RATÉ", same top and bottom, both at least 48 x 48; `LANDSCAPE_NEXT` under the undo key, same left and
+  right, from the top of the first row to the bottom of the last; target buttons: touch bounds at least 48 dp wide and
+  at least 42 dp tall (43.5 at 7 rows), drawn keys at least 2 dp apart (4 dp gap), aligned with their row's cells;
+  "ANNULER" not clipped, at least 12 sp; the vertical label of `LANDSCAPE_NEXT`, for "JOUEUR SUIVANT", "NEXT
+  PLAYER", "VALIDER LA PARTIE", "VALIDER LA MANCHE", "VALIDER LE SET", "CONFIRM MATCH", "CONFIRM LEG" and "CONFIRM SET": rotated a quarter-turn
+  counter-clockwise (its drawn bounds taller than wide), inside the key, not clipped, at 28 sp on one line or at least
+  20 sp broken only between words, the same at scale 1.0 and 2.0 (fixed), and its TalkBack text equal to the label;
+  nothing under the cutout; transient bars move nothing; TalkBack order of R2.2. Replaces the cases of the zone column
+  (one-line zone in the right column, title above the zone, side-by-side bar in the right column, right column
+  340 dp) and the landscape "every button at least 48 x 48" assertion for target buttons (Q14 B).
+- Unchanged and still green: the dead-style contrast (`CricketBoardStyleTest`), the portrait 48 x 48 assertions, the
+  12 dp gap between the board and the actions.
 - `CricketSystemBarsTest` and `SystemBarsPolicyTest`: unchanged, must stay green.
 - Captures (record only, Pixel 7), re-recorded: every portrait game capture where the zone appears
   (`board_2p_portrait_fr`, `board_4p_portrait_fr`, `board_4p_portrait_en`, `board_4p_portrait_fr_font200`,
@@ -731,8 +768,8 @@ portrait zone, Q9 B reversal and Q10 A/Q11 A replacement for landscape):
   `cut_throat_portrait_fr`, `turn_waiting_portrait_fr`, `totals_4digits_4p_portrait_fr`, `win_*_portrait_*`,
   `win_pending_4p_portrait_fr_font200`) and every landscape game capture (`board_2p_landscape_fr`,
   `board_4p_landscape_fr`, `buttons_landscape_fr`, `win_pending_4p_landscape_fr`); `title_chips_4p_landscape_fr`
-  becomes `band_4p_landscape_fr` (band crop, legs and sets, French); new `zone_total_4p_portrait_fr_font130` and
-  `band_win_pending_4p_landscape_en`. `buttons_with_bull_fr` and `buttons_without_bull_fr` are expected unchanged in
+  becomes `band_4p_landscape_fr` (band crop, legs and sets, French); new `zone_total_4p_portrait_fr_font130`,
+  `band_win_pending_4p_landscape_en` and `next_key_vertical_landscape_fr` (the tall key with "VALIDER LA PARTIE"). `buttons_with_bull_fr` and `buttons_without_bull_fr` are expected unchanged in
   portrait (rows stay 56 dp at 1.0). Between-legs, end, setup, home and every X01 capture: byte-identical (`cmp`).
 
 ## How Kosmo verifies on the phone
@@ -772,7 +809,7 @@ Replaces steps 3, 4, 7, 13, 14, 16 and 17 of the main plan for the game screen; 
 12. TalkBack: the headers with their totals, then « Raté », then for each row its cells (« 20, Anna : 2 marques »)
     and then its buttons (« 20 », « Double 20 », « Triple 20 »), then « Annuler » and « Joueur suivant ».
 
-Revision 2 replaces steps 3, 9, 10 and 11 (and adapts 1 and 12) as follows (wording for the recommended options):
+Revision 2 replaces steps 3, 9, 10 and 11 (and adapts 1 and 12) as follows (Kosmo's answers Q12 to Q17):
 - R-a. Portrait, 2 players: the player's area under the title is taller: his name, MPR and S/M chips on the first
   line, his total in very large type in the middle, his three darts below. There is no large empty space between the
   board and "ANNULER" / "JOUEUR SUIVANT". The totals at the top of each column are still there.
@@ -781,17 +818,21 @@ Revision 2 replaces steps 3, 9, 10 and 11 (and adapts 1 and 12) as follows (word
 - R-c. Portrait, largest system font, 4 players: nothing scrolls, the total is still in the player's area (smaller);
   when a win waits for "VALIDER LA PARTIE", the area may lose its large total (the total stays at the top of the
   column).
-- R-d. Solo, portrait: no total in the player's area (as decided in Q2; what replaces it follows Q12).
-- R-e. Landscape, 4 players: the status and navigation bars disappear; at the top, one thin band over the whole
-  width: "CRICKET · STANDARD", the set/leg, then the player's name, his MPR and his three darts in his color. No other
-  player area. Under it the board takes the whole width: each column shows "▶ NAME" and the total on one line; at the
-  right of the names, "RATÉ" then "ANNULER"; under "ANNULER", "JOUEUR SUIVANT" as one tall key down to the bottom.
-  All 7 targets visible without scrolling, buttons as big as in portrait. Nothing hidden by the camera hole (turn the
-  phone both ways); nothing cut in the screen's rounded corners (check the top-left of the band and the bottom-right
-  of "JOUEUR SUIVANT").
+- R-d. Solo, portrait: no total in the player's area (Q2); its MPR is shown in very large type in the middle instead.
+- R-e. Landscape, 4 players: the status and navigation bars disappear; at the top, a band over the whole width:
+  "CRICKET · STANDARD", the set/leg and the S/M pastilles, then on the player's color his name, his MPR and his three
+  darts at the far right. No other player area. Under it the board takes the whole width: each column shows its
+  total above the name, as before; at the right of the names, "RATÉ" then "ANNULER"; under "ANNULER", "JOUEUR
+  SUIVANT" as one tall key down to the bottom, its text written vertically, read from bottom to top. All 7 targets
+  visible without scrolling; the target buttons are a little less tall than in portrait (about 44 dp instead of 56)
+  but as wide, with a visible gap between keys; tapping them is still comfortable. Nothing hidden by the camera hole
+  (turn the phone both ways); nothing cut in the screen's rounded corners (check the top-left of the band and the
+  bottom-right of "JOUEUR SUIVANT").
 - R-f. Landscape: "ANNULER" removes the last dart; "JOUEUR SUIVANT" passes the turn; win a leg: "VICTOIRE" in the
-  band and "VALIDER LA MANCHE" (or "LA PARTIE") readable in the tall key; no word cut.
-- R-g. Landscape, largest system font: the same layout, the landscape texts and keys keep their size.
+  band and "VALIDER LA MANCHE" (or "LA PARTIE") written vertically in the tall key, whole, no word cut; the same in
+  English ("CONFIRM LEG", "CONFIRM MATCH").
+- R-g. Landscape, largest system font: the same layout, the landscape texts and keys keep their size (vertical label
+  included).
 - R-h. TalkBack in landscape: the band (title, set/leg, name, MPR, darts), the column headers, « Raté »,
   « Annuler », each row's cells then its buttons, then « Joueur suivant ».
 
@@ -971,19 +1012,21 @@ Revision 2 replaces steps 3, 9, 10 and 11 (and adapts 1 and 12) as follows (word
 - Model: haiku
 - Why this model: one file deletion, fully specified.
 
-Revision 2 tasks (R1 to R7 are done; R8 starts once Kosmo answered Q12 to Q17 and the plan is approved again):
+Revision 2 tasks (R1 to R7 are done; Kosmo answered Q12 to Q17; R8 starts once the plan is approved again):
 
 ### R8 - Rules text and layout policy for revision 2
 
-- Goal: rewrite CR22 (portrait zone with the total and the height split of R2.1; landscape band, full-width board,
-  one-line headers, action column, budgets of R2.2) and CR23 (landscape: "ANNULER" by "RATÉ", tall "JOUEUR SUIVANT",
-  TalkBack order of R2.2; portrait zone reads its total) in `docs/rules/cricket.md`; add to `CricketBoardLayoutPolicy`
-  the new `portraitSplit(...)` and the new landscape function with their constants (R2.1, R2.2), next to the
-  existing `portrait`/`landscape`/`portraitZoneHeightDp`, which stay until R9 and R10 remove their last users (green
-  build in between); the policy test cases of the revision 2 test plan. If a budget of R2.1 or R2.2 does not hold with
-  the fixtures, stop green and report to main.
+- Goal: rewrite CR22 (portrait zone with the total, the solo MPR and the height split of R2.1; landscape band,
+  full-width board, header row, action column, budgets of R2.2, and the landscape touch-target contract: target
+  buttons at least 42 dp tall and 48 dp wide with a 4 dp gap, the other keys at least 48 x 48, portrait unchanged at
+  48) and CR23 (landscape: "ANNULER" by "RATÉ", tall "JOUEUR SUIVANT" with its vertical label, TalkBack order of R2.2;
+  portrait zone reads its total) in `docs/rules/cricket.md`; add to `CricketBoardLayoutPolicy` the new
+  `portraitSplit(...)` and the new landscape function with their constants (R2.1, R2.2, `LANDSCAPE_ROW_MIN` 42 dp
+  used only by the landscape function), next to the existing `portrait`/`landscape`/`portraitZoneHeightDp`, which
+  stay until R9 and R11 remove their last users (green build in between); the policy test cases of the revision 2
+  test plan. If a budget of R2.1 or R2.2 does not hold with the fixtures, stop green and report to main.
 - Files: `docs/rules/cricket.md`, `ui/cricket/CricketBoardLayoutPolicy.kt`, `CricketBoardLayoutPolicyTest`.
-- Depends on: Q12 to Q17 answered, plan approved.
+- Depends on: plan approved (Q12 to Q17 answered).
 - Done when: `./gradlew :app:testDebugUnitTest` and `./gradlew build` green; `kosmo-detekt` exits 0.
 - Model: sonnet
 - Why this model: a pure policy object and its JVM tests, the same pattern as R2, with the numbers given here.
@@ -991,8 +1034,8 @@ Revision 2 tasks (R1 to R7 are done; R8 starts once Kosmo answered Q12 to Q17 an
 ### R9 - Portrait zone on several lines with the total
 
 - Goal: R2.1: the zone content's `total` (from `headerTotals`, `null` in solo); `CricketPlayerZone` multi-line
-  variant (name line, `CricketZoneTotal` fitted on "8888", 46 dp dart cells) and the two-line fallback; the Q12 solo
-  choice; `PortraitGame` uses `portraitSplit` (the zone gets the split height, the board its own, no `weight` on the
+  variant (name line, `CricketZoneTotal` fitted on "8888", 46 dp dart cells) and the two-line fallback; solo (Q12 A):
+  the MPR in the big style fitted on "8,8" under a small "MPR" label, `ZONE_MPR`, no MPR on the name line; `PortraitGame` uses `portraitSplit` (the zone gets the split height, the board its own, no `weight` on the
   board); remove `portraitZoneHeightDp` and the old `portrait` if unused; the portrait Robolectric cases of the
   revision 2 test plan (rewriting "CR22: the zone has no total", named in the Implementation notes); the portrait
   captures re-recorded and `zone_total_4p_portrait_fr_font130` added; design system (components table, 6.5
@@ -1007,50 +1050,75 @@ Revision 2 tasks (R1 to R7 are done; R8 starts once Kosmo answered Q12 to Q17 an
 - Model: sonnet
 - Why this model: a composable variant built on the existing X01 zone pattern and a fixed policy.
 
-### R10 - Landscape: top band, full-width board, action column
+### R10 - Vertical key label
 
-- Goal: R2.2: `LandscapeGame` rebuilt: `CricketTopBand` (24 dp; `TitleRow` with the short position and chips without
-  vertical padding, then the single-line zone in the player's color without vertical padding, as Q15 decides); the
-  board over the width left, one-line column headers at 48 dp with the fixed landscape totals (24 to 14 sp); in the
-  header row "RATÉ" then the 120 x 48 dp undo key (`LANDSCAPE_UNDO`, `key_undo`, sends the existing undo event);
-  under it, after the 12 dp gap from the triples, the tall `LANDSCAPE_NEXT` key (next player or the CR25 confirm
-  label and event, as the `Actions` bar today); fixed 20 sp labels, word-safe; the zone column, the landscape
-  `Actions` bar and the old landscape policy pieces (`landscape(CricketLandscapeSpace)`, the zone-column fields) are
-  removed; TalkBack order of R2.2; the landscape Robolectric cases of the revision 2 test plan (rewriting the zone
-  column cases, named in the Implementation notes). The R4b cutout padding and system bars stay as they are. If 7 rows
-  do not get 48 dp at 914 x 411 with a 48 dp cutout, stop green and report to main.
-- Files: `ui/cricket/CricketLandscapeScreen.kt`, `CricketTopBand.kt` (new), `CricketBoard.kt`,
-  `CricketHeaderMetrics.kt`, `CricketPlayerZone.kt` (single-line padding), `CricketTags.kt`,
-  `CricketBoardLayoutPolicy.kt`, `CricketBoardLayoutPolicyTest`, `CricketLandscapeScreenTest`.
+- Goal: R2.2 "JOUEUR SUIVANT, vertical text" (Kosmo, Q17 B) as a standalone component, not yet used by a screen:
+  `VerticalKeyLabel(text, style, modifier)` lays the text out with the parent's height as its line length (a layout
+  modifier that swaps the constraints and places the text rotated a quarter-turn counter-clockwise, reading bottom to
+  top), at the fixed 28 sp `keypad` size, breaking only between words and shrinking down to 20 sp at most (reusing
+  `WordSafeText`'s rules, not a copy); its semantics text is the label (TalkBack unchanged). Robolectric tests in a
+  120 x 304.5 dp box at scale 1.0 and 2.0 for "JOUEUR SUIVANT", "NEXT PLAYER", "VALIDER LA PARTIE", "VALIDER LA
+  MANCHE", "VALIDER LE SET", "CONFIRM MATCH", "CONFIRM LEG", "CONFIRM SET": drawn bounds taller than wide and inside
+  the box, not clipped, the effective size (28 sp on one line, or at least 20 sp broken between words), same result at
+  both scales, semantics text equal to the label; and a 120 x 150 dp box that forces the two-line break. If a label
+  does not fit at 20 sp in 120 x 304.5 dp, stop green and report to main (a product question).
+- Files: `ui/cricket/VerticalKeyLabel.kt` (new), `ui/components/WordSafeText.kt` (only if a function must become
+  `internal` for reuse; no behavior change), `VerticalKeyLabelTest` (new).
 - Depends on: R9.
+- Done when: `./gradlew :app:testDebugUnitTest` and `./gradlew build` green; every capture `cmp`-identical;
+  `kosmo-detekt` exits 0.
+- Model: sonnet
+- Why this model: one contained component with a known layout pattern and the existing word-safe rules, fully
+  specified sizes and tests.
+
+### R11 - Landscape: top band, full-width board, action column
+
+- Goal: R2.2: `LandscapeGame` rebuilt: `CricketTopBand` (44 dp at the top edge, 4 dp vertical padding; `TitleRow`
+  with the short position and the chips, then the single-line zone on the player's color with the 18 sp fixed name,
+  MPR or "VICTOIRE", the 36 dp dart cells at the right end, Kosmo Q15 A); the board over the width left with today's
+  landscape column headers (total above the name, fixed); target rows from the new landscape policy (42 dp floor,
+  43.5 dp at 7 rows, keys inset 2 dp); in the header row "RATÉ" then the 120 dp undo key (`LANDSCAPE_UNDO`, the word
+  "ANNULER", `key_undo`, fixed 20 sp, the existing undo event, Kosmo Q16 A); under it, after the 12 dp gap from the
+  triples, the tall `LANDSCAPE_NEXT` key with `VerticalKeyLabel` (next player or the CR25 confirm label and event, as
+  the `Actions` bar today); the zone column, the landscape `Actions` bar and the old landscape policy pieces
+  (`landscape(CricketLandscapeSpace)`, the zone-column fields) are removed; TalkBack order of R2.2; the landscape
+  Robolectric cases of the revision 2 test plan (rewriting the zone-column cases and the landscape 48 dp target-button
+  assertion, each named in the Implementation notes with Q14 B, Q9 B reversal, Q10 A/Q11 A replacement). The R4b
+  cutout padding and system bars stay as they are. If 7 rows get under 42 dp at 914 x 411 with a 48 dp cutout, stop
+  green and report to main.
+- Files: `ui/cricket/CricketLandscapeScreen.kt`, `CricketTopBand.kt` (new), `CricketBoard.kt`,
+  `CricketPlayerZone.kt` (single-line variant sizes), `CricketTags.kt`, `CricketBoardLayoutPolicy.kt`,
+  `CricketBoardLayoutPolicyTest`, `CricketLandscapeScreenTest`.
+- Depends on: R10.
 - Done when: `./gradlew :app:testDebugUnitTest` and `./gradlew build` green; `CricketSystemBarsTest` unchanged and
-  green; portrait and X01 captures `cmp`-identical to the ones before R10; `kosmo-detekt` exits 0. Beyond about 60
+  green; portrait and X01 captures `cmp`-identical to the ones before R11; `kosmo-detekt` exits 0. Beyond about 60
   tool calls, stop green and report what is left.
 - Model: opus
-- Why this model: a layout with 3 dp of vertical spare where every measured part must fit by construction, a new
-  board header form shared with portrait, the cutout, and many landscape tests rewritten; a mistake gives scrolling
-  or clipped keys.
+- Why this model: a whole landscape screen rebuilt with a new touch-target floor that must hold only in landscape,
+  the cutout and the hidden bars, and many landscape tests rewritten without losing a case; a mistake gives scrolling,
+  clipped keys or a portrait regression.
 
-### R11 - Landscape captures and design system
+### R12 - Landscape captures and design system
 
 - Goal: re-record the landscape game captures, rename `title_chips_4p_landscape_fr` to `band_4p_landscape_fr`, add
-  `band_win_pending_4p_landscape_en`; the 6.5 landscape paragraph and the components table of the design system
-  (band, action column; the "landscape texts do not follow the font size" note now includes the action keys, U5);
-  check that no landscape capture still shows the zone column.
+  `band_win_pending_4p_landscape_en` and `next_key_vertical_landscape_fr`; the 6.5 landscape paragraph and the
+  components table of the design system (band, action column, vertical label, the landscape 42 dp target-button
+  floor; the "landscape texts do not follow the font size" note now includes the action keys, U5); check that no
+  landscape capture still shows the zone column.
 - Files: `CricketScreenshotTest`, the landscape capture PNGs, `docs/design/design-system.md`.
-- Depends on: R10.
+- Depends on: R11.
 - Done when: `./gradlew :app:testDebugUnitTest` and `./gradlew build` green; portrait, between-legs, end, setup, home
   and X01 captures `cmp`-identical; `kosmo-detekt` exits 0.
 - Model: haiku
 - Why this model: recording and renaming captures and documenting a layout already built, no design choice.
 
-### R12 - Delete Kosmo's second reference screenshot
+### R13 - Delete Kosmo's second reference screenshot
 
 - Goal: delete the Dartsmind landscape PNG that Kosmo uploaded at the repository root in commit `63c5860` ("Add files
   via upload"); check with `git grep` that no file of the repository names it. Last commit of revision 2, before the
   code review of the final head.
 - Files: the PNG at the repository root (deleted), this plan's Implementation notes.
-- Depends on: R11.
+- Depends on: R12.
 - Done when: `git ls-files ':(glob)*.png'` (root only) lists nothing; `./gradlew build` green; `kosmo-detekt` exits 0.
 - Model: haiku
 - Why this model: one file deletion, fully specified.
@@ -1197,97 +1265,88 @@ Revision 2 (Kosmo's review of PR #60 at `73e5ed7`, comment "A retravailler"):
     MPR, félchettes, modes, Set/Manches... Reste donc les deux boutons à traiter. Je te laisse d'inspirer également de
     cette capture d'écran pour mettre ces boutons totalement sur la droite (annuler à coté de RATE) et joueur suivant
     juste en dessous et sur toute la hauteur restante »
-  (the file name is elided here on purpose: R12 deletes the file and no file that stays may name it.)
+  (the file name is elided here on purpose: R13 deletes the file and no file that stays may name it.)
 - Reversal of Q2 / answer 2, portrait zone only: the zone shows the current player's total again. The solo rule of
-  Q2 (no total on the solo game screen) is not reversed (see Q12). The column-header totals: Q13.
+  Q2 (no total on the solo game screen) is not reversed (Q12 A). The column-header totals stay (Q13 A).
 - Reversal of Q9 B, landscape only: "ANNULER" next to "RATÉ" in the header row, "JOUEUR SUIVANT" just below on the
   right edge over the whole remaining height. Portrait keeps Q9 B (bottom bar "ANNULER" + "JOUEUR SUIVANT").
 - Replacement of Q10 A and Q11 A (landscape): no zone column on the right and no title above a zone; a top band over
   the whole width holds the mode, set/leg, MPR and darts of the visit (Kosmo's list), the board takes the whole width
   left. Q4 A (the zone's content) applies to the band in landscape. Q1 (one block, no scrolling, slightly smaller
-  fonts), Q5 B (bars hidden) and Q11 A's "48 dp buttons in both orientations, no CLAUDE.md exception" stay.
+  fonts) and Q5 B (bars hidden) stay. Q11 A's "48 dp buttons in both orientations, no CLAUDE.md exception" stays for
+  portrait only and is reversed for landscape by Q14 B (below).
 - Kosmo's second reference (landscape): used only for the organization of the band and the two action buttons; a
-  temporary file deleted by R12; everything else follows Q1 to Q11 and the design system.
-- Developer, from the budgets of R2.2 (for design review): band 24 dp and one-line column headers at 48 dp are the only
-  layout that keeps 48 dp rows with 7 rows at 411 dp (Q14 asks Kosmo); the landscape action labels become fixed
-  20 sp like the rest of the landscape screen (U5 extended); the landscape totals go up to 24 sp fixed (room in the
-  48 dp header row); the action column is 120 dp wide, 12 dp from the triples (U4 c kept).
+  temporary file deleted by R13; everything else follows Q1 to Q17 and the design system.
+- Kosmo's answers to the revision 2 questions (2026-10-31, relayed by main):
+  - Q12 A: portrait zone as in X01: name line (name, MPR, S/M chips), the current player's total very large in the
+    middle filling the free space, the three darts at the bottom (46 dp cells); solo: the MPR very large in the middle.
+  - Q13 A: every column-header total stays in portrait (the current player's total appears twice).
+  - Q14 B: landscape: a tall band as in DartsMind and the total above the name in the column headers; the target
+    buttons go down to about 42 to 44 dp. Kosmo accepts the exception to the 48 dp rule for this case, which reverses
+    Q11 A for landscape.
+  - Q15 A: band, left to right: « CRICKET · STANDARD », set/leg and S/M chips; then on the player's color his name,
+    his MPR (or « VICTOIRE ») and the three darts at the far right.
+  - Q16 A: the word « ANNULER » next to « RATÉ ».
+  - Q17 B: vertical text (quarter-turn) on the tall « JOUEUR SUIVANT » key.
+- Landscape touch-target exception (Q14 B), as built: on the Cricket game screen in landscape only, the target buttons
+  (S/D/T of 15 to 20 and Bull) are at least 42 dp tall (`LANDSCAPE_ROW_MIN`; 43.5 dp at 7 rows on the Pixel 7) and at
+  least 48 dp wide (56 dp at 4 players), the touch area is the whole cell, keys are inset 2 dp so there is a 4 dp gap
+  between neighbours, and the 12 dp gap between the triples and the action column stays. « RATÉ », « ANNULER » and
+  « JOUEUR SUIVANT » stay at least 48 x 48 dp; every other screen and the whole portrait screen keep 48 dp. Contrast
+  rules are unchanged. CLAUDE.md is never edited: the PR proposes the matching CLAUDE.md wording under "Proposed owner
+  changes" (Accessibility: "touch targets of at least 48dp, except the Cricket target buttons in landscape: at least
+  42dp tall and 48dp wide, 4dp apart, accepted by the owner on issue #40").
+- Vertical label (Q17 B), as built: quarter-turn counter-clockwise (reads bottom to top), the same text and
+  direction in French and English; fixed 28 sp; one line for every label (the longest, 17 characters, about 262 of
+  280 dp); if a label ever does not fit, it breaks only between words, then shrinks down to 20 sp; TalkBack reads the
+  label unchanged; the size is fixed so it is the same at every system font scale (U5 extended).
+- Developer, from the budgets of R2.2 (for design review): band 44 dp with 4 dp vertical padding; header row as R4
+  (about 58.5 dp, total above the name, fixed texts up to 20 sp); rows (411 - 4 - 44 - 58.5) / 7 = 43.5 dp at 7 rows,
+  10.5 dp above the 42 dp floor; the landscape action labels are fixed like the rest of the landscape screen
+  (« ANNULER » 20 sp, the vertical label 28 sp; U5 extended); the action column is 120 dp wide, 12 dp from the
+  triples (U4 c kept).
 - Developer, from the budgets of R2.1: the rows keep 48 to 56 dp and the zone takes all the height they leave (no
   empty space), with a total of at least 32 dp, else the two-line zone (scale 2.0 with a pending win only).
 
 ## Open questions
 
-Revision 2, for Kosmo (in French, with the developer's recommendation; the plan is written for the recommended
-options and is revised for any other answer):
-
-- Q12. Vignette du joueur en portrait : comment ranger les informations ?
-  A) Comme en X01 : 1re ligne le nom, le MPR et les pastilles S/M ; au milieu le total du joueur en très grand (il
-  prend toute la place libre, donc plus de vide en bas) ; en bas les trois fléchettes, un peu plus grandes
-  qu'aujourd'hui. En solo (pas de total, décision Q2) : le MPR en très grand au milieu.
-  B) Comme A, mais en solo la vignette reste compacte comme aujourd'hui (un peu de vide reste en bas en solo).
-  C) Total de taille moyenne à côté du nom (1re ligne : nom et total ; 2e ligne : MPR et S/M ; 3e ligne :
-  fléchettes) ; la place libre restante agrandit les boutons du tableau (lignes plus hautes).
-  Recommandation : A (même présentation que la partie X01, le vide disparaît à toutes les tailles de police).
-  Dans tous les cas : avec la plus grande police système et une victoire à valider, la vignette peut perdre son grand
-  total (il reste en haut de la colonne du joueur), pour que rien ne défile.
-- Q13. En portrait, les totaux en haut des colonnes du tableau :
-  A) on les garde tous (celui du joueur en cours apparaît donc deux fois : en grand dans la vignette et en haut de sa
-  colonne) ;
-  B) on garde ceux des autres joueurs, on enlève celui du joueur en cours de sa colonne ;
-  C) on les enlève tous en portrait (on ne voit plus les totaux des adversaires en portrait).
-  Recommandation : A (le tableau reste identique et lisible pour tous, en portrait comme en paysage).
-- Q14. Paysage : la hauteur du Pixel 7 (411 dp) ne permet pas à la fois un bandeau aussi haut que DartsMind, des
-  en-têtes de colonnes sur deux lignes et des boutons de 48 dp avec 7 cibles.
-  A) Bandeau fin (24 dp, une seule ligne de texte) ; en-têtes de colonnes sur une ligne : « ▶ NOM » puis le total au
-  bout de la ligne ; boutons de 48 dp, tout visible sans défilement.
-  B) Bandeau plus haut comme DartsMind et total au-dessus du nom ; les boutons descendent à environ 42 à 44 dp (sous la
-  règle des 48 dp, demande une exception que tu avais refusée en Q11).
-  C) Comme B mais boutons de 48 dp : les lignes du bas (15, Bull) défilent.
-  Recommandation : A (rien ne défile, boutons aussi grands qu'en portrait).
-- Q15. Paysage : contenu et ordre du bandeau du haut.
-  A) À gauche « CRICKET · STANDARD », la manche/le set et les pastilles S/M ; puis, sur fond de la couleur du joueur :
-  son nom, son MPR (ou « VICTOIRE ») et ses trois fléchettes tout à droite (comme DartsMind).
-  B) Même ordre mais tout le bandeau sur fond neutre, seul le nom en couleur du joueur.
-  C) Comme A sans le nom du joueur (il est déjà repéré par « ▶ » et le cadre de sa colonne).
-  D) Comme A, et en plus le MPR de chaque joueur en haut de sa colonne (comme DartsMind) : place insuffisante avec
-  4 joueurs, le nom serait très court.
-  Recommandation : A (on sait d'un coup d'œil à qui c'est, comme la vignette d'aujourd'hui).
-- Q16. Paysage : le bouton d'annulation à côté de « RATÉ ».
-  A) Le mot « ANNULER », comme en portrait.
-  B) Une flèche de retour (comme DartsMind), lue « Annuler » par TalkBack.
-  Recommandation : A (même mot qu'en portrait, aucune ambiguïté).
-- Q17. Paysage : le grand bouton « JOUEUR SUIVANT » (étroit, 120 dp, et très haut).
-  A) Texte horizontal sur deux lignes « JOUEUR / SUIVANT » (et « VALIDER / LA / PARTIE » en fin de manche), coupé
-  seulement entre les mots.
-  B) Texte vertical (tourné d'un quart de tour) sur une ligne, plus grand.
-  C) Bouton plus large (environ 168 dp, comme la colonne des boutons) pour tenir sur une ligne ; les colonnes des
-  joueurs perdent environ 12 dp chacune à 4 joueurs.
-  Recommandation : A (lisible sans pencher la tête, comme DartsMind).
-
-Q1 to Q7, Q9, Q10 and Q11 are answered by Kosmo (see Decisions); Q8 was withdrawn.
+None. Q1 to Q7 and Q9 to Q17 are answered by Kosmo (see Decisions); Q8 was withdrawn.
 
 ## Risks
 
 Revision 2 (the landscape risks below about the zone column, the title above the zone, the side-by-side landscape
-bar and the 340 dp right column no longer apply after R10):
-- Landscape vertical spare is 3 dp at 7 rows (band 24 + header 48 + 7 x 48 = 408 of 411 dp): the band and the header
-  row get fixed heights from the policy and every landscape text is fixed, so the fit is by construction; R10's
-  Robolectric fit at 914 x 411 with and without the cutout proves it, and R10 stops if it scrolls. Kosmo's real
-  height is 411.4 dp with the bars hidden.
+bar and the 340 dp right column no longer apply after R11):
+- Landscape target buttons under 48 dp (43.5 dp at 7 rows, 42 dp floor): accepted by Kosmo (Q14 B) but contrary to
+  the CLAUDE.md accessibility line; CI or the owner may refuse the PR until he applies the "Proposed owner changes"
+  wording. Mitigations: the width stays at least 48 dp (56 dp at 4 players), the touch area is the whole cell, 4 dp
+  gap between keys, 12 dp gap to the action column; portrait and every other key stay at 48 dp; tests assert both
+  floors separately so a portrait regression cannot hide behind the landscape exception.
+- Landscape vertical spare is 10.5 dp at 7 rows (band 44 + header 58.5 + bottom margin 4 + 7 x 43.5 = 411 dp, with
+  the 42 dp floor): the band and the header row get fixed heights and every landscape text is fixed, so the fit is
+  by construction; the header height (58.5 dp) is measured from R4, a 10 dp taller header still gives 42 dp rows
+  (policy test); R11's Robolectric fit at 914 x 411 with and without the cutout proves it, and R11 stops if rows go
+  under 42 dp. Kosmo's real height is 411.4 dp with the bars hidden.
+- Vertical label: Compose has no built-in rotated text layout; the swapped-constraints layout modifier must measure
+  and place the rotated text so that its bounds, clicks and TalkBack node match the key; the one-line fit of the
+  17-character labels at 28 sp (about 262 of 280 dp) is an estimate; R10 measures it and stops (product question) if
+  a label needs less than 20 sp.
+- Band at the top edge with top margin 0: the band's rounded ends and the status-bar area (bars hidden, R4b) are near
+  the display's rounded corners; phone step R-e checks it.
 - Rounded screen corners: with no top or bottom margin, the ends of the band and the bottom corners of the board and
   of "JOUEUR SUIVANT" are near the rounded corners of the display; the 12 dp side margin keeps the texts off the curve
   on the Pixel 7 as far as can be judged without a device; phone step R-e checks it. Corner insets
   (`RoundedCorner`) are not used.
-- Chips in the 24 dp band: today 26.5 dp with their padding; their vertical padding is 0 in the band (clipping test).
+- Chips in the 44 dp band keep their normal padding (26.5 dp in the 36 dp inner height; clipping test in R11).
 - The tall "JOUEUR SUIVANT" key is 12 dp from the triple buttons over the whole height of the rows: a tap aimed at a
   triple that slips right ends the visit; the 12 dp gap (U4 c) and the 2 dp key insets are kept; "ANNULER" is next to
   it if needed.
-- Landscape action labels no longer follow the font size (fixed 20 sp, U5 extended); Kosmo is told in the PR.
+- Landscape action labels no longer follow the font size (« ANNULER » fixed 20 sp, vertical label fixed 28 sp, U5
+  extended); Kosmo is told in the PR.
 - Portrait split: the 18 sp name line heights at 1.3 to 2.0 are estimates; at scale 1.5 and 2.0 with a pending win
   the total area is at its 32 dp minimum or replaced by the two-line zone; R9's Robolectric cases measure the real
   values; the fallback never scrolls on the Pixel 7.
 - The zone total grows to about 150 dp at scale 1.0 (as the X01 score): it is the biggest text of the screen, larger
-  than the column-header totals; the UX review judges the balance (Q12).
+  than the column-header totals, as Kosmo chose (Q12 A, Q13 A).
 - About 20 portrait captures and every landscape game capture change; the X01, between-legs, end, setup and home
   captures must stay byte-identical.
 
