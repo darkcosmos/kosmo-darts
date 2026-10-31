@@ -248,6 +248,22 @@ class CricketGameScreenStateTest {
         assertNull(screen(CricketSaveFixtures.match("Ann")).headerTotals)
     }
 
+    /** CR22: the zone's big total is the highlighted player's entry of `headerTotals`, `null` in solo. */
+    @Test
+    fun `CR22 zoneTotal is the header total of the current player and follows undo and the next player`() {
+        val scored = screen().tripleOf(20).throwDart(Dart.single(20))
+        assertEquals(20, scored.zoneTotal)
+        assertEquals(scored.headerTotals!![0], scored.zoneTotal)
+        assertEquals(0, scored.undo().zoneTotal)
+        val bobTurn = scored.tripleOf(20).nextPlayer()
+        assertEquals(bobTurn.headerTotals!![bobTurn.highlightedPlayerIndex!!], bobTurn.zoneTotal)
+    }
+
+    @Test
+    fun `CR22 Q2 zoneTotal is null in a solo game`() {
+        assertNull(screen(CricketSaveFixtures.match("Ann")).tripleOf(20).zoneTotal)
+    }
+
     @Test
     fun `CR13 MPR is absent before the first dart and counted over the match`() {
         val first = screen().tripleOf(20).tripleOf(19).tripleOf(18)

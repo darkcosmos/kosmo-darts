@@ -143,6 +143,10 @@ data class CricketGameScreenState(
     val headerTotals: List<Int>?
         get() = game.state.players.map { it.points }.takeIf { it.size > 1 }
 
+    /** CR22: the highlighted player's points for the zone's big total (his [headerTotals] entry), `null` in solo. */
+    val zoneTotal: Int?
+        get() = headerTotals?.get(highlightedPlayerIndex ?: 0)
+
     /**
      * CR24: records [dart] (one tap, one dart). Ignored while a turn waits (CR7), while a win is pending (CR25), and
      * for the 25 and the Bull with 25-Bull off (CR1).

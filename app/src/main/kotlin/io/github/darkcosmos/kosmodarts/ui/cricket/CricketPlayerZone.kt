@@ -20,18 +20,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.ui.components.Chips
+import io.github.darkcosmos.kosmodarts.ui.components.DART_SLOT_HEIGHT
 import io.github.darkcosmos.kosmodarts.ui.components.DartSlots
 import io.github.darkcosmos.kosmodarts.ui.components.ZoneStat
 import io.github.darkcosmos.kosmodarts.ui.format.displayName
@@ -65,6 +69,10 @@ class CricketZoneContent(
     val isVictory: Boolean,
     val turnDarts: List<Dart>,
     val nextDartIndex: Int?,
+    /** The player's points for the big total, `null` in a solo game (CR22, Q2: no total on the solo screen). */
+    val total: Int? = null,
+    /** The formatted MPR, shown large in a solo game (Q12 A). */
+    val mprValue: String = "",
 )
 
 /**
@@ -77,7 +85,12 @@ class CricketZoneContent(
  * their minimum size; the S/M chips are then drawn by the screen, at the end of the title line.
  */
 @Composable
-fun CricketPlayerZone(content: CricketZoneContent, modifier: Modifier = Modifier, isSingleLine: Boolean = false) {
+fun CricketPlayerZone(
+    content: CricketZoneContent,
+    modifier: Modifier = Modifier,
+    isSingleLine: Boolean = false,
+    showsTotal: Boolean = false,
+) {
     val colors = KosmoTheme.colors
     val animate = LocalAnimationSettings.current.areAnimationsEnabled()
     val background by animateColorAsState(
@@ -91,7 +104,11 @@ fun CricketPlayerZone(content: CricketZoneContent, modifier: Modifier = Modifier
         label = "zone text color",
     )
     Column(
-        verticalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = if (showsTotal && !isSingleLine) {
+            Arrangement.spacedBy(INNER_GAP)
+        } else {
+            Arrangement.SpaceBetween
+        },
         modifier = modifier
             .testTag(GameTags.CURRENT_PLAYER)
             .semantics { isTraversalGroup = true }
@@ -104,9 +121,48 @@ fun CricketPlayerZone(content: CricketZoneContent, modifier: Modifier = Modifier
     ) {
         if (isSingleLine) {
             SingleLine(content, contentColor)
+        } else if (showsTotal) {
+            // Solo: the MPR is the big number, so it is not repeated on the name line.
+            NameLine(content, contentColor, hidesStat = content.total == null)
+            BigNumber(content, contentColor, Modifier.weight(1f).fillMaxWidth())
+            DartLine(content, DART_SLOT_HEIGHT)
         } else {
             NameLine(content, contentColor)
-            DartLine(content)
+            DartLine(content, COMPACT_SLOT_HEIGHT)
+        }
+    }
+}
+
+/** The middle of the portrait zone: the total, or in a solo game a small "MPR" label over the big MPR. */
+@Composable
+private fun BigNumber(content: CricketZoneContent, contentColor: Color, modifier: Modifier) {
+    val total = content.total
+    if (total != null) {
+        CricketZoneTotal(
+            text = total.toString(),
+            reference = ZONE_TOTAL_REFERENCE,
+            description = pluralStringResource(R.plurals.cricket_header_points, total, total),
+            tag = CricketTags.ZONE_TOTAL,
+            contentColor = contentColor,
+            modifier = modifier,
+        )
+    } else {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier) {
+            Text(
+                text = stringResource(R.string.cricket_zone_mpr_label),
+                style = KosmoTheme.typography.label,
+                color = contentColor,
+                maxLines = 1,
+                modifier = Modifier.clearAndSetSemantics { },
+            )
+            CricketZoneTotal(
+                text = content.mprValue,
+                reference = ZONE_MPR_REFERENCE,
+                description = content.stat.text,
+                tag = CricketTags.ZONE_MPR,
+                contentColor = contentColor,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            )
         }
     }
 }
@@ -143,6 +199,7 @@ private fun NameLine(
     contentColor: Color,
     modifier: Modifier = Modifier,
     isSingleLine: Boolean = false,
+    hidesStat: Boolean = false,
 ) {
     val typography = KosmoTheme.typography
     val toThrow = stringResource(R.string.game_to_throw, content.name)
@@ -167,7 +224,7 @@ private fun NameLine(
         )
         if (content.isVictory) {
             WinBanner(isSingleLine)
-        } else {
+        } else if (!hidesStat) {
             Text(
                 text = content.stat.text,
                 style = typography.label,
@@ -203,12 +260,12 @@ private fun WinBanner(isSingleLine: Boolean) {
 }
 
 @Composable
-private fun DartLine(content: CricketZoneContent) {
+private fun DartLine(content: CricketZoneContent, slotHeight: Dp) {
     DartSlots(
         darts = content.turnDarts,
         nextDartIndex = content.nextDartIndex,
         isFinalDartHighlighted = false,
         modifier = Modifier.fillMaxWidth(),
-        slotHeight = COMPACT_SLOT_HEIGHT,
+        slotHeight = slotHeight,
     )
 }

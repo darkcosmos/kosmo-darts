@@ -38,13 +38,14 @@ class CricketBoardLayoutPolicyTest {
     private fun candidates(f: Fixture, sizes: List<Float>) =
         sizes.map { TotalSizeCandidate(it, it * f.effectiveScale20) }
 
+    /** The portrait board of revision 2 (rows 48 to 56 dp) for one fixture, with the plan's name-line estimate. */
     private fun portrait(f: Fixture, players: Int, rows: Int, hasTotal: Boolean = players > 1): CricketBoardLayout {
         val header = CricketBoardLayoutPolicy.columnHeaderHeightDp(if (hasTotal) f.totalLine else null, f.bodyLine)
-        val zone = CricketBoardLayoutPolicy.portraitZoneHeightDp(f.bodyLine)
-        val board = CricketBoardLayoutPolicy.portraitBoardHeightDp(814f, f.matchHeader, zone, f.bar)
-        val layout = CricketBoardLayoutPolicy.portrait(411f, board, header, players, rows)
-        assertTrue("pinned parts and rows fit 814 dp", header + layout.rowHeightDp * rows <= board + 0.01f)
-        return layout
+        val nameLine = splitFixtures.first { it.scale == f.scale }.nameLine
+        val available = 814f - 34f - f.matchHeader - f.bar
+        val split = CricketBoardLayoutPolicy.portraitSplit(411f, available, header, nameLine, players, rows)
+        assertTrue("pinned parts and rows fit 814 dp", header + split.board.rowHeightDp * rows <= available + 0.01f)
+        return split.board
     }
 
     /** CR22: at 411 x 814 dp, 4 players, the tallest bar, nothing scrolls at any font scale. */
@@ -61,17 +62,6 @@ class CricketBoardLayoutPolicyTest {
         }
     }
 
-    /** CR22: the worst case (scale 2.0, 4 players, 7 rows) keeps about 21 dp of spare, each scale its own spare. */
-    @Test
-    fun `portrait spare matches the plan table`() {
-        for (f in fixtures) {
-            val header = CricketBoardLayoutPolicy.columnHeaderHeightDp(f.totalLine, f.bodyLine)
-            val zone = CricketBoardLayoutPolicy.portraitZoneHeightDp(f.bodyLine)
-            val board = CricketBoardLayoutPolicy.portraitBoardHeightDp(814f, f.matchHeader, zone, f.bar)
-            assertEquals("scale ${f.scale}", f.spareAt814, board - header - 7 * 48f, 0.6f)
-        }
-    }
-
     /** CR22: the column header is about 63 dp at scale 1.0 and 101 dp at 2.0; solo has no total line. */
     @Test
     fun `column header is strip plus total plus name`() {
@@ -79,15 +69,7 @@ class CricketBoardLayoutPolicyTest {
         assertEquals(101.1f, CricketBoardLayoutPolicy.columnHeaderHeightDp(56.3f, 41.8f), 0.01f)
         assertEquals(25.5f, CricketBoardLayoutPolicy.columnHeaderHeightDp(null, 22.5f), 0.01f)
     }
-
     /** CR22: the zone is 84 dp times the growth of the 14 sp line, capped at 1.5. */
-    @Test
-    fun `portrait zone height grows with the body line up to 1_5`() {
-        assertEquals(84f, CricketBoardLayoutPolicy.portraitZoneHeightDp(22.5f), 0.01f)
-        assertEquals(112.8f, CricketBoardLayoutPolicy.portraitZoneHeightDp(30.2f), 0.1f)
-        assertEquals(126f, CricketBoardLayoutPolicy.portraitZoneHeightDp(41.8f), 0.01f)
-    }
-
     /** CR22, CR24: player columns 61/76/110/219 dp and button column 144/159/168/168 dp at 4/3/2/1 players. */
     @Test
     fun `portrait column widths at 411 dp`() {
@@ -176,7 +158,7 @@ class CricketBoardLayoutPolicyTest {
     @Test
     fun `rows scroll and keep 48 dp when they do not fit`() {
         val header = CricketBoardLayoutPolicy.columnHeaderHeightDp(37.5f, 22.5f)
-        val portrait = CricketBoardLayoutPolicy.portrait(360f, header + 7 * 48f - 1f, header, 4, 7)
+        val portrait = CricketBoardLayoutPolicy.portraitSplit(360f, header + 7 * 48f + 10f, header, 28.9f, 4, 7).board
         assertTrue(portrait.scrolls)
         assertEquals(48f, portrait.rowHeightDp, 0.001f)
         val landscape = CricketBoardLayoutPolicy.landscape(landscapeSpace(height = 355f)).board
@@ -353,6 +335,21 @@ class CricketBoardLayoutPolicyTest {
         assertFalse(s.board.scrolls)
         assertEquals(22.9f, s.zoneHeightDp - zoneFixedHeightDp(f.nameLine), 0.2f)
     }
+    /**
+     * CR22 (R2.1), measured by R9 in Robolectric at 411 x 814 dp (name line 28.9, 33.9, 38.1 and 47.2 dp at scales
+     * 1.0, 1.3, 1.5 and 2.0; the action bar is at most two lines there, 110.5 dp at 2.0 even with the pending
+     * label): the real bars are lower than the plan's estimates, so scale 2.0 keeps its total (32 dp).
+     */
+    @Test
+    fun `portraitSplit with the measured name line at scale 2 keeps the total with a pending win`() {
+        val f = splitFixtures[3].copy(nameLine = 47.2f, pendingBar = 110.5f)
+        val s = split(f, f.pendingBar)
+        assertTrue(s.showsTotal)
+        assertEquals(32f, s.totalAreaHeightDp, 0.2f)
+        assertEquals(53f, s.board.rowHeightDp, 0.1f)
+        assertFalse(s.board.scrolls)
+    }
+
 
     /** CR22 (R2.1): the zone's fixed part is 2 x 6 + name line + 2 x 8 + 46 dp of dart cells. */
     @Test

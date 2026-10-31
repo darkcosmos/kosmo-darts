@@ -23,6 +23,12 @@ object CricketTags {
     /** The marks per round of the zone. */
     const val ZONE_STAT: String = "cricket_zone_stat"
 
+    /** The big total of the portrait zone (CR22): absent in a solo game and in the two-line zone. */
+    const val ZONE_TOTAL: String = "cricket_zone_total"
+
+    /** The big MPR of the portrait zone in a solo game (CR22, Q12 A). */
+    const val ZONE_MPR: String = "cricket_zone_mpr"
+
     /** One target row. */
     fun row(target: CricketTarget): String = "cricket_row_${id(target)}"
 

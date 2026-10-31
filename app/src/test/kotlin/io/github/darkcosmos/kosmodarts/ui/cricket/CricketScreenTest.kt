@@ -26,6 +26,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTarget
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
@@ -277,11 +278,12 @@ class CricketScreenTest {
     // Zone (CR22).
 
     @Test
-    fun `CR22 the zone has no total and no n over 7`() {
-        show(match(listOf("Ann", "Bob"), darts = listOf("T20")))
+    fun `CR22 Q2 reversed the portrait zone shows the total and no n over 7`() {
+        show(match(listOf("Ann", "Bob"), darts = listOf("T20", "T20")))
         composeRule.onAllNodes(hasText("/7", substring = true), useUnmergedTree = true).assertCountEquals(0)
         node(CricketTags.columnTotal(0)).assertExists()
         node(CricketTags.ZONE_STAT).assertExists()
+        node(CricketTags.ZONE_TOTAL).assertTextEquals("60").assertContentDescriptionEquals(points(60))
     }
 
     @Test
@@ -289,6 +291,127 @@ class CricketScreenTest {
         show(match(listOf("Ann"), darts = listOf("T20")))
         composeRule.onAllNodes(hasText("/7", substring = true), useUnmergedTree = true).assertCountEquals(0)
         node(CricketTags.columnTotal(0)).assertDoesNotExist()
+        node(CricketTags.ZONE_TOTAL).assertDoesNotExist()
+    }
+
+    /** Q12 A: in solo the MPR is the big number under a small label, and the name line has no MPR. */
+    @Test
+    fun `CR22 Q12 A solo shows the MPR large and not on the name line`() {
+        show(match(listOf("Ann"), darts = listOf("T20")))
+        val mpr = textNodeOf(CricketTags.ZONE_MPR).config[SemanticsProperties.Text].single().text
+        node(CricketTags.ZONE_MPR).assertExists().assertContentDescriptionEquals("MPR $mpr")
+        node(CricketTags.ZONE_STAT).assertDoesNotExist()
+        assertTextNotClipped(CricketTags.ZONE_MPR)
+        assertTrue(textSizePx(CricketTags.ZONE_MPR) > px(30f))
+    }
+
+    private fun points(total: Int): String =
+        composeRule.activity.resources.getQuantityString(R.plurals.cricket_header_points, total, total)
+
+    private fun textSizePx(tag: String): Float {
+        val results = mutableListOf<TextLayoutResult>()
+        textNodeOf(tag).config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+        return with(composeRule.density) { results.single().layoutInput.style.fontSize.toPx() }
+    }
+
+    /** Q2 reversed for the portrait zone: the total is read, whole, and the zone and board leave no empty space. */
+    private fun assertZoneTotal(players: Int, isWinPending: Boolean) {
+        val label = "$players players, win pending $isWinPending"
+        val state = if (isWinPending) {
+            pendingWin(names(players))
+        } else {
+            match(names(players), darts = listOf("T20", "T20"))
+        }
+        show(state)
+        val total = checkNotNull(state.zoneTotal)
+        node(CricketTags.ZONE_TOTAL).assertTextEquals(total.toString())
+            .assertContentDescriptionEquals(points(total))
+        assertTextNotClipped(CricketTags.ZONE_TOTAL)
+        assertTrue("$label: total inside the zone", isInside(CricketTags.ZONE_TOTAL, GameTags.CURRENT_PLAYER))
+        // The total area is 32 dp; the fitted text is a pixel or two under it.
+        assertTrue("$label: total at least 32 dp tall", bounds(CricketTags.ZONE_TOTAL).height >= px(32f) - 3f)
+        val zone = bounds(GameTags.CURRENT_PLAYER)
+        val board = bounds(CricketTags.BOARD)
+        val bar = bounds(KeypadTags.UNDO)
+        assertTrue("$label: zone to board gap", board.top - zone.bottom in 0f..px(6f) + 1f)
+        assertTrue("$label: board to bar gap ${bar.top - board.bottom}", bar.top - board.bottom in 0f..px(6f) + 1f)
+    }
+
+    private fun isInside(inner: String, outer: String): Boolean {
+        val a = bounds(inner)
+        val b = bounds(outer)
+        return a.top >= b.top - 1f && a.bottom <= b.bottom + 1f && a.left >= b.left - 1f && a.right <= b.right + 1f
+    }
+
+    private fun assertZoneTotalAtThisScale() {
+        listOf(2, 4).forEach { players ->
+            assertZoneTotal(players, isWinPending = false)
+            assertZoneTotal(players, isWinPending = true)
+        }
+    }
+
+    @Test
+    fun `CR22 the zone reads its total at scale 1`() = assertZoneTotalAtThisScale()
+
+    @Test
+    @Config(fontScale = 1.3f)
+    fun `CR22 the zone reads its total at scale 1_3`() = assertZoneTotalAtThisScale()
+
+    @Test
+    @Config(fontScale = 1.5f)
+    fun `CR22 the zone reads its total at scale 1_5`() = assertZoneTotalAtThisScale()
+
+    @Test
+    @Config(fontScale = 2.0f)
+    fun `CR22 the zone reads its total at scale 2`() = assertZoneTotalAtThisScale()
+
+    /**
+     * R2.1: when 48 dp rows leave the total under 32 dp the zone is the two-line zone and the total stays in the
+     * header. On the 411 x 814 dp Pixel 7 the real bars are lower than the plan's estimates (the action bar has two
+     * lines at most), so the fallback is exercised on a 760 dp tall screen at scale 2.0.
+     */
+    @Test
+    @Config(qualifiers = "fr-w411dp-h760dp-port-420dpi", fontScale = 2.0f)
+    fun `CR22 a short screen at scale 2 has the two-line zone with the MPR on the name line`() {
+        assertFits(4, isWinPending = true)
+        node(CricketTags.ZONE_TOTAL).assertDoesNotExist()
+        assertFits(4, isWinPending = false)
+        node(CricketTags.ZONE_TOTAL).assertDoesNotExist()
+        node(CricketTags.ZONE_STAT).assertExists()
+        node(CricketTags.columnTotal(0)).assertExists()
+        assertEquals(px(36f), bounds(GameTags.dartSlot(0)).height, 1f)
+    }
+
+    /** The size is fitted on "8888": the digits shown do not change it (same header, so the same room). */
+    @Test
+    fun `CR22 the big total keeps its size from 1 to 3 digits`() {
+        show(match(fourPlayers))
+        node(CricketTags.ZONE_TOTAL).assertTextEquals("0")
+        val small = textSizePx(CricketTags.ZONE_TOTAL)
+        show(CricketGameScreenState(CricketSaveFixtures.match(*fourPlayers.toTypedArray()).annScoring(1)))
+        node(CricketTags.ZONE_TOTAL).assertTextEquals("120")
+        assertTextNotClipped(CricketTags.ZONE_TOTAL)
+        assertEquals(small, textSizePx(CricketTags.ZONE_TOTAL), 0.01f)
+    }
+
+    /** Four digits are whole in the zone (the header total falls back to a smaller size). */
+    @Test
+    fun `CR22 a four digit total is whole in the zone`() {
+        show(CricketGameScreenState(CricketSaveFixtures.match(*fourPlayers.toTypedArray()).annScoring(6)))
+        node(CricketTags.ZONE_TOTAL).assertTextEquals("1020")
+        assertTextNotClipped(CricketTags.ZONE_TOTAL)
+        assertTrue(isInside(CricketTags.ZONE_TOTAL, GameTags.CURRENT_PLAYER))
+    }
+
+    /** TalkBack order of the zone: name line, total, darts. */
+    @Test
+    fun `CR22 the zone is read name, total, darts`() {
+        show(match(listOf("Ann", "Bob"), darts = listOf("T20")))
+        val name = bounds(GameTags.playerName(0))
+        val total = bounds(CricketTags.ZONE_TOTAL)
+        val darts = bounds(GameTags.dartSlot(0))
+        assertEquals("dart cells are 46 dp tall", px(46f), darts.height, 1f)
+        assertTrue(name.bottom <= total.top + 1f && total.bottom <= darts.top + 1f)
     }
 
     // TalkBack (CR23).

@@ -221,6 +221,7 @@
     <string name="cricket_variant_cut_throat">CUT-THROAT</string>
     <string name="cricket_header_without_bull">WITHOUT 25-BULL</string>
     <string name="cricket_zone_mpr">MPR %1$s</string>
+    <string name="cricket_zone_mpr_label">MPR</string>
     <string name="match_mpr_header" translatable="false">MPR MATCH</string>
     <string name="match_points_header" translatable="false">PTS</string>
     <string name="between_points" translatable="false">%1$d PTS</string>

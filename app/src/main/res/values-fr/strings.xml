@@ -206,6 +206,7 @@
     <string name="cricket_variant_cut_throat">CUT-THROAT</string>
     <string name="cricket_header_without_bull">SANS 25-BULL</string>
     <string name="cricket_zone_mpr">MPR %1$s</string>
+    <string name="cricket_zone_mpr_label">MPR</string>
     <string name="cricket_mpr_description">Marques par tour %1$s</string>
     <string name="cricket_points_description">Points %1$d</string>
     <string name="cricket_win_banner">VICTOIRE</string>

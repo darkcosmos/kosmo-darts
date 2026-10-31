@@ -157,11 +157,6 @@ object CricketBoardLayoutPolicy {
     const val LANDSCAPE_DART_SP = 14f
     const val CHIPS_VERTICAL_PADDING = 4f
 
-    /** The 14 sp body line at font scale 1.0, and the portrait zone height that goes with it. */
-    const val BODY_LINE_BASE = 22.5f
-    const val ZONE_HEIGHT = 84f
-    const val ZONE_GROWTH_MAX = 1.5f
-
     /** Tolerance for float comparisons of heights computed from a division. */
     private const val EPSILON = 0.001f
 
@@ -204,14 +199,6 @@ object CricketBoardLayoutPolicy {
     fun columnHeaderHeightDp(totalLineDp: Float?, nameLineDp: Float): Float =
         STRIP_HEIGHT + (totalLineDp ?: 0f) + nameLineDp
 
-    /** The portrait zone: 84 dp times the growth of the 14 sp line, capped at 1.5. */
-    fun portraitZoneHeightDp(bodyLineDp: Float): Float =
-        ZONE_HEIGHT * min(max(bodyLineDp / BODY_LINE_BASE, 1f), ZONE_GROWTH_MAX)
-
-    /** Height left for the column header and the rows: the screen minus margins, gaps and the pinned parts. */
-    fun portraitBoardHeightDp(screenHeightDp: Float, matchHeaderDp: Float, zoneDp: Float, barDp: Float): Float =
-        screenHeightDp - TOP_MARGIN - matchHeaderDp - GAP - zoneDp - GAP - GAP - barDp - BOTTOM_MARGIN
-
     /** Width of the player columns and of the button column for [boardWidthDp] (the screen minus its side margins). */
     fun columnWidths(boardWidthDp: Float, playerCount: Int): Pair<Float, Float> {
         val roomForPlayers = boardWidthDp - BUTTON_COLUMN_WIDTH_MAX
@@ -223,19 +210,6 @@ object CricketBoardLayoutPolicy {
         }
         return (boardWidthDp - buttons) / playerCount to buttons
     }
-
-    /**
-     * Portrait board: [screenWidthDp] is the whole width. [boardHeightDp] is the height left for the header and the
-     * rows ([portraitBoardHeightDp]).
-     */
-    fun portrait(
-        screenWidthDp: Float,
-        boardHeightDp: Float,
-        headerHeightDp: Float,
-        playerCount: Int,
-        rowCount: Int,
-    ): CricketBoardLayout =
-        layout(screenWidthDp - 2 * SIDE_MARGIN, boardHeightDp, headerHeightDp, playerCount, rowCount)
 
     /**
      * Revision 2 portrait (plan R2.1). [availableHeightDp] is the height shared by the zone and the board (the screen

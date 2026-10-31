@@ -91,7 +91,6 @@ private fun horizontalDp(insets: WindowInsets): Float {
 
 @Composable
 private fun PortraitGame(game: CricketGameScreenState, onEvent: (AppEvent) -> Unit, screenWidthDp: Float) {
-    val zoneHeight = CricketBoardLayoutPolicy.portraitZoneHeightDp(rememberLineHeightDp(KosmoTheme.typography.label))
     Column(
         verticalArrangement = Arrangement.spacedBy(CricketBoardLayoutPolicy.GAP.dp),
         modifier = Modifier
@@ -105,8 +104,8 @@ private fun PortraitGame(game: CricketGameScreenState, onEvent: (AppEvent) -> Un
             ),
     ) {
         Header(game, Modifier.fillMaxWidth())
-        Zone(game, Modifier.height(zoneHeight.dp).fillMaxWidth())
-        // The board takes the height the pinned parts leave; the policy decides the rows (48 to 56 dp) from it.
+        // The zone and the board share the height the pinned parts leave; the policy splits it (R2.1): the rows keep
+        // 48 to 56 dp and the zone takes all the rest, so nothing is left empty under the board.
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             val players = game.game.config.players.size
             val boardWidth = screenWidthDp - 2 * CricketBoardLayoutPolicy.SIDE_MARGIN
@@ -116,14 +115,18 @@ private fun PortraitGame(game: CricketGameScreenState, onEvent: (AppEvent) -> Un
                 playerWidth,
                 CricketBoardLayoutPolicy.PORTRAIT_TOTAL_SIZES_SP,
             )
-            val layout = CricketBoardLayoutPolicy.portrait(
+            val split = CricketBoardLayoutPolicy.portraitSplit(
                 screenWidthDp,
-                maxHeight.value,
+                maxHeight.value - CricketBoardLayoutPolicy.GAP,
                 header.heightDp,
+                rememberLineHeightDp(KosmoTheme.typography.labelLarge),
                 players,
                 game.game.config.targets.size,
             )
-            Board(game, layout, header, onEvent)
+            Column(verticalArrangement = Arrangement.spacedBy(CricketBoardLayoutPolicy.GAP.dp)) {
+                Zone(game, Modifier.height(split.zoneHeightDp.dp).fillMaxWidth(), showsTotal = split.showsTotal)
+                Board(game, split.board, header, onEvent)
+            }
         }
         Actions(game, onEvent)
     }
@@ -154,7 +157,12 @@ internal fun Header(game: CricketGameScreenState, modifier: Modifier, isShortPos
 
 /** The zone of the highlighted player: the one whose turn waits, the winner of a pending win, else the thrower. */
 @Composable
-internal fun Zone(game: CricketGameScreenState, modifier: Modifier, isSingleLine: Boolean = false) {
+internal fun Zone(
+    game: CricketGameScreenState,
+    modifier: Modifier,
+    isSingleLine: Boolean = false,
+    showsTotal: Boolean = false,
+) {
     val index = game.highlightedPlayerIndex ?: 0
     val locale = LocalConfiguration.current.locales[0]
     val mpr = formatMpr(game.mprOf(index), locale, stringResource(R.string.game_average_none))
@@ -168,9 +176,12 @@ internal fun Zone(game: CricketGameScreenState, modifier: Modifier, isSingleLine
             isVictory = game.zoneMode == CricketZoneMode.VICTORY,
             turnDarts = game.zoneDarts,
             nextDartIndex = game.nextDartIndex,
+            total = game.zoneTotal,
+            mprValue = mpr,
         ),
         modifier = modifier,
         isSingleLine = isSingleLine,
+        showsTotal = showsTotal,
     )
 }
 

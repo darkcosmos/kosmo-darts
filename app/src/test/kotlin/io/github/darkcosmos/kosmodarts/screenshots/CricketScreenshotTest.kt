@@ -113,6 +113,10 @@ class CricketScreenshotTest {
     fun board4PlayersLargestFont() = capture("board_4p_portrait_fr_font200", FOUR.invoke())
 
     @Test
+    @Config(qualifiers = "+fr-port", fontScale = 1.3f)
+    fun zoneTotal4PlayersFont130() = capture("zone_total_4p_portrait_fr_font130", FOUR.invoke())
+
+    @Test
     @Config(qualifiers = "+fr-port")
     fun deadRows2Players() = capture("dead_rows_2p_portrait_fr", deadRows("Anna", "Bob"))
 
