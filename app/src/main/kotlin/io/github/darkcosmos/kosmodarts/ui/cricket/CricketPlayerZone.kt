@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -52,14 +53,13 @@ class CricketZoneContent(
     val stat: ZoneStat,
     val indicator: MatchIndicator?,
     val isVictory: Boolean,
-    val score: String,
     val turnDarts: List<Dart>,
     val nextDartIndex: Int?,
 )
 
 /**
  * The current player's compact zone (CR22): in the player's color. Line 1: name (one line, ellipsis), the [ZoneStat]
- * (MPR), the S/M chips; line 2: the score in `tileScore` and the dart slots (the darts that give a mark, a miss for the
+ * (MPR), the S/M chips; line 2: the dart slots (the darts that give a mark, a miss for the
  * others). While a win is pending (CR25) a white "VICTORY" banner takes the place of the MPR on line 1: the compact
  * zone has no route area, and the banner replaces the X01 CHECKOUT banner. Its height is given by the layout policy.
  */
@@ -87,7 +87,7 @@ fun CricketPlayerZone(content: CricketZoneContent, modifier: Modifier = Modifier
             .padding(horizontal = ZONE_PADDING_HORIZONTAL, vertical = ZONE_PADDING_VERTICAL),
     ) {
         NameLine(content, contentColor)
-        ScoreLine(content, contentColor)
+        DartLine(content)
     }
 }
 
@@ -148,22 +148,12 @@ private fun WinBanner() {
 }
 
 @Composable
-private fun ScoreLine(content: CricketZoneContent, contentColor: Color) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(INNER_GAP)) {
-        Text(
-            text = content.score,
-            style = KosmoTheme.typography.tileScore,
-            color = contentColor,
-            maxLines = 1,
-            softWrap = false,
-            modifier = Modifier.testTag(CricketTags.ZONE_SCORE),
-        )
-        DartSlots(
-            darts = content.turnDarts,
-            nextDartIndex = content.nextDartIndex,
-            isFinalDartHighlighted = false,
-            modifier = Modifier.weight(1f),
-            slotHeight = COMPACT_SLOT_HEIGHT,
-        )
-    }
+private fun DartLine(content: CricketZoneContent) {
+    DartSlots(
+        darts = content.turnDarts,
+        nextDartIndex = content.nextDartIndex,
+        isFinalDartHighlighted = false,
+        modifier = Modifier.fillMaxWidth(),
+        slotHeight = COMPACT_SLOT_HEIGHT,
+    )
 }

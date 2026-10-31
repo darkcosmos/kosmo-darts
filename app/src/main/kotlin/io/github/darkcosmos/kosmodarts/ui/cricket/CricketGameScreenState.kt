@@ -142,10 +142,6 @@ data class CricketGameScreenState(
             }
         }
 
-    /** CR23: each player's points for the footer row, or `null` in a solo game (no points row). */
-    val boardPoints: List<Int>?
-        get() = game.state.players.map { it.points }.takeIf { it.size > 1 }
-
     /** CR24: the buttons of each row of [boardRows], same order; all locked while a turn waits or a win is pending. */
     val buttonRows: List<List<CricketTargetButton>>
         get() = game.config.targets.map { buttonRow(it, isEnabled = isKeypadEnabled) }
