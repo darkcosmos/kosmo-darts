@@ -1064,6 +1064,10 @@ notes are applied:
 - the Robolectric fit test at 360 x 640, font scale 1.0, 4 players, asserts that the board needs no scrolling;
 - the "Raté" check (U4) is phone check 14.
 
+Owner review of PR #60 (head `2f1fc6a`): the game screen rework (zone without total, totals in the board, three
+buttons per target instead of the keypad) is planned in `docs/plans/40-cricket-mode-screen-rework.md`, which
+supersedes CR22 to CR24 and task T8's keypad here once approved.
+
 ## Open questions
 
 - O1 and O2: answered by Kosmo (see Decisions).
