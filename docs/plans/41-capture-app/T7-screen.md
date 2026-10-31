@@ -1,0 +1,38 @@
+# T7: Capture screen and captures
+
+## Goal
+The single landscape screen that renders `CaptureUiState` of T6 and forwards events, with a preview slot that tests
+replace by a placeholder.
+
+## Files
+- Added in `capture/.../capture/ui/`: `CaptureScreen` (two columns, status line, volley readout, keypad of T5,
+  action and control rows; `preview: @Composable () -> Unit` slot), `StopConfirmDialog`, `DeleteAllDialog`,
+  `PermissionPanel`, test tags. No logic: the readout and every enabled flag come from the state.
+- Strings in `values/` and `values-fr/`: root plan section "Screens and states" table (French plurals: `one` covers
+  0 and 1).
+- `CaptureActivity`: `enableEdgeToEdge`, safe drawing insets, hosts the screen with a placeholder preview (T8 wires
+  the camera).
+
+## Depends on
+T5, T6.
+
+## Rules
+CP2, CP3, CP6, CP7, CP8, CP13. Root plan "Screens and states": layout, height budget, primary action per state,
+42dp landscape buttons (Q14), separated Delete all (Q16). Test names or comments cite the CP id.
+
+## Tests
+- Robolectric UI at 915x412dp: Start then T20, 5, Miss shows "Volley 1" with `T20`, `5`, `Miss` and the volley full
+  hint; Undo clears the third slot; Stop shows the confirmation and Continue keeps the session; Delete all shows the
+  dialog with the reinstall note; every icon, the REC dot, the preview and the toggle have a content description.
+- At 412dp height and at font scale 2.0: no text clipped, buttons and keys at least 42dp tall and 48dp wide.
+- Roborazzi captures, English and French, at 915x412dp, at 640x360dp and at font scale 2.0: idle, running with 2
+  darts, volley full, Stop confirmation, Delete all confirmation, permission missing, permanently denied, photo
+  failure message, saving, error.
+
+## Done when
+`./gradlew :capture:testDebugUnitTest build` green, `kosmo-detekt` exit 0.
+
+## Model
+sonnet. Why: screen from a specified layout and height budget.
+
+## Implementation notes

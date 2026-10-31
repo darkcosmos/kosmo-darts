@@ -49,33 +49,54 @@ decision R2: not handled in this mission); sound in videos; publishing the app.
   available resolution, saved through MediaStore. Actual video and photo resolutions are read from the bound use cases'
   `resolutionInfo` and stored in the truth file, with the camera's `SENSOR_INFO_TIMESTAMP_SOURCE`.
 - **Durability**: the truth file is rewritten after every event (owner gets a valid file even if the app dies).
-  Leaving the screen (stop of the activity) or a camera/recording error ends the session as Stop does (CP9).
+  Really leaving the screen or a camera/recording error ends the session as Stop does (CP9).
+- **Configuration changes** (owner decision Q17): the session state lives in `CaptureViewModel`, which survives
+  recreation. The manifest also declares `configChanges` for `orientation|screenSize|screenLayout|smallestScreenSize|
+  uiMode|locale|layoutDirection|fontScale|density|keyboard|keyboardHidden|navigation`, so CameraX stays bound and the
+  recording is not cut (Compose recomposes with the new configuration). Only `onStop` with
+  `!isChangingConfigurations` sends Interrupt; this decision lives in the Activity, tested through the view model.
+- **Edge to edge**: `enableEdgeToEdge`, content padded by `WindowInsets.safeDrawing` on all sides (with
+  `sensorLandscape` the cutout and the navigation bar can be on either side).
 - **Keep screen on**: `FLAG_KEEP_SCREEN_ON` while a session runs only.
 
 ## Rules (new `docs/rules/capture.md`, prefix CP; T1 writes them, later tasks cite them)
 
-- CP1 Start creates session folder `YYYYMMDD-HHMMSS` (UTC wall clock of the start), volley 1 and video `volley-001.mp4`.
+- CP1 Start creates session folder `YYYYMMDD-HHMMSS` (UTC wall clock of the start, from the clock only, never from
+  input), volley 1 and video `volley-001.mp4`. If a folder of this installation already has that name (two starts in
+  the same second), the suffix `-2`, `-3`... is appended.
 - CP2 Outside a session the keypad, Undo and Next volley are disabled. The quality setting and Delete all are enabled
-  only outside a session.
-- CP3 A dart entry is accepted while the current volley has fewer than 3 non-voided darts. It is appended with its
-  entry timestamps and triggers one photo `dart-NNN.jpg`, NNN = session-wide entry number (voided entries included),
-  zero-padded to 3 digits, wider beyond 999. Volley files `volley-NNN.mp4` follow the same padding.
+  only outside a session. Start is disabled until the camera is bound and while the previous session is saving.
+- CP3 A dart entry is accepted while the current volley has fewer than `DARTS_PER_VOLLEY` (3, named constant in
+  `capture.session`) non-voided darts. It is appended with its entry timestamps and triggers one photo `dart-NNN.jpg`,
+  NNN = session-wide entry number (voided entries included), zero-padded to 3 digits, wider beyond 999. Volley files
+  `volley-NNN.mp4` follow the same padding. When the volley is full the keypad is disabled and the hint "Volley full:
+  press Next volley" is shown (no refusal on tap).
 - CP4 Undo voids the last non-voided dart of the current volley only: the dart stays in the file with `voided: true`,
   its void timestamps and its photo. Disabled when the current volley has no non-voided dart.
 - CP5 Next volley ends the current volley (end timestamps, video position), closes its video and starts the next volley
   and its video. Allowed with no dart; a volley with no non-voided dart is marked `empty: true`.
-- CP6 Stop ends the current volley as CP5 without starting a new one (an empty last volley keeps its video, marked
-  empty), then ends the session.
+- CP6 Stop asks for confirmation (Cancel keeps the session untouched). Confirmed, it ends the current volley as CP5
+  without starting a new one (an empty last volley keeps its video, marked empty), then ends the session
+  (`endReason: STOP`). The screen shows "Saving..." until the last video is finalized and the truth file written.
 - CP7 Counters: session = non-voided darts of the running (or last) session; total = non-voided darts of every session
-  of this installation (stored privately, restarts after reinstall).
+  of this installation. The total is a private counter (not derived from folders), persisted after every dart entry
+  and every undo (so it is right after Stop, after an interruption and after a crash), reset by Delete all, restarts
+  after reinstall; a missing or corrupt counter file reads as 0 without crashing.
 - CP8 Delete all asks for confirmation, deletes every session folder created by this installation and resets the total.
   The screen states that sessions of an earlier installation are not deleted.
-- CP9 The truth file is rewritten after every event. Leaving the screen or a camera error ends the session as CP6.
+  Delete all queries only own MediaStore entries whose `RELATIVE_PATH` starts with `Download/KosmoCapture/`, pending
+  entries included, and deletes by the returned URIs only.
+- CP9 The truth file is rewritten after every event. Really leaving the screen (activity stopped and not changing
+  configurations) or a camera/recording error ends the session as CP6 without confirmation (`endReason:
+  INTERRUPTED`), and the open recording is stopped. A configuration change (rotation, dark mode, locale, font scale)
+  never interrupts the session.
 - CP10 Timestamps: `utc` ISO 8601 UTC with milliseconds (`2026-10-31T14:03:22.123Z`, format H1); `monotonicNanos` =
   `SystemClock.elapsedRealtimeNanos()`; `videoPositionMs` = event monotonic minus the volley video start monotonic
-  (recorded at the CameraX `Start` event), floored at 0.
+  (recorded at the CameraX `Start` event), floored at 0; `null` for an event recorded before that `Start` event.
 - CP11 Quality setting 4K or 1080p, default 4K, kept across launches; the actual video and photo resolutions are stored.
 - CP12 The screen stays on during a session only.
+- CP13 Photo failure: if the photo of a dart cannot be taken or saved, the dart is kept with `photo: null`, the
+  session continues and a non-blocking message "Photo failed for this dart" is shown for a few seconds.
 
 ## Files and types added or changed
 
@@ -83,14 +104,23 @@ decision R2: not handled in this mission); sound in videos; publishing the app.
 - Added: `capture/build.gradle.kts`, `capture/src/main/AndroidManifest.xml`, `capture/src/main/res/values{,-fr}/`,
   `capture/src/main/kotlin/io/github/darkcosmos/kosmodarts/capture/` packages `truth`, `session`, `storage`, `camera`,
   `ui`, `ui/theme`, plus `CaptureActivity`; tests under `capture/src/test/kotlin/...`.
-- Added docs: `docs/rules/capture.md`, `docs/camera/capture-format.md`.
-- Not changed: anything under `app/`, `game-engine/src/main`, `.github/`.
+- Added: `capture/src/main/res/xml/data_extraction_rules.xml` and `full_backup_content.xml` (exclude every domain,
+  same as `app/`).
+- Added docs: `docs/rules/capture.md`, `docs/camera/capture-format.md`, `docs/adr/0009-capture-app.md` (T2): module
+  and its independence from `:app`; truth format and versioning; CameraX dependency versus Camera2 directly (and
+  versus the system camera app intent, which cannot take a photo during a recording); shared `Download/` storage via
+  MediaStore versus app-specific external storage (not visible as easily over USB, deleted on uninstall) and SAF
+  (needs a folder pick); no sound and no microphone permission; the total counter as a private counter (A4).
+- Not changed: anything under `app/`, `game-engine/src/main`, `.github/` (`git diff origin/main -- app` stays empty).
 
 ## Data read, stored or exposed
 
 - Stored in shared `Download/KosmoCapture/<session>/`: MP4 videos without sound, JPEG photos, `truth.json`. Visible
   over USB (MTP) and to any app with storage access: the owner accepts this (local data, never pushed).
-- Stored privately in `filesDir`: quality setting and total counter. No network, no `INTERNET` permission.
+- Stored privately in `filesDir`: quality setting and total counter. Backup disabled (`allowBackup="false"`,
+  extraction rules excluding everything). No network, no `INTERNET` permission. Only the launcher activity is
+  exported; the merged manifest (CameraX included) adds no permission, service, receiver or provider beyond what T1
+  records.
 - Truth file content: dart values, timestamps, file names, video positions, gravity vector, resolutions, device model,
   app version. No location, no account, no image metadata added by the app.
 
@@ -102,15 +132,39 @@ video {requestedQuality "UHD"|"FHD", width, height}, photo {width, height, times
 start {utc, monotonicNanos}, end {utc, monotonicNanos, videoPositionMs} | null, empty, darts: [ { number, segment,
 multiplier "SINGLE"|"DOUBLE"|"TRIPLE", voided, entry {utc, monotonicNanos, videoPositionMs}, voidedAt | null,
 photo {file, utc, monotonicNanos, videoPositionMs} | null, gravity {x, y, z} | null } ] } ] }`. Miss is segment 0,
-outer bull 25, bull 50, always `SINGLE` (engine rule D2). Unknown `version` is rejected on read.
+outer bull 25, bull 50, always `SINGLE` (engine rule D2); the decoder builds each value through the engine's `Dart`
+constructor, so its validation applies. `photo` is null after a photo failure (CP13). A session killed before Stop
+reads back with `endedAt` and `endReason` null and its last volley `end` null. Unknown `format` or `version` is
+rejected on read, as is any text larger than 10 MB.
 
 ## Screens and states
 
-Single landscape screen: preview (left, about 55% width), keypad (right), top bar with counters, quality toggle,
-Start/Stop; bottom row Undo and Next volley; Delete all in the top bar. States: camera permission missing (message and
-"Allow camera" button, rest disabled); idle; session running (red recording dot, Stop); saving error (message, session
-ended); Delete all confirmation dialog with the reinstall note. Touch targets at least 48dp, content descriptions on
-icons, dark theme colors copied from the design system.
+Single landscape screen, edge to edge, padded by the safe drawing insets. Two columns:
+
+- **Left column (preview side, about 55% width)**: status line on top (REC dot with the text label "REC" while
+  recording, session counter, total counter; a `FlowRow`, so it wraps onto two lines at large font scale); camera
+  preview filling the rest (placeholder "Starting camera..." until the first frame); control row at the bottom:
+  **Delete all** at the far left (outlined, away from the keypad), the **4K / 1080p** toggle in the middle, and
+  **Start session / Stop session** at the right end of the column.
+- **Right column (keypad side)**: volley readout on top, keypad, action row (Undo, Next volley).
+- **Volley readout** (comes from `CaptureUiState`, computed by the view model, never in the composable): "Volley 3"
+  and three dart slots showing the value (`T20`, `D5`, `5`, `25`, `Bull`, `Miss`) or an empty dash, at least 20sp
+  bold; when the volley is full, the hint "Volley full: press Next volley" below the slots.
+- **Primary action**: idle = Start session (filled); running = Next volley (filled), Stop session becomes an outlined
+  red button, and Stop asks for confirmation (CP6). Delete all is never primary.
+
+Height budget at 412dp landscape height (Pixel 7), minus about 24dp top and 24dp bottom insets, so about 364dp:
+right column = readout 56 + keypad 5 rows x 42 + 4 gaps x 4 = 226 + action row 42 + 3 gaps x 8 = 24, total 348dp.
+Buttons and keys are 42dp tall in landscape (CLAUDE.md exception, owner decision Q14), at least 48dp wide. Keypad
+labels keep the copied `fixedSp` sizing of `:app`; other texts scale, and at font scale 200 % the status line wraps
+and the preview shrinks, while buttons grow in height rather than clip.
+
+States: camera permission missing (message and "Allow camera"; after a permanent refusal the button opens the app
+settings); camera starting; idle; session running; volley full; Stop confirmation dialog; saving (after Stop, Start
+disabled); photo failure snackbar (CP13, session continues); saving error (session ended, message says files up to
+that point are kept); Delete all confirmation dialog with the reinstall note. Disabled controls use the design
+system disabled style (reduced alpha and no fill), never color alone. Content descriptions on every icon, on the REC
+dot, on the preview and on the toggle. Dark theme colors copied from the design system.
 
 | Strings | English | French |
 |---|---|---|
@@ -119,34 +173,60 @@ icons, dark theme colors copied from the design system.
 | Next volley | "Next volley" | « Volée suivante » |
 | Undo | "Undo" | « Annuler » |
 | Miss key | "Miss" | « Raté » |
-| Counters | "Session: %1$d darts", "Total: %1$d darts" (plurals) | « Session : %1$d fléchettes », « Total : %1$d fléchettes » (plurals) |
-| Quality | "4K", "1080p" | identical |
-| Delete all | "Delete all" | « Tout supprimer » |
-| Confirm | "Delete every session of this installation? Sessions from an earlier installation stay on the phone." | « Supprimer toutes les sessions de cette installation ? Celles d'une installation précédente restent sur le téléphone. » |
-| Permission | "Kosmo Capture needs the camera." / "Allow camera" | « Kosmo Capture a besoin de la caméra. » / « Autoriser la caméra » |
-| Error | "Saving failed: the session was stopped." | « L'enregistrement a échoué : la session est arrêtée. » |
+| Counters (plurals; French `one` covers 0 and 1) | one: "Session: %1$d dart", other: "Session: %1$d darts"; same for "Total" | one: « Session : %1$d fléchette », other: « Session : %1$d fléchettes » ; idem « Total » |
+| REC label / description | "REC" / "Recording" | « REC » / « Enregistrement en cours » |
+| Volley readout | "Volley %1$d"; empty slot "-"; values `T20`, `D5`, `25`, "Bull", "Miss" | « Volée %1$d » ; « - » ; `T20`, `D5`, `25`, « Bull », « Raté » |
+| Readout description | "Volley %1$d: %2$s" | « Volée %1$d : %2$s » |
+| Volley full | "Volley full: press Next volley" | « Volée complète : touchez Volée suivante » |
+| Quality | "4K", "1080p"; description "Video quality: %1$s" | identiques ; « Qualité vidéo : %1$s » |
+| Preview description | "Camera preview" | « Aperçu de la caméra » |
+| Camera starting | "Starting camera..." | « Démarrage de la caméra... » |
+| Delete all | "Delete all"; description "Delete all sessions" | « Tout supprimer » ; « Supprimer toutes les sessions » |
+| Delete confirm | "Delete every session of this installation? Sessions from an earlier installation stay on the phone." / "Delete" / "Cancel" | « Supprimer toutes les sessions de cette installation ? Celles d'une installation précédente restent sur le téléphone. » / « Supprimer » / « Annuler » |
+| Stop confirm | "Stop the session? The current volley is saved." / "Stop" / "Continue" | « Arrêter la session ? La volée en cours est enregistrée. » / « Arrêter » / « Continuer » |
+| Saving | "Saving..." | « Enregistrement... » |
+| Permission | "Kosmo Capture needs the camera." / "Allow camera" / "Open settings" | « Kosmo Capture a besoin de la caméra. » / « Autoriser la caméra » / « Ouvrir les réglages » |
+| Photo failure | "Photo failed for this dart. The entry is kept." | « La photo de cette fléchette a échoué. La saisie est conservée. » |
+| Error | "Saving failed: the session was stopped. Files saved until now are kept." | « L'enregistrement a échoué : la session est arrêtée. Les fichiers déjà enregistrés sont conservés. » |
 
 ## Test plan
 
-- T2 (JVM): encode then decode round trip of a full session (3 volleys, voided dart, empty volley, miss, 25, bull);
-  golden JSON text for a small session; voided dart keeps photo; decode rejects unknown version, missing field, bad
-  multiplier, triple bull; timestamp format with milliseconds, zero millis kept (`.000Z`).
-- T3 (JVM, fake clock): CP1 folder name at midnight and year boundary; CP3 fourth dart refused, numbering continues
-  after undo, padding 999 to 1000; CP4 undo only in current volley, disabled after Next volley; CP5 empty volley; CP6
-  stop with empty last volley; CP7 counters ignore voided darts; CP10 video position floor at 0.
-- T4 (JVM with fake storage + Robolectric for the MediaStore implementation where Robolectric supports it): truth file
-  rewritten after each event; delete all removes every own session and resets the total; settings round trip.
-- T6 (Robolectric + Roborazzi, fake camera, no real preview): captures of idle, running with 2 darts, 3 darts (keypad
-  disabled), permission missing, delete confirmation, error; in English and French.
-- T7 (JVM, fake camera and storage): controller starts a recording per volley, takes a photo per dart, ends the session
-  on interruption and on error; actual resolutions copied into the session.
+Every test name or comment cites its CP rule id. Task files list the cases in full; summary:
+
+- T2 (JVM): round trip of a full session (voided dart with photo, null photo, empty volley, miss, 25, bull); round
+  trip of a killed session (CP9); golden text; strict rejections (version, missing field, bad multiplier, triple
+  bull, truncated text, text over 10 MB); UTC millis.
+- T3 (JVM, fake clock): CP1 naming and collision suffix; CP2; CP3 limit through `DARTS_PER_VOLLEY`, numbering and
+  padding; CP4; CP5; CP6; CP7 counters; CP10 position null before the Start event and floored at 0; CP13 photo null.
+- T4 (JVM with `FakeCaptureStorage` that models ownership and pending entries, plus Robolectric where it can):
+  truth rewrite per event, last write of a killed session decodes; CP7 total after Stop, Interrupt, Undo; CP8 delete
+  all removes own sessions only (a foreign file in the same folder survives) and resets the total.
+- T6 (JVM view model): readout field, enabled flags, volley full hint, Stop confirm and cancel, Delete all flow,
+  photo failure message, saving and error states, CP9 configuration change versus real stop.
+- T7 (Robolectric + Roborazzi, placeholder preview): readout text assertion; captures EN and FR of idle, running with
+  2 darts, volley full, Stop confirmation, Delete all confirmation, permission missing, photo failure, error, at
+  915x412dp and 640x360dp, and at font scale 2.0; no clipping and 42dp landscape targets at 412dp and font scale 2.0.
+- T8 (JVM, fake camera and storage): recording per volley, photo per dart, photo failure (CP13), interruption and
+  recording error stop the recording (CP9), actual resolutions copied.
+- Manifest, permissions and dependency checks are proven by command output recorded in the task notes and in
+  "Local checks" of the PR, not by tests.
 
 ## How Kosmo verifies on the phone (Pixel 7)
 
-Needs the owner CI change below to get `capture-debug.apk`. Then: install, allow camera; start a session in 4K; enter
-3 darts, check the 4th is refused; undo one; Next volley; Next volley with no dart; Stop; copy
-`Download/KosmoCapture/<session>/` to the PC and check 3 videos without sound, one photo per entry, `truth.json` with the
-voided dart and the empty volley; same in 1080p; Delete all and check the folder is gone; check Kosmo Darts unchanged.
+Needs the owner CI change below to get `capture-debug.apk`. Then:
+1. Install, refuse the camera: the message and "Allow camera" show; refuse again: the button opens the settings;
+   allow the camera there, come back: the preview shows.
+2. Start a session in 4K: REC shows, "Volley 1" readout empty. Enter T20, 5, Miss: the readout shows them, the
+   keypad is disabled with "Volley full: press Next volley". Undo: Miss disappears, the keypad is enabled again.
+3. Next volley: "Volley 2" empty. Next volley with no dart: "Volley 3". Rotate the phone 180 degrees: the session
+   goes on (REC still shown, same volley).
+4. Stop: the confirmation shows; Continue keeps the session; Stop again and confirm: "Saving..." then idle.
+5. Copy `Download/KosmoCapture/<session>/` to the PC: 3 videos without sound, one photo per entry, `truth.json`
+   with the voided dart and the empty volley. Same in 1080p.
+6. Start a session and press the Home key: the session ends (truth file `endReason` INTERRUPTED).
+7. Delete all: the dialog text (check in French and English); confirm: folders gone, total back to 0.
+8. The saving error state is hard to trigger on purpose (full storage); it is covered by tests and captures only.
+9. Kosmo Darts is unchanged.
 The full step list and the collection protocol go in the PR description (see below).
 
 ## PR description material (for developer-fix)
@@ -160,19 +240,22 @@ The full step list and the collection protocol go in the PR description (see bel
 - Proposed owner changes (`.github/workflows/android.yml`): build `:capture:assembleDebug` too; upload
   `capture/build/outputs/apk/debug/capture-debug.apk` as an artifact; run the aapt2 permission check on that APK too
   (no `INTERNET`, and only `CAMERA` expected); upload `capture/build/outputs/roborazzi/`. Detekt input unchanged (R2).
-- Versions table for CameraX.
+- Versions table for CameraX (one version for the five artifacts).
+- Local checks also list the outputs of `aapt2 dump permissions`, the merged manifest check and
+  `./gradlew :capture:dependencies --configuration debugRuntimeClasspath` summary (T1, T8).
 
 ## Tasks
 
 | Id | Title | Task file | Depends on | Model | Why this model |
 |---|---|---|---|---|---|
 | T1 | Module wiring, manifest, rules doc | `41-capture-app/T1-module-wiring.md` | - | sonnet | Wiring and configuration copied from `:app`, plus a new dependency to check |
-| T2 | Truth file model and JSON codec, format doc | `41-capture-app/T2-truth-format.md` | T1 | opus | New stored format (case 1): schema, strict decoder and its versioning |
-| T3 | Session reducer, naming and counters | `41-capture-app/T3-session-rules.md` | T2 | sonnet | Rules fully specified (CP1 to CP7, CP10) with listed tests |
+| T2 | Truth file model and JSON codec, format doc, ADR | `41-capture-app/T2-truth-format.md` | T1 | opus | New stored format (case 1): schema, strict decoder and its versioning |
+| T3 | Session reducer, naming and counters | `41-capture-app/T3-session-rules.md` | T2 | sonnet | Rules fully specified (CP1 to CP7, CP10, CP13) with listed tests |
 | T4 | Storage: MediaStore, settings, delete all | `41-capture-app/T4-storage.md` | T3 | sonnet | Platform code behind an interface, tests listed |
 | T5 | Copy theme and keypad into the module | `41-capture-app/T5-keypad-theme.md` | T1 | sonnet | Copy with small adaptations (event type, resources) |
-| T6 | Capture screen, view model, captures | `41-capture-app/T6-screen.md` | T3, T5 | sonnet | Screen from a specified layout, state holder with JVM tests |
-| T7 | CameraX controller, sensor, lifecycle | `41-capture-app/T7-camera.md` | T4, T6 | sonnet | Wiring of CameraX behind a tested interface |
+| T6 | View model and UI state | `41-capture-app/T6-view-model.md` | T3, T4 | sonnet | State holder with JVM tests, behavior specified |
+| T7 | Capture screen and captures | `41-capture-app/T7-screen.md` | T5, T6 | sonnet | Screen from a specified layout and height budget |
+| T8 | CameraX controller, sensor, lifecycle | `41-capture-app/T8-camera.md` | T7 | sonnet | Wiring of CameraX behind a tested interface |
 
 One `opus` task (T2).
 
@@ -194,9 +277,18 @@ One `opus` task (T2).
 | Q12 | CI: Kosmo updates the workflow himself; the change is described under "Proposed owner changes". | - |
 | Q13 | Detekt on the new module (R2) is out of scope. | - |
 | D1 | Hand-written JSON codec, no new serialization dependency (same reasoning as ADR 0001). | - |
-| D2 | Developer default, to confirm: counters exclude voided darts. | CP7 |
-| D3 | Developer default, to confirm: leaving the screen or a camera error ends the session like Stop (`endReason: INTERRUPTED`). | CP9 |
+| D2 | Confirmed by Kosmo: counters exclude voided darts. | CP7 |
+| D3 | Confirmed by Kosmo: really leaving the screen or a camera error ends the session like Stop (`endReason: INTERRUPTED`). | CP9 |
+| Q14 | Landscape buttons and keys 42dp tall, as in Kosmo Darts (CLAUDE.md exception). | - |
+| Q15 | Photo failure: entry kept, session continues, non-blocking message, `photo: null`. | CP13 |
+| Q16 | Stop needs a confirmation; Delete all is separated from Start/Stop (opposite end of the control row). | CP6 |
+| Q17 | A configuration change (rotation, dark mode, locale) never interrupts the session. | CP9 |
+| D4 | Design review: ADR `docs/adr/0009-capture-app.md` in T2 (A1). | - |
+| D5 | Design review: volley readout from `CaptureUiState`; volley full = keypad disabled plus hint (U1, U2). | CP3 |
+| D6 | Design review: backup disabled, merged manifest and dependency tree checked by command output (S1, S2, S5). | - |
+| D7 | Design review: folder collision suffix `-2`; position null before the CameraX Start event; truth text limit 10 MB; Delete all by own URIs under `Download/KosmoCapture/`, pending included. | CP1, CP8, CP10 |
+| D8 | Design review: T6 split into view model (T6) and screen (T7); camera becomes T8. | - |
 
 ## Open questions
 
-- D2 and D3 are defaults chosen by the developer; Kosmo may confirm or change them.
+None.

@@ -22,7 +22,8 @@ Engine rule D2 (no triple bull, no double outer bull) as already enforced by the
 ## Tests
 - Robolectric: tapping T then 20 emits `Dart.triple(20)`; `25`, `Bull`, `Miss` emit segments 25, 50, 0; the triple
   key is disabled for bull keys as in `:app`; a disabled keypad emits nothing.
-- Roborazzi capture of the keypad alone, English and French.
+- Keys keep the `:app` landscape policy: 42dp tall (decision Q14), labels in `fixedSp` as in `:app`.
+- Roborazzi capture of the keypad alone, English and French, enabled and disabled.
 
 ## Done when
 `./gradlew :capture:testDebugUnitTest build` green, `kosmo-detekt` exit 0, `git diff origin/main -- app` empty.

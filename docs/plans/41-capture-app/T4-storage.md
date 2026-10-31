@@ -8,21 +8,30 @@ quality setting and total counter privately, and delete every session of this in
 - Added in `capture/src/main/kotlin/io/github/darkcosmos/kosmodarts/capture/storage/`: `CaptureStorage` (interface:
   create truth file entry, write truth text (overwrite `"wt"`), photo output target, video output target, delete all
   own sessions, list own sessions), `MediaStoreCaptureStorage` (`MediaStore.Downloads`, `RELATIVE_PATH`
-  `Download/KosmoCapture/<session>/`, own entries only), `CaptureSettings` (quality UHD/FHD default UHD, total count;
-  small text file under `filesDir`, written atomically), `TruthWriter` (writes after every event, reports failures).
-- Test fake: `FakeCaptureStorage` in the test source set.
+  `Download/KosmoCapture/<session>/`; list and delete query only own entries whose `RELATIVE_PATH` starts with
+  `Download/KosmoCapture/`, with `QUERY_ARG_MATCH_PENDING` = `MATCH_INCLUDE`, and delete by the returned URIs only,
+  never by a path built from input), `CaptureSettings` (quality UHD/FHD default UHD, total count; small text file
+  under `filesDir`, written atomically; missing or corrupt file reads as defaults and total 0), `TruthWriter`
+  (writes the truth text and the total after every event, reports failures).
+- Test fake: `FakeCaptureStorage` in the test source set, modelling owner and pending flag per entry, so foreign
+  entries can exist in the same folder.
 
 ## Depends on
 T3.
 
 ## Rules
-CP7, CP8, CP9, CP11. Root plan section "Data read, stored or exposed".
+CP1 (collision check uses the own folder list), CP7, CP8, CP9, CP11. Root plan section "Data read, stored or
+exposed". Test names or comments cite the CP id.
 
 ## Tests
-- `TruthWriter` with the fake: one write per event, the last write decodes to the final session; a failing write is
-  reported, not swallowed.
-- Delete all: every own session removed, total reset to 0, settings quality kept.
+- `TruthWriter` with the fake: one write per event, the last write decodes to the final session; for a session
+  killed mid-volley the last write decodes with `endedAt`, `endReason` and the last volley `end` null; a failing
+  write is reported, not swallowed.
+- CP7: persisted total right after Undo, after Stop and after Interrupt.
+- CP8: Delete all removes every own entry, pending ones included; a foreign file with a similar path in the same
+  folder survives; total reset to 0, quality kept.
 - `CaptureSettings` round trip, default values on first launch, corrupt file falls back to defaults.
+- Real MediaStore ownership and pending behavior are proven only by Kosmo's manual check (root plan step 7).
 - `MediaStoreCaptureStorage` under Robolectric: entry created with the right display name and relative path, truth
   text overwritten, delete removes entries (skip only what Robolectric cannot emulate, and say so in notes).
 
