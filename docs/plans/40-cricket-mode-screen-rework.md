@@ -946,9 +946,9 @@ None. Q1 to Q7, Q9, Q10 and Q11 are answered by Kosmo (see Decisions); Q8 was wi
   (`CricketLandscapeScreenTest`, Robolectric). Deviations: the S/M chips in the title use the 14 sp `label`
   (`labelLarge` made the band 64.8 dp and the BULL row 47.2 dp); the landscape dart text is `LANDSCAPE_DART_SP` 14
   (18 did not fit a 24 dp slot); the win banner has no vertical padding on the single line; `cutoutInsetDp` is 0 in
-  `LandscapeGame` (R4b passes the real one). Open question for Kosmo: 4 players, Bull off, legs and sets, in French,
+  `LandscapeGame` (R4b passes the real one). Kosmo chose to shorten the landscape position ("S2 · M3", strings `match_position_*_short`, `Header(isShortPosition)`); before that, with 4 players, Bull off, legs and sets, in French,
   the title wraps (mode 225.5 dp, position 108.6 dp, chips about 55 dp, right column 358 dp) and the position falls 9
-  dp into the zone; the test fixture uses a single game for that case (comment in `game`). Pieces:
+  dp into the zone. The fixture now uses legs and sets for every case and asserts the title is clear of the zone. Pieces:
   `CricketLandscapeScreen.kt` (`LandscapeGame`, `TitleRow`, `FixedTextSizes`: board, title and zone use
   `Density(fontScale = 1f)`, the action bar is put back in the outer density), `CricketPlayerZone(isSingleLine)`,
   `CricketTags.TITLE`; `Header`, `Zone`, `Board`, `Actions` are now `internal`. `CricketLayoutPolicy` and its test

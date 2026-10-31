@@ -118,7 +118,7 @@ private fun TitleRow(game: CricketGameScreenState, heightDp: Float) {
                 traversalIndex = TITLE_TRAVERSAL_INDEX
             },
     ) {
-        Header(game, Modifier.weight(1f))
+        Header(game, Modifier.weight(1f), isShortPosition = true)
         game.indicators?.get(index)?.let {
             Spacer(Modifier.width(TITLE_CHIPS_GAP))
             // The chips use the 14 sp label size here, so that the title line stays as low as the board header's name.

@@ -93,7 +93,7 @@ Vocabulary:
 
   The setup is prefilled with the shared roster and the last Cricket settings (R22).
 - CR22. Game screen, in portrait from top to bottom:
-  - the `MatchHeader` ("CRICKET · STANDARD" and the M14 position);
+  - the `MatchHeader` ("CRICKET · STANDARD" and the M14 position, in its short form "S2 · L3" in landscape so that the title stays on one line);
   - a compact `CurrentPlayerZone`: line 1, the name, "MPR 2,4" and the S/M chips; line 2, the `DartSlots`, or the
     white "VICTOIRE" banner of CR25. The zone shows no total and no "n/7", in a solo game either (owner, PR #60
     review, Q2, Q4 A). A dart is shown only if it gives a mark (CR2); a dart that gives none is shown as a miss. There

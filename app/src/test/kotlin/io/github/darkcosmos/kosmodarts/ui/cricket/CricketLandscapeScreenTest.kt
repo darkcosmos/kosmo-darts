@@ -61,18 +61,15 @@ class CricketLandscapeScreenTest {
     }
 
     /**
-     * A match with legs and sets (the longest title line, with the position and the S/M chips); [pending] a won leg
-     * that waits. Open question for main: with 4 players and 25-Bull off, "CRICKET · STANDARD · SANS 25-BULL", the
-     * position and the chips do not fit the 358 dp of the right column (the position wraps under the title and
-     * overlaps the zone by about 9 dp), so that one combination uses a single game here.
+     * A match with legs and sets (the longest title line, with the short position and the S/M chips); [pending] a won
+     * leg that waits.
      */
     private fun game(players: Int, isBullInPlay: Boolean, pending: Boolean): CricketGameScreenState {
-        val isTitleTooLong = isTitleTooLong(players, isBullInPlay)
         val match = CricketSaveFixtures.match(
             *fourPlayers.take(players).toTypedArray(),
             isBullInPlay = isBullInPlay,
-            legsPerSet = if (isTitleTooLong) 1 else 3,
-            sets = if (isTitleTooLong) 1 else 3,
+            legsPerSet = 3,
+            sets = 3,
         )
         return if (pending) {
             CricketGameScreenState(match.playLegWonBy(0), isAwaitingConfirmation = true)
@@ -81,7 +78,6 @@ class CricketLandscapeScreenTest {
         }
     }
 
-    private fun isTitleTooLong(players: Int, isBullInPlay: Boolean) = players == 4 && !isBullInPlay
 
     private fun node(tag: String) = composeRule.onNodeWithTag(tag, useUnmergedTree = true)
 
@@ -146,7 +142,7 @@ class CricketLandscapeScreenTest {
             assertTrue("$label: row $target is ${rowHeight / px(1f)} dp, 48 at least", rowHeight >= px(48f) - 1f)
         }
         assertBand(label, players)
-        assertTitleAndZone(label, players, pending, isBullInPlay)
+        assertTitleAndZone(label, pending)
         assertButtons(label, isBullInPlay)
         assertBar(label, pending)
     }
@@ -167,7 +163,7 @@ class CricketLandscapeScreenTest {
         }
     }
 
-    private fun assertTitleAndZone(label: String, players: Int, pending: Boolean, isBullInPlay: Boolean) {
+    private fun assertTitleAndZone(label: String, pending: Boolean) {
         val zone = bounds(GameTags.CURRENT_PLAYER)
         val title = bounds(CricketTags.TITLE)
         val board = bounds(CricketTags.BOARD)
@@ -177,7 +173,7 @@ class CricketLandscapeScreenTest {
         assertEquals("$label: zone one line, 28 dp", px(28f), zone.height, 1f)
         assertTrue("$label: the title is over the zone", title.bottom <= zone.top + 1f)
         assertTextNotClipped(GameTags.HEADER_MODE)
-        if (!isTitleTooLong(players, isBullInPlay)) assertPositionAndChips(label, title)
+        assertPositionAndChips(label, title, zone)
         assertTextNotClipped(GameTags.playerName(zoneIndex), ellipsis = true)
         if (pending) assertTextNotClipped(CricketTags.WIN_BANNER) else assertTextNotClipped(CricketTags.ZONE_STAT)
         (0..2).forEach { slot ->
@@ -191,9 +187,13 @@ class CricketLandscapeScreenTest {
         assertTrue("$label: zone inside", isInsideRoot(GameTags.CURRENT_PLAYER))
     }
 
-    /** The position is beside the mode (the title is one line) and the S/M chips are at the end of the line. */
-    private fun assertPositionAndChips(label: String, title: Rect) {
+    /** The title is one line: the short position is beside the mode, clear of the zone, the chips at the end. */
+    private fun assertPositionAndChips(label: String, title: Rect, zone: Rect) {
         assertTextNotClipped(GameTags.HEADER_POSITION)
+        listOf(GameTags.HEADER_MODE, GameTags.HEADER_POSITION).forEach {
+            assertTrue("$label: $it inside the title, above the zone",
+                bounds(it).bottom <= title.bottom + 1f && bounds(it).bottom <= zone.top + 1f)
+        }
         assertTrue("$label: position beside the mode",
             bounds(GameTags.HEADER_POSITION).top < bounds(GameTags.HEADER_MODE).bottom)
         val chipNodes = composeRule.onAllNodes(

@@ -110,7 +110,7 @@ private fun PortraitGame(game: CricketGameScreenState, onEvent: (AppEvent) -> Un
 
 /** "CRICKET · STANDARD" (CR22), then "SANS 25-BULL" when the Bull is not in play, and the M14 position. */
 @Composable
-internal fun Header(game: CricketGameScreenState, modifier: Modifier) {
+internal fun Header(game: CricketGameScreenState, modifier: Modifier, isShortPosition: Boolean = false) {
     val config = game.game.config
     val resources = LocalResources.current
     val variant = when (config.variant) {
@@ -125,7 +125,7 @@ internal fun Header(game: CricketGameScreenState, modifier: Modifier) {
     Box(modifier) {
         MatchHeader(
             mode = parts.joinToString(resources.getString(R.string.format_separator)),
-            position = positionText(game.headerPosition),
+            position = positionText(game.headerPosition, isShortPosition),
             modifier = Modifier.fillMaxWidth(),
         )
     }
