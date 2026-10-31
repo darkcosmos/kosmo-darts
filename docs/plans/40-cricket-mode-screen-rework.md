@@ -816,7 +816,7 @@ additions from the test, architecture and security reviewers), applied in this v
 - T1 and security addition: a dart is refused while a win is pending (CR25) and a 25 or Bull with 25-Bull off, stated
   in section 1 and CR24 and tested in `CricketGameScreenStateTest` and `CricketReducerTest`.
 - T2: `dotCount` on the model (JVM) and the `CricketSemantics.DotCount` property on the drawn dots (Robolectric).
-- T3: landscape sizes are 640 x 336/360 and the Pixel 7 at 915 x 412 dp, both with the bars hidden; the 412 x 370
+- T3: landscape sizes are 640 x 336/360 and the Pixel 7 at 914 x 411 dp, both with the bars hidden; the 412 x 370
   and 412 x 412 sizes are dropped. Superseded by the Pixel 7 revision below (914 x 411 only).
 - T4: the portrait fit at 360 x 640 is checked with 1, 2 and 4 players. Superseded by the Pixel 7 revision below
   (411 x 814, same player counts).
@@ -918,3 +918,12 @@ None. Q1 to Q7, Q9, Q10 and Q11 are answered by Kosmo (see Decisions); Q8 was wi
   `CricketReducer.playCricket`; strings `cricket_button_double`, `cricket_button_triple`, plural `cricket_header_points`
   added (the "BULL" label reuses `dart_bull`, TalkBack « 25 » / « Bull » reuse `dart_outer_bull` / `announce_dart_bull`);
   `FrenchStringsTest` plural list now includes `cricket_header_points`. `cricket_closed_targets` is still there (R6).
+- R2: `CricketBoardLayoutPolicy.kt` (policy, `CricketBoardLayout`, `CricketLandscapeLayout`, `CricketLandscapeSpace`,
+  `TotalSize`) and its test. API: `portraitBoardHeightDp`, `portraitZoneHeightDp`, `columnHeaderHeightDp(totalLine?,
+  nameLine)`, `portrait(...)`, `landscape(CricketLandscapeSpace)`, `totalTextSize(digits, columnWidth, candidates)` (the
+  fallback `TOTAL_FALLBACK_SP` is `isFixed`: draw it with `density.fixedSp`); the 0.6 em, 4 dp, margins and gaps are
+  constants of the policy only (R3/R4 must use them, not repeat them). Landscape uses 76 dp player columns and 56 dp
+  buttons at every player count. The landscape `barRoomHeightDp` is 340 dp. Fixtures are the 360 dp measurements,
+  reused at 411 dp (single-line heights do not depend on width; the 1.3 and 1.5 values and the total em are
+  estimates, stated in the test). Rule text CR22/CR24 in `docs/rules/cricket.md` rewritten for the Pixel 7. No budget
+  of section 4 failed. Line 819 of Decisions (915 x 412) corrected to 914 x 411.

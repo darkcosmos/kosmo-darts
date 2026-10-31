@@ -156,7 +156,8 @@ object CricketBoardLayoutPolicy {
         headerHeightDp: Float,
         playerCount: Int,
         rowCount: Int,
-    ): CricketBoardLayout = layout(screenWidthDp - 2 * SIDE_MARGIN, boardHeightDp, headerHeightDp, playerCount, rowCount)
+    ): CricketBoardLayout =
+        layout(screenWidthDp - 2 * SIDE_MARGIN, boardHeightDp, headerHeightDp, playerCount, rowCount)
 
     /** Landscape (bars hidden), see [CricketLandscapeSpace]. */
     fun landscape(space: CricketLandscapeSpace): CricketLandscapeLayout = with(space) {

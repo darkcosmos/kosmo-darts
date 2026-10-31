@@ -103,34 +103,48 @@ Vocabulary:
 
   No `PlayerTile`s: the board carries every player. There is no separate keypad.
 
-  Layout contract, computed by a pure `CricketLayoutPolicy` and asserted by the fit tests:
+  Layout contract, computed by a pure `CricketBoardLayoutPolicy` and asserted by the fit tests. The reference device is
+  the Pixel 7 (owner: the smallest phone), 411 x 914 dp in portrait and 914 x 411 dp in landscape; smaller screens are
+  not a design constraint. The pure policy does no font-scale arithmetic: the screen passes it measured dp values.
   - Board columns, from start to end: the player columns, which share the width left equally, then the button column
     (3 x 48 dp at least, up to 3 x 56 dp while the player columns keep 76 dp each), at the end of the row, on the
-    right of the screen. Player columns are 48, 64 and 96 dp at 4, 3 and 2 players at 360 dp wide.
-  - Rows are 48 dp at least (the buttons are touch targets), `max(48, 22.5 x font scale + 2)`. The column header is
-    pinned: 3 dp strip, the total, the name (about 64 dp at scale 1.0); in a solo game it has no total line. The top
-    cell of the button column ("RATÉ" alone) has the header's height and the button column's width.
-  - Only the target rows scroll, under the pinned header, when they do not fit (portrait at large font scales); at
-    least 4 full rows stay visible at every font scale up to 2.0. The header, "RATÉ", the zone and the action bar
-    never scroll.
-  - Compact zone, 84 dp tall, minimum 68 dp in portrait; the name keeps 1 line with an ellipsis.
-  - Action bar: the existing `ActionBar`; portrait, side by side, 162 dp per button at 360 dp wide; labels at least
-    12 sp at every font scale (a word is never cut).
-  - Portrait, at 360 x 640 (about 568 dp usable), 4 players, 7 rows, scale 1.0, no scrolling: 4 + `MatchHeader` 24 + 4
-    + zone 68 + 4 + header 64 + 7 x 48 + 4 + action bar 48 = 556 dp.
-  - Landscape (640 x 360 and up, Kosmo, Q1 and Q10 A): the same board, not turned, everything visible without scrolling
-    (the fonts may be slightly reduced: board texts at 12 sp, totals at 20 sp at most, fixed sizes that do not follow
-    the system font size). On the left, the `MatchHeader` (the S/M chips at its end) over the board; on the right, the
-    zone limited to the height of that band, on one line (name, MPR, the visit's darts), and at the bottom the action
-    bar with its two buttons stacked ("ANNULER" above the primary button, at least 204 dp wide each). The right column
-    is at least 204 dp wide at 640 dp and is separated from the board by 12 dp. The rows fill the height left, down to
-    32 dp (about 37 dp at 640 x 336), never scrolling.
+    right of the screen. At 411 dp wide: player columns of 61, 76, 110 and 219 dp and a button column of 144, 159, 168
+    and 168 dp at 4, 3, 2 and 1 players.
+  - Rows are 48 to 56 dp in both orientations (the buttons are touch targets): there is no smaller landscape row and
+    no 32 dp floor. The column header is pinned: 3 dp strip, the total, the name (about 63 dp at scale 1.0 and 101 dp
+    at 2.0); in a solo game it has no total line. The top cell of the button column ("RATÉ" alone) has the header's
+    height (48 dp at least) and the button column's width.
+  - Fallback only, below the Pixel 7 (or with a larger "display size"), unsupported: the target rows scroll alone,
+    under the pinned header, in both orientations; they never go under 48 dp. On the Pixel 7, at every font scale from
+    1.0 to 2.0, with 1 to 4 players, 6 or 7 rows and a pending win, nothing scrolls. The header, "RATÉ", the zone and
+    the action bar never scroll.
+  - Compact zone, 84 dp tall (times the growth of the 14 sp line, up to 1.5) in portrait; the name keeps 1 line with
+    an ellipsis.
+  - Action bar: the existing `ActionBar`, "ANNULER" then the primary button, side by side with equal width and a 12 dp
+    gap, in both orientations: 187 dp per button in portrait at 411 dp wide; labels at least 12 sp at every font
+    scale (a word is never cut).
+  - Portrait, at 411 x 814 dp (the Pixel 7 minus its tallest bars), 4 players, 7 rows, scale 2.0, "VALIDER LA PARTIE"
+    pending, no scrolling: 8 + `MatchHeader` 44.6 + 6 + zone 126 + 6 + header 101 + 7 x 48 + 6 + action bar 151.5 + 8
+    = 793.1 dp, about 21 dp to spare.
+  - A column total picks the largest of 24, 20, 16 and 14 sp (20, 16 and 14 sp in landscape) whose line fits its
+    column (digits x 0.6 em + 4 dp, the em read at the current font scale), and the fixed 14 sp when none fits; a total
+    is never cut.
+  - Landscape (914 x 411 dp, Kosmo, Q1, Q10 A and Q11 A): the same board, not turned, everything visible without
+    scrolling (the fonts may be slightly reduced: board texts, zone and title at fixed 14 sp, totals at 20 sp at most,
+    sizes that do not follow the system font size). On the left, the board; on the right, the `MatchHeader` (the S/M
+    chips at its end) above the zone, the two together as tall as the board's column header (one band, about 57 dp),
+    the zone on one line (name, MPR, the visit's darts), and at the bottom the action bar. The band is the taller of
+    the column header and of the title plus the zone line. The rows fill the height under the band: 49.5 dp at 7 rows,
+    56 dp at 6 rows, with a 4 dp margin top and bottom. The right column is at least 340 dp wide with a 48 dp display
+    cutout on one side (358 dp at 4 players) and is separated from the board by 12 dp; its action bar buttons are at
+    least 173 dp wide at 4 players, and 340 dp of height under the band hold the tallest bar (151.5 dp).
   - System bars and display cutout in landscape (owner Q5 B): the Cricket game screen hides the system bars while it
     is shown in landscape (a swipe from the edge brings them back for a moment, over the content, without moving
     it) and shows them again on every exit (portrait, between legs, end, abandon, home). The content is then padded
     with the display cutout insets only, so nothing goes under the camera hole; in portrait and everywhere else the
     padding is the safe drawing insets, as before. The decision is a pure `SystemBarsPolicy` (hide always comes with
-    cutout-only padding). Buttons may be under 48 dp tall there, down to 32 dp (owner Q5 B).
+    cutout-only padding). Hiding the bars is what gives the 49.5 dp rows (owner Q5 B); with the bars shown the rows
+    would be 41 to 45 dp.
   - Nothing essential is cut: buttons, action bar, marks and totals are never truncated; only player names get an
     ellipsis.
 
@@ -181,8 +195,8 @@ Vocabulary:
     pending until "Confirm" or "Undo" (CR25), and for the 25 and the Bull with 25-Bull off (CR1);
   - every button is locked (35 % opacity) while a turn waits or a win is pending; a dead row's buttons stay enabled
     (a dart there is a real dart, AN30);
-  - each button's touch area is the whole cell, at least 48 x 48 dp in portrait (48 dp wide and the row height, 32 dp
-    at least, in landscape); the drawn key is inset by 2 dp on each side, so neighbours show a 4 dp gap.
+  - each button's touch area is the whole cell, at least 48 x 48 dp in both orientations (48 dp wide at least and
+    the row height, 48 to 56 dp); the drawn key is inset by 2 dp on each side, so neighbours show a 4 dp gap.
 - CR25. Win: no dialog. The zone shows the winner, also when the winning dart was thrown by another player (CR9), with
   a white "VICTOIRE" banner in the route area (in place of the X01 CHECKOUT banner). The action bar reads "ANNULER" /
   "VALIDER LA MANCHE", "VALIDER LE SET" or "VALIDER LA PARTIE", with the M15 labels (Q6 A). "ANNULER" undoes the

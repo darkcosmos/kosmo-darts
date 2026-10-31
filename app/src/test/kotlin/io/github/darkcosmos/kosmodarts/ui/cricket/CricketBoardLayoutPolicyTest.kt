@@ -209,7 +209,8 @@ class CricketBoardLayoutPolicyTest {
                 val seven = CricketBoardLayoutPolicy.landscape(landscapeSpace(cutout = cutout, players = players))
                 assertFalse(seven.board.scrolls)
                 assertEquals(49.5f, seven.board.rowHeightDp, 0.1f)
-                val six = CricketBoardLayoutPolicy.landscape(landscapeSpace(cutout = cutout, players = players, rows = 6))
+                val sixRows = landscapeSpace(cutout = cutout, players = players, rows = 6)
+                val six = CricketBoardLayoutPolicy.landscape(sixRows)
                 assertFalse(six.board.scrolls)
                 assertEquals(56f, six.board.rowHeightDp, 0.001f)
             }
