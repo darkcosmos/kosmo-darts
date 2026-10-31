@@ -288,6 +288,7 @@ One `opus` task (T2).
 | D6 | Design review: backup disabled, merged manifest and dependency tree checked by command output (S1, S2, S5). | - |
 | D7 | Design review: folder collision suffix `-2`; position null before the CameraX Start event; truth text limit 10 MB; Delete all by own URIs under `Download/KosmoCapture/`, pending included. | CP1, CP8, CP10 |
 | D8 | Design review: T6 split into view model (T6) and screen (T7); camera becomes T8. | - |
+| D9 | Design review (U9, U10): photo failure snackbar announced by TalkBack, at least 4 s, dismiss target reachable at font scale 2.0; the volley full hint is part of the readout's content description. | CP3, CP13 |
 
 ## Open questions
 

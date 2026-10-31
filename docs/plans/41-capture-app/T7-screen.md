@@ -24,6 +24,9 @@ CP2, CP3, CP6, CP7, CP8, CP13. Root plan "Screens and states": layout, height bu
 - Robolectric UI at 915x412dp: Start then T20, 5, Miss shows "Volley 1" with `T20`, `5`, `Miss` and the volley full
   hint; Undo clears the third slot; Stop shows the confirmation and Continue keeps the session; Delete all shows the
   dialog with the reinstall note; every icon, the REC dot, the preview and the toggle have a content description.
+- CP13 (U9): the photo failure message is a Material snackbar, announced by TalkBack (live region), shown at least
+  4 seconds; its dismiss action stays reachable and at least 42dp tall at font scale 2.0.
+- CP3 (U10): when the volley is full, the readout's content description includes the "Volley full" hint.
 - At 412dp height and at font scale 2.0: no text clipped, buttons and keys at least 42dp tall and 48dp wide.
 - Roborazzi captures, English and French, at 915x412dp, at 640x360dp and at font scale 2.0: idle, running with 2
   darts, volley full, Stop confirmation, Delete all confirmation, permission missing, permanently denied, photo
