@@ -4,7 +4,6 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVisit
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.confirmLegsWonBy
 import io.github.darkcosmos.kosmodarts.persistence.playLegWonBy
@@ -23,17 +22,17 @@ class CricketGameScreenStateTest {
     private fun screen(match: CricketMatch = CricketSaveFixtures.match("Ann", "Bob")) = CricketGameScreenState(match)
 
     private fun CricketGameScreenState.throwing(vararg numbers: Int): CricketGameScreenState =
-        numbers.fold(this) { state, number -> state.throwNumber(number) }
+        numbers.fold(this) { state, number -> state.throwDart(Dart.single(number)) }
 
     /** The NON_THROWER_WIN fixture before Cid's T19: Cid throws next, and that T19 makes Ann win (CR9). */
     private val beforeNonThrowerWin = screen(CricketSaveFixtures.NON_THROWER_WIN.match.undo())
 
-    private fun CricketGameScreenState.tripleOf(number: Int) = toggleMultiplier(Multiplier.TRIPLE).throwNumber(number)
+    private fun CricketGameScreenState.tripleOf(number: Int) = throwDart(Dart.triple(number))
 
     /** CR2: the zone shows a dart only if it gives a mark; any other dart is shown as a miss. */
     @Test
     fun `CR2 the zone darts keep the darts that give a mark and show the others as a miss`() {
-        val state = screen().tripleOf(20).throwNumber(5).throwOuterBull()
+        val state = screen().tripleOf(20).throwDart(Dart.single(5)).throwDart(Dart.OUTER_BULL)
 
         assertEquals(listOf(Dart.triple(20), Dart.MISS, Dart.OUTER_BULL), state.zoneDarts)
         assertEquals(listOf(Dart.triple(20), Dart.single(5), Dart.OUTER_BULL), state.highlightedTurnDarts)
@@ -41,7 +40,7 @@ class CricketGameScreenStateTest {
 
     @Test
     fun `CR2 a number below 15 is shown as a miss`() {
-        val state = screen(CricketSaveFixtures.match("Ann", "Bob", isBullInPlay = false)).throwNumber(14)
+        val state = screen(CricketSaveFixtures.match("Ann", "Bob", isBullInPlay = false)).throwDart(Dart.single(14))
 
         assertEquals(listOf(Dart.MISS), state.zoneDarts)
     }
@@ -52,16 +51,14 @@ class CricketGameScreenStateTest {
 
         assertTrue(waiting.isAwaitingConfirmation)
         assertFalse(waiting.isKeypadEnabled)
-        assertFalse(waiting.areBullKeysEnabled)
         assertTrue(waiting.canGoToNextPlayer)
         assertEquals(0, waiting.highlightedPlayerIndex)
         assertEquals(listOf(Dart.single(20), Dart.single(19), Dart.single(18)), waiting.highlightedTurnDarts)
         assertNull(waiting.nextDartIndex)
         // Locked keys do nothing.
-        assertSame(waiting, waiting.throwNumber(17))
+        assertSame(waiting, waiting.throwDart(Dart.single(17)))
         assertSame(waiting, waiting.throwMiss())
-        assertSame(waiting, waiting.throwBull())
-        assertSame(waiting, waiting.toggleMultiplier(Multiplier.DOUBLE))
+        assertSame(waiting, waiting.throwDart(Dart.BULL))
 
         val next = waiting.nextPlayer()
         assertFalse(next.isAwaitingConfirmation)
@@ -80,30 +77,16 @@ class CricketGameScreenStateTest {
     }
 
     @Test
-    fun `CR24 modifiers are one-shot and toggle`() {
-        val triple = screen().toggleMultiplier(Multiplier.TRIPLE)
-        assertEquals(Multiplier.TRIPLE, triple.multiplier)
-        assertEquals(Multiplier.DOUBLE, triple.toggleMultiplier(Multiplier.DOUBLE).multiplier)
-        assertEquals(Multiplier.SINGLE, triple.toggleMultiplier(Multiplier.TRIPLE).multiplier)
-
-        val thrown = triple.throwNumber(20)
-        assertEquals(Dart.triple(20), thrown.game.darts.single())
-        assertEquals(Multiplier.SINGLE, thrown.multiplier)
-        // A miss is always a single miss and cancels the modifier.
-        val missed = screen().toggleMultiplier(Multiplier.DOUBLE).throwMiss()
-        assertEquals(Dart.MISS, missed.game.darts.single())
-        assertEquals(Multiplier.SINGLE, missed.multiplier)
+    fun `CR24 a triple is one dart and a miss is always a single miss`() {
+        assertEquals(Dart.triple(20), screen().throwDart(Dart.triple(20)).game.darts.single())
+        assertEquals(Dart.MISS, screen().throwMiss().game.darts.single())
     }
 
     @Test
-    fun `CR24 owner O2 A 25 and Bull are disabled while a modifier is active`() {
-        val double = screen().toggleMultiplier(Multiplier.DOUBLE)
+    fun `CR24 the 25 and the Bull are recorded in order when 25-Bull is in play`() {
+        val state = screen().throwDart(Dart.OUTER_BULL).throwDart(Dart.BULL)
 
-        assertTrue(screen().areBullKeysEnabled)
-        assertFalse(double.areBullKeysEnabled)
-        assertSame(double, double.throwBull())
-        assertSame(double, double.throwOuterBull())
-        assertEquals(listOf(Dart.OUTER_BULL, Dart.BULL), screen().throwOuterBull().throwBull().game.darts)
+        assertEquals(listOf(Dart.OUTER_BULL, Dart.BULL), state.game.darts)
     }
 
     @Test
@@ -112,9 +95,8 @@ class CricketGameScreenStateTest {
 
         assertTrue(screen().areBullKeysShown)
         assertFalse(noBull.areBullKeysShown)
-        assertFalse(noBull.areBullKeysEnabled)
-        assertSame(noBull, noBull.throwBull())
-        assertSame(noBull, noBull.throwOuterBull())
+        assertSame(noBull, noBull.throwDart(Dart.BULL))
+        assertSame(noBull, noBull.throwDart(Dart.OUTER_BULL))
     }
 
     @Test
@@ -152,7 +134,7 @@ class CricketGameScreenStateTest {
         val solo = screen(CricketSaveFixtures.match("Ann"))
         val won = listOf(20, 19, 18, 17, 16, 15).fold(solo) { state, number ->
             state.tripleOf(number).let { if (it.canGoToNextPlayer) it.nextPlayer() else it }
-        }.throwBull().throwOuterBull()
+        }.throwDart(Dart.BULL).throwDart(Dart.OUTER_BULL)
 
         assertTrue(won.isWinPending)
         assertEquals(0, won.highlightedPlayerIndex)
@@ -177,7 +159,7 @@ class CricketGameScreenStateTest {
 
     @Test
     fun `CR22 owner D6 the zone shows points, or the closed targets in a solo game`() {
-        val duel = screen().tripleOf(20).throwNumber(20)
+        val duel = screen().tripleOf(20).throwDart(Dart.single(20))
         assertEquals(CricketZoneScore.Points(20), duel.zoneScoreOf(0))
         assertEquals(CricketZoneScore.Points(0), duel.zoneScoreOf(1))
 
@@ -192,7 +174,6 @@ class CricketGameScreenStateTest {
         val state = screen().throwDart(Dart.double(20)).throwDart(Dart.triple(20))
 
         assertEquals(listOf(Dart.double(20), Dart.triple(20)), state.game.darts)
-        assertEquals(Multiplier.SINGLE, state.multiplier)
     }
 
     @Test
@@ -269,7 +250,7 @@ class CricketGameScreenStateTest {
 
     @Test
     fun `CR23 headerTotals gives the points of each player, and null in a solo game`() {
-        assertEquals(listOf(20, 0), screen().tripleOf(20).throwNumber(20).headerTotals)
+        assertEquals(listOf(20, 0), screen().tripleOf(20).throwDart(Dart.single(20)).headerTotals)
         assertNull(screen(CricketSaveFixtures.match("Ann")).headerTotals)
     }
 
@@ -290,18 +271,18 @@ class CricketGameScreenStateTest {
 
     @Test
     fun `CR14 VT6 while a turn waits, the next player shows his last completed visit`() {
-        val waiting = screen().tripleOf(20).throwNumber(19).throwMiss()
+        val waiting = screen().tripleOf(20).throwDart(Dart.single(19)).throwMiss()
 
         assertEquals(listOf(CricketVisit.LastVisit(4), CricketVisit.NotPlayed), waiting.visits)
         val next = waiting.nextPlayer()
         assertEquals(listOf(CricketVisit.LastVisit(4), CricketVisit.InProgress(0)), next.visits)
-        val twoDarts = next.throwNumber(19).throwNumber(18)
+        val twoDarts = next.throwDart(Dart.single(19)).throwDart(Dart.single(18))
         assertEquals(listOf(CricketVisit.LastVisit(4), CricketVisit.InProgress(2)), twoDarts.visits)
     }
 
     @Test
     fun `CR23 board rows carry every player's marks and the dead flag`() {
-        val rows = screen().tripleOf(20).throwMiss().throwMiss().nextPlayer().throwNumber(20).boardRows
+        val rows = screen().tripleOf(20).throwMiss().throwMiss().nextPlayer().throwDart(Dart.single(20)).boardRows
 
         assertEquals(listOf(3, 1), rows.first().marks)
         assertFalse(rows.first().isDead)
@@ -321,7 +302,7 @@ class CricketGameScreenStateTest {
     }
 
     @Test
-    fun `R21 the saved game keeps the waiting flag and drops the modifier and the dialog`() {
+    fun `R21 the saved game keeps the waiting flag and drops the dialog`() {
         val waiting = screen().throwing(20, 19, 18).withAbandonDialog(shown = true)
         val restored = waiting.toSavedGame().toGameScreenState()
 
@@ -329,7 +310,5 @@ class CricketGameScreenStateTest {
         assertEquals(waiting.match, restored.match)
         assertTrue(restored.isAwaitingConfirmation)
         assertFalse(restored.isAbandonDialogShown)
-        val withDouble = screen().throwNumber(20).toggleMultiplier(Multiplier.DOUBLE)
-        assertEquals(Multiplier.SINGLE, withDouble.toSavedGame().toGameScreenState().multiplier)
     }
 }

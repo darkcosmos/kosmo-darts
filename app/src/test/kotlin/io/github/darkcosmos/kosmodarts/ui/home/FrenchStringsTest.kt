@@ -109,7 +109,6 @@ class FrenchStringsTest {
         )
         assertEquals("VICTOIRE", context.getString(R.string.cricket_win_banner))
         assertEquals("SANS 25-BULL", context.getString(R.string.cricket_header_without_bull))
-        assertEquals("Points : Anna 60, Bob 40", context.getString(R.string.cricket_board_points, "Anna 60, Bob 40"))
     }
 
     /** Review U2: each mark plural defines `one` and `other` in both files. */

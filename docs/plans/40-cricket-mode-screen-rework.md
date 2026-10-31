@@ -969,3 +969,21 @@ None. Q1 to Q7, Q9, Q10 and Q11 are answered by Kosmo (see Decisions); Q8 was wi
   window controller's swipe behavior is checked there under Robolectric (the actual hiding only on the phone, step 10).
   CR22 already had the text (R1); design system 6.5 got the sentence. No capture changed; X01 captures
   `cmp`-identical.
+- R5: removed `CricketKeypad.kt`, `CricketTags.KEYPAD`, `CricketGameScreenState.multiplier` (the field, so the saved game
+  and the undo no longer touch a modifier), `toggleMultiplier`, `throwNumber`, `throwOuterBull`, `throwBull`,
+  `areBullKeysEnabled`, the Cricket branches of `NumberTapped`/`MultiplierTapped`/`OuterBullTapped`/`BullTapped` in
+  `CricketReducer` (the X01 events stay) and the unused strings `cricket_board_points*` (with their `FrenchStringsTest`
+  line; the points row went in R3). Deviation: `zoneScoreOf` and `CricketZoneScore` stay, because the home card
+  (`ResumeSummary`) still calls them; R6 removes them with the `CR22 owner D6` case of `CricketGameScreenStateTest`
+  (Kosmo's Q2 and Q6 A: no total and no "n/7"), so no `zoneScoreOf` case is dropped in R5. Removed cases that follow
+  from the modifier no longer existing (not from Q2/Q6 A): `CR24 modifiers are one-shot and toggle` (replaced by `CR24
+  a triple is one dart and a miss is always a single miss`), `CR24 owner O2 A 25 and Bull are disabled while a modifier
+  is active` (replaced by `CR24 the 25 and the Bull are recorded in order`; the lock while a turn waits is
+  `buttons are locked`), the `multiplier` assertions of `CR24 one tap records one dart` and of `R21 the saved game`;
+  the `toggleMultiplier(DOUBLE)` and `areBullKeysEnabled` lines of the waiting and 25-Bull-off cases. Moved to
+  `CricketDartTapped` / `throwDart`: every other case of `CricketGameScreenStateTest`, `CricketReducerTest` (`the dart
+  events reach the game`), `CricketGameCuesTest` and `CricketPersistenceEffectsTest`; `MultiplierTapped` had no
+  Cricket meaning left, so its "no cue" and "writes nothing" cases became "a refused dart (25 with 25-Bull off) gives
+  no cue / writes nothing". `CricketResumeScreensTest` and `CricketScreenshotTest` used neither the keypad nor the
+  modifier any more. The captures `modifier_triple`, `keypad_*` and the 360 x 640 board captures went in R3; all the
+  planned captures exist; the 209 captures recorded before R5 are byte-identical after it (X01 included).

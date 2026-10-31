@@ -23,9 +23,6 @@ object CricketTags {
     /** The marks per round of the zone. */
     const val ZONE_STAT: String = "cricket_zone_stat"
 
-    /** The keypad of the screen. */
-    const val KEYPAD: String = "cricket_keypad"
-
     /** One target row. */
     fun row(target: CricketTarget): String = "cricket_row_${id(target)}"
 

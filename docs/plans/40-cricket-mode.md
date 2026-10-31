@@ -721,7 +721,9 @@ weakens it. A difference that is intended is listed with the reason in the imple
 
 ## How Kosmo verifies on the phone (Pixel)
 
-The PR description turns this into numbered steps, starting from a fresh install. Each line cites its rule:
+The PR description turns this into numbered steps, starting from a fresh install. Each line cites its rule. The steps
+that use the keypad and its Double/Triple modifier (3, 4, 7, 13, 14, 16 and 17) are replaced by the steps of
+`docs/plans/40-cricket-mode-screen-rework.md` ("How Kosmo verifies on the phone"): the keypad no longer exists.
 
 1. Home: the Cricket card "15–20 · Standard ou Cut-throat" sits under X01 (CR20).
 2. Cricket setup: the defaults are Standard and 25-Bull on, and the player names are the ones of the last X01 game

@@ -2,7 +2,6 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SavedCricketGame
 import io.github.darkcosmos.kosmodarts.persistence.confirmLegsWonBy
@@ -31,7 +30,7 @@ class CricketPersistenceEffectsTest {
 
         assertEquals(
             listOf(PersistenceEffect.SaveGame(SavedCricketGame(afterDart, isAwaitingNextPlayer = false))),
-            effectsOf(inGame(duel), AppEvent.NumberTapped(20)),
+            effectsOf(inGame(duel), AppEvent.CricketDartTapped(Dart.single(20))),
         )
         assertEquals(
             listOf(PersistenceEffect.SaveGame(SavedCricketGame(duel, isAwaitingNextPlayer = false))),
@@ -78,11 +77,12 @@ class CricketPersistenceEffectsTest {
     }
 
     @Test
-    fun `R12 the abandon dialog and the modifier write nothing`() {
+    fun `R12 the abandon dialog and a refused dart write nothing`() {
         assertEquals(emptyList<PersistenceEffect>(), effectsOf(inGame(duel), AppEvent.Back))
+        val noBull = CricketSaveFixtures.match("Ann", "Bob", isBullInPlay = false)
         assertEquals(
             emptyList<PersistenceEffect>(),
-            effectsOf(inGame(duel), AppEvent.MultiplierTapped(Multiplier.DOUBLE)),
+            effectsOf(inGame(noBull), AppEvent.CricketDartTapped(Dart.OUTER_BULL)),
         )
     }
 

@@ -28,7 +28,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTarget
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.annScoring
 import io.github.darkcosmos.kosmodarts.persistence.playLegWonBy
@@ -108,7 +107,7 @@ class CricketScreenTest {
     /** Owner review: the zone shows the darts of the visit (a miss when a dart gives no mark), not a visit box. */
     @Test
     fun `CR2 CR22 the zone shows the scoring darts and a miss, without a visit box`() {
-        show(match(listOf("Ann", "Bob")).toggleMultiplier(Multiplier.TRIPLE).throwNumber(20).throwNumber(5))
+        show(match(listOf("Ann", "Bob")).throwDart(Dart.triple(20)).throwDart(Dart.single(5)))
 
         node(GameTags.dartSlot(0)).assertContentDescriptionEquals("Fléchette 1 : T20")
         node(GameTags.dartSlot(1)).assertContentDescriptionEquals("Fléchette 2 : RATÉ")

@@ -4,7 +4,6 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketCue
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.confirmLegsWonBy
 import io.github.darkcosmos.kosmodarts.persistence.playLegWonBy
@@ -26,6 +25,8 @@ class CricketGameCuesTest {
     private fun inGame(match: CricketMatch = duel, isAwaiting: Boolean = false) =
         AppState(screen = Screen.CricketGame(CricketGameScreenState(match, isAwaitingConfirmation = isAwaiting)))
 
+    private fun dartTapped(segment: Int) = AppEvent.CricketDartTapped(Dart.single(segment))
+
     /** Applies [events] in order and returns the Cricket cues of the last one. */
     private fun cuesOf(start: AppState, vararg events: AppEvent): List<CricketCue> {
         var state = start
@@ -40,10 +41,10 @@ class CricketGameCuesTest {
 
     @Test
     fun `AN29 a dart gives its hit or miss cue`() {
-        assertEquals(listOf(CricketCue.DartHit(Dart.single(20))), cuesOf(inGame(), AppEvent.NumberTapped(20)))
+        assertEquals(listOf(CricketCue.DartHit(Dart.single(20))), cuesOf(inGame(), dartTapped(20)))
         assertEquals(listOf(CricketCue.DartMiss), cuesOf(inGame(), AppEvent.MissTapped))
         // CR3: 14 is not a target, so it gives no mark.
-        assertEquals(listOf(CricketCue.DartMiss), cuesOf(inGame(), AppEvent.NumberTapped(14)))
+        assertEquals(listOf(CricketCue.DartMiss), cuesOf(inGame(), dartTapped(14)))
     }
 
     @Test
@@ -52,25 +53,27 @@ class CricketGameCuesTest {
 
         assertEquals(
             listOf(CricketCue.ClosedSectorHit(Dart.single(20))),
-            cuesOf(inGame(closed), AppEvent.NumberTapped(20)),
+            cuesOf(inGame(closed), dartTapped(20)),
         )
     }
 
     @Test
     fun `AN27 the winning dart carries what the leg decides`() {
         val beforeLegWin = duel.playLegWonBy(0).undo()
-        val legCues = cuesOf(inGame(beforeLegWin), AppEvent.OuterBullTapped)
+        val legCues = cuesOf(inGame(beforeLegWin), AppEvent.CricketDartTapped(Dart.OUTER_BULL))
         val decided = duel.confirmLegsWonBy(0).playLegWonBy(0).undo()
-        val matchCues = cuesOf(inGame(decided), AppEvent.OuterBullTapped)
+        val matchCues = cuesOf(inGame(decided), AppEvent.CricketDartTapped(Dart.OUTER_BULL))
 
         assertEquals(listOf(CricketCue.DartHit(Dart.OUTER_BULL), CricketCue.Win(0, "Ann", LegOutcome.LEG)), legCues)
         assertEquals(CricketCue.Win(0, "Ann", LegOutcome.MATCH), matchCues.last())
     }
 
     @Test
-    fun `AN9 Undo gives the undo cue, the modifier gives none`() {
-        assertEquals(listOf(CricketCue.DartUndone), cuesOf(inGame(), AppEvent.NumberTapped(20), AppEvent.UndoTapped))
-        assertEquals(emptyList<CricketCue>(), cuesOf(inGame(), AppEvent.MultiplierTapped(Multiplier.DOUBLE)))
+    fun `AN9 Undo gives the undo cue, a refused dart gives none`() {
+        assertEquals(listOf(CricketCue.DartUndone), cuesOf(inGame(), dartTapped(20), AppEvent.UndoTapped))
+        // CR1, CR24: with 25-Bull off, a tap on the 25 is ignored and makes no sound.
+        val noBull = inGame(CricketSaveFixtures.match("Ann", "Bob", isBullInPlay = false))
+        assertEquals(emptyList<CricketCue>(), cuesOf(noBull, AppEvent.CricketDartTapped(Dart.OUTER_BULL)))
     }
 
     @Test

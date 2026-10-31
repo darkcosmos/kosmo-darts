@@ -10,7 +10,6 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVisits
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.game.MatchIndicator
 import io.github.darkcosmos.kosmodarts.ui.game.MatchPosition
 
@@ -24,13 +23,11 @@ import io.github.darkcosmos.kosmodarts.ui.game.MatchPosition
  * then, or the winner while a win is pending (CR25), even when the winning dart was thrown by another player (CR9).
  *
  * @property match the match; its current leg is [game] (docs/rules/match.md).
- * @property multiplier one-shot modifier for the next number: [Multiplier.SINGLE] when no modifier is active (CR24).
  * @property isAwaitingConfirmation whether the last dart completed a turn that is not confirmed yet.
  * @property isAbandonDialogShown whether the "Abandon the game?" confirmation is open.
  */
 data class CricketGameScreenState(
     val match: CricketMatch,
-    val multiplier: Multiplier = Multiplier.SINGLE,
     val isAwaitingConfirmation: Boolean = false,
     val isAbandonDialogShown: Boolean = false,
 ) {
@@ -89,17 +86,13 @@ data class CricketGameScreenState(
     val nextDartIndex: Int?
         get() = if (isKeypadEnabled) highlightedTurnDarts.size else null
 
-    /** Numbers, Double, Triple, 25, Bull and Miss are disabled while a turn waits for confirmation (CR24). */
+    /** The dart buttons and Miss are disabled while a turn waits for confirmation (CR24). */
     val isKeypadEnabled: Boolean
         get() = !isAwaitingConfirmation && !game.state.isFinished
 
     /** CR24: the 25 and Bull keys exist only with 25-Bull in play (CR1). */
     val areBullKeysShown: Boolean
         get() = game.config.isBullInPlay
-
-    /** CR24, owner O2 A: 25 and Bull take no multiplier, so their keys are disabled while a modifier is active. */
-    val areBullKeysEnabled: Boolean
-        get() = areBullKeysShown && isKeypadEnabled && multiplier == Multiplier.SINGLE
 
     /** M14: sets and legs won by each player, in configuration order, or `null` in a single game. */
     val indicators: List<MatchIndicator>?
@@ -159,31 +152,18 @@ data class CricketGameScreenState(
         return if (isBullDart && !areBullKeysShown) this else record(dart)
     }
 
-    /** Activates [modifier], or cancels it if it is already active. */
-    fun toggleMultiplier(modifier: Multiplier): CricketGameScreenState = if (isKeypadEnabled) {
-        copy(multiplier = if (multiplier == modifier) Multiplier.SINGLE else modifier)
-    } else {
-        this
-    }
-
-    fun throwNumber(number: Int): CricketGameScreenState = record(Dart(number, multiplier))
-
-    fun throwOuterBull(): CricketGameScreenState = if (areBullKeysEnabled) record(Dart.OUTER_BULL) else this
-
-    fun throwBull(): CricketGameScreenState = if (areBullKeysEnabled) record(Dart.BULL) else this
-
-    /** A miss is always a single miss: it also cancels an active modifier. */
+    /** A miss is always a single miss. */
     fun throwMiss(): CricketGameScreenState = record(Dart.MISS)
 
     /** Moves play on after a completed turn. Does nothing if no turn is waiting, or on a pending win. */
     fun nextPlayer(): CricketGameScreenState = if (canGoToNextPlayer) copy(isAwaitingConfirmation = false) else this
 
     /**
-     * Removes the last dart, whoever threw it, and cancels an active modifier (CR11). On a pending turn or win, this
+     * Removes the last dart, whoever threw it (CR11). On a pending turn or win, this
      * reopens the turn with its first darts.
      */
     fun undo(): CricketGameScreenState =
-        copy(match = match.undo(), multiplier = Multiplier.SINGLE, isAwaitingConfirmation = false)
+        copy(match = match.undo(), isAwaitingConfirmation = false)
 
     fun withAbandonDialog(shown: Boolean): CricketGameScreenState = copy(isAbandonDialogShown = shown)
 
@@ -191,7 +171,7 @@ data class CricketGameScreenState(
         if (!isKeypadEnabled) return this
         val next = match.throwDart(dart)
         val turnCompleted = next.currentLeg.state.completedTurns.size > game.state.completedTurns.size
-        return copy(match = next, multiplier = Multiplier.SINGLE, isAwaitingConfirmation = turnCompleted)
+        return copy(match = next, isAwaitingConfirmation = turnCompleted)
     }
 }
 

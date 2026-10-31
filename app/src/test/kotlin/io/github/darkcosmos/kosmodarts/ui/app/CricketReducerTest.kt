@@ -8,7 +8,6 @@ import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
-import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
@@ -82,12 +81,11 @@ class CricketReducerTest {
     }
 
     @Test
-    fun `CR24 the keypad events reach the game`() {
+    fun `CR24 the dart events reach the game`() {
         val state = inGame().after(
-            AppEvent.MultiplierTapped(Multiplier.TRIPLE),
-            AppEvent.NumberTapped(20),
-            AppEvent.OuterBullTapped,
-            AppEvent.BullTapped,
+            AppEvent.CricketDartTapped(Dart.triple(20)),
+            AppEvent.CricketDartTapped(Dart.OUTER_BULL),
+            AppEvent.CricketDartTapped(Dart.BULL),
             AppEvent.NextPlayerTapped,
             AppEvent.MissTapped,
             AppEvent.MissTapped,
