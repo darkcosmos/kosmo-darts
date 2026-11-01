@@ -117,15 +117,30 @@ data class HistorySnapshot(val filters: HistoryFilters, val scroll: HistoryScrol
 
         /** The snapshot [text] stands for, or `null` when it is missing or not exactly what [encode] writes. */
         fun decode(text: String?): HistorySnapshot? {
-            val fields = text?.split(SEPARATOR)?.takeIf { it.size == FIELD_COUNT } ?: return null
-            val mode = fields[0].takeIf { it != NONE }?.let { name -> ArchivedMode.entries.find { it.name == name } }
-            val profileId = fields[1].takeIf { it != NONE }?.toLongOrNull()
-            val index = fields[2].toIntOrNull()
-            val offset = fields[3].toIntOrNull()
-            val isModeValid = fields[0] == NONE || mode != null
-            val isProfileValid = fields[1] == NONE || profileId != null
-            if (!isModeValid || !isProfileValid || index == null || offset == null || index < 0 || offset < 0) return null
-            return HistorySnapshot(HistoryFilters(mode, profileId), HistoryScroll(index, offset))
+            val fields = text?.split(SEPARATOR)?.takeIf { it.size == FIELD_COUNT }
+            val mode = fields?.get(0)?.let(::decodeMode)
+            val profileId = fields?.get(1)?.let(::decodeProfile)
+            val scroll = fields?.let { decodeScroll(it[2], it[3]) }
+            return if (mode == null || profileId == null || scroll == null) {
+                null
+            } else {
+                HistorySnapshot(HistoryFilters(mode.value, profileId.value), scroll)
+            }
         }
+
+        private fun decodeMode(field: String): Optional<ArchivedMode>? =
+            if (field == NONE) Optional(null) else ArchivedMode.entries.find { it.name == field }?.let(::Optional)
+
+        private fun decodeProfile(field: String): Optional<Long>? =
+            if (field == NONE) Optional(null) else field.toLongOrNull()?.let(::Optional)
+
+        private fun decodeScroll(index: String, offset: String): HistoryScroll? {
+            val i = index.toIntOrNull()
+            val o = offset.toIntOrNull()
+            return if (i == null || o == null || minOf(i, o) < 0) null else HistoryScroll(i, o)
+        }
+
+        /** Tells "no filter" (a present `null`) from "unreadable" (an absent result). */
+        private class Optional<T>(val value: T?)
     }
 }

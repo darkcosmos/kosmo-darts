@@ -79,7 +79,8 @@ private fun MatchList(state: HistoryState, chipsScroll: ScrollState, onEvent: (A
     val matches = (state.content as HistoryContent.Loaded).matches
     val listState = rememberLazyListState(state.scroll.index, state.scroll.offset)
     val currentOnEvent by rememberUpdatedState(onEvent)
-    // The position is reported when a scroll stops, not at each frame (HS6); the idle list at the start reports nothing.
+    // The position is reported when a scroll stops, not at each frame (HS6);
+    // the idle list at the start reports nothing.
     LaunchedEffect(listState) {
         snapshotFlow { listState.isScrollInProgress }.drop(1).filter { !it }.collect {
             val index = listState.firstVisibleItemIndex

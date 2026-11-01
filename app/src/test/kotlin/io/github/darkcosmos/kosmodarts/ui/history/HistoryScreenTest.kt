@@ -98,7 +98,8 @@ class HistoryScreenTest {
         composeRule.onNodeWithText("Winner: Ana", useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithText("Winner: Cleo", useUnmergedTree = true).assertIsDisplayed()
         composeRule.onNodeWithText("Legs 2–1", useUnmergedTree = true).assertIsDisplayed()
-        assertEquals(1, composeRule.onAllNodes(hasText("Legs", substring = true), useUnmergedTree = true).fetchSemanticsNodes().size)
+        val legsNodes = composeRule.onAllNodes(hasText("Legs", substring = true), useUnmergedTree = true)
+        assertEquals(1, legsNodes.fetchSemanticsNodes().size)
     }
 
     @Test
@@ -161,7 +162,8 @@ class HistoryScreenTest {
 
     @Test
     fun `HS4 no match keeps the filters and Show all matches resets them`() {
-        val state = HistoryState(filters = HistoryFilters(ArchivedMode.CRICKET, 1)).loaded(1, okList(emptyList(), profiles))
+        val filtered = HistoryState(filters = HistoryFilters(ArchivedMode.CRICKET, 1))
+        val state = filtered.loaded(1, okList(emptyList(), profiles))
         showState(state)
         node(HistoryTags.NO_MATCH).assertIsDisplayed()
         node(HistoryTags.playerChip(1)).assertIsSelected()
@@ -200,7 +202,8 @@ class HistoryScreenTest {
         assertTrue("index ${scrolled.index}", scrolled.index > 1)
 
         events.clear()
-        showState(HistoryState(scroll = HistoryScroll(scrolled.index, scrolled.offset)).loaded(1, okList(many, profiles)))
+        val restored = HistoryState(scroll = HistoryScroll(scrolled.index, scrolled.offset))
+        showState(restored.loaded(1, okList(many, profiles)))
         node(HistoryTags.row(many[scrolled.index - 1].sessionId)).assertIsDisplayed()
     }
 

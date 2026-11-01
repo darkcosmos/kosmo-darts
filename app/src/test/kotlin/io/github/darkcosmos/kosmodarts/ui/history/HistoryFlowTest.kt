@@ -32,7 +32,10 @@ class HistoryFlowTest {
     val composeRule = createEmptyComposeRule()
 
     private val repository = FakeHistoryRepository(
-        okList(listOf(x01HistoryMatch(1, "Ana", "Bob"), cricketHistoryMatch(2, "Cleo")), profilesOf("Ana", "Bob", "Cleo")),
+        okList(
+            listOf(x01HistoryMatch(1, "Ana", "Bob"), cricketHistoryMatch(2, "Cleo")),
+            profilesOf("Ana", "Bob", "Cleo"),
+        ),
     )
     private val process = AppProcess(history = repository)
 

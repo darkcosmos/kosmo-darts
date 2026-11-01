@@ -58,7 +58,8 @@ class HistoryNavigationTest {
         val state = opened()
         assertEquals(SaveFixtures.MID_TURN, savedGameOf(state))
         assertTrue(persistenceEffects(home, state).none { it is PersistenceEffect.SaveGame })
-        assertTrue(persistenceEffects(state, reducer.reduce(state, AppEvent.Back)).none { it is PersistenceEffect.DeleteGame })
+        val effects = persistenceEffects(state, reducer.reduce(state, AppEvent.Back))
+        assertTrue(effects.none { it is PersistenceEffect.DeleteGame })
     }
 
     @Test
@@ -128,7 +129,8 @@ class HistoryNavigationTest {
     @Test
     fun `HS6 a snapshot brings History back over the saved game's home, and reads again`() {
         val snapshot = HistorySnapshot(HistoryFilters(ArchivedMode.X01, 3), HistoryScroll(7, 20))
-        val state = initialState(LoadResult(GameLoad.Valid(SaveFixtures.MID_TURN), null), wasOnGameScreen = false, snapshot)
+        val loaded = LoadResult(GameLoad.Valid(SaveFixtures.MID_TURN), null)
+        val state = initialState(loaded, wasOnGameScreen = false, snapshot)
         val screen = state.screen as Screen.History
         assertEquals(Screen.Home(resumableGame = SaveFixtures.MID_TURN), screen.home)
         assertEquals(snapshot, screen.history.snapshot())
@@ -148,7 +150,8 @@ class HistoryNavigationTest {
         assertEquals(Screen.Home(), fresh.screen)
         assertEquals(emptyList<PersistenceEffect>(), startupEffects(fresh))
         val snapshot = HistorySnapshot(HistoryFilters(), HistoryScroll())
-        val onGame = initialState(LoadResult(GameLoad.Valid(SaveFixtures.MID_TURN), null), wasOnGameScreen = true, snapshot)
+        val loaded = LoadResult(GameLoad.Valid(SaveFixtures.MID_TURN), null)
+        val onGame = initialState(loaded, wasOnGameScreen = true, snapshot)
         assertTrue(onGame.screen is Screen.Game)
         assertNull((onGame.screen as? Screen.History))
     }

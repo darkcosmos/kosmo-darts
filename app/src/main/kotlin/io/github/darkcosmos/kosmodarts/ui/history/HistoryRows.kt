@@ -64,7 +64,11 @@ private fun modeText(resources: Resources, settings: ArchivedSettings): String {
             resources.getString(R.string.mode_x01_title),
             settings.startScore.toString(),
             resources.getString(
-                if (settings.checkoutRule == CheckoutRule.DOUBLE_OUT) R.string.setup_double_out else R.string.setup_single_out,
+                if (settings.checkoutRule == CheckoutRule.DOUBLE_OUT) {
+                    R.string.setup_double_out
+                } else {
+                    R.string.setup_single_out
+                },
             ),
         )
         is ArchivedSettings.Cricket -> listOf(

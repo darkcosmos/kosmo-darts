@@ -51,7 +51,9 @@ class HistoryScreenshotTest {
                 cricketHistoryMatch(5, "Anna", "Bob", "Cleo"),
                 x01HistoryMatch(
                     4, longName, "Bob", "Cleo", "Dan",
-                    format = MatchFormat(legsPerSet = 3, sets = 2), legs = listOf(6, 5, 2, 1), sets = listOf(2, 1, 0, 0),
+                    format = MatchFormat(legsPerSet = 3, sets = 2),
+                    legs = listOf(6, 5, 2, 1),
+                    sets = listOf(2, 1, 0, 0),
                 ),
                 x01HistoryMatch(3, "Anna", "Bob", format = MatchFormat(legsPerSet = 2), legs = listOf(2, 1)),
                 x01HistoryMatch(2, "Cleo"),

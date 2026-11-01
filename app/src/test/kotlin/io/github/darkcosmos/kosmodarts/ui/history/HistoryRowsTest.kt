@@ -79,7 +79,10 @@ class HistoryRowsTest {
         val legs = text(x01HistoryMatch(1, "Ana", "Bob", format = MatchFormat(legsPerSet = 2), legs = listOf(2, 1)))
         assertEquals("Legs 2–1", legs.score)
         val sets = text(
-            x01HistoryMatch(1, "Ana", "Bob", format = MatchFormat(legsPerSet = 2, sets = 2), legs = listOf(4, 3), sets = listOf(2, 1)),
+            x01HistoryMatch(
+                1, "Ana", "Bob", format = MatchFormat(legsPerSet = 2, sets = 2),
+                legs = listOf(4, 3), sets = listOf(2, 1),
+            ),
         )
         assertEquals("Sets 2–1", sets.score)
     }

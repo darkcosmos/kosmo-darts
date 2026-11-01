@@ -50,7 +50,11 @@ fun HistoryRowCard(match: HistoryMatch, onClick: () -> Unit, modifier: Modifier 
             .testTag(HistoryTags.row(match.sessionId))
             .clip(KosmoShapes.card)
             .background(colors.surface)
-            .clickable(role = Role.Button, onClickLabel = stringResource(R.string.history_row_action), onClick = onClick)
+            .clickable(
+                role = Role.Button,
+                onClickLabel = stringResource(R.string.history_row_action),
+                onClick = onClick,
+            )
             .sizeIn(minHeight = States.minTouchTarget)
             .clearAndSetSemantics { contentDescription = text.description }
             .padding(16.dp),
