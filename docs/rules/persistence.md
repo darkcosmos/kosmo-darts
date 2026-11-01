@@ -167,3 +167,16 @@ Vocabulary:
   score. A file that would be over the size limit of R9 is not written either (ADR 0008, "Size limit").
 - R25. A version 1 to 3 saved game or last setup is read as X01 (R16, R18), without any message. Cricket then uses its
   defaults, with the shared roster.
+
+## Match history (issue #50, `docs/rules/history.md`, ADR 0011)
+
+- R26. Format version 5 adds to the saved game the match id (AR4), the match start time and the dart journal of every
+  leg (DJ1), and every write of the saved game uses it. The last setup file keeps version 4 (unchanged).
+- R27. A version 1 to 4 saved game is read without any message: it gets a new match id, no start time, no journal for
+  its confirmed legs and a current-leg journal rebuilt from its darts (DJ5, AR7).
+- R28. The 10,000-dart limit of R12 counts the darts in play of the current leg, as before; voided darts do not count.
+  The size limit of R9 becomes 1,048,576 bytes for every saved game, and a file over it is not written (the previous
+  file is kept). The archive never depends on the saved file: it is built from the match in memory (AR1).
+- R29. A version 5 file is rejected (R9) when its match id is not a UUID, its start time or an entry time is not a
+  canonical non-negative integer, its journal count differs from the leg count plus one, or a journal replay
+  breaks DJ4 or the engine rejects it.
