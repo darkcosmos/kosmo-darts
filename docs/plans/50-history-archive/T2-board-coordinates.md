@@ -14,14 +14,14 @@
 None.
 
 ## Rules
-BC1, BC2, BC3 (`docs/rules/history.md`).
+BC1, BC2, BC3 (`docs/rules/history.md`); D33.
 
 ## Approach
 - Sector order clockwise from the top: 20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5; sector
   i is centred at i × 18° clockwise from +y: `x = r sin θ`, `y = r cos θ`.
 - Radii from the cited source (inner edges of the wires as the source gives them). Mean radius of a zone =
   (inner + outer) / 2: single = between the triple outer and the double inner radius; triple and double = middle of
-  their ring. 25 and Bull: (0, 0). Miss: `null`.
+  their ring. 25 and Bull: (0, 0). Miss: `null`, the "position unknown" value of the archive (D33).
 
 ## Tests
 - Every segment 1 to 20 × single, double, triple: radius equals the expected mean radius (tolerance 1e-9) and angle

@@ -41,7 +41,8 @@ earlier build, and any creation of profiles from the last setup or the saved gam
    undo records `Undone`; a confirmed leg opens a new leg journal. The ViewModel injects the clock.
 5. **Database (T7)**, ADR 0012: entities, DAOs, `HistoryDatabase`, `ArchiveRepository.archive(...)` in one
    transaction, `HistoryRepository` reads; mapping from `ArchivedMatch` plus colors (slot to ARGB from
-   `PlayerPalette`) and app version (`PackageManager` `versionName`, never null, D31). Every column `NOT NULL` (D31).
+   `PlayerPalette`) and app version (`PackageManager` `versionName`, never null, D31). Every column `NOT NULL`
+   except `x_mm`, `y_mm` (D31 to D33).
 6. **Profiles (T8).** `PlayerListRules.nameKey` made public and used for profiles; profiles written at Start/Rematch
    on the persistence queue (PF2) through the one `ProfileDao.upsertUsed`; a `Failed` result is ignored (AR9). No
    launch migration (PF4 withdrawn, D25).
@@ -261,16 +262,18 @@ One `opus` task (T7).
     n'y a pas d'histoire de backward compatibilité." Every column of schema version 1 is `NOT NULL` and every entity
     field is a non-nullable Kotlin type, with no null branch in mappers, screens or tests (ADR 0012 "Tables").
     `started_at` and `entered_at` become `NOT NULL`; `has_journal` is removed (always 1 since D25, read by nothing);
-    `app_version` is the build's version name, never null. `reset_at`, `x_mm` and `y_mm` have no value in some case
-    and wait for open question 2.
+    `app_version` is the build's version name, never null. Exceptions: D32 and D33.
+  - D32 (Kosmo, verbatim, on `reset_at`): "OK avec la proposition B". `reset_at` is `NOT NULL` and set to the
+    profile's creation date: statistics are counted from the creation (PF1, ADR 0012).
+  - D33 (Kosmo, verbatim, on dart coordinates): "j'ai un problème plus général parce que pour moi, ça doit rester
+    globalement optionnel, aussi bien pour le raté, mais pour aussi les... pour les fléchettes pour lesquelles on n'a
+    pas la position XY." `x_mm` and `y_mm` are the only nullable columns: null means "position unknown", for a miss
+    and for any dart without a known position, now or from a later source; both null or both set (BC2, ADR 0012).
+    Manual entry is unchanged: a hit gets its nominal point, a miss none. Consumers of positions ignore null ones.
 
 ## Open questions
 
 1. If the Room version kept in T1 offers no supported way to stop the framework from deleting a corrupt database
    file (ADR 0012, "Failure contract"), T1 stops and main decides with Kosmo: accept the framework behavior (a corrupt
    history is lost), or another option T1 reports.
-2. Mandatory columns that have no value in some case (D31), to answer before T7 starts: `profile.reset_at` (a
-   profile is never reset in this mission, PF1) and `dart.x_mm`, `dart.y_mm` (a miss has no coordinates, BC2). For
-   each: keep it nullable as the only exception, make it `NOT NULL` with a stated value (for example `reset_at` equal
-   to `created_at`), or remove it until the mission that needs it (`reset_at`: H2). Until answered, these three stay
-   nullable in ADR 0012.
+2. Answered by Kosmo: mandatory columns without a value in some case (D32 for `reset_at`, D33 for `x_mm`, `y_mm`).

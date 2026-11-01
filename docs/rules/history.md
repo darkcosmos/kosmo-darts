@@ -14,8 +14,9 @@ Vocabulary:
 
 ## Profiles
 
-- PF1. A profile has a name (the spelling of its first use), a name key (unique), a reset date (always empty in this
-  mission), a creation date and a last-used date. It has no color.
+- PF1. A profile has a name (the spelling of its first use), a name key (unique), a reset date (equal to the creation
+  date when the profile is created, never changed in this mission: statistics count from it), a creation date and a
+  last-used date. It has no color.
 - PF2. "Start" and "Rematch" create a profile for each player whose name key matches no profile, and set the
   last-used date of every player's profile to the start time. An existing profile keeps its first spelling (owner Q3).
 - PF3. The setup screen keeps the last-setup prefill (R7, R22). Under the name field that has the focus, it lists the
@@ -47,7 +48,9 @@ Vocabulary:
   the centre of the Bull, y axis towards the 20, x axis towards the 6.
 - BC2. The nominal point of a manual dart is the centre of its zone: the mean radius of the zone, on the bisector of
   its sector. Single: the outer single zone. Double and triple: the middle of the ring. 25 and Bull: (0, 0). Miss: no
-  coordinates.
+  coordinates. Coordinates are optional: a dart has both x and y, or neither ("position unknown"), which applies to
+  a miss and to any dart whose position is not known (owner decision, plan D33); an unknown position is never read
+  as (0, 0).
 - BC3. The engine computes the nominal point; the app never computes coordinates.
 
 ## Archive

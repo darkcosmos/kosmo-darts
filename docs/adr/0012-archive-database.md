@@ -33,19 +33,23 @@ deleted (AR8) and must survive every future version (no destructive migration).
 
 | Table | Columns | Keys and indexes |
 |---|---|---|
-| `profile` | `id`, `name`, `name_key`, `created_at`, `last_used_at`, `reset_at` (open) | unique `name_key`; index `last_used_at` |
+| `profile` | `id`, `name`, `name_key`, `created_at`, `last_used_at`, `reset_at` | unique `name_key`; index `last_used_at` |
 | `session` | `id`, `type` (`MATCH`/`TRAINING`), `started_at`, `ended_at`, `rules_version`, `app_version` | index `ended_at` |
 | `match_record` | `session_id`, `match_uuid`, `mode` (`X01`/`CRICKET`), `variant`, `settings` (text), `settings_version` | primary `session_id` (FK); unique `match_uuid`; index `mode` |
 | `match_player` | `session_id`, `position`, `profile_id`, `color_argb`, `final_rank`, `legs_won`, `sets_won` | primary (`session_id`, `position`); index `profile_id` |
 | `leg` | `id`, `session_id`, `ordinal`, `set_number`, `leg_number`, `starter_position`, `winner_position` | unique (`session_id`, `ordinal`) |
-| `dart` | `id`, `leg_id`, `player_position`, `visit`, `rank`, `segment`, `multiplier`, `bust`, `voided`, `source`, `x_mm` (open), `y_mm` (open), `entered_at` | index (`leg_id`, `visit`, `rank`) |
+| `dart` | `id`, `leg_id`, `player_position`, `visit`, `rank`, `segment`, `multiplier`, `bust`, `voided`, `source`, `x_mm` (null), `y_mm` (null), `entered_at` | index (`leg_id`, `visit`, `rank`) |
 
 - Every column is `NOT NULL` (plan D31, Kosmo: "on met juste par contre toutes les colonnes mandatory, puisque il
   n'y a pas d'histoire de backward compatibilité"), and the matching entity fields are non-nullable Kotlin types.
-  The three columns marked "(open)" have no value in some case (`reset_at`: never reset in this mission, PF1; `x_mm`
-  and `y_mm`: a miss has no coordinates, BC2); how they become mandatory is plan open question 2, answered by Kosmo
-  before T7 starts. Until then they are the only nullable columns. There is no `has_journal` column: every archived
-  leg has its journal (D25), so such a flag would always be 1 and nothing would read it.
+  There is no `has_journal` column: every archived leg has its journal (D25), so such a flag would always be 1 and
+  nothing would read it.
+- `reset_at` (plan D32) is `NOT NULL` and equals `created_at` when the profile is created: statistics count from
+  the creation; nothing changes it in this mission (PF1).
+- `x_mm` and `y_mm` (plan D33) are the only nullable columns. Null means "position unknown": a miss (BC2), or any
+  dart whose position is not known, now or from a later source. Both are null or both are set: they are written from
+  one `BoardPoint?` (Room has no `CHECK` annotation; T7 tests both cases read back). Every consumer of positions
+  (later heatmap and statistics) ignores darts whose position is null; it never reads them as (0, 0).
 - Every foreign key is `NO ACTION` on delete: nothing is deleted (AR8). Times are epoch milliseconds.
 - `segment`: 0 (miss), 1 to 20, 25 (outer bull and bull, with `multiplier` 1 or 2); `multiplier`: 1 to 3.
   `source`: `MANUAL` or `CAMERA`. Coordinates are `REAL` millimetres (BC1).
