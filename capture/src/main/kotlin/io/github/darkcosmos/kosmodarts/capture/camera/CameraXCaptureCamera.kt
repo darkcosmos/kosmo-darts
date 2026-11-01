@@ -6,6 +6,7 @@ import android.provider.MediaStore
 import androidx.annotation.OptIn
 import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -23,6 +24,7 @@ import androidx.camera.video.VideoCapture
 import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
 import androidx.lifecycle.LifecycleOwner
+import io.github.darkcosmos.kosmodarts.camera.zoom.ZoomRange
 import io.github.darkcosmos.kosmodarts.capture.storage.CaptureOutputTarget
 import io.github.darkcosmos.kosmodarts.capture.storage.MediaStoreCaptureStorage
 import io.github.darkcosmos.kosmodarts.capture.truth.Resolution
@@ -47,7 +49,20 @@ class CameraXCaptureCamera(
     override var timestampSource: TimestampSource = TimestampSource.UNKNOWN
         private set
 
-    private val executor = context.mainExecutor
+    private var camera: Camera? = null
+
+    override val zoomRange: ZoomRange?
+        get() = camera?.cameraInfo?.zoomState?.value?.let { ZoomRange.of(it.minZoomRatio, it.maxZoomRatio) }
+
+    override val zoomRatio: Float?
+        get() = camera?.cameraInfo?.zoomState?.value?.zoomRatio
+
+    override fun setZoomRatio(ratio: Float) {
+        // The returned future is ignored on purpose: a refused ratio leaves the zoom as it was (CP16).
+        camera?.cameraControl?.setZoomRatio(ratio)
+    }
+
+    private val executor =context.mainExecutor
     private val recordings = mutableMapOf<Int, Recording>()
     private var preview: Preview? = null
     private var imageCapture: ImageCapture? = null
@@ -111,6 +126,7 @@ class CameraXCaptureCamera(
 
         provider.unbindAll()
         val camera = provider.bindToLifecycle(owner, selector, newPreview, newPhoto, newVideo)
+        this.camera = camera
         val info = camera.cameraInfo
 
         val size = qualities.firstNotNullOfOrNull { QualitySelector.getResolution(info, it) }

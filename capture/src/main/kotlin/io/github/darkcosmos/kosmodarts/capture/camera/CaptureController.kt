@@ -58,6 +58,14 @@ class CaptureController(private val camera: CaptureCamera) : CaptureEffects, Cap
         }
     }
 
+    override fun setZoomRatio(ratio: Float) {
+        try {
+            camera.setZoomRatio(ratio)
+        } catch (_: RuntimeException) {
+            // A zoom failure is not a camera error (CP9): no report, the session goes on.
+        }
+    }
+
     override fun onVideoStarted(volley: Int) {
         reports?.onVideoStarted(volley)
     }

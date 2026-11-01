@@ -192,6 +192,25 @@ class CaptureControllerTest {
     }
 
     @Test
+    fun `CP16 setZoomRatio calls the camera once with the ratio`() {
+        controller.setZoomRatio(2.4f)
+        assertEquals(listOf(2.4f), camera.zoomCalls)
+        assertEquals(2.4f, camera.zoomRatio)
+    }
+
+    @Test
+    fun `CP9 a camera that refuses the zoom reports no camera error and keeps the recording`() {
+        val vm = viewModel()
+        vm.onStart()
+        camera.failZoom = true
+        controller.setZoomRatio(3.0f)
+        assertEquals(listOf(3.0f), camera.zoomCalls)
+        assertEquals(CapturePhase.RUNNING, vm.state.value.phase)
+        assertTrue(camera.isRecording(1))
+        assertFalse(camera.calls.any { it.startsWith("error") || it.startsWith("stop") })
+    }
+
+    @Test
     fun `CP13 a failed photo keeps the dart, reports the failure once and the next dart is still photographed`() {
         camera.failPhotos += 2
         val vm = viewModel()

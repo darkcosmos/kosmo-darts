@@ -15,4 +15,7 @@ interface CaptureEffects {
 
     /** Take the photo of dart entry [dart] into [target]. */
     fun takePhoto(dart: Int, target: CaptureOutputTarget)
+
+    /** Apply the zoom [ratio] to the camera (rule CP16); a failure is never reported. */
+    fun setZoomRatio(ratio: Float)
 }

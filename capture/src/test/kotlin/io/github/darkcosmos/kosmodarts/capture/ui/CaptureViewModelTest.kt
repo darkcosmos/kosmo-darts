@@ -41,6 +41,12 @@ class CaptureViewModelTest {
         override fun takePhoto(dart: Int, target: CaptureOutputTarget) {
             calls += "photo $dart ${target.displayName}"
         }
+
+        val zoomCalls = mutableListOf<Float>()
+
+        override fun setZoomRatio(ratio: Float) {
+            zoomCalls += ratio
+        }
     }
 
     private val clock = FakeClock()

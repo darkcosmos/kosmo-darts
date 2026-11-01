@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.capture.camera
 
+import io.github.darkcosmos.kosmodarts.camera.zoom.ZoomRange
 import io.github.darkcosmos.kosmodarts.capture.storage.CaptureOutputTarget
 import io.github.darkcosmos.kosmodarts.capture.truth.Resolution
 import io.github.darkcosmos.kosmodarts.capture.truth.TimestampSource
@@ -35,6 +36,15 @@ interface CaptureCamera {
 
     /** Clock of the camera sensor timestamps (rule CP10). */
     val timestampSource: TimestampSource
+
+    /** Zoom ratios the bound camera accepts; null when unbound or when the camera gave no zoom state (rule CP16). */
+    val zoomRange: ZoomRange?
+
+    /** Current zoom ratio of the bound camera; null when unbound (rule CP16). */
+    val zoomRatio: Float?
+
+    /** Applies [ratio] to the bound camera; does nothing when unbound (rule CP16). */
+    fun setZoomRatio(ratio: Float)
 
     /** Starts recording the video of [volley] into [target], without audio. */
     fun startVideo(volley: Int, target: CaptureOutputTarget)

@@ -31,3 +31,7 @@ CP16 (applying a ratio), CP9 (zoom failure is not a camera error). Decision DZ4.
 sonnet. Why: wiring of two CameraX calls behind an interface tested with a fake.
 
 ## Implementation notes
+`zoomRange` and `zoomRatio` of `CameraXCaptureCamera` are read live from `camera.cameraInfo.zoomState.value` of the kept
+`Camera` (no cached value; `ZoomRange.of` gives null on invalid bounds). `setZoomRatio` calls `cameraControl` and ignores
+the returned future. Controller swallows `RuntimeException`. `FakeCaptureCamera` records `zoomCalls` apart from `calls`
+and has `failZoom`; `NoopEffects` and the view model test effects (`zoomCalls`) implement the new method.

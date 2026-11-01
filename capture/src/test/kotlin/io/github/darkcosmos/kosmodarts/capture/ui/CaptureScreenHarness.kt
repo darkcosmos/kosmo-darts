@@ -35,6 +35,7 @@ internal class NoopEffects : CaptureEffects {
     override fun startVideo(volley: Int, target: CaptureOutputTarget) = Unit
     override fun stopVideo(volley: Int) = Unit
     override fun takePhoto(dart: Int, target: CaptureOutputTarget) = Unit
+    override fun setZoomRatio(ratio: Float) = Unit
 }
 
 internal fun testViewModel(settingsFile: File): CaptureViewModel {
