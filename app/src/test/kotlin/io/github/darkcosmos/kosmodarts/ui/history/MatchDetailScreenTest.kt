@@ -90,6 +90,15 @@ class MatchDetailScreenTest {
     }
 
     @Test
+    @Config(qualifiers = "en-w731dp-h411dp-xxhdpi", fontScale = 2f)
+    fun `HS5 U3 the detail scrolls to the last leg in landscape at the largest font`() {
+        showState(loaded())
+        composeRule.onNode(hasText("SET 2 · LEG 3")).assertDoesNotExist()
+        node(HistoryTags.DETAIL_LIST).performScrollToNode(hasText("SET 2 · LEG 3"))
+        composeRule.onNode(hasText("SET 2 · LEG 3")).assertIsDisplayed()
+    }
+
+    @Test
     fun `U8 a visit is read as one sentence by TalkBack`() {
         showState(loaded())
         val visit = node(HistoryTags.visit(0, 0))

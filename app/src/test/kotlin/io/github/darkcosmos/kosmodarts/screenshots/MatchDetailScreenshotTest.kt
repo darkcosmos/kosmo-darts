@@ -3,13 +3,17 @@ package io.github.darkcosmos.kosmodarts.screenshots
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.history.DbResult
 import io.github.darkcosmos.kosmodarts.history.MatchDetail
+import io.github.darkcosmos.kosmodarts.ui.history.HistoryTags
 import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailScreen
 import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailState
 import io.github.darkcosmos.kosmodarts.ui.history.cricketDetail
@@ -107,6 +111,22 @@ class MatchDetailScreenshotTest {
     @Test
     @Config(qualifiers = "+fr-land", fontScale = LARGEST_FONT_SCALE)
     fun failedLandscapeLargestFont() = detail("failed_landscape_fr_font200", failed)
+
+    /** U3: the landscape detail at the largest font, scrolled down to its last leg. */
+    @Test
+    @Config(qualifiers = "+fr-land", fontScale = LARGEST_FONT_SCALE)
+    fun x01LandscapeLargestFontScrolled() {
+        composeRule.runOnUiThread {
+            val view = ComposeView(composeRule.activity)
+            view.setContent { KosmoDartsTheme { Detail(x01) } }
+            composeRule.activity.setContentView(view)
+        }
+        composeRule.waitForIdle()
+        composeRule.onNodeWithTag(HistoryTags.DETAIL_LIST).performScrollToNode(hasTestTag(HistoryTags.legHeading(5)))
+        composeRule.waitForIdle()
+        val directory = System.getProperty(SCREENSHOT_DIR_PROPERTY, DEFAULT_SCREENSHOT_DIR)
+        composeRule.onRoot().captureRoboImage("$directory/detail_x01_landscape_fr_font200_scrolled.png")
+    }
 
     private companion object {
         const val SCREENSHOT_DIR_PROPERTY = "kosmodarts.screenshot.dir"

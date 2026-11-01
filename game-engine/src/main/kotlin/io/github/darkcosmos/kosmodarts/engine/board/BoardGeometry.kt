@@ -6,10 +6,9 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Dimensions of a standard dartboard, in millimetres, as given by the WDF Playing Rules and the PDC dartboard
- * specification (the standard 451 mm board: double ring outer edge 170 mm, double ring inner edge 162 mm,
- * treble ring outer edge 107 mm, treble ring inner edge 99 mm, outer bull diameter 31.8 mm, bull diameter
- * 12.7 mm). Radii are measured from the centre of the bull to the inner edge of the wire as those sources give them.
+ * Ring radii of a standard dartboard, in millimetres, from the centre of the bull: the standard WDF/PDC board values
+ * (double ring 162 to 170 mm, treble ring 99 to 107 mm). The exact document and section are to be confirmed before
+ * the release; until then these values are not tied to a source that was opened.
  */
 internal object BoardGeometry {
     const val TRIPLE_INNER_MM = 99.0

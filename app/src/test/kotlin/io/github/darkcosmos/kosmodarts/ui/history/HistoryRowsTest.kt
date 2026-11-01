@@ -92,7 +92,7 @@ class HistoryRowsTest {
         val match = x01HistoryMatch(1, "Ana", "Bob", format = MatchFormat(legsPerSet = 2), legs = listOf(2, 1))
         val row = text(match)
         assertEquals(
-            listOf(row.date, row.mode, "Players: Ana, Bob", "Winner: Ana", "Legs 2–1").joinToString(". "),
+            listOf(row.date, row.mode, "Players: Ana, Bob", "Winner: Ana", "Legs Ana 2, Bob 1").joinToString(". "),
             row.description,
         )
     }

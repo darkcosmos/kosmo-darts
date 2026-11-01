@@ -161,7 +161,7 @@ private fun VisitRow(ordinal: Int, index: Int, visit: DetailVisit, detail: Match
             Text(
                 text = total,
                 style = KosmoTheme.typography.bodyLarge,
-                color = if (visit.isBust) colors.danger else colors.onBackground,
+                color = if (visit.isBust) colors.dangerText else colors.onBackground,
             )
         }
         Text(darts, style = KosmoTheme.typography.body, color = colors.onBackground)

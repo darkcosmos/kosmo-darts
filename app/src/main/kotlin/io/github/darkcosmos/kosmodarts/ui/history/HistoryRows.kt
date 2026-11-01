@@ -46,13 +46,14 @@ fun HistoryMatch.toRowText(resources: Resources, locale: Locale, zone: ZoneId): 
     val winnerNames = winners.joinToString(", ") { it.name }
     val winner = resources.getQuantityString(R.plurals.history_winner, winners.size, winners.size, winnerNames)
     val score = scoreText(resources)
+    val spokenScore = scoreText(resources, isSpoken = true)
     val playersLine = resources.getQuantityString(
         R.plurals.history_players_description,
         players.size,
         players.size,
         players.joinToString(", ") { it.name },
     )
-    val description = listOfNotNull(date, mode, playersLine, winner, score)
+    val description = listOfNotNull(date, mode, playersLine, winner, spokenScore)
         .joinToString(resources.getString(R.string.history_description_separator))
     return HistoryRowText(date, mode, texts, winner, score, description)
 }
@@ -86,11 +87,14 @@ internal fun modeText(resources: Resources, settings: ArchivedSettings): String 
 }
 
 /** "Sets 2–1" when the match has several sets, else "Legs 2–1"; `null` for a single game (HS2). */
-private fun HistoryMatch.scoreText(resources: Resources): String? {
+private fun HistoryMatch.scoreText(resources: Resources, isSpoken: Boolean = false): String? {
     if (!hasScore) return null
     val hasSets = settings.format.hasSets
-    val values = players.joinToString(resources.getString(R.string.history_score_separator)) {
-        (if (hasSets) it.setsWon else it.legsWon).toString()
+    // Spoken: each count follows its player's name ("Legs Ana 2, Bob 1"), so TalkBack never leaves a bare "2–1" (U4).
+    val separator = if (isSpoken) ", " else resources.getString(R.string.history_score_separator)
+    val values = players.joinToString(separator) {
+        val won = if (hasSets) it.setsWon else it.legsWon
+        if (isSpoken) resources.getString(R.string.history_score_spoken_player, it.name, won) else won.toString()
     }
     return resources.getString(if (hasSets) R.string.history_score_sets else R.string.history_score_legs, values)
 }

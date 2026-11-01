@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
@@ -16,6 +17,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.compose.ui.unit.dp
@@ -86,7 +88,7 @@ class HistoryScreenTest {
     fun `HS2 a row has one merged description with date, mode, players, winner and score`() {
         showState(filled())
         val row = node(HistoryTags.row(1))
-        listOf("X01 · 501 · DOUBLE OUT", "Players: Ana, Bob", "Winner: Ana", "Legs 2–1").forEach {
+        listOf("X01 · 501 · DOUBLE OUT", "Players: Ana, Bob", "Winner: Ana", "Legs Ana 2, Bob 1").forEach {
             row.assertContentDescriptionContains(it, substring = true)
         }
         node(HistoryTags.row(2)).assertContentDescriptionContains("CRICKET · CUT-THROAT", substring = true)
@@ -205,6 +207,16 @@ class HistoryScreenTest {
         val restored = HistoryState(scroll = HistoryScroll(scrolled.index, scrolled.offset))
         showState(restored.loaded(1, okList(many, profiles)))
         node(HistoryTags.row(many[scrolled.index - 1].sessionId)).assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "fr-w731dp-h411dp-xxhdpi", fontScale = 2f)
+    fun `HS2 U3 the last card is reachable in landscape at the largest font`() {
+        val many = List(8) { x01HistoryMatch(it + 1L, "Ana", "Bob") }
+        showState(HistoryState().loaded(1, okList(many, profiles)))
+        val lastTag = HistoryTags.row(many.last().sessionId)
+        node(HistoryTags.LIST).performScrollToNode(hasTestTag(lastTag))
+        node(lastTag).assertIsDisplayed().assertHeightIsAtLeast(48.dp)
     }
 
     @Test

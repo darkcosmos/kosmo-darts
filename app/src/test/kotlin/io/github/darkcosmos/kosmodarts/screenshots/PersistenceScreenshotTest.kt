@@ -2,11 +2,15 @@ package io.github.darkcosmos.kosmodarts.screenshots
 
 import io.github.darkcosmos.kosmodarts.testing.savedGame
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -25,6 +29,8 @@ import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
 import io.github.darkcosmos.kosmodarts.ui.resume.AppProcess
 import org.junit.After
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -157,6 +163,20 @@ class PersistenceScreenshotTest {
     @Config(qualifiers = "+fr-port")
     fun restoreFailedPortraitFrench() = restoreFailed("setup_restore_failed_portrait_fr")
 
+    /** AR3: the failure message is displayed and its text is laid out whole in the node that holds it (no clipping). */
+    private fun assertArchiveMessageNotClipped() {
+        val message = composeRule.onNode(hasTestTag(GameTags.ARCHIVE_FAILED), useUnmergedTree = true)
+        message.assertIsDisplayed()
+        val results = mutableListOf<TextLayoutResult>()
+        message.fetchSemanticsNode().config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(results)
+        val layout = results.single()
+        assertFalse("text overflows its height", layout.didOverflowHeight)
+        assertTrue(
+            "node ${message.fetchSemanticsNode().size.height} px < text ${layout.size.height} px",
+            message.fetchSemanticsNode().size.height >= layout.size.height,
+        )
+    }
+
     /** AR3: the confirmed win while the archive is held ("Saving…") or after it failed (the message). */
     private fun confirmWin(saved: StoredGame, name: String, isFailure: Boolean) {
         val gate = CountDownLatch(1)
@@ -170,6 +190,7 @@ class PersistenceScreenshotTest {
             runCatching { confirm.performScrollTo() }
             confirm.performClick()
             if (isFailure) process.settle() else composeRule.waitForIdle()
+            if (isFailure) assertArchiveMessageNotClipped()
             capture(name)
         } finally {
             gate.countDown()
@@ -221,6 +242,16 @@ class PersistenceScreenshotTest {
     @Config(qualifiers = "+en-port", fontScale = LARGEST_FONT_SCALE)
     fun cricketFailedPortraitEnglishLargestFont() =
         confirmWin(CricketSaveFixtures.PENDING_MATCH_WIN, "archive_cricket_failed_portrait_en_font200", true)
+
+    @Test
+    @Config(qualifiers = "+fr-land", fontScale = LARGEST_FONT_SCALE)
+    fun x01FailedLandscapeFrenchLargestFont() =
+        confirmWin(MATCH_WIN, "archive_x01_failed_landscape_fr_font200", isFailure = true)
+
+    @Test
+    @Config(qualifiers = "+fr-land", fontScale = LARGEST_FONT_SCALE)
+    fun cricketFailedLandscapeFrenchLargestFont() =
+        confirmWin(CricketSaveFixtures.PENDING_MATCH_WIN, "archive_cricket_failed_landscape_fr_font200", true)
 
     private companion object {
         const val SCREENSHOT_DIR_PROPERTY = "kosmodarts.screenshot.dir"
