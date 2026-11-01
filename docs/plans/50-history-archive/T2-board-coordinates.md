@@ -39,3 +39,7 @@ BC1, BC2, BC3 (`docs/rules/history.md`); D33.
 sonnet. Why: fully specified rule with listed tests.
 
 ## Implementation notes
+- Code in package `...engine.board`: `BoardPoint`, `BoardGeometry` (internal object with radii and sector order) and
+  the public `nominalPoint(dart)` in the same file. No deviation.
+- Radii (mm, WDF Playing Rules / PDC specification): triple 99-107, double 162-170. Mean radii: S 134.5, T 103,
+  D 166. 25 and Bull at (0, 0), miss `null`. Later tasks only call `nominalPoint`.
