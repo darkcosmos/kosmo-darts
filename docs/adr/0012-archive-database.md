@@ -35,7 +35,7 @@ deleted (AR8) and must survive every future version (no destructive migration).
 |---|---|---|
 | `profile` | `id`, `name`, `name_key`, `created_at`, `last_used_at`, `reset_at` (null) | unique `name_key`; index `last_used_at` |
 | `session` | `id`, `type` (`MATCH`/`TRAINING`), `started_at` (null), `ended_at`, `rules_version`, `app_version` | index `ended_at` |
-| `match` | `session_id`, `match_uuid`, `mode` (`X01`/`CRICKET`), `variant`, `settings` (text), `settings_version` | primary `session_id` (FK); unique `match_uuid`; index `mode` |
+| `match_record` | `session_id`, `match_uuid`, `mode` (`X01`/`CRICKET`), `variant`, `settings` (text), `settings_version` | primary `session_id` (FK); unique `match_uuid`; index `mode` |
 | `match_player` | `session_id`, `position`, `profile_id`, `color_argb`, `final_rank`, `legs_won`, `sets_won` | primary (`session_id`, `position`); index `profile_id` |
 | `leg` | `id`, `session_id`, `ordinal`, `set_number`, `leg_number`, `starter_position`, `winner_position`, `has_journal` | unique (`session_id`, `ordinal`) |
 | `dart` | `id`, `leg_id`, `player_position`, `visit`, `rank`, `segment`, `multiplier`, `bust`, `voided`, `source`, `x_mm` (null), `y_mm` (null), `entered_at` (null) | index (`leg_id`, `visit`, `rank`) |
@@ -47,7 +47,31 @@ deleted (AR8) and must survive every future version (no destructive migration).
   `out=double|single`, `legs=<legs per set>`, `sets=<sets>`. Cricket: `variant=standard|cut-throat`, `bull=1|0`,
   `legs`, `sets`. `settings_version` repeats `v` as a column so a later version can be queried.
 - Archive (AR2, AR4): one `runInTransaction`: if `match_uuid` exists, return `ALREADY_ARCHIVED`; else upsert the
-  profiles by `name_key` (PF2), insert the session, match, players, legs and darts.
+  profiles by `name_key` (PF2) through `ProfileDao.upsertUsed(name, nameKey, at)`, the one upsert also used by
+  `ProfileRepository` (review A3), insert the session, match record, players, legs and darts.
+- Table names (review A6): `match_record`, not `match`, because `MATCH` is an SQLite keyword; schema version 1 can
+  never be dropped, so it is named once and for all.
+- Snapshot (review A2, AR10): `dart.visit`, `rank` and `bust` are the engine values under `session.rules_version` at
+  archive time; a later rules version never rewrites them.
+- Names (review S4): `profile.name` is at most `PlayerListRules.MAX_NAME_LENGTH` code points (the setup limit);
+  profile names, match ids and times are never written to logs.
+- Manifest (review S3): Room merges `MultiInstanceInvalidationService`, which must stay `exported="false"`; the
+  merged manifest gains no permission and no exported component (checked in T1 and T7).
+
+### Failure contract (review S1, AR9)
+
+- Every repository (`ArchiveRepository`, `ProfileRepository`, `HistoryRepository`, `ArchiveCheck`) catches the
+  exceptions of Room and SQLite (`SQLiteException` and its subclasses, `IllegalStateException` from a database that
+  cannot open) and returns a result: `DbResult.Ok(value)` or `DbResult.Failed`. Nothing above them sees a database
+  exception; the cause is not logged with data.
+- The database is opened lazily, on the queue or the read executor, never on the main thread. A corrupt file is
+  neither deleted nor recreated by the app: Room is built without a destructive fallback, and the default corruption
+  handler of the framework is replaced by one that only reports the failure (`openHelperFactory` with a callback
+  whose `onCorruption` does nothing), so the next access fails again with `Failed`. If the Room version in use offers
+  no supported way to do this, T7 stops and reports to main (plan, open question 1) instead of working around it.
+- Mapping: launch PF4 `Failed` is ignored (the saved game loads as usual); AR4 check `Failed` means "keep the save";
+  archive `Failed` gives `ArchiveFailed` (AR3); History and detail `Failed` give the HS7 failure state.
+- Tests use a repository fake that returns `Failed` and a closed in-memory database (a real exception path).
 
 ## Consequences
 

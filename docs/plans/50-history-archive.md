@@ -39,13 +39,23 @@ Auto Backup (backlog only), Paging.
    transaction, `HistoryRepository` reads; mapping from `ArchivedMatch` plus colors (slot to ARGB from
    `PlayerPalette`) and app version (`PackageManager` `versionName`).
 6. **Profiles (T8).** `PlayerListRules.nameKey` made public and used for profiles; profiles written at Start/Rematch
-   on the persistence queue (PF2); launch migration PF4 on the queue before the first load result is delivered.
-7. **Archive flow (T9).** `FinishGameTapped` with a pending win: state `archiving` (button disabled), effect
-   `ArchiveMatch` on the persistence queue, then `DeleteGame` (AR2); events `ArchiveSucceeded` (End screen, as
-   today) or `ArchiveFailed` (stay, message, AR3). On launch, a save whose match id is archived is deleted (AR4).
-8. **Screens (T10 to T12).** Pure state holders tested on the JVM; composables only render. History reads go through
-   a read executor (ADR 0012). List: one summary query plus one player query, grouped in memory, `LazyColumn` with
-   stable keys. No new mockup: screens composed from `docs/design/design-system.md` components (Q7).
+   on the persistence queue (PF2) through the one `ProfileDao.upsertUsed`; launch migration PF4 in its own unit
+   `ProfileMigration`, run on the queue before the first load result is delivered; a `Failed` result is ignored
+   (AR9).
+7. **Archive flow (T9).** `FinishGameTapped` with a pending win and no archive running: state `archiving` (button
+   disabled, AR3), effect `ArchiveMatch` on the persistence queue. The unit `MatchArchiveRequest` runs the archive and
+   deletes the save only on `ARCHIVED` or `ALREADY_ARCHIVED` (AR2); events `ArchiveSucceeded` (End screen, as today)
+   or `ArchiveFailed` (stay, message, AR3). On launch, the unit `ArchiveCheck` answers `Archived`, `NotArchived` or
+   `Failed` for the saved match id; only `Archived` deletes the save (AR4, AR9). `Persistence` only sequences these
+   units (review A5).
+8. **Database failures (AR9, HS7).** One failure contract (ADR 0012, "Failure contract"): repositories return
+   `DbResult.Ok` or `DbResult.Failed`, never throw; the read executor posts a failure state; no crash, no reset.
+9. **Screens (T10 to T12).** Pure state holders tested on the JVM; composables only render. History reads go through
+   a read executor (ADR 0012); tests inject a same-thread executor and a fake clock, never sleeps or idling waits.
+   List: one summary query plus one player query, grouped in memory, `LazyColumn` with stable keys. No new mockup:
+   screens composed from `docs/design/design-system.md` components (Q7), with one shared layout composable
+   `HistoryScaffold` (top bar with Back, edge-to-edge insets and cutout, single column with a maximum content width in
+   landscape) for both screens (review U10).
 
 ## Files and types added or changed
 
@@ -54,8 +64,10 @@ Auto Backup (backlog only), Paging.
   (`nameKey` public, T8).
 - `app/.../persistence/*`: `GameSaveCodec`, `SaveFormat` (`VERSION_5`), `SavedGame`, `SavedCricketGame`,
   `SaveLoader`, `InvalidSaveReason.INCONSISTENT_JOURNAL`, `Persistence` (archive and migration requests).
-- `app/.../history/` (new): entities, DAOs, `HistoryDatabase`, `ArchiveRepository`, `ProfileRepository`,
-  `HistoryRepository`, `SettingsText`.
+- `app/.../history/` (new): entities, DAOs, `HistoryDatabase`, `DbResult`, `ArchiveRepository`, `ProfileRepository`,
+  `HistoryRepository`, `ArchiveCheck`, `ProfileMigration`, `MatchArchiveRequest`, `SettingsText`.
+- `game-engine/.../engine/journal/GameProgress.kt`: the one place that applies a dart or an undo to the match and the
+  journal together (T6, ADR 0011).
 - `app/.../ui/app/*`: `AppState`, `AppReducer`, `CricketReducer`, `SetupTransitions`, `PersistenceEffect`,
   `KosmoDartsViewModel`; `ui/history/*` (new: list, detail, state holders, tags); `ui/home/HomeScreen.kt`; setup name
   rows (`ui/components/PlayerNameRow.kt`).
@@ -72,44 +84,67 @@ Auto Backup (backlog only), Paging.
 
 - **Setup**: suggestions under the focused name field (PF3): up to 5 rows of 48dp, profile names; none when no
   profile matches. Works with 200 % font and in landscape (list scrolls with the screen).
-- **X01 CHECKOUT zone / Cricket win zone**: new states `archiving` (confirm disabled) and `archive failed` (short
-  message under the zone, confirm enabled, AR3).
+- **X01 CHECKOUT zone / Cricket win zone**: new states `archiving` (confirm disabled, label « Enregistrement… »,
+  description saying the match is being saved) and `archive failed` (text message under the zone in a polite live
+  region, confirm enabled, AR3).
 - **Home**: a "History" / « Historique » button under the existing ones (HS1).
-- **History**: filter row (mode: segmented All / X01 / Cricket; player: a chip row "All" + profiles, scrollable),
-  then the list (HS2); states: empty archive, no match for the filters, loading (nothing shown until the first
-  result, no spinner flash under 300 ms), filled.
-- **Match detail**: summary card, then one section per leg ("Set 2 · Leg 3", starter, winner), one row per visit:
-  player in his color, darts (PC9: name always shown), visit total, a BUST label; legacy legs show the "not
-  recorded" line.
-- Strings (`values/` and `values-fr/`): History, filters, empty states, row texts, duration, "—", "Bust", leg
-  headers, "Darts not recorded for this leg", archive failure message. Exact texts are chosen in T10 to T12 and listed
-  in their notes; French first-class.
+- **History**: filter row (mode: segmented All / X01 / Cricket; player: a chip row "All" + profiles, 48dp, scrollable,
+  selected state exposed to TalkBack, the selected chip scrolled into view), then the list (HS2); states: loading
+  (HS7), empty archive, no match for the filters (with "Show all matches", HS4), read failure (HS7), filled.
+  Row: date, mode and variant, players (names wrap to two lines then ellipsize, never clipped, at 200 %), the winner
+  by text (« Vainqueur : Kevin »), the score; one merged TalkBack description; height at least 48dp.
+- **Match detail**: summary card, then one section per leg (« Set 2 · Manche 3 » as a heading, not pinned, starter,
+  winner), one row per visit: player name in his color (PC9), darts as text (« T20 », « D16 », « Bull », « 25 »,
+  « Raté »; Cricket as on the game screen), visit total, « BUST » as text; legacy legs show the "not recorded" line;
+  states loading, read failure (HS7), filled.
+- Strings (`values/` and `values-fr/`): History, filters, empty states, row texts, duration, "—" (spoken « non
+  enregistrée »), "Bust", leg headers, "Darts not recorded for this leg", archive messages, read failure, "Retry",
+  "Show all matches". Plurals (`plurals`) for legs, sets, darts and minutes; dates and durations formatted for the
+  device locale. Exact texts are chosen in T9 to T12 and listed in their notes; French first-class.
 
 ## Test plan
 
 - **Engine (JUnit, cites rules)**: BC2 nominal point of every zone (20 sectors × S/D/T, 25, Bull, miss), axis
   orientation (20 on +y, 6 on +x, 3 on -y, 11 on -x); DJ2/DJ3 journals with undos across turns, the a,b,u,u,c case,
-  bust visits, Cricket no bust; DJ4; DJ5 legacy; archive builder for X01 and Cricket, single leg and 2 sets of 3 legs,
-  1 to 4 players, results equal to `MatchScore`/`MatchRanking`, voided darts kept with their positions.
+  bust visits, Cricket no bust; undo of a winning dart, after a bust, at the start of a leg; double-out and
+  single-out busts on 501 and 301 (T3, T4 tests); DJ4 after every undo; DJ5 legacy; archive builder for X01 (each
+  finish mode) and Cricket, single leg and 2 sets of 3 legs, 1 to 4 players, results equal to
+  `MatchScore`/`MatchRanking`, voided darts kept with their positions.
 - **App JVM**: v5 codec round trips (both modes, undos, legacy legs), v1 to v4 fixtures read as v5 (R27), each R29
   rejection, size limit both sides (R28); reducers record darts with the fake clock and undos only when effective;
   settings text; history state holders (filters, grouping, duration, "—").
 - **Robolectric, in-memory Room**: every DAO; archive idempotent (AR4); archive failure keeps the saved game (AR3,
   failing repository fake and a closed database); profile migration PF4; legacy match archive AR7; 1,000 matches
-  listed by the list query under a time budget logged in the notes (no flaky assert below 1 s).
-- **Compose UI and Roborazzi** (French, Pixel 7): setup suggestions; History empty, no-match, filled; detail X01 2
-  sets, Cricket, legacy leg; CHECKOUT archive failure; each in portrait and landscape, and with `fontScale = 2f`.
+  listed by the list query, time logged in the notes (no timing assert).
+- **Database failures (AR9, HS7)**, each with a fake returning `Failed` and with a closed database: PF4 fails, the
+  save is still loaded and offered; the AR4 check fails, the save is not deleted; the archive fails (AR3); the list
+  read fails and the detail read fails, each giving the failure state, and "Retry" reads again.
+- **Compose UI and Roborazzi** (French, Pixel 7): setup suggestions; History loading, empty, no-match, read failure,
+  filled with 4 long names; detail X01 2 sets, Cricket, legacy leg, read failure; CHECKOUT and Cricket archiving and
+  archive failure; each in portrait and landscape, and with `fontScale = 2f`.
 
 ## How Kosmo verifies on the phone
 
-1. Update over the previous version with a game in progress: resume it, finish it, confirm: it appears in History
+All texts are checked in French (phone in French); every screen below is checked in portrait, in landscape, and with
+the largest font size of the phone.
+
+1. Before playing, open « Historique » from the home screen: it says that no match was played yet.
+2. Update over the previous version with a game in progress: resume it, finish it, confirm: it appears in History
    without start time (duration "—").
-2. Play an X01 match in 2 sets of 3 legs with some Undo, confirm: History shows it first, with colors, winner and
+3. Play an X01 match in 2 sets of 3 legs with some Undo, confirm: History shows it first, with colors, winner and
    score; the detail shows each leg, visit by visit, the busts marked, the undone darts absent.
-3. Play a Cricket match; filter by Cricket, then by a player.
-4. On a new setup, focus a name: earlier players are suggested, most recent first; typing "kev" filters; "kevin" for
+4. Play a Cricket match with 4 players with long names (for example « Jean-Christophe », « Marie-Charlotte »): the
+   History row shows every name, wrapped or shortened with « … », never cut in the middle of a letter.
+5. Filter by Cricket, then by a player: only his matches stay. Choose a player and the mode where he has no match:
+   History says that no match matches, and « Afficher tous les matchs » brings the whole list back.
+6. Rotate the phone on History with a filter and on a detail: the filter, the position in the list and the detail
+   stay. Back from a detail returns to the same place in the list.
+7. On a new setup, focus a name: earlier players are suggested, most recent first; typing "kev" filters; "kevin" for
    an existing "Kevin" shows "Kevin" in History.
-5. Abandon a match: it never appears. Rotate every screen; set the font to the largest size.
+8. Abandon a match: it never appears.
+9. The "match could not be saved" message, and the "History could not be read" message, cannot be triggered by
+   hand on a healthy phone: only the captures attached to the PR prove them (CHECKOUT and Cricket zones, History and
+   detail, in portrait, landscape and largest font).
 
 ## Tasks
 
@@ -157,6 +192,25 @@ Two `opus` tasks (T5, T7).
 - D12: the profile name key is `PlayerListRules`' duplicate key, made public, so the setup and the profiles never
   disagree on "same name".
 
+- Design review round 1 (commit c4ae6cb): architecture approved; test, security and UX requested changes. Taken in:
+  - D13 (S1, A minor): database failures follow one contract, `DbResult` (ADR 0012, "Failure contract"); AR9 and HS7
+    added. The save is deleted only after `ARCHIVED`/`ALREADY_ARCHIVED` or a positive AR4 answer.
+  - D14 (T3): a second confirm while archiving does nothing; the archiving state is not saved (AR3).
+  - D15 (A1): the `darts` line stays beside the journal (reused v4 decoder, cross-check); `GameProgress` is the one
+    place that changes both (ADR 0011).
+  - D16 (A2, A3, A5, A6): dart values are a snapshot (AR10); one profile upsert; small units sequenced by
+    `Persistence`; table `match_record`.
+  - D17 (S2, S3, S4): strict number parsing and a 30,000-event cap per leg journal (ADR 0011); manifest check
+    (`MultiInstanceInvalidationService` not exported); suggestions filtered in memory on name keys; no names or ids in
+    logs.
+  - D18 (T7 minor, UX choice): a profile whose name is exactly the focused field's text is hidden; the same key with
+    another spelling stays selectable (PF3).
+  - D19 (U2 to U10): archiving label and live-region message; History row, filter, loading, rotation and detail
+    accessibility rules (HS4, HS6, HS7, "Screens and states"); plurals and locale formats; shared `HistoryScaffold`.
+  - D20 (T4 to T6 minors, A4, A7): named in their task files.
+
 ## Open questions
 
-None. Design review may add some.
+1. If the Room version in use offers no supported way to stop the framework from deleting a corrupt database file
+   (ADR 0012, "Failure contract"), T7 stops and main decides with Kosmo: accept the framework behavior (a corrupt
+   history is lost), or another option T7 reports.

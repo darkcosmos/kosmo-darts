@@ -27,6 +27,9 @@ BC1, BC2, BC3 (`docs/rules/history.md`).
 - Every segment 1 to 20 × single, double, triple: radius equals the expected mean radius (tolerance 1e-9) and angle
   equals the sector bisector.
 - Orientation: D20 on +y (x = 0), D6 on +x (y = 0), D3 on -y, D11 on -x.
+- Anchors with literal millimetre values written in the test from the cited source (not from the production
+  constants): D20, T20 and S20 at (0, y) with the expected y; S20's y is above the triple outer radius (outer single
+  zone, never the inner single zone).
 - 25 and Bull at (0, 0); miss gives `null`.
 
 ## Done when

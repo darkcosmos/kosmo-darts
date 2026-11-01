@@ -30,6 +30,10 @@ R26, R27, R28, R29, R9 to R12, DJ4, DJ5, AR4. ADR 0011 (all sections), ADR 0008 
   winner mismatch.
 - Size: a match just under 1 MiB round trips; just over is not encoded; 10,000 darts in play plus 500 voided encodes.
 - `SaveFuzzTest` extended to version 5 files: never throws.
+- Numbers (ADR 0011, review S2): 20 digits, a value over `Long.MAX_VALUE`, `-0`, `+1`, `007`, `-5`: each `MALFORMED`,
+  never a `NumberFormatException` nor a wrapped value. A leg journal of 30,001 events is `OUT_OF_RANGE` and is not
+  encoded. One file of about 58,000 events over several legs round trips; its decode time is logged in the notes,
+  never asserted.
 
 ## Done when
 `./gradlew :game-engine:test`, `./gradlew :app:testDebugUnitTest`, `./gradlew build` green; `kosmo-detekt` exit 0.

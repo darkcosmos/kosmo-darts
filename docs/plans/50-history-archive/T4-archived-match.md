@@ -34,6 +34,8 @@ AR5, AR6, AR7, BC2, DJ3, DJ5; M rules for set and leg numbers (`docs/rules/match
   25-Bull, 4 players, 2 legs; solo match.
 - Legacy: confirmed legs without journal, current leg with unknown times.
 - Results equal `MatchScore` / `MatchRanking`; set and leg numbers across a set boundary.
+- One archive per X01 finish mode: double-out (a bust visit, then a double finish) and single-out (a single
+  finish), the bust flags and the winning dart (not bust) checked in the archived darts.
 
 ## Done when
 `./gradlew :game-engine:test` and `./gradlew build` green; `kosmo-detekt` exit 0.

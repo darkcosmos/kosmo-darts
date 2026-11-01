@@ -22,7 +22,9 @@ ADR 0012. D3.
 1. Re-check the latest stable Room, Room3 and KSP on Google Maven and Maven Central; note them with the source.
 2. Wire Room 2.8.x. If the build or KSP fails, switch to Room3 (latest stable) at once: no workaround, no diagnosis
    beyond reading the first error. Write the error and the switch in the notes and in ADR 0012 "Status".
-3. Check `app/src/main/AndroidManifest.xml` still declares no `INTERNET` permission (merged manifest too).
+3. Check the merged manifest (`app/build/intermediates/merged_manifest*/`): no `INTERNET` and no other new
+   permission, no new exported component; Room's `MultiInstanceInvalidationService` is `exported="false"` (ADR 0012,
+   review S3). Write the list of added components and permissions in the notes.
 
 ## Tests
 - Robolectric, in-memory database: insert then read one placeholder row; no main-thread query (use

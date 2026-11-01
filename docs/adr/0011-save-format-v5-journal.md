@@ -44,7 +44,15 @@ journal=D16@- 0@1793520090000
   no start time while its new darts have one), or `-` when unknown. An undo event is `u`. The
   source is not stored: every event of version 5 is `MANUAL` (a later version adds the source with the camera).
 - The `darts` line of the version 4 body stays and must equal the darts in play after replaying the last journal
-  (DJ4); otherwise `INCONSISTENT_JOURNAL` (new `InvalidSaveReason`).
+  (DJ4); otherwise `INCONSISTENT_JOURNAL` (new `InvalidSaveReason`). Why it stays (review A1): the version 4 body
+  decoder and its checks (R9, R24, the waiting flags) are reused unchanged for every version, so version 5 adds lines
+  without touching tested code, and the cross-check catches a body and journal written out of step. The app has one
+  place that changes both: `GameProgress` (T6), which applies a dart or an undo to the match and to the journal
+  together; reducers never change one without the other.
+- Numbers (review S2): every time is at most 19 digits, without sign, without leading zero (except `0`), and at most
+  `Long.MAX_VALUE`; `-0`, `+1`, `007`, 20 digits or an overflowing value are `MALFORMED`, checked before any
+  conversion, never a `NumberFormatException` nor a wrapped value. A journal line holds at most 30,000 events
+  (10,000 darts in play, voided darts and undos); more is `OUT_OF_RANGE`. Replay is linear in the event count.
 - A replay that the engine rejects (an undo with nothing to undo, a dart after the win) is `REJECTED_BY_ENGINE`.
 - A confirmed leg journal, when known, must replay to a finished leg whose winner is that leg's winner in the
   version 4 `leg` line; otherwise `INCONSISTENT_JOURNAL`.
@@ -57,6 +65,8 @@ a current-leg journal of the `darts` tokens with unknown times (R27, DJ5). The l
 ### Limits (R28)
 
 - The 10,000-dart limit of R12 counts darts in play only, as before; voided darts and undo events do not count.
+  A leg journal of more than 30,000 events is not encoded either (previous file kept), so a written file is always
+  readable by its own decoder.
 - `MAX_FILE_BYTES` becomes 1,048,576 for every saved game version. A dart event takes at most 17 bytes (`T20@` and a
   13-digit time) plus a space: a 1 MiB file holds about 58,000 events, far above any real match. The
   encoder returns `null` above the limit and the previous file is kept (R12); the archive is built from memory, so a

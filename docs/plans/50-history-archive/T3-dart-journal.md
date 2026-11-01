@@ -29,7 +29,13 @@ DJ1 to DJ5. Existing X01 and Cricket rules (`docs/rules/x01.md`, `docs/rules/cri
 ## Tests
 - Visits and ranks for 1 to 4 players across turns and with a non-zero starter.
 - Undo across a turn boundary; the case a, b, undo, undo, c (b rank 2) versus a, undo, b, undo, c (b rank 1).
-- X01 bust visit marks its darts; Cricket never bust.
+- Undo of the winning dart (X01 and Cricket): it is voided, the leg is no longer won; undo right after a bust; undo
+  of the first dart of a new leg journal (only that leg changes; with nothing to undo it is rejected, DJ2). DJ4 is
+  asserted after each of these undos.
+- X01 busts named by finish mode, on 501 and on 301: double-out over-score, remainder 1, and finish on a non-double
+  are busts (all darts of the visit marked bust); in single-out the same finishing dart wins and is not bust. The
+  winning dart is never bust. A leg won with 1 dart and with 2 darts in the last visit: visit and rank values.
+- Cricket never bust.
 - DJ4: darts in play equal the leg's darts; `legacy(darts)` gives unknown times and no voided dart (DJ5).
 - Rejections: undo on an empty leg, dart after the win.
 
