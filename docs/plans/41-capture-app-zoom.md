@@ -140,29 +140,34 @@ Left column of the landscape screen, top to bottom: status line, preview (weight
 
 - Zoom row: full column width, exactly 42dp tall at every font scale (`CONTROL_HEIGHT`, landscape exception Q14),
   4dp gap above (like the other rows) and 8dp below, towards the control row (DZ13). Left to right, 4dp apart:
-  - value text (`2.4×` or "Zoom not available"): width between 64dp and 140dp, `WordSafeText` (the existing
+  - value text (`2.4×` or "Zoom not available"): width between 64dp and 130dp, `WordSafeText` (the existing
     `capture.ui.keypad` helper) with `KosmoTheme.typography.button`, `onBackground`, at most 2 lines, shrinking
     instead of breaking a word or overflowing (DZ14);
-  - "−" button, 42dp x 42dp;
+  - "−" button, 48dp wide x 42dp tall (DZ15);
   - Material 3 `Slider`, weight 1, continuous (no `steps`, no tick marks), 42dp tall: the minimum interactive size
     is set to 42dp inside the row (`LocalMinimumInteractiveComponentSize`), so the touch target is 42dp x slider width;
-  - "+" button, 42dp x 42dp.
-  Buttons: the style of the unselected quality button of the control row, glyph `−` (U+2212) or `+` in
-  `typography.button`; one press = one step (no repeat on long press, DZ12).
+  - "+" button, 48dp wide x 42dp tall (DZ15).
+  Buttons: sizes are named values in `capture.ui` next to `CONTROL_HEIGHT` (`ZOOM_BUTTON_WIDTH = 48.dp`,
+  `ZOOM_BUTTON_HEIGHT = CONTROL_HEIGHT`), never literals in the composable. Glyph `−` (U+2212) or `+` in
+  `typography.button`; one press = one step (no repeat on long press, DZ12). Enabled: filled with `surfaceHigher`
+  and an `accent` outline; disabled: no fill, outline and glyph at `States.DISABLED_ALPHA` (the "disabled has no
+  fill" convention of the existing `ActionButton`), so disabled is shown by the shape of the button and not by
+  alpha alone (DZ16).
 - Width budget (left column = 55 % of the width minus padding: about 490dp at 915dp, about 339dp at 640dp): slider
-  = column - value text - 2 x 42 - 3 x 4. Normal state (value at 64dp): about 330dp at 915, about 179dp at 640.
-  Worst case "Zoom not available" with the value at its 140dp maximum: about 254dp at 915 (also at font scale 2.0,
-  where the text shrinks inside 140dp) and about 103dp at 640. Accepted minimums, tested in Z6 in the "not
+  = column - value text - 2 x 48 - 3 x 4. Normal state (value at 64dp): about 318dp at 915, about 167dp at 640.
+  Worst case "Zoom not available" with the value at its 130dp maximum: about 252dp at 915 (also at font scale 2.0,
+  where the text shrinks inside 130dp) and about 101dp at 640. Accepted minimums, tested in Z6 in the "not
   available" state EN and FR: slider at least 120dp at 915x412 font scale 2.0, at least 96dp at 640x360 font scale 1.0.
 - Colors: thumb and active track `accent`, inactive track `surfaceHigher`; disabled: the design system disabled
-  style (`States.DISABLED_ALPHA` on the slider, buttons and text), never color alone; the ratio stays readable when
-  greyed. Accent on background meets 3:1 (non-text component) and `onBackground` text 4.5:1, as already checked for
-  the design system tokens.
-- Accessibility: the slider has `contentDescription` "Zoom" and `stateDescription` "2.4 times" (or "Zoom not
-  available"); the value text is cleared from semantics so TalkBack reads the zoom once. TalkBack swipe up/down uses
-  the slider's own adjust actions; the new value is read through `stateDescription`. The buttons have
-  `contentDescription` "Zoom out" / "Zoom in" and the same `stateDescription` as the slider, so the new value is
-  read on the focused button after a press. Disabled is announced by the framework.
+  style (`States.DISABLED_ALPHA` on the slider, buttons and text, plus no fill on the buttons), never color alone;
+  the ratio stays readable when greyed. Accent on background meets 3:1 (non-text component) and `onBackground` text
+  4.5:1, as already checked for the design system tokens.
+- Accessibility: the slider has `contentDescription` "Zoom", `stateDescription` "2.4 times" (or "Zoom not
+  available") and is a polite live region (`liveRegion = LiveRegionMode.Polite`), so TalkBack announces the new
+  value after a button press while the focus stays on the button (DZ17); the value text is cleared from semantics
+  so TalkBack reads the zoom once. TalkBack swipe up/down uses the slider's own adjust actions. The buttons have
+  `contentDescription` "Zoom out" / "Zoom in" only (no `stateDescription`, to avoid a double reading). Disabled is
+  announced by the framework.
 - States: permission missing or camera starting: disabled, shows the remembered ratio (`1.0×` on first launch);
   idle and error phase with camera bound: enabled ("−" disabled at the camera minimum, "+" at its maximum); session
   running or saving: all disabled, shows the session ratio; camera range narrower than 0.1: all disabled, "Zoom not
@@ -280,13 +285,16 @@ One `opus` task (Z4).
 | DZ11 | A button press is one complete gesture: the new ratio is applied and saved at once when it changed (no save when clamped at a range end). The step starts from the rounded current ratio, so from 8.37 (shown `8.4×`) "−" gives 8.3. Each button is disabled at its range end, so a useless press is visible. | CP14 to CP16 |
 | DZ12 | No repeat on long press: the slider covers large moves and the buttons only fine aim (a few presses); a repeat needs timing code in the composable, a save policy per repeat and risks overshooting; Kosmo marked it optional. Can be added later without a format change. | CP14 |
 | DZ13 | 8dp gap between the zoom row and the control row (U18; 4dp elsewhere): two rows of 42dp targets (slider and buttons above, Start and quality below) need a clear separation against mistaken taps; costs 4dp of preview. | - |
-| DZ14 | Value text 64dp to 140dp wide, `WordSafeText` with at most 2 lines, shrinking (U17): "Zoom not available" / « Zoom non disponible » at font scale 2.0 would otherwise take the slider's width; the row stays 42dp at every font scale. | CP15 |
+| DZ14 | Value text 64dp to 130dp wide (130, not 140, so the slider keeps 96dp at 640x360 next to 48dp buttons), `WordSafeText` with at most 2 lines, shrinking (U17): "Zoom not available" / « Zoom non disponible » at font scale 2.0 would otherwise take the slider's width; the row stays 42dp at every font scale. | CP15 |
+| DZ15 | "−" / "+" buttons 48dp wide x 42dp tall (U21): CLAUDE.md's landscape exception covers the height only; the width keeps the 48dp minimum. Sizes are named values next to `CONTROL_HEIGHT` (architecture review). | CP14 |
+| DZ16 | Disabled zoom buttons lose their fill as well as their opacity (U22), like the existing `ActionButton`: the end of the range is visible without relying on alpha alone. | CP15 |
+| DZ17 | The slider is a polite live region: after a "−" / "+" press TalkBack announces the new `stateDescription` without moving the focus (U22). Buttons carry no `stateDescription`. The real announcement is checked on the phone only (step 8). | CP14 |
 
 Reviewer minors of the design review, how each is handled:
 
 | Id | Handling |
 |---|---|
-| A1 | Z2 isolation test asserts listed (no `capture` in package and import lines; no import from `android`, `androidx`, `kotlinx.coroutines`; only `kotlin.` and `java.math.` imports). |
+| A1 | Z2 isolation test asserts listed (no `capture` in package and import lines; no import from `android`, `androidx`, `kotlinx.coroutines`; the allow-list is exactly `kotlin.` and `java.math.`, so `java.util` or `kotlinx` imports fail). |
 | A2 | Z1: ADR 0010 states that moving the package into a shared module happens in a single PR together with the shared module decision. |
 | A3 | Z5: `CaptureSettings` calls `ZoomSettingFormat.parse` / `format` and contains no zoom fallback of its own; a test proves `zoom=0` reads 1.0 through it. |
 | S9 | No cap; root "Truth file version 2" and Z4: the format document states that phase 0b tools must not assume a plausible range. |
@@ -299,6 +307,9 @@ Reviewer minors of the design review, how each is handled:
 | T2 | Z2: match rules pinned (case-sensitive, lowercase, `package` and `import` lines only, comments ignored). |
 | T3 | Z5: sequence adjustable range -> null range, then Start: `requestedRatio` null. |
 | T4 | Z6: at 640x360, preview at least 160dp, zoom row 42dp, control row inside the screen; `CaptureActionRowTest` re-run unchanged. |
+| U21 | [blocking, second design round] DZ15; Z6 asserts width at least 48dp and height at least 42dp on both buttons at 915x412, 640x360 and font scale 2.0. |
+| U22 | DZ16 and DZ17; Z6 names the disabled style in its test and checks the live region and the new `stateDescription` after a "+" click. |
+| T2 (follow-up) | Z2 states that the allow-list is exactly `kotlin.` and `java.math.` (test-reviewer). |
 | T5 | "PR description material": Known limitations says the CameraX zoom is verified manually only. |
 
 ## Open questions

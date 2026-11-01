@@ -35,7 +35,8 @@ CP14 (slider and buttons), CP16 (parse fallbacks). Decisions DZ1, DZ2, DZ3, DZ10
   (relative to the module directory, the Gradle test working directory). Only lines whose trimmed text starts with
   `package ` or `import ` are checked (comments and KDoc ignored); matches are case-sensitive, lowercase. Asserts:
   at least 3 files; each file's `package` line is exactly `package io.github.darkcosmos.kosmodarts.camera.zoom`;
-  every import starts with `kotlin.` or `java.math.`; no package or import line contains `capture`; no import
+  every import starts with `kotlin.` or `java.math.`, and these two prefixes are the whole allow-list (an import
+  of `java.util.*` or `kotlinx.*` fails); no package or import line contains `capture`; no import
   starts with `android.`, `androidx.` or `kotlinx.coroutines`. Each assert names the file and line on failure.
 
 ## Done when
