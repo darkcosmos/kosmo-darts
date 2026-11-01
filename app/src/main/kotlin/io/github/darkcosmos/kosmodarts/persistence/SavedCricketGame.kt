@@ -15,7 +15,7 @@ data class SavedCricketGame(
     val match: CricketMatch,
     override val isAwaitingNextPlayer: Boolean,
     override val isBetweenLegs: Boolean = false,
-    override val journal: MatchJournal = TransitionalJournal.of(match),
+    override val journal: MatchJournal,
 ) : StoredGame {
 
     /** The current leg. */

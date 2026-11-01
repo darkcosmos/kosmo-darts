@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
@@ -207,8 +208,8 @@ class GameSaveDecodeInvalidTest {
     /** R9 and ADR 0001: the waiting flag must agree with the replayed game. */
     @Test
     fun `R9 an inconsistent waiting flag is rejected`() {
-        val midTurn = SavedGame(SaveFixtures.MID_TURN.game, isAwaitingNextPlayer = true)
-        val noDart = SavedGame(X01Game(SaveFixtures.config()), isAwaitingNextPlayer = true)
+        val midTurn = savedGame(SaveFixtures.MID_TURN.game, isAwaitingNextPlayer = true)
+        val noDart = savedGame(X01Game(SaveFixtures.config()), isAwaitingNextPlayer = true)
         val finishedNotWaiting = SaveFixtures.WAITING_CHECKOUT.copy(isAwaitingNextPlayer = false)
         listOf(midTurn, noDart, finishedNotWaiting).forEach {
             // The encoder writes what it is given; the decoder must refuse it.
@@ -224,7 +225,7 @@ class GameSaveDecodeInvalidTest {
     @Test
     fun `R9 an unknown dart after a valid one is not partly accepted`() {
         val game = X01Game(X01Config(listOf("Ann", "Bob")), listOf(Dart.triple(20)))
-        val text = String(checkNotNull(codec.encode(SavedGame(game, false))), Charsets.UTF_8)
+        val text = String(checkNotNull(codec.encode(savedGame(game, false))), Charsets.UTF_8)
         val body = text.lines().dropLast(TRAILER_LINES).map { if (it.startsWith("darts=")) "darts=T20 X" else it }
 
         assertInvalid(InvalidSaveReason.OUT_OF_RANGE, withChecksum(body))

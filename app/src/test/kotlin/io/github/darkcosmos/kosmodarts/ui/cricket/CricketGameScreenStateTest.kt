@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.cricket
 
+import io.github.darkcosmos.kosmodarts.testing.MatchJournals
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVisit
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
@@ -308,9 +309,10 @@ class CricketGameScreenStateTest {
     @Test
     fun `R21 the saved game keeps the waiting flag and drops the dialog`() {
         val waiting = screen().throwing(20, 19, 18).withAbandonDialog(shown = true)
-        val restored = waiting.toSavedGame().toGameScreenState()
+        val saved = waiting.toSavedGame(MatchJournals.of(waiting.match))
+        val restored = saved.toGameScreenState()
 
-        assertTrue(waiting.toSavedGame().isAwaitingNextPlayer)
+        assertTrue(saved.isAwaitingNextPlayer)
         assertEquals(waiting.match, restored.match)
         assertTrue(restored.isAwaitingConfirmation)
         assertFalse(restored.isAbandonDialogShown)

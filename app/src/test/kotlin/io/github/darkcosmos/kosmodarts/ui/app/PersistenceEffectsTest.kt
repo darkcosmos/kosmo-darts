@@ -1,5 +1,9 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.startedJournal
+import io.github.darkcosmos.kosmodarts.testing.reduce
+import io.github.darkcosmos.kosmodarts.testing.savedGame
+import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
@@ -33,7 +37,7 @@ class PersistenceEffectsTest {
         persistenceEffects(before, reducer.reduce(before, event))
 
     private fun inGame(screen: GameScreenState) =
-        AppState(screen = Screen.Game(screen), lastSetup = config.toLastSetups())
+        AppState(screen = gameScreen(screen), lastSetup = config.toLastSetups())
 
     private fun saveOf(state: AppState, event: AppEvent): PersistenceEffect =
         PersistenceEffect.SaveGame(checkNotNull(savedGameOf(reducer.reduce(state, event))))
@@ -110,7 +114,7 @@ class PersistenceEffectsTest {
         assertEquals(
             listOf(
                 PersistenceEffect.SaveLastSetup(X01MatchConfig(started).toLastSetups()),
-                PersistenceEffect.SaveGame(SavedGame(X01Game(started), isAwaitingNextPlayer = false)),
+                PersistenceEffect.SaveGame(savedGame(X01Game(started), false, startedJournal())),
             ),
             effectsOf(setup, AppEvent.StartRequested),
         )
@@ -155,7 +159,7 @@ class PersistenceEffectsTest {
         assertEquals(
             listOf(
                 PersistenceEffect.SaveLastSetup(setup.toLastSetups()),
-                PersistenceEffect.SaveGame(SavedGame(X01Match.start(setup), isAwaitingNextPlayer = false)),
+                PersistenceEffect.SaveGame(savedGame(X01Match.start(setup), false, journal = startedJournal())),
             ),
             effectsOf(end, AppEvent.Rematch),
         )
@@ -165,7 +169,7 @@ class PersistenceEffectsTest {
     @Test
     fun `R12 which screens carry the saved game`() {
         val saved = SaveFixtures.WAITING_BUST
-        assertEquals(saved, savedGameOf(AppState(screen = Screen.Game(saved.toGameScreenState()))))
+        assertEquals(saved, savedGameOf(AppState(screen = gameScreen(saved.toGameScreenState()))))
         assertEquals(saved, savedGameOf(AppState(screen = Screen.Home(resumableGame = saved))))
         assertNull(savedGameOf(AppState(screen = Screen.Home())))
         assertNull(savedGameOf(AppState(screen = Screen.Setup(SetupState()))))
@@ -175,7 +179,7 @@ class PersistenceEffectsTest {
     @Test
     fun `R12 the active modifier is not part of the saved game`() {
         val withDouble = midTurn.copy(
-            screen = Screen.Game(SaveFixtures.MID_TURN.toGameScreenState().toggleMultiplier(Multiplier.DOUBLE)),
+            screen = gameScreen(SaveFixtures.MID_TURN.toGameScreenState().toggleMultiplier(Multiplier.DOUBLE)),
         )
 
         assertEquals(SaveFixtures.MID_TURN, savedGameOf(withDouble))

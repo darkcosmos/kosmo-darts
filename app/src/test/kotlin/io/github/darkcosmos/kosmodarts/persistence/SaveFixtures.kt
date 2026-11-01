@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
@@ -38,12 +39,12 @@ internal object SaveFixtures {
     fun savedAfter(config: X01Config, darts: List<Dart>): SavedGame {
         val game = X01Game(config, darts)
         val dartsInCompletedTurns = game.state.completedTurns.sumOf { it.darts.size }
-        return SavedGame(game, isAwaitingNextPlayer = darts.isNotEmpty() && dartsInCompletedTurns == darts.size)
+        return savedGame(game, isAwaitingNextPlayer = darts.isNotEmpty() && dartsInCompletedTurns == darts.size)
     }
 
     private val T20 = Dart.triple(20)
 
-    val EMPTY: SavedGame = SavedGame(X01Game(config()), isAwaitingNextPlayer = false)
+    val EMPTY: SavedGame = savedGame(X01Game(config()), isAwaitingNextPlayer = false)
 
     /** Ann has thrown two darts of her first turn. */
     val MID_TURN: SavedGame = savedAfter(config(), listOf(T20, Dart.single(5)))
@@ -74,7 +75,7 @@ internal object SaveFixtures {
         )
 
     /** One player and exactly [GameSaveCodec.MAX_DARTS] misses. */
-    val LONGEST: SavedGame = SavedGame(X01Game(config(players = 1), List(GameSaveCodec.MAX_DARTS) { Dart.MISS }), false)
+    val LONGEST: SavedGame = savedGame(X01Game(config(players = 1), List(GameSaveCodec.MAX_DARTS) { Dart.MISS }), false)
 }
 
 /** The X01 game of a valid result; fails the test if the file held another mode. */

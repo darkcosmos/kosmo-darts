@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.screenshots
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -163,7 +164,7 @@ class PersistenceScreenshotTest {
         )
 
         /** Four players, three of them with names of 20 characters. */
-        val FOUR_LONG_NAMES: SavedGame = SavedGame(
+        val FOUR_LONG_NAMES: SavedGame = savedGame(
             X01Game(
                 X01Config(listOf("Maximilien-Alexandre", "Bartholomew Jonathan", "Anne-Charlotte Marie", "Dan")),
                 listOf(Dart.triple(20), Dart.triple(20), Dart.triple(20)),

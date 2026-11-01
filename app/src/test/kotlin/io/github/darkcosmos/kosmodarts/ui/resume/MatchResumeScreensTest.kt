@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.resume
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -103,7 +104,7 @@ class MatchResumeScreensTest {
     @Config(qualifiers = "+en-port")
     fun `M18 the home summary shows the match score`() {
         val between = match("Ann", "Bob", "Cid", legsPerSet = 2, sets = 2).confirmLegsWonBy(0, 0, 2)
-        process.writeGame(SavedGame(between, isAwaitingNextPlayer = false, isBetweenLegs = true))
+        process.writeGame(savedGame(between, isAwaitingNextPlayer = false, isBetweenLegs = true))
         process.launchFresh()
 
         composeRule.onNodeWithTag(HomeTags.SUMMARY).performScrollTo().assertIsDisplayed()
@@ -118,7 +119,7 @@ class MatchResumeScreensTest {
     @Test
     @Config(qualifiers = "+fr-port", fontScale = 2.0f)
     fun `M18 the home summary in French at 200 percent`() {
-        val saved = SavedGame(match("Ann", "Bob", legsPerSet = 3).confirmLegsWonBy(1).throwing(Dart.MISS), false)
+        val saved = savedGame(match("Ann", "Bob", legsPerSet = 3).confirmLegsWonBy(1).throwing(Dart.MISS), false)
         process.writeGame(saved)
         process.launchFresh()
 

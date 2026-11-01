@@ -1,5 +1,7 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
+import io.github.darkcosmos.kosmodarts.testing.savedCricketGame
 import io.github.darkcosmos.kosmodarts.engine.journal.JournalEvent
 import io.github.darkcosmos.kosmodarts.engine.journal.LegJournal
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
@@ -25,7 +27,7 @@ class SaveJournalCodecTest {
     private val config = X01Config(listOf("Ann", "Bob"))
 
     /** Ann's second dart, a 5, was undone and replaced by a 20. */
-    private val voidedGame: SavedGame = SavedGame(
+    private val voidedGame: SavedGame = savedGame(
         X01Match(
             X01MatchConfig(config),
             emptyList(),
@@ -76,7 +78,7 @@ class SaveJournalCodecTest {
             padded(pairsPerLeg[index], darts)
         }
         val current = padded(pairsPerLeg.last(), listOf(Dart.MISS))
-        return SavedGame(match.throwing(Dart.MISS), false, journal = journal(*(legs + current).toTypedArray()))
+        return savedGame(match.throwing(Dart.MISS), false, journal = journal(*(legs + current).toTypedArray()))
     }
 
     /** [pairs] voided darts, then these darts one second apart. Times have 13 digits, so a pair takes 20 bytes. */
@@ -105,7 +107,7 @@ class SaveJournalCodecTest {
             JournalFixtures.dart(Dart.single(19), 1_793_520_002_200),
         )
 
-        assertRoundTrip(SavedCricketGame(match, isAwaitingNextPlayer = false, journal = journal(LegJournal(events))))
+        assertRoundTrip(savedCricketGame(match, isAwaitingNextPlayer = false, journal = journal(LegJournal(events))))
     }
 
     /** R27: the largest time and the first time are valid. */
@@ -257,7 +259,7 @@ class SaveJournalCodecTest {
         val match = X01Match(X01MatchConfig(one), emptyList(), X01Game(one, winning))
         val events = JournalFixtures.leg(winning).events
 
-        val ok = SavedGame(match, isAwaitingNextPlayer = true, journal = journal(LegJournal(events)))
+        val ok = savedGame(match, isAwaitingNextPlayer = true, journal = journal(LegJournal(events)))
         assertRoundTrip(ok)
 
         val afterWin = events + JournalFixtures.dart(Dart.MISS, 1_793_520_099_000) + JournalEvent.Undone
@@ -272,9 +274,9 @@ class SaveJournalCodecTest {
         val match = start.confirmLegsWonBy(0)
         val misses = JournalFixtures.leg(List(3) { Dart.MISS })
         val wrongWinner = JournalFixtures.leg(MatchFixtures.dartsToWin(start, 1))
-        val noWinner = SavedGame(match, false, journal = journal(misses, LegJournal(emptyList())))
-        val other = SavedGame(match, false, journal = journal(wrongWinner, LegJournal(emptyList())))
-        val right = SavedGame(
+        val noWinner = savedGame(match, false, journal = journal(misses, LegJournal(emptyList())))
+        val other = savedGame(match, false, journal = journal(wrongWinner, LegJournal(emptyList())))
+        val right = savedGame(
             match,
             false,
             journal = journal(JournalFixtures.leg(MatchFixtures.dartsToWin(start, 0)), LegJournal(emptyList())),
@@ -291,7 +293,7 @@ class SaveJournalCodecTest {
         val pair = "T20@5 u"
         val overCap = List(15_000) { pair }.joinToString(" ") + " T20@5"
 
-        val empty = SavedGame(X01Game(config), isAwaitingNextPlayer = false)
+        val empty = savedGame(X01Game(config), isAwaitingNextPlayer = false)
         val capGame = empty.copy(journal = journal(padded(15_000, emptyList())))
         val overEvents = padded(15_000, emptyList()).events + JournalFixtures.dart(Dart.MISS, 1)
         val overGame = empty.copy(journal = journal(LegJournal(overEvents)))

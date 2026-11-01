@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.settings.inMemoryAudioSettings
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
@@ -53,7 +54,7 @@ class KosmoDartsViewModelTest {
     fun `R4 AN7 restoring a waiting turn gives no cue and writes nothing`() {
         val cues = mutableListOf<X01Cue>()
         val effects = mutableListOf<PersistenceEffect>()
-        val restored = AppState(screen = Screen.Game(SaveFixtures.WAITING_NORMAL.toGameScreenState()))
+        val restored = AppState(screen = gameScreen(SaveFixtures.WAITING_NORMAL.toGameScreenState()))
         val viewModel = KosmoDartsViewModel(Random(0), restored, inMemoryAudioSettings()) { effects += it }
         viewModel.addCueSink { cues += it }
 

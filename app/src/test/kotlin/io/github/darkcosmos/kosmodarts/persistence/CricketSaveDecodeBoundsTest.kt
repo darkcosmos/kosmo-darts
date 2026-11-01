@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedCricketGame
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketGame
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketLegSummary
@@ -122,7 +123,7 @@ class CricketSaveDecodeBoundsTest {
             listOf(leg),
             CricketGame(config, startingPlayerIndex = 1),
         )
-        return SavedCricketGame(match, isAwaitingNextPlayer = false, isBetweenLegs = true)
+        return savedCricketGame(match, isAwaitingNextPlayer = false, isBetweenLegs = true)
     }
 
     /** M4: the confirmed legs never decide the match; the deciding leg stays current. */
@@ -203,6 +204,6 @@ class CricketSaveDecodeBoundsTest {
         val legs = winners.map(::leg)
         val current = CricketGame(config, List(darts) { dart }, startingPlayerIndex = legs.size % 4)
         val match = CricketMatch(CricketMatchConfig(config, MatchFormat(legsPerSet = 9, sets = 9)), legs, current)
-        return SavedCricketGame(match, isAwaitingNextPlayer = false)
+        return savedCricketGame(match, isAwaitingNextPlayer = false)
     }
 }

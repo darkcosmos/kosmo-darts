@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.resume
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
@@ -443,7 +444,7 @@ class PersistenceScreensTest {
     @Config(qualifiers = "land")
     fun `R2 long names and 4 players fit in landscape`() {
         val names = listOf("Maximilien-Alexandre", "Bartholomew Jonathan", "Anne-Charlotte Marie", "Dan")
-        process.writeGame(SavedGame(X01Game(X01Config(names), listOf(Dart.triple(20))), isAwaitingNextPlayer = false))
+        process.writeGame(savedGame(X01Game(X01Config(names), listOf(Dart.triple(20))), isAwaitingNextPlayer = false))
         process.launchFresh()
 
         val card = composeRule.onNodeWithTag(HomeTags.SUMMARY).performScrollTo().getBoundsInRoot()

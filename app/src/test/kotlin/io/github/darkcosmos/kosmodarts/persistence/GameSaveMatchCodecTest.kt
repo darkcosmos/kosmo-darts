@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
@@ -26,7 +27,7 @@ class GameSaveMatchCodecTest {
     private val config = X01Config(listOf("Ann", "Bob"), 301, CheckoutRule.SINGLE_OUT)
 
     /** First to 2 legs, 2 sets: Ann won leg 1, Bob leg 2; Ann has thrown T20 20 in leg 3. */
-    private val midLeg = SavedGame(
+    private val midLeg = savedGame(
         X01Match(
             X01MatchConfig(config, MatchFormat(2, 2)),
             listOf(
@@ -100,22 +101,22 @@ class GameSaveMatchCodecTest {
         val afterOneLeg = start.confirmLegsWonBy(1)
         val afterSet = afterOneLeg.confirmLegsWonBy(1)
         listOf(
-            SavedGame(start.throwing(Dart.triple(20)), isAwaitingNextPlayer = false),
-            SavedGame(afterOneLeg.throwing(Dart.single(5), Dart.single(5)), isAwaitingNextPlayer = false),
-            SavedGame(afterOneLeg.throwing(Dart.MISS, Dart.MISS, Dart.MISS), isAwaitingNextPlayer = true),
-            SavedGame(afterSet, isAwaitingNextPlayer = false),
-            SavedGame(afterOneLeg, isAwaitingNextPlayer = false, isBetweenLegs = true),
-            SavedGame(afterSet, isAwaitingNextPlayer = false, isBetweenLegs = true),
-            SavedGame(start.playLegWonBy(0), isAwaitingNextPlayer = true), // LEG pending.
-            SavedGame(afterOneLeg.playLegWonBy(1), isAwaitingNextPlayer = true), // SET pending.
-            SavedGame(afterSet.confirmLegsWonBy(1).playLegWonBy(1), isAwaitingNextPlayer = true), // MATCH pending.
+            savedGame(start.throwing(Dart.triple(20)), isAwaitingNextPlayer = false),
+            savedGame(afterOneLeg.throwing(Dart.single(5), Dart.single(5)), isAwaitingNextPlayer = false),
+            savedGame(afterOneLeg.throwing(Dart.MISS, Dart.MISS, Dart.MISS), isAwaitingNextPlayer = true),
+            savedGame(afterSet, isAwaitingNextPlayer = false),
+            savedGame(afterOneLeg, isAwaitingNextPlayer = false, isBetweenLegs = true),
+            savedGame(afterSet, isAwaitingNextPlayer = false, isBetweenLegs = true),
+            savedGame(start.playLegWonBy(0), isAwaitingNextPlayer = true), // LEG pending.
+            savedGame(afterOneLeg.playLegWonBy(1), isAwaitingNextPlayer = true), // SET pending.
+            savedGame(afterSet.confirmLegsWonBy(1).playLegWonBy(1), isAwaitingNextPlayer = true), // MATCH pending.
         ).forEach(::assertRoundTrip)
     }
 
     /** R14: the starter of the current leg is not stored: it is derived from the number of confirmed legs (M6). */
     @Test
     fun `R14 the current leg is replayed with its starter`() {
-        val saved = SavedGame(match("Ann", "Bob", "Cid", legsPerSet = 3).confirmLegsWonBy(0, 0), false)
+        val saved = savedGame(match("Ann", "Bob", "Cid", legsPerSet = 3).confirmLegsWonBy(0, 0), false)
 
         val decoded = codec.decode(checkNotNull(codec.encode(saved))) as GameDecodeResult.Valid
 
@@ -128,9 +129,9 @@ class GameSaveMatchCodecTest {
     fun `R9 an inconsistent between-legs flag is rejected`() {
         val start = match("Ann", "Bob", legsPerSet = 2)
         listOf(
-            SavedGame(start, isAwaitingNextPlayer = false, isBetweenLegs = true), // No confirmed leg.
-            SavedGame(start.confirmLegsWonBy(0).throwing(Dart.single(1)), false, isBetweenLegs = true), // A dart.
-            SavedGame(start.confirmLegsWonBy(0), isAwaitingNextPlayer = true, isBetweenLegs = true), // Waiting.
+            savedGame(start, isAwaitingNextPlayer = false, isBetweenLegs = true), // No confirmed leg.
+            savedGame(start.confirmLegsWonBy(0).throwing(Dart.single(1)), false, isBetweenLegs = true), // A dart.
+            savedGame(start.confirmLegsWonBy(0), isAwaitingNextPlayer = true, isBetweenLegs = true), // Waiting.
         ).forEach { saved ->
             assertEquals(
                 saved.toString(),
@@ -226,7 +227,7 @@ class GameSaveMatchCodecTest {
     @Test
     fun `R12 a confirmed leg over 10,000 darts is not encoded`() {
         val tooLong = X01LegSummary(config, 0, listOf(301, 0), listOf(GameSaveCodec.MAX_DARTS + 1, 0))
-        val saved = SavedGame(
+        val saved = savedGame(
             X01Match(
                 X01MatchConfig(config, MatchFormat(2, 1)),
                 listOf(tooLong),
@@ -258,7 +259,7 @@ class GameSaveMatchCodecTest {
         }
         assertEquals(format.maxLegs(4) - 1, legs.size)
         val current = X01Game(largest, List(GameSaveCodec.MAX_DARTS) { Dart.triple(20) }, legs.size % 4)
-        val saved = SavedGame(X01Match(X01MatchConfig(largest, format), legs, current), isAwaitingNextPlayer = false)
+        val saved = savedGame(X01Match(X01MatchConfig(largest, format), legs, current), isAwaitingNextPlayer = false)
 
         val bytes = checkNotNull(codec.encode(saved))
 

@@ -1,5 +1,9 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.startedJournal
+import io.github.darkcosmos.kosmodarts.testing.savedGame
+import io.github.darkcosmos.kosmodarts.testing.gameScreen
+import io.github.darkcosmos.kosmodarts.testing.betweenLegs
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
@@ -28,7 +32,7 @@ class AppReducerMatchTest {
 
     private val events = MatchEvents()
 
-    private fun inGame(match: X01Match) = AppState(screen = Screen.Game(GameScreenState(match)))
+    private fun inGame(match: X01Match) = AppState(screen = gameScreen(GameScreenState(match)))
 
     private fun gameOf(state: AppState): GameScreenState = (state.screen as Screen.Game).game
 
@@ -41,7 +45,11 @@ class AppReducerMatchTest {
         val between = events.after(won, AppEvent.FinishGameTapped)
 
         assertEquals(
-            Screen.BetweenLegs(gameOf(won).match.confirmLeg(), checkout = gameOf(won).checkoutSummary),
+            betweenLegs(
+                gameOf(won).match.confirmLeg(),
+                journal = (won.screen as Screen.Game).journal.startNextLeg(),
+                checkout = gameOf(won).checkoutSummary,
+            ),
             between.screen,
         )
         assertTrue((between.screen as Screen.BetweenLegs).checkout != null)
@@ -72,16 +80,16 @@ class AppReducerMatchTest {
     @Test
     fun `M16 Next leg opens the new leg`() {
         val next = match("Ann", "Bob", "Cid", legsPerSet = 2).confirmLegsWonBy(2)
-        val state = events.after(AppState(screen = Screen.BetweenLegs(next)), AppEvent.NextLegTapped)
+        val state = events.after(AppState(screen = betweenLegs(next)), AppEvent.NextLegTapped)
 
-        assertEquals(Screen.Game(GameScreenState(next)), state.screen)
+        assertEquals(gameScreen(GameScreenState(next)), state.screen)
         assertEquals(1, gameOf(state).highlightedPlayerIndex)
     }
 
     /** M16 (owner Q6 i, Q7): back asks "Abandon the game?"; "Keep playing" or back closes it; "Abandon" goes home. */
     @Test
     fun `M16 back on the between-legs screen asks to abandon`() {
-        val between = AppState(screen = Screen.BetweenLegs(match("Ann", "Bob", legsPerSet = 2).confirmLegsWonBy(0)))
+        val between = AppState(screen = betweenLegs(match("Ann", "Bob", legsPerSet = 2).confirmLegsWonBy(0)))
 
         val asking = events.after(between, AppEvent.Back)
         assertEquals((between.screen as Screen.BetweenLegs).copy(isAbandonDialogShown = true), asking.screen)
@@ -108,7 +116,10 @@ class AppReducerMatchTest {
         val rotated = X01Config(listOf("Bob", "Cid", "Ann"), 301, CheckoutRule.SINGLE_OUT)
         val expected = X01MatchConfig(rotated, format, slots)
         assertEquals(expected, rematch.lastSetup?.x01Setup)
-        assertEquals(Screen.Game(GameScreenState(X01Match.start(expected)), isNewGame = true), rematch.screen)
+        assertEquals(
+            gameScreen(GameScreenState(X01Match.start(expected)), startedJournal(), isNewGame = true),
+            rematch.screen,
+        )
     }
 
     /** M13, R7: Start builds the match with the setup format and remembers it. */
@@ -157,14 +168,14 @@ class AppReducerMatchTest {
     @Test
     fun `R14 a saved match between legs resumes on the between-legs screen`() {
         val next = match("Ann", "Bob", legsPerSet = 2).confirmLegsWonBy(0)
-        val saved = SavedGame(next, isAwaitingNextPlayer = false, isBetweenLegs = true)
+        val saved = savedGame(next, isAwaitingNextPlayer = false, isBetweenLegs = true)
 
         val afterKill = initialState(LoadResult(GameLoad.Valid(saved), null), wasOnGameScreen = true)
-        assertEquals(Screen.BetweenLegs(next), afterKill.screen)
+        assertEquals(betweenLegs(next), afterKill.screen)
 
         val home = initialState(LoadResult(GameLoad.Valid(saved), null), wasOnGameScreen = false)
         assertEquals(Screen.Home(resumableGame = saved), home.screen)
-        assertEquals(Screen.BetweenLegs(next), events.after(home, AppEvent.ResumeTapped).screen)
+        assertEquals(betweenLegs(next), events.after(home, AppEvent.ResumeTapped).screen)
     }
 
     /** R14, M15: a finished, unconfirmed leg comes back in the checkout dialog with its label, for each outcome. */
@@ -176,7 +187,7 @@ class AppReducerMatchTest {
             start.confirmLegsWonBy(0).playLegWonBy(0) to LegOutcome.SET,
             start.confirmLegsWonBy(0, 0, 0).playLegWonBy(0) to LegOutcome.MATCH,
         ).forEach { (finished, outcome) ->
-            val saved = SavedGame(finished, isAwaitingNextPlayer = true)
+            val saved = savedGame(finished, isAwaitingNextPlayer = true)
 
             val state = initialState(LoadResult(GameLoad.Valid(saved), null), wasOnGameScreen = true)
 
@@ -189,7 +200,7 @@ class AppReducerMatchTest {
     /** R1, R14: the activity remembers the between-legs screen as a game screen for a return after process death. */
     @Test
     fun `R14 the between-legs screen counts as the game screen for R1`() {
-        val between = Screen.BetweenLegs(match("Ann", "Bob", legsPerSet = 2).confirmLegsWonBy(0))
+        val between = betweenLegs(match("Ann", "Bob", legsPerSet = 2).confirmLegsWonBy(0))
         val onBetween = KosmoDartsViewModel(initial = AppState(screen = between), audioSettings = audioSettings())
         val onHome = KosmoDartsViewModel(initial = AppState(), audioSettings = audioSettings())
 

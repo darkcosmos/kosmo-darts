@@ -27,11 +27,15 @@ fun initialState(load: LoadResult, wasOnGameScreen: Boolean): AppState {
 
 /** R14: the screen the saved game was on: the between-legs screen (owner Q6 ii), else the game screen. */
 fun SavedGame.toScreen(): Screen =
-    if (isBetweenLegs) Screen.BetweenLegs(match) else Screen.Game(toGameScreenState())
+    if (isBetweenLegs) Screen.BetweenLegs(match, journal) else Screen.Game(toGameScreenState(), journal)
 
 /** R14, R21: the screen the saved Cricket game was on: between legs, else the Cricket game screen. */
 fun SavedCricketGame.toScreen(): Screen =
-    if (isBetweenLegs) Screen.CricketBetweenLegs(match) else Screen.CricketGame(toGameScreenState())
+    if (isBetweenLegs) {
+        Screen.CricketBetweenLegs(match, journal)
+    } else {
+        Screen.CricketGame(toGameScreenState(), journal)
+    }
 
 /** R14, R21: the screen the saved game of either mode was on. */
 fun StoredGame.toScreen(): Screen = when (this) {

@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.journal.JournalEvent
 import io.github.darkcosmos.kosmodarts.engine.journal.LegJournal
@@ -75,9 +76,9 @@ class SaveFuzzTest {
             colorSlots = listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_1, ColorSlot.SLOT_2),
         )
         val valid = listOf(
-            SavedGame(start.confirmLegsWonBy(0, 1, 1).throwing(Dart.triple(20)), isAwaitingNextPlayer = false),
-            SavedGame(start.confirmLegsWonBy(2, 2), isAwaitingNextPlayer = false, isBetweenLegs = true),
-            SavedGame(start.confirmLegsWonBy(0).playLegWonBy(0), isAwaitingNextPlayer = true),
+            savedGame(start.confirmLegsWonBy(0, 1, 1).throwing(Dart.triple(20)), isAwaitingNextPlayer = false),
+            savedGame(start.confirmLegsWonBy(2, 2), isAwaitingNextPlayer = false, isBetweenLegs = true),
+            savedGame(start.confirmLegsWonBy(0).playLegWonBy(0), isAwaitingNextPlayer = true),
         ).map { checkNotNull(gameCodec.encode(it)) }
         val body = coveredLines(valid.first())
         val keyCases = listOf(
@@ -94,7 +95,7 @@ class SaveFuzzTest {
      */
     private fun journalSeeds(): List<ByteArray> {
         val config = SaveFixtures.config(players = 2, startScore = 301)
-        val voided = SavedGame(
+        val voided = savedGame(
             X01Match(
                 X01MatchConfig(config),
                 emptyList(),

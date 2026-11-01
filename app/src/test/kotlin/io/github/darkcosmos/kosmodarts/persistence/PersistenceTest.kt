@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import org.junit.Assert.assertArrayEquals
@@ -44,7 +45,7 @@ class PersistenceTest {
     @Test
     fun `R12 over 10,000 darts the previous file stays until undo or delete`() {
         val atLimit = SaveFixtures.LONGEST
-        val overLimit = SavedGame(atLimit.game.throwDart(Dart.MISS), isAwaitingNextPlayer = false)
+        val overLimit = savedGame(atLimit.game.throwDart(Dart.MISS), isAwaitingNextPlayer = false)
         direct.saveGame(atLimit)
         val atLimitBytes = gameStore.content
 
@@ -52,7 +53,7 @@ class PersistenceTest {
         assertArrayEquals(atLimitBytes, gameStore.content)
         assertEquals(1, gameStore.writes)
 
-        val undone = SavedGame(overLimit.game.undo(), isAwaitingNextPlayer = false)
+        val undone = savedGame(overLimit.game.undo(), isAwaitingNextPlayer = false)
         direct.saveGame(undone)
         assertEquals(2, gameStore.writes)
         assertArrayEquals(codec.encode(undone), gameStore.content)

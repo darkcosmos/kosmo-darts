@@ -45,3 +45,18 @@ DJ1, DJ2, DJ4, AR4, AR5 (start time), R4, R5, R12, R14, R15.
 sonnet. Why: state holder wiring with JVM tests.
 
 ## Implementation notes
+
+- Design: `GameProgress.follow(journal, before, after, at)` (game-engine, `engine/journal/GameProgress.kt`) derives the
+  journal from the transition of the match (one dart added, one removed, no change, or a confirmed leg that opens the
+  next journal leg); any other change is an error. No per-screen Progress classes.
+- The journal lives on `Screen.Game`, `Screen.BetweenLegs`, `Screen.CricketGame` and `Screen.CricketBetweenLegs`
+  (not on the End screens). "Next leg" and Resume keep it unchanged.
+- Purity: `AppReducer.reduce(state, event, stamp: EventStamp(at, matchId))`; events are untouched. The ViewModel
+  builds the stamp (`clock`, `newMatchId` constructor parameters); the id is requested only for Start and Rematch,
+  otherwise `NO_MATCH_ID` ("") that the reducer never reads.
+- Bridge removed: `TransitionalJournal.kt` and the `journal` defaults of `SavedGame`/`SavedCricketGame` are gone.
+  Tests use `testing/MatchJournals` (journal derived from a match) and `testing/ScreenFixtures` (`savedGame`,
+  `gameScreen`, `TEST_STAMP`, `startedJournal()`, and `AppReducer.reduce(state, event)` with `TEST_STAMP`).
+- New tests: `GameProgressTest` (engine) and `AppReducerJournalTest` (app, DJ4 after every event).
+- For T9 (archive flow): the End screens do not carry the journal; the archive must be built from the last
+  `Game`/`BetweenLegs` screen journal at the moment the match ends (`finish`/`finishCricket` in the reducers).

@@ -22,19 +22,20 @@ sealed interface PersistenceEffect {
  * screen must state whether it carries the saved game, since `null` deletes it.
  */
 fun savedGameOf(state: AppState): StoredGame? = when (val screen = state.screen) {
-    is Screen.Game -> screen.game.toSavedGame()
+    is Screen.Game -> screen.game.toSavedGame(screen.journal)
     is Screen.Home -> screen.resumableGame
     // R14, R15: the match stays saved between legs, with the screen to come back to.
-    is Screen.BetweenLegs -> SavedGame(screen.match, isAwaitingNextPlayer = false, isBetweenLegs = true)
+    is Screen.BetweenLegs ->
+        SavedGame(screen.match, isAwaitingNextPlayer = false, isBetweenLegs = true, journal = screen.journal)
     is Screen.Setup -> null
     // R6, R14: the saved match is deleted when its win is confirmed.
     is Screen.End -> null
     // Opening Settings from home keeps the saved game of that home screen.
     is Screen.Settings -> screen.home.resumableGame
     // R12, R20, R21: a Cricket game is saved like an X01 one, between legs included, and deleted at its end.
-    is Screen.CricketGame -> screen.game.toSavedGame()
+    is Screen.CricketGame -> screen.game.toSavedGame(screen.journal)
     is Screen.CricketBetweenLegs ->
-        SavedCricketGame(screen.match, isAwaitingNextPlayer = false, isBetweenLegs = true)
+        SavedCricketGame(screen.match, isAwaitingNextPlayer = false, isBetweenLegs = true, journal = screen.journal)
     is Screen.CricketEnd -> null
 }
 

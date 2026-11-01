@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -32,11 +33,13 @@ sealed interface Screen {
     data class Setup(val setup: SetupState, val isRestoreFailedShown: Boolean = false) : Screen
 
     /**
+     * @property journal the journal of the match, in step with [game] (DJ1, DJ4); saved with it.
      * @property isNewGame whether "Start" or "Rematch" opened this screen, rather than a resume (AN4, AN16).
      * @property noVoiceNotice the open "no offline voice" message (AN16), or `null`. Neither is saved.
      */
     data class Game(
         val game: GameScreenState,
+        val journal: MatchJournal,
         val isNewGame: Boolean = false,
         val noVoiceNotice: NoVoiceNotice? = null,
     ) : Screen
@@ -48,12 +51,14 @@ sealed interface Screen {
      * Between two legs of a match, after "Finish leg" or "Finish set" (docs/rules/match.md, M16). [match] already has
      * the leg confirmed and its next leg started, with no dart.
      *
+     * @property journal the journal of the match: the legs confirmed so far and the empty journal of the next leg.
      * @property isAbandonDialogShown whether the "Abandon the game?" confirmation is open (owner Q6 i).
      * @property checkout the winning visit of the leg just confirmed, shown in the winner's zone; `null` after a resume
      *   on this screen (not saved).
      */
     data class BetweenLegs(
         val match: X01Match,
+        val journal: MatchJournal,
         val isAbandonDialogShown: Boolean = false,
         val checkout: CheckoutSummary? = null,
     ) : Screen
@@ -71,11 +76,13 @@ sealed interface Screen {
     /**
      * The Cricket game screen (docs/rules/cricket.md, CR22 to CR25).
      *
+     * @property journal the journal of the match, in step with [game] (DJ1, DJ4); saved with it.
      * @property isNewGame whether "Start" or "Rematch" opened this screen, rather than a resume (AN4, AN16, AN31).
      * @property noVoiceNotice the open "no offline voice" message (AN16), or `null`. Neither is saved.
      */
     data class CricketGame(
         val game: CricketGameScreenState,
+        val journal: MatchJournal,
         val isNewGame: Boolean = false,
         val noVoiceNotice: NoVoiceNotice? = null,
     ) : Screen
@@ -84,9 +91,14 @@ sealed interface Screen {
      * Between two legs of a Cricket match (M16, CR26). [match] already has the leg confirmed and its next leg started,
      * with no dart; the winner detail is read from its last confirmed leg.
      *
+     * @property journal the journal of the match, like [BetweenLegs.journal].
      * @property isAbandonDialogShown whether the "Abandon the game?" confirmation is open.
      */
-    data class CricketBetweenLegs(val match: CricketMatch, val isAbandonDialogShown: Boolean = false) : Screen
+    data class CricketBetweenLegs(
+        val match: CricketMatch,
+        val journal: MatchJournal,
+        val isAbandonDialogShown: Boolean = false,
+    ) : Screen
 
     /** End of a finished Cricket match (M17, CR27); a single game is a match of one leg. [match] is not confirmed. */
     data class CricketEnd(val match: CricketMatch) : Screen
@@ -111,6 +123,16 @@ data class AppState(
     val screen: Screen = Screen.Home(),
     val lastSetup: LastSetups? = null,
 )
+
+/**
+ * What the ViewModel read from the clock and the id source for one event, handed to the reducer so that it stays pure
+ * (review A4): the entry time of a dart, the start time of a match, and the id of the match that "Start" or "Rematch"
+ * creates (DJ1, AR4, AR5).
+ *
+ * @property at milliseconds since the epoch.
+ * @property matchId a new match id (lower-case UUID); only read by "Start" and "Rematch".
+ */
+data class EventStamp(val at: Long, val matchId: String)
 
 /** Everything the user can do. An event that does not apply to the current screen is ignored. */
 sealed interface AppEvent {

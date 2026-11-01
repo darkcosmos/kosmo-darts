@@ -1,5 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.reduce
+import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 import org.junit.Assert.assertEquals
@@ -30,7 +32,7 @@ class SettingsNavigationTest {
     fun `AN13 Settings cannot be opened from the setup, game or end screens`() {
         listOf(
             Screen.Setup(SetupState.prefilled(null)),
-            Screen.Game(SaveFixtures.MID_TURN.game.let { io.github.darkcosmos.kosmodarts.ui.game.GameScreenState(it) }),
+            gameScreen(SaveFixtures.MID_TURN.game.let { io.github.darkcosmos.kosmodarts.ui.game.GameScreenState(it) }),
             Screen.End(SaveFixtures.WAITING_CHECKOUT.game),
         ).forEach { screen ->
             val state = AppState(screen = screen)

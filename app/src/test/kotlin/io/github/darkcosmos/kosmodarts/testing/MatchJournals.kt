@@ -1,4 +1,4 @@
-package io.github.darkcosmos.kosmodarts.persistence
+package io.github.darkcosmos.kosmodarts.testing
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.journal.JournalEvent
@@ -10,15 +10,11 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 
 /**
- * TRANSITIONAL, removed by task T6 of issue #50. Until the reducers keep the real journal next to the match, a saved
- * game that is given no journal gets one derived from its match, so that the game keeps being saved and resumed.
- *
- * The darts in play of the current leg are journaled as entered, one millisecond apart from 0; every confirmed leg gets
- * a made-up journal whose winner is the winner of its summary (its real darts are not stored), the other players
- * missing. The id is the nil UUID. Nothing here is ever archived: T6 replaces it with the real match id, start time and
- * journals, before any archive exists (T9).
+ * Journals of the tests that do not care about the journal: one derived from a match, so that DJ4 holds for its current
+ * leg. The confirmed legs get made-up darts (their winner is the winner of their summary), the id is the nil UUID and
+ * the entry times are 0, 1, 2... Tests that look at the journal build their own (see `ui/app/AppReducerJournalTest`).
  */
-internal object TransitionalJournal {
+object MatchJournals {
 
     const val MATCH_ID: String = "00000000-0000-0000-0000-000000000000"
 

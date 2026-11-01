@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.game
 
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 
 // Conversions between the game screen and the saved game (rules R4, R12, R14). They live on the UI side so that the
@@ -9,7 +10,8 @@ import io.github.darkcosmos.kosmodarts.persistence.SavedGame
  * The part of this screen that is saved: the match and whether the last completed turn of its leg waits for "Next
  * player".
  */
-fun GameScreenState.toSavedGame(): SavedGame = SavedGame(match, isAwaitingConfirmation)
+fun GameScreenState.toSavedGame(journal: MatchJournal): SavedGame =
+    SavedGame(match, isAwaitingConfirmation, journal = journal)
 
 /**
  * The game screen exactly as it was (rule R4), without an active Double/Triple modifier nor the abandon dialog

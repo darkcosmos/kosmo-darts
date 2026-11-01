@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_1
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_2
@@ -23,7 +24,7 @@ class SaveColorsCodecTest {
     private val setupCodec = LastSetupCodec()
 
     /** Three players holding slots 3, 1 and 4, in the middle of the second leg of a match. */
-    private val saved = SavedGame(
+    private val saved = savedGame(
         match("Ann", "Bob", "Cid", legsPerSet = 2, colorSlots = listOf(SLOT_3, SLOT_1, SLOT_4))
             .confirmLegsWonBy(1)
             .throwing(Dart.triple(20)),

@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.journal.JournalEvent
 import io.github.darkcosmos.kosmodarts.engine.journal.LegJournal
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
@@ -63,7 +64,7 @@ class GameSaveCodecTest {
             listOf(Dart.OUTER_BULL, Dart.BULL, Dart.MISS)
         // A single dart never finishes 501, so each one is a valid game on its own.
         everyDart.forEach { dart ->
-            assertRoundTrip(SavedGame(X01Game(config(players = 1)).throwDart(dart), isAwaitingNextPlayer = false))
+            assertRoundTrip(savedGame(X01Game(config(players = 1)).throwDart(dart), isAwaitingNextPlayer = false))
         }
     }
 
@@ -76,12 +77,12 @@ class GameSaveCodecTest {
             "a=b c",
             "ÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉÉ", // 20 code points, 2 UTF-8 bytes each.
         )
-        assertRoundTrip(SavedGame(X01Game(X01Config(names)), isAwaitingNextPlayer = false))
+        assertRoundTrip(savedGame(X01Game(X01Config(names)), isAwaitingNextPlayer = false))
         // Decomposed input: the engine stores it in NFC, and that is what round trips.
         val decomposed = X01Config(listOf("Cle\u0301ment", "Bob"))
-        assertRoundTrip(SavedGame(X01Game(decomposed), isAwaitingNextPlayer = false))
+        assertRoundTrip(savedGame(X01Game(decomposed), isAwaitingNextPlayer = false))
         // 20 emoji: 4 UTF-8 bytes each, the longest name accepted.
-        assertRoundTrip(SavedGame(X01Game(X01Config(listOf("🎯".repeat(20)))), isAwaitingNextPlayer = false))
+        assertRoundTrip(savedGame(X01Game(X01Config(listOf("🎯".repeat(20)))), isAwaitingNextPlayer = false))
     }
 
     /** R12: the largest saved game. */
@@ -93,7 +94,7 @@ class GameSaveCodecTest {
     /** R12: beyond the limit, nothing is encoded, so the previous file stays. */
     @Test
     fun `R12 10,001 darts are not encoded`() {
-        val tooLong = SavedGame(SaveFixtures.LONGEST.game.throwDart(Dart.MISS), isAwaitingNextPlayer = false)
+        val tooLong = savedGame(SaveFixtures.LONGEST.game.throwDart(Dart.MISS), isAwaitingNextPlayer = false)
 
         assertNull(codec.encode(tooLong))
     }
@@ -122,7 +123,7 @@ class GameSaveCodecTest {
                 ),
             ),
         )
-        SavedGame(match, isAwaitingNextPlayer = true, journal = journal)
+        savedGame(match, isAwaitingNextPlayer = true, journal = journal)
     }
 
     /** ADR 0011, R26: format version 1 of the same game with a voided dart, exact bytes: the body, then the journal. */

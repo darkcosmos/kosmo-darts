@@ -1,5 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.reduce
+import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -29,7 +31,7 @@ class AppReducerResumeTest {
     fun `R2 Resume game opens the saved game exactly as it was`() {
         val state = home.after(AppEvent.ResumeTapped)
 
-        assertEquals(Screen.Game(saved.toGameScreenState()), state.screen)
+        assertEquals(gameScreen(saved.toGameScreenState()), state.screen)
         assertEquals(lastSetup, state.lastSetup?.x01Setup)
     }
 

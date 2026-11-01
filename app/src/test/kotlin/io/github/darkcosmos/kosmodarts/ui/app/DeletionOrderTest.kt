@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.settings.inMemoryAudioSettings
 import io.github.darkcosmos.kosmodarts.persistence.GameLoad
 import io.github.darkcosmos.kosmodarts.persistence.InvalidSaveReason
@@ -36,7 +37,7 @@ class DeletionOrderTest {
     fun `R6 a dart then Finish game leaves no file`() {
         val won = SaveFixtures.WAITING_CHECKOUT.game
         val beforeWin = SaveFixtures.savedAfter(won.config, won.darts.dropLast(1)).toGameScreenState()
-        val viewModel = viewModel(AppState(screen = Screen.Game(beforeWin)))
+        val viewModel = viewModel(AppState(screen = gameScreen(beforeWin)))
 
         viewModel.onEvent(AppEvent.NumberTapped(1)) // The winning dart: a write is queued.
         assertTrue((viewModel.state.value.screen as Screen.Game).game.isCheckoutPending)
@@ -48,7 +49,7 @@ class DeletionOrderTest {
 
     @Test
     fun `R6 a dart then Abandon leaves no file`() {
-        val viewModel = viewModel(AppState(screen = Screen.Game(SaveFixtures.MID_TURN.toGameScreenState())))
+        val viewModel = viewModel(AppState(screen = gameScreen(SaveFixtures.MID_TURN.toGameScreenState())))
 
         viewModel.onEvent(AppEvent.MissTapped)
         viewModel.onEvent(AppEvent.Back)

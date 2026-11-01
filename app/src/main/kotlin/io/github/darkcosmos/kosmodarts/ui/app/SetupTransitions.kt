@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
@@ -36,8 +37,12 @@ internal fun AppState.toSetup(mode: GameMode): AppState =
  * A new match from Start or Rematch: its roster and X01 settings become the last setup, and the settings of the other
  * modes in [previous] are kept (R7, R13, R22).
  */
-internal fun newMatchState(setup: X01MatchConfig, previous: LastSetups?): AppState = AppState(
-    screen = Screen.Game(GameScreenState(X01Match.start(setup)), isNewGame = true),
+internal fun newMatchState(setup: X01MatchConfig, previous: LastSetups?, stamp: EventStamp): AppState = AppState(
+    screen = Screen.Game(
+        GameScreenState(X01Match.start(setup)),
+        MatchJournal(stamp.matchId, stamp.at),
+        isNewGame = true,
+    ),
     lastSetup = LastSetups.afterX01(previous, setup),
 )
 

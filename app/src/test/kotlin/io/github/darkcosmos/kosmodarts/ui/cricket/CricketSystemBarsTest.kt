@@ -1,5 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.cricket
 
+import io.github.darkcosmos.kosmodarts.testing.cricketGameScreen
+import io.github.darkcosmos.kosmodarts.testing.cricketBetweenLegs
 import android.view.View
 import android.view.WindowInsetsController
 import androidx.compose.foundation.layout.Box
@@ -48,7 +50,7 @@ class CricketSystemBarsTest {
 
     private val match = CricketSaveFixtures.match("Ann", "Bob", legsPerSet = 3)
 
-    private var screen: Screen by mutableStateOf(Screen.CricketGame(CricketGameScreenState(match)))
+    private var screen: Screen by mutableStateOf(cricketGameScreen(CricketGameScreenState(match)))
 
     /** Whether the app gets a portrait space (the phone turned back), instead of the whole landscape screen. */
     private var isPortrait by mutableStateOf(false)
@@ -138,7 +140,7 @@ class CricketSystemBarsTest {
     fun `CR22 between legs shows the bars again`() {
         showHiddenGame()
 
-        leaveTo(Screen.CricketBetweenLegs(match.playLegWonBy(0).confirmLeg()))
+        leaveTo(cricketBetweenLegs(match.playLegWonBy(0).confirmLeg()))
 
         assertFalse(bars.isHidden)
     }
@@ -155,7 +157,7 @@ class CricketSystemBarsTest {
     @Test
     fun `CR22 abandoning the game shows the bars again on the home screen`() {
         showHiddenGame()
-        leaveTo(Screen.CricketGame(CricketGameScreenState(match, isAbandonDialogShown = true)))
+        leaveTo(cricketGameScreen(CricketGameScreenState(match, isAbandonDialogShown = true)))
         assertTrue("still hidden behind the abandon dialog", bars.isHidden)
 
         leaveTo(Screen.Home())
