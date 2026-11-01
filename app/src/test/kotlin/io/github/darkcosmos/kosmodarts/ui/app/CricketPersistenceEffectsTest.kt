@@ -113,6 +113,7 @@ class CricketPersistenceEffectsTest {
                 PersistenceEffect.SaveGame(
                     savedCricketGame(CricketMatch.start(rotated), false, journal = startedJournal()),
                 ),
+                PersistenceEffect.TouchProfiles(listOf("Bob", "Ann"), startedJournal().startedAt),
             ),
             persistenceEffects(end, rematch),
         )

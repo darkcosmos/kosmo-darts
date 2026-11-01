@@ -35,3 +35,19 @@ PF1, PF2, PF5, AR9, R7, R22; ADR 0012 "Failure contract".
 sonnet. Why: specified rules over T7's DAOs, with listed tests.
 
 ## Implementation notes
+- `PlayerListRules.nameKey(name)` is public (trim, NFC, code point case fold, no accent folding); the duplicate check
+  uses it. `PlayerListRulesNameKeyTest` covers it. T9 wires `PlayerListRules::nameKey` into both repositories.
+- `history/ProfileRepository.kt`: `interface ProfileRepository` (`touchOrCreate(names, at)`, `recent()`, both
+  `DbResult`), `RoomProfileRepository(database, nameKey)` (writes only through `ProfileDao.upsertUsed`, one
+  transaction; `recent()` maps `HistoryDao.profilesByRecency` to `Profile(name, nameKey, lastUsedAt)`). The interface
+  lets tests (and T10) use a fake returning `Failed`.
+- Deviation: `TouchProfiles(names, at)` is emitted by `persistenceEffects` (`PersistenceEffect.kt`), not by
+  `SetupTransitions.kt`, because the effect is derived from the state change: Setup, End or CricketEnd to Game or
+  CricketGame (Start and Rematch, X01 and Cricket). `at` is `journal.startedAt`. It comes last in the effect list.
+- `Persistence(..., profiles: ProfileRepository? = null)` and `touchProfiles(names, at)` queue the touch on the
+  executor and ignore the result (a `Failed` never blocks the start). Without a repository it does nothing.
+  `KosmoDartsApplication` does not yet pass one: T9 opens the database and wires it (nothing opens the database at
+  launch, PF4 withdrawn; `ProfileRepositoryTest` loads a saved game and last setup and finds no profile).
+- No name is logged anywhere (`dbResult` drops the cause).
+- Checks: `./gradlew :game-engine:test`, `./gradlew :app:testDebugUnitTest`, `./gradlew build` green; `kosmo-detekt`
+  exit 0.

@@ -115,6 +115,7 @@ class PersistenceEffectsTest {
             listOf(
                 PersistenceEffect.SaveLastSetup(X01MatchConfig(started).toLastSetups()),
                 PersistenceEffect.SaveGame(savedGame(X01Game(started), false, startedJournal())),
+                PersistenceEffect.TouchProfiles(listOf("Ann", "Bob"), startedJournal().startedAt),
             ),
             effectsOf(setup, AppEvent.StartRequested),
         )
@@ -160,6 +161,7 @@ class PersistenceEffectsTest {
             listOf(
                 PersistenceEffect.SaveLastSetup(setup.toLastSetups()),
                 PersistenceEffect.SaveGame(savedGame(X01Match.start(setup), false, journal = startedJournal())),
+                PersistenceEffect.TouchProfiles(listOf("Bob", "Cid", "Ann"), startedJournal().startedAt),
             ),
             effectsOf(end, AppEvent.Rematch),
         )

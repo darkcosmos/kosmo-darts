@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
 import androidx.annotation.VisibleForTesting
+import io.github.darkcosmos.kosmodarts.history.ProfileRepository
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executor
@@ -16,6 +17,7 @@ class Persistence(
     private val executor: Executor,
     private val gameCodec: GameSaveCodec = GameSaveCodec(),
     private val setupCodec: LastSetupCodec = LastSetupCodec(),
+    private val profiles: ProfileRepository? = null,
 ) {
     private val loader = SaveLoader(gameStore, setupStore, gameCodec, setupCodec)
     private val gameWriter = SaveWriter(gameStore, executor)
@@ -51,6 +53,15 @@ class Persistence(
     fun deleteGame() = gameWriter.delete()
 
     fun saveLastSetup(setups: LastSetups) = setupWriter.write(setupCodec.encode(setups))
+
+    /**
+     * Creates or touches the profiles of [names] at [at] (PF2), in the background, in call order. A failure (AR9) is
+     * ignored: it never blocks a game start. Nothing happens without a profile repository.
+     */
+    fun touchProfiles(names: List<String>, at: Long) {
+        val repository = profiles ?: return
+        executor.execute { repository.touchOrCreate(names, at) }
+    }
 
     /** Waits until every read and write requested so far is done. For tests that check the files. */
     @VisibleForTesting

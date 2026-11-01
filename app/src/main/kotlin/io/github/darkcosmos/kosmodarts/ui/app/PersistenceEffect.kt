@@ -15,6 +15,9 @@ sealed interface PersistenceEffect {
     data object DeleteGame : PersistenceEffect
 
     data class SaveLastSetup(val setups: LastSetups) : PersistenceEffect
+
+    /** PF2: create or touch the profiles of [names] at [at], the match start time. */
+    data class TouchProfiles(val names: List<String>, val at: Long) : PersistenceEffect
 }
 
 /**
@@ -49,7 +52,23 @@ fun persistenceEffects(before: AppState, after: AppState): List<PersistenceEffec
         else -> PersistenceEffect.SaveGame(savedAfter)
     }
     val setupEffect = after.lastSetup?.takeIf { it != before.lastSetup }?.let(PersistenceEffect::SaveLastSetup)
-    return listOfNotNull(setupEffect, gameEffect)
+    return listOfNotNull(setupEffect, gameEffect, touchProfilesEffect(before, after))
+}
+
+/**
+ * PF2: Start (from the setup) and Rematch (from an end screen) open a new game; its players' profiles are created or
+ * touched at the match start time. Any other change of screen touches nothing.
+ */
+private fun touchProfilesEffect(before: AppState, after: AppState): PersistenceEffect.TouchProfiles? {
+    val isStart = before.screen is Screen.Setup || before.screen is Screen.End || before.screen is Screen.CricketEnd
+    if (!isStart) return null
+    return when (val screen = after.screen) {
+        is Screen.Game ->
+            PersistenceEffect.TouchProfiles(screen.game.match.config.players, screen.journal.startedAt)
+        is Screen.CricketGame ->
+            PersistenceEffect.TouchProfiles(screen.game.match.config.players, screen.journal.startedAt)
+        else -> null
+    }
 }
 
 /** Applies [effects] in order; writes run in the background. */
@@ -58,5 +77,6 @@ fun Persistence.applyEffects(effects: List<PersistenceEffect>) = effects.forEach
         is PersistenceEffect.SaveGame -> saveGame(effect.saved)
         PersistenceEffect.DeleteGame -> deleteGame()
         is PersistenceEffect.SaveLastSetup -> saveLastSetup(effect.setups)
+        is PersistenceEffect.TouchProfiles -> touchProfiles(effect.names, effect.at)
     }
 }
