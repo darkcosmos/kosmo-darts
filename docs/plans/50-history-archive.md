@@ -247,6 +247,16 @@ One `opus` task (T7).
     destructive fallback (ADR 0012); until the release version it may be edited in place by owner decision only.
     Its nullable `started_at`, `entered_at` and `has_journal` columns stay as decided; this version always fills them.
 
+- Design review round 3 (commit e81c60b): the four reviewers approved the revised plan. Minors taken in:
+  - D27 (A9): the nullable columns are justified in ADR 0012 (schema kept as approved, room for later sources);
+    making them `NOT NULL` before the release stays an owner decision.
+  - D28 (A10): ADR 0011 states that ADR 0001, 0005, 0006 and 0008 are historical only and that no code reads them.
+  - D29 (T1, security same request): T5 and T14 each keep one literal fixture of the old version 1 layout, rejected
+    (R9 for the saved game, R10 silently for the last setup) and never read as the new version 1.
+  - D30 (T2): T14 "Done when" requires `SaveFuzzTest` to still cover both codecs once `VERSION_1` to `VERSION_4` are
+    removed.
+- Plan approved at design review round 3; no decision is pending.
+
 ## Open questions
 
 1. If the Room version kept in T1 offers no supported way to stop the framework from deleting a corrupt database

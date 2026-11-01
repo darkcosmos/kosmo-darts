@@ -34,6 +34,9 @@ R26, R28, R29, R30, R9 to R12, R23, DJ4, AR4. ADR 0011 (all sections), ADR 0008 
 - Round trip X01 and Cricket with undos and several legs.
 - Version: `version=1` is the only one accepted; a `version=4` saved game is `UNSUPPORTED_VERSION`; a version 1 file
   without the journal lines is `MALFORMED` (R30, through R9: deleted, message once).
+- Old layout (review T1): one literal fixture written in the old version 1 saved game layout (`version=1`, no mode
+  line, no journal, valid checksum), kept in the test source: rejected, through R9 (file deleted, message once),
+  never decoded as a new version 1 game.
 - Each R29 rejection: bad UUID, bad time, journal count, DJ4 mismatch, undo with nothing to undo, confirmed journal
   winner mismatch.
 - Size: a match just under 1 MiB round trips; just over is not encoded; 10,000 darts in play plus 500 voided encodes.

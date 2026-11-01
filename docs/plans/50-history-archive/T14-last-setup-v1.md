@@ -28,9 +28,13 @@ R7, R8, R10, R11, R13, R17, R22, R23, R30; ADR 0008 (layout unchanged), ADR 0011
 - `version=1` is the only one accepted; a `version=4` last setup is ignored silently (R10) and the setup shows the
   defaults; the saved game is not affected (R8).
 - `SaveFuzzTest` on version 1 last setups: never throws.
+- Old layout (review T1): one literal fixture written in the old version 1 last setup layout (`version=1`, valid
+  checksum), kept in the test source: ignored silently (R10, defaults shown, file deleted), never read as a new
+  version 1 setup.
 
 ## Done when
-`./gradlew :app:testDebugUnitTest` and `./gradlew build` green; `kosmo-detekt` exit 0.
+`./gradlew :app:testDebugUnitTest` and `./gradlew build` green, `SaveFuzzTest` included and still covering both
+codecs after the `VERSION_1` to `VERSION_4` constants are removed (review T2); `kosmo-detekt` exit 0.
 
 ## Model
 sonnet. Why: removal of specified branches with their tests; judging which test proves only an old version needs

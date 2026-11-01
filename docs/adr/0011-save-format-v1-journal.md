@@ -41,6 +41,9 @@ clean version 1: no migration, no reading of versions 1 to 4, no legacy branch i
   (kind, version, checksum, end). Each codec owns its version constant, and each accepts only `version=1`.
 - Last setup, version 1: exactly the version 4 layout of ADR 0008 (shared roster, both modes' settings), renumbered.
   Saved game, version 1: the version 4 body of ADR 0008 (both modes, mode line included) plus the lines below.
+- ADR 0001, 0005, 0006 and 0008 describe earlier formats: from now on they are historical only (review A10). No code
+  reads a file as they number it; their body layout lives on only through this ADR, which is the one specification
+  of both files.
 - The version 1 to 3 layouts, the "no mode line means X01" branch, the default color slots of old files, their
   fixtures and their tests are removed (rules R16, R18, R25 and the old-version cases of R23 are withdrawn).
 - No step looks for, converts or deletes files of an earlier build: none exists after a reinstall. Should one exist

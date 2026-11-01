@@ -82,6 +82,10 @@ deleted (AR8) and must survive every future version (no destructive migration).
 - Tests (Robolectric, in-memory database): every DAO, idempotence, archive failure keeping the save. After each
   build, `git status` shows no change in `app/schemas/`: the committed schema matches the entities.
 - Clean slate (plan D25): this version always writes `started_at`, `entered_at` and `has_journal = 1`; the nullable
-  columns and `has_journal` stay as decided (schema unchanged). Until the release version that can be updated
+  columns and `has_journal` stay as decided (schema unchanged). Why they stay nullable (review A9): the schema was
+  approved before the clean slate and the mission keeps it as is (D26); these columns describe data that later
+  sources may not have (a `TRAINING` session, a `CAMERA` dart, a match entered afterwards), so after the release they
+  need no migration to accept it; the archive code always fills them and T7 asserts it. Making them `NOT NULL` before
+  the release is an in-place edit that only Kosmo can decide. Until the release version that can be updated
   (plan T15), the schema stays version 1 with its exported schema and no destructive fallback, and may be edited in
   place only by owner decision; from that release on, every change ships a tested `Migration`.
