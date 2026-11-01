@@ -36,3 +36,8 @@ exit 0.
 haiku. Why: text given above, one command, no design choice.
 
 ## Implementation notes
+- GitHub issue created: #66, https://github.com/darkcosmos/kosmo-darts/issues/66, title as written, state OPEN, no
+  label, no assignee. Body in French (context, to do, consequence for compatibility, questions for Kosmo: where to keep
+  the signing key, release name and version number). Verified with `gh issue view 66`.
+- `docs/backlog.md`: the release line now links to issue #66 (`decision D25, issue #66`).
+- No other repository file changed. No secret mentioned.

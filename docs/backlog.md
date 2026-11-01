@@ -7,4 +7,4 @@ Known work that is deliberately not in the current missions, with the decision i
   This revises the decision "backup and device transfer disabled" (`allowBackup="false"`, `docs/rules/persistence.md`).
   Owner decision required; nothing changes in this mission.
 - Move to a real release version that can be updated (signing key, release build); backward compatibility of saves,
-  database and settings becomes mandatory only from that release (decision D25, the GitHub issue opened by T15).
+  database and settings becomes mandatory only from that release (decision D25, issue #66).
