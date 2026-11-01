@@ -17,6 +17,7 @@ import io.github.darkcosmos.kosmodarts.persistence.GameSaveCodec
 import io.github.darkcosmos.kosmodarts.persistence.LastSetupCodec
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.ReadResult
+import io.github.darkcosmos.kosmodarts.history.HistoryRepository
 import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.persistence.toLastSetups
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
@@ -36,7 +37,7 @@ import java.util.concurrent.Executors
  * The [persistence] counts reads and writes of the game file, so that tests can check that nothing is read or written
  * again on rotation.
  */
-internal class AppProcess {
+internal class AppProcess(history: HistoryRepository? = null) {
 
     val app: KosmoDartsApplication = ApplicationProvider.getApplicationContext()
 
@@ -52,6 +53,7 @@ internal class AppProcess {
         saveThread,
         archiveRequest = MatchArchiveRequest(archive, "1.0"),
         archiveCheck = ArchiveCheck(archive),
+        history = history,
     )
 
     private var controller: ActivityController<MainActivity>? = null

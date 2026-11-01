@@ -255,4 +255,31 @@
         <item quantity="one">Last turn: %1$d mark</item>
         <item quantity="other">Last turn: %1$d marks</item>
     </plurals>
+
+    <!-- History (docs/rules/history.md, HS1 to HS7) -->
+    <string name="home_history">History</string>
+    <string name="history_title">HISTORY</string>
+    <string name="history_filter_mode">MODE</string>
+    <string name="history_filter_player">PLAYER</string>
+    <string name="history_filter_all">All</string>
+    <plurals name="history_players_description">
+        <item quantity="one">Player: %2$s</item>
+        <item quantity="other">Players: %2$s</item>
+    </plurals>
+    <plurals name="history_winner">
+        <item quantity="one">Winner: %2$s</item>
+        <item quantity="other">Winners: %2$s</item>
+    </plurals>
+    <string name="history_score_sets">Sets %1$s</string>
+    <string name="history_score_legs">Legs %1$s</string>
+    <string name="history_score_separator" translatable="false">–</string>
+    <string name="history_description_separator" translatable="false">". "</string>
+    <string name="history_row_action">Open the match</string>
+    <string name="history_empty_title">No match yet</string>
+    <string name="history_empty_hint">Finished matches appear here.</string>
+    <string name="history_no_match">No match matches these filters</string>
+    <string name="history_show_all">Show all matches</string>
+    <string name="history_failed">The history cannot be read right now.</string>
+    <string name="history_retry">Retry</string>
+    <string name="history_loading">Loading the history</string>
 </resources>

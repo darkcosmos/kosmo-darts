@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import androidx.compose.ui.graphics.toArgb
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMatch
+import io.github.darkcosmos.kosmodarts.history.HistoryFilters
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.SavedCricketGame
@@ -27,6 +28,12 @@ sealed interface PersistenceEffect {
     data object LoadProfiles : PersistenceEffect
 
     /**
+     * HS2, HS7: read the History list for [filters]; the answer comes back as [AppEvent.HistoryLoaded] with the same
+     * [loadId].
+     */
+    data class LoadHistory(val filters: HistoryFilters, val loadId: Int) : PersistenceEffect
+
+    /**
      * AR1, AR2: write [archived] to the history with one ARGB color per player, then delete the saved game, only if the
      * write succeeded. The answer comes back as [AppEvent.ArchiveSucceeded] or [AppEvent.ArchiveFailed].
      */
@@ -48,6 +55,8 @@ fun savedGameOf(state: AppState): StoredGame? = when (val screen = state.screen)
     is Screen.End -> null
     // Opening Settings from home keeps the saved game of that home screen.
     is Screen.Settings -> screen.home.resumableGame
+    // The same for History (HS1): it is read-only and leaves the saved game as it is.
+    is Screen.History -> screen.home.resumableGame
     // R12, R20, R21: a Cricket game is saved like an X01 one, between legs included, and deleted at its end.
     is Screen.CricketGame -> screen.game.toSavedGame(screen.journal)
     is Screen.CricketBetweenLegs ->
@@ -73,8 +82,20 @@ fun persistenceEffects(before: AppState, after: AppState): List<PersistenceEffec
         touchProfilesEffect(before, after),
         archiveEffect(before, after),
         loadProfilesEffect(before, after),
+        loadHistoryEffect(before, after),
     )
 }
+
+/** HS7: History reads when it opens and each time its filters or a retry raise the read number. */
+private fun loadHistoryEffect(before: AppState, after: AppState): PersistenceEffect.LoadHistory? {
+    val history = (after.screen as? Screen.History)?.history ?: return null
+    val previous = (before.screen as? Screen.History)?.history
+    return PersistenceEffect.LoadHistory(history.filters, history.loadId).takeIf { previous?.loadId != history.loadId }
+}
+
+/** The reads to make for a state the app starts in, which no event led to: a History screen restored (HS6). */
+fun startupEffects(state: AppState): List<PersistenceEffect> =
+    listOfNotNull(loadHistoryEffect(AppState(), state))
 
 /** PF3: the profiles are read each time the setup opens (and only then). */
 private fun loadProfilesEffect(before: AppState, after: AppState): PersistenceEffect.LoadProfiles? =
@@ -125,6 +146,8 @@ fun Persistence.applyEffects(effects: List<PersistenceEffect>, onEvent: (AppEven
             is PersistenceEffect.SaveLastSetup -> saveLastSetup(effect.setups)
             is PersistenceEffect.TouchProfiles -> touchProfiles(effect.names, effect.at)
             PersistenceEffect.LoadProfiles -> loadProfiles { onEvent(AppEvent.ProfilesLoaded(it)) }
+            is PersistenceEffect.LoadHistory ->
+                loadHistory(effect.filters) { onEvent(AppEvent.HistoryLoaded(effect.loadId, it)) }
             is PersistenceEffect.ArchiveMatch ->
                 archiveMatch(effect.archived, effect.colorsArgb) { isArchived ->
                     onEvent(if (isArchived) AppEvent.ArchiveSucceeded else AppEvent.ArchiveFailed)

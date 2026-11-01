@@ -9,6 +9,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.darkcosmos.kosmodarts.engine.journal.Clock
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.settings.AudioSettingsRepository
+import io.github.darkcosmos.kosmodarts.ui.history.HistorySnapshot
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,6 +47,13 @@ class KosmoDartsViewModel(
      */
     val isOnGameScreen: Boolean
         get() = mutableState.value.screen.isGameOrBetweenLegs
+
+    /**
+     * The filters and scroll position to store when the activity may be killed, or `null` outside History (HS6). The
+     * detail screen of T12 reports the History screen it came from.
+     */
+    val historySnapshot: HistorySnapshot?
+        get() = (mutableState.value.screen as? Screen.History)?.history?.snapshot()
 
     /** Called after an event changed the screen, before its cues are handed over (ADR 0004, decision 1). */
     var onScreenChanged: (Screen) -> Unit = {}
@@ -95,18 +103,18 @@ class KosmoDartsViewModel(
             persistence: Persistence,
             audioSettings: AudioSettingsRepository,
             wasOnGameScreen: Boolean,
+            history: HistorySnapshot? = null,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
                 val mainThread = Handler(Looper.getMainLooper())
                 lateinit var viewModel: KosmoDartsViewModel
-                // The archive answers on the persistence thread; events come from the main thread only.
-                viewModel = KosmoDartsViewModel(
-                    initial = initialState(persistence.load(), wasOnGameScreen),
-                    audioSettings = audioSettings,
-                    onEffects = { effects ->
-                        persistence.applyEffects(effects) { event -> mainThread.post { viewModel.onEvent(event) } }
-                    },
-                )
+                // The archive and the reads answer on their own thread; events come from the main thread only.
+                val apply = { effects: List<PersistenceEffect> ->
+                    persistence.applyEffects(effects) { event -> mainThread.post { viewModel.onEvent(event) } }
+                }
+                val initial = initialState(persistence.load(), wasOnGameScreen, history)
+                viewModel = KosmoDartsViewModel(initial = initial, audioSettings = audioSettings, onEffects = apply)
+                apply(startupEffects(initial))
                 viewModel
             }
         }

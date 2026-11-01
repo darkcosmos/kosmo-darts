@@ -40,7 +40,9 @@ import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.Screen
+import io.github.darkcosmos.kosmodarts.ui.components.ButtonKind
 import io.github.darkcosmos.kosmodarts.ui.components.DialogAction
+import io.github.darkcosmos.kosmodarts.ui.components.KosmoButton
 import io.github.darkcosmos.kosmodarts.ui.components.KosmoDialog
 import io.github.darkcosmos.kosmodarts.ui.components.ModeCard
 import io.github.darkcosmos.kosmodarts.ui.components.ResumeCard
@@ -103,6 +105,15 @@ fun HomeScreen(home: Screen.Home, onEvent: (AppEvent) -> Unit, modifier: Modifie
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag(HomeTags.MODE_CRICKET),
+            )
+            // HS1: the archive of finished matches, under the game modes.
+            KosmoButton(
+                text = stringResource(R.string.home_history),
+                onClick = { onEvent(AppEvent.HistoryTapped) },
+                kind = ButtonKind.SECONDARY,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(HomeTags.HISTORY),
             )
         }
     }

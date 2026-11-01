@@ -241,4 +241,31 @@
         <item quantity="many">Dernière volée\u00A0: %1$d marques</item>
         <item quantity="other">Dernière volée\u00A0: %1$d marques</item>
     </plurals>
+
+    <!-- Historique (docs/rules/history.md, HS1 à HS7) -->
+    <string name="home_history">Historique</string>
+    <string name="history_title">HISTORIQUE</string>
+    <string name="history_filter_mode">MODE</string>
+    <string name="history_filter_player">JOUEUR</string>
+    <string name="history_filter_all">Tous</string>
+    <plurals name="history_players_description">
+        <item quantity="one">Joueur : %2$s</item>
+        <item quantity="many">Joueurs : %2$s</item>
+        <item quantity="other">Joueurs : %2$s</item>
+    </plurals>
+    <plurals name="history_winner">
+        <item quantity="one">Vainqueur : %2$s</item>
+        <item quantity="many">Vainqueurs : %2$s</item>
+        <item quantity="other">Vainqueurs : %2$s</item>
+    </plurals>
+    <string name="history_score_sets">Sets %1$s</string>
+    <string name="history_score_legs">Manches %1$s</string>
+    <string name="history_row_action">Ouvrir le match</string>
+    <string name="history_empty_title">Aucun match pour l\'instant</string>
+    <string name="history_empty_hint">Les matchs terminés apparaissent ici.</string>
+    <string name="history_no_match">Aucun match ne correspond à ces filtres</string>
+    <string name="history_show_all">Afficher tous les matchs</string>
+    <string name="history_failed">L\'historique ne peut pas être lu pour le moment.</string>
+    <string name="history_retry">Réessayer</string>
+    <string name="history_loading">Chargement de l\'historique</string>
 </resources>

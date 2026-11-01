@@ -9,6 +9,7 @@ import io.github.darkcosmos.kosmodarts.history.ArchiveCheck
 import io.github.darkcosmos.kosmodarts.history.ArchiveRepository
 import io.github.darkcosmos.kosmodarts.history.HistoryDatabase
 import io.github.darkcosmos.kosmodarts.history.MatchArchiveRequest
+import io.github.darkcosmos.kosmodarts.history.RoomHistoryRepository
 import io.github.darkcosmos.kosmodarts.history.RoomProfileRepository
 import io.github.darkcosmos.kosmodarts.persistence.AtomicFileStore
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
@@ -64,6 +65,10 @@ open class KosmoDartsApplication : Application() {
         val saveThread = Executors.newSingleThreadExecutor { task ->
             Thread(task, SAVE_THREAD_NAME).apply { isDaemon = true }
         }
+        // History reads have their own thread, so that a long list never delays a save (ADR 0012).
+        val readThread = Executors.newSingleThreadExecutor { task ->
+            Thread(task, READ_THREAD_NAME).apply { isDaemon = true }
+        }
         // The database file is opened by the first query, which runs on the save thread (ADR 0012): building it here
         // opens nothing, and a game never starts it on the main thread.
         val database = HistoryDatabase.open(this)
@@ -75,6 +80,8 @@ open class KosmoDartsApplication : Application() {
             profiles = RoomProfileRepository(database, PlayerListRules::nameKey),
             archiveRequest = MatchArchiveRequest(archive, appVersion()),
             archiveCheck = ArchiveCheck(archive),
+            history = RoomHistoryRepository(database),
+            readExecutor = readThread,
         )
     }
 
@@ -86,5 +93,6 @@ open class KosmoDartsApplication : Application() {
         const val GAME_FILE = "saved_game"
         const val SETUP_FILE = "last_setup"
         private const val SAVE_THREAD_NAME = "kosmodarts-save"
+        private const val READ_THREAD_NAME = "kosmodarts-history-read"
     }
 }

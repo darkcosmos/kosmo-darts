@@ -8,6 +8,7 @@ import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
+import io.github.darkcosmos.kosmodarts.ui.history.HistoryContent
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupResult
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 import kotlin.random.Random
@@ -25,6 +26,7 @@ class AppReducer(private val random: Random) {
         is Screen.BetweenLegs -> onBetweenLegs(state, screen, event)
         is Screen.End -> onEnd(state, screen.match, event, stamp)
         is Screen.Settings -> onSettings(state, screen, event)
+        is Screen.History -> onHistory(state, screen, event)
         is Screen.CricketGame -> onCricketGame(state, screen, event, stamp.at)
         is Screen.CricketBetweenLegs -> onCricketBetweenLegs(state, screen, event)
         is Screen.CricketEnd -> onCricketEnd(state, screen, event, stamp)
@@ -41,6 +43,7 @@ class AppReducer(private val random: Random) {
                 else -> state
             }
             event == AppEvent.SettingsTapped -> state.copy(screen = Screen.Settings(home))
+            event == AppEvent.HistoryTapped -> state.copy(screen = Screen.History(home))
             event is AppEvent.NewGame && saved == null -> state.toSetup(event.mode)
             // R3, R20: the confirmation remembers the mode of the "New game" that opened it.
             event is AppEvent.NewGame -> state.copy(screen = home.copy(newGameDialogMode = event.mode))
@@ -142,6 +145,22 @@ class AppReducer(private val random: Random) {
     /** AN13: back returns to the home screen it came from. */
     private fun onSettings(state: AppState, screen: Screen.Settings, event: AppEvent): AppState =
         if (event == AppEvent.Back) state.copy(screen = screen.home) else state
+
+    /** HS1 to HS4, HS6, HS7: back returns home; the other events change the filters, the scroll or the read. */
+    private fun onHistory(state: AppState, screen: Screen.History, event: AppEvent): AppState {
+        val history = screen.history
+        val next = when (event) {
+            AppEvent.Back -> return state.copy(screen = screen.home)
+            is AppEvent.HistoryModeSelected -> history.withMode(event.mode)
+            is AppEvent.HistoryProfileSelected -> history.withProfile(event.profileId)
+            AppEvent.HistoryShowAllTapped -> history.showAll()
+            AppEvent.HistoryRetryTapped -> if (history.content == HistoryContent.Failed) history.retry() else history
+            is AppEvent.HistoryScrolled -> history.scrolled(event.index, event.offset)
+            is AppEvent.HistoryLoaded -> history.loaded(event.loadId, event.result)
+            else -> history
+        }
+        return if (next == history) state else state.copy(screen = screen.copy(history = next))
+    }
 
     private fun playGame(game: GameScreenState, event: AppEvent): GameScreenState = when (event) {
         AppEvent.Back -> game.withAbandonDialog(shown = true)

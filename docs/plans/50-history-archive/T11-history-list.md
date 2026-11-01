@@ -48,3 +48,12 @@ direct (same-thread) executor with a fake `Clock`, with no sleep and no idling w
 sonnet. Why: screen composed from the design system with state holders tested on the JVM.
 
 ## Implementation notes
+- Pieces: `ui/history/` (`HistoryState`, `HistoryRows`, `HistoryScaffold` shared with T12, `HistoryScreen`,
+  `HistoryFiltersBar`, `HistoryRowCard`, `HistoryTags`); `Screen.History` in `AppState` holds filters and scroll
+  anchor, saved and restored with the app snapshot (read again after a process return); reads go through
+  `Persistence` on the read executor with `DbResult`; `history/HistoryRepository.kt` does one light summary query.
+- Row tap emits an event ignored until T12 adds the detail screen (`a tap on a match is ignored...` test).
+- 1,000 matches: list read takes about 11 ms on the JVM (reported only); `LazyColumn` keys are `sessionId`.
+- Captures recorded by Roborazzi (`history_*` PNGs in `app/build/outputs/roborazzi`): loading, empty, failed, filled,
+  no match, portrait, landscape, fontScale 2, home button. Opened and checked: filled portrait and filled landscape
+  at font 200; the others were not opened.

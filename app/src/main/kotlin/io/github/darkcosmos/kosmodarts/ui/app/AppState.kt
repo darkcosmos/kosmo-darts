@@ -9,12 +9,16 @@ import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
+import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMode
+import io.github.darkcosmos.kosmodarts.history.DbResult
+import io.github.darkcosmos.kosmodarts.history.HistoryList
 import io.github.darkcosmos.kosmodarts.history.Profile
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.ui.cricket.CricketGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.game.CheckoutSummary
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
+import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 
 /** The screen on display, with its content. There is no navigation library: the screen is plain state. */
@@ -47,6 +51,12 @@ sealed interface Screen {
 
     /** The "Settings" screen (AN13); Back returns to [home], with its saved game summary. */
     data class Settings(val home: Home) : Screen
+
+    /**
+     * The History list (HS1 to HS4, HS7); Back returns to [home], with its saved game summary. The filters and the
+     * scroll position live in [history] so that Back from the detail can restore them (HS6).
+     */
+    data class History(val home: Home, val history: HistoryState = HistoryState()) : Screen
 
     /**
      * Between two legs of a match, after "Finish leg" or "Finish set" (docs/rules/match.md, M16). [match] already has
@@ -234,6 +244,30 @@ sealed interface AppEvent {
 
     /** The gear on the home screen (AN13). */
     data object SettingsTapped : AppEvent
+
+    /** The "History" button of the home screen (HS1). */
+    data object HistoryTapped : AppEvent
+
+    /** The mode filter of History (HS3); `null` is "All". */
+    data class HistoryModeSelected(val mode: ArchivedMode?) : AppEvent
+
+    /** The player filter of History (HS3); a profile id, or `null` for "All". */
+    data class HistoryProfileSelected(val profileId: Long?) : AppEvent
+
+    /** "Show all matches" of History (HS4). */
+    data object HistoryShowAllTapped : AppEvent
+
+    /** "Retry" after a failed History read (HS7). */
+    data object HistoryRetryTapped : AppEvent
+
+    /** The list stopped scrolling at [index], [offset] pixels into it (HS6). */
+    data class HistoryScrolled(val index: Int, val offset: Int) : AppEvent
+
+    /** A tap on the row of the match of session [sessionId]; the detail screen opens (HS5, task T12). */
+    data class HistoryMatchTapped(val sessionId: Long) : AppEvent
+
+    /** The answer to read [loadId] of History (HS7); an answer to an older read is ignored. */
+    data class HistoryLoaded(val loadId: Int, val result: DbResult<HistoryList>) : AppEvent
 
     /** The game screen found no usable voice (AN16). The ViewModel decides whether the message shows. */
     data class VoiceUnavailable(val canInstall: Boolean) : AppEvent

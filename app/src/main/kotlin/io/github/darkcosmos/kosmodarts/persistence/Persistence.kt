@@ -4,6 +4,9 @@ import androidx.annotation.VisibleForTesting
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMatch
 import io.github.darkcosmos.kosmodarts.history.ArchiveCheck
 import io.github.darkcosmos.kosmodarts.history.DbResult
+import io.github.darkcosmos.kosmodarts.history.HistoryFilters
+import io.github.darkcosmos.kosmodarts.history.HistoryList
+import io.github.darkcosmos.kosmodarts.history.HistoryRepository
 import io.github.darkcosmos.kosmodarts.history.MatchArchiveRequest
 import io.github.darkcosmos.kosmodarts.history.Profile
 import io.github.darkcosmos.kosmodarts.history.ProfileRepository
@@ -25,6 +28,8 @@ class Persistence(
     private val profiles: ProfileRepository? = null,
     private val archiveRequest: MatchArchiveRequest? = null,
     private val archiveCheck: ArchiveCheck? = null,
+    private val history: HistoryRepository? = null,
+    private val readExecutor: Executor = executor,
 ) {
     private val loader = SaveLoader(gameStore, setupStore, gameCodec, setupCodec)
     private val gameWriter = SaveWriter(gameStore, executor)
@@ -93,6 +98,15 @@ class Persistence(
             val read = profiles?.recent()
             onResult((read as? DbResult.Ok)?.value.orEmpty())
         }
+    }
+
+    /**
+     * Reads the History list for [filters] on the read executor (ADR 0012), not on the save queue: a slow read never
+     * delays a save. [onResult] gets the list, or [DbResult.Failed] when the read fails or no history is configured
+     * (AR9, HS7). On the read thread.
+     */
+    fun loadHistory(filters: HistoryFilters, onResult: (DbResult<HistoryList>) -> Unit) {
+        readExecutor.execute { onResult(history?.list(filters) ?: DbResult.Failed) }
     }
 
     /**
