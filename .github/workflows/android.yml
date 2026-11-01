@@ -82,6 +82,27 @@ jobs:
             exit 1
           fi
 
+      - name: Kosmo Capture permissions must match the allowlist
+        if: ${{ hashFiles('capture/build.gradle.kts') != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=capture/build/outputs/apk/debug/capture-debug.apk
+          # Exact set: CAMERA, plus what CameraX and AndroidX add. Any addition or removal fails the build.
+          expected="$(printf '%s\n' \
+            android.permission.ACCESS_NETWORK_STATE \
+            android.permission.CAMERA \
+            io.github.darkcosmos.kosmodarts.capture.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION | LC_ALL=C sort)"
+          dump="$("${ANDROID_HOME}/build-tools/37.0.0/aapt2" dump permissions "${apk}")"
+          echo "${dump}"
+          actual="$(printf '%s\n' "${dump}" | sed -nE "s/^uses-permission(-sdk-23)?: name='([^']+)'.*/\2/p" | LC_ALL=C sort -u)"
+          if [ "${actual}" != "${expected}" ]; then
+            echo "::error::Unexpected permission set in ${apk} (expected vs actual below)"
+            diff <(printf '%s\n' "${expected}") <(printf '%s\n' "${actual}") || true
+            exit 1
+          fi
+          echo "OK: permissions match the allowlist"
+
       - name: Publish the debug APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -96,6 +117,24 @@ jobs:
         with:
           name: kosmo-darts-screenshots
           path: app/build/outputs/roborazzi/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish the Kosmo Capture debug APK
+        if: ${{ hashFiles('capture/build.gradle.kts') != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kosmo-capture-debug-apk
+          path: capture/build/outputs/apk/debug/capture-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish the Kosmo Capture screenshots (Roborazzi, record only)
+        if: ${{ !cancelled() && hashFiles('capture/build.gradle.kts') != '' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: kosmo-capture-screenshots
+          path: capture/build/outputs/roborazzi/
           if-no-files-found: error
           retention-days: 14
 
