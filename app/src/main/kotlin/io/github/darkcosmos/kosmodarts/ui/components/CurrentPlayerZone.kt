@@ -17,7 +17,6 @@ import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,7 +32,6 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -249,25 +247,10 @@ private fun ScoreArea(
             CheckoutBanner(checkout, contentColor, isLandscape)
         } else {
             val density = LocalDensity.current
-            val measurer = rememberTextMeasurer()
             val baseStyle = KosmoTheme.typography.scoreHuge
             // The size is chosen for the widest score, "888", so it never changes with the digits shown (no jump):
             // the policy size, or less if the area is smaller than the policy estimated (never clipped).
-            val size = remember(constraints, baseStyle, scoreSize, density) {
-                val reference = measurer.measure(
-                    SCORE_REFERENCE,
-                    baseStyle.copy(fontSize = density.fixedSp(scoreSize)),
-                    softWrap = false,
-                    maxLines = 1,
-                ).size
-                val fit = minOf(
-                    1f,
-                    constraints.maxWidth.toFloat() / reference.width.coerceAtLeast(1),
-                    // One pixel less: the fitted line rounds to whole pixels and must not overflow the area.
-                    (constraints.maxHeight - 1).coerceAtLeast(1).toFloat() / reference.height.coerceAtLeast(1),
-                )
-                scoreSize * fit
-            }
+            val size = rememberFittedNumberSize(SCORE_REFERENCE, baseStyle, scoreSize, constraints)
             Text(
                 text = content.remaining.toString(),
                 style = baseStyle.copy(fontSize = density.fixedSp(size)),
