@@ -45,3 +45,16 @@ AR5, AR6, BC2, DJ3, DJ4; M rules for set and leg numbers (`docs/rules/match.md`)
 sonnet. Why: engine mapping over existing match types with specified rules.
 
 ## Implementation notes
+- Package `...engine.archive`: `MatchArchiver.archive(X01Match | CricketMatch, MatchJournal, endedAt): ArchivedMatch`.
+  `ArchivedMatch(matchId, sessionType, startedAt, endedAt, rulesVersion, settings, players, legs, darts)`; `mode` and
+  `variant` (`"501"`/`"301"`, `"STANDARD"`/`"CUT_THROAT"`) derive from the typed `ArchivedSettings` (`X01`, `Cricket`,
+  both with `format`). No profile and no app version here: T-app fills those at storage time (AR5).
+- `ArchivedLeg.ordinal` is 0-based over the match; set/leg numbers are 1-based (M19); starter is `ordinal % players`
+  (M6). `ArchivedDart` links to its leg by `legOrdinal` and to its player by `playerPosition`; `point: BoardPoint?` is
+  `nominalPoint(dart)`, the only nullable field (D33, D34).
+- Refusals (`IllegalArgumentException`): match not won (`finalScore` null), journal legs != completed legs + 1, a
+  journaled leg not won, or DJ4 mismatch on the current leg. Replay errors stay `JournalReplayException`.
+  Completed legs are checked for being won only (their darts are not kept in the engine summaries).
+- Tests: `X01ArchiveTest`, `CricketArchiveTest`; `ArchiveFixtures.kt` has `X01Session` / `CricketSession`, which keep
+  a match and its journal in step (reuse for later tasks).
+- Done: `./gradlew :game-engine:test build` green, `kosmo-detekt` exit 0.
