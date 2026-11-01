@@ -73,3 +73,4 @@ reinstall (owner decision Q8). Backup is disabled, like `:app`.
 - Sessions in `Download/` are visible to any app with storage access and over USB; the owner accepts this (local
   data, no network).
 - The copied keypad may drift from the X01 keypad; acceptable for a capture tool.
+- Zoom: see ADR 0010.

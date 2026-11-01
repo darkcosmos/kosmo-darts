@@ -1,7 +1,7 @@
 # Capture rules
 
 Status: v1 (issue #41, Kosmo Capture data capture app, with the owner answers recorded in
-`docs/plans/41-capture-app.md`).
+`docs/plans/41-capture-app.md`); v2: zoom (CP14 to CP17), `docs/plans/41-capture-app-zoom.md`.
 This document is the single source of truth for the `:capture` tests: tests cite these rules, never the issue text.
 Rule ids (CP1, CP2, ...) are stable. They use the prefix CP so that they never collide with the other rule documents
 in this folder. The truth file format is described in `docs/camera/capture-format.md`.
@@ -42,3 +42,24 @@ in this folder. The truth file format is described in `docs/camera/capture-forma
 - CP12 The screen stays on during a session only.
 - CP13 Photo failure: if the photo of a dart cannot be taken or saved, the dart is kept with `photo: null`, the
   session continues and a non-blocking message "Photo failed for this dart" is shown for a few seconds.
+- CP14 Zoom control: outside a session, a slider sets the zoom ratio of the camera (preview, videos and photos alike)
+  between the minimum and maximum ratio the camera reports. The slider position `p` (0 to 1) maps to the ratio on a
+  logarithmic scale, `min x (max / min)^p`; the ratio is rounded to the nearest 0.1 (half up, applied to the shortest
+  decimal form of the value, so 1.05 gives 1.1), then kept inside the camera range. Next to the slider, a "−" and a
+  "+" button lower or raise the current ratio by 0.1 per press: the current ratio is rounded to the nearest 0.1 as
+  above, 0.1 is subtracted or added, and the result is kept inside the camera range. Holding a button does not
+  repeat. The preview follows while the slider moves and after each press. The current ratio is shown next to the
+  slider with one decimal and the sign `×` (`2.4×`; `2,4×` in French).
+- CP15 Zoom lock: the slider and both buttons are enabled only when no session runs or saves (like the quality
+  setting, CP2), the camera permission is granted, the camera is bound and its range is at least 0.1 wide; in
+  addition, "−" is disabled when the ratio is at the camera minimum and "+" when it is at the camera maximum.
+  Otherwise they are disabled and the ratio stays shown; when the bound camera's range is narrower than 0.1, "Zoom
+  not available" replaces the ratio. A zoom change or press received while disabled is ignored.
+- CP16 Zoom memory: the ratio chosen is stored in the private settings when the slider is released (not on every
+  move) or after each button press that changed it, and read at launch; default 1.0; a missing, unreadable, non-finite, zero or negative stored value reads as
+  1.0. After every camera binding (launch, quality change, return to the app, rotation) the stored ratio, kept inside
+  the camera range, is applied to the camera, also during a session; keeping it inside the range never changes the
+  stored value. If the setting cannot be written, the ratio still applies until the app is closed, without a message.
+- CP17 Zoom record: the truth file (version 2) records once per session, at Start, the ratio the app last asked the
+  camera for (`zoom.requestedRatio`, null when it asked none) and the ratio the camera reported at Start
+  (`zoom.ratio`, null when it reported none).
