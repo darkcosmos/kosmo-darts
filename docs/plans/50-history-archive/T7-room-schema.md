@@ -36,6 +36,9 @@ AR2, AR4, AR5, AR6, AR8, AR9, AR10, PF1, PF2 (profile upsert inside the archive)
 - Rollback (review T4 minor): the insert failure is injected by a test-only `ArchiveDao` subclass whose dart insert
   throws after the session, match record, players and legs were inserted; afterwards no row exists in any table and
   the profile upsert of that archive is rolled back too (no new profile, `last_used_at` unchanged); result `Failed`.
+- Corrupt file (review T8 minor), using the mechanism T1 recorded in ADR 0012: an on-disk database file filled with
+  garbage bytes gives `Failed` for the archive and for a read, the app does not crash, the file keeps the same bytes
+  (not deleted, not recreated empty), and no destructive migration runs. Assert only these facts.
 - Failure contract: a closed database gives `Failed` for the archive and each `HistoryDao`-backed read, never an
   exception.
 - Legacy match: legs without journal, null start time.
@@ -45,7 +48,8 @@ AR2, AR4, AR5, AR6, AR8, AR9, AR10, PF1, PF2 (profile upsert inside the archive)
 
 ## Done when
 `./gradlew :game-engine:test`, `./gradlew :app:testDebugUnitTest`, `./gradlew build` green; `git status` clean in
-`app/schemas/` after a second build; `kosmo-detekt` exit 0.
+`app/schemas/` after a second build; every new test runs on a direct (same-thread) executor with a fake `Clock`, with
+no sleep and no idling wait; `kosmo-detekt` exit 0.
 
 ## Model
 opus. Why: case "new or changed stored format" (schema v1 that can never be dropped, no destructive migration).

@@ -25,6 +25,12 @@ ADR 0012. D3.
 3. Check the merged manifest (`app/build/intermediates/merged_manifest*/`): no `INTERNET` and no other new
    permission, no new exported component; Room's `MultiInstanceInvalidationService` is `exported="false"` (ADR 0012,
    review S3). Write the list of added components and permissions in the notes.
+4. Corrupt file (review A8): with the Room version kept, find the supported way to stop the framework from deleting
+   a corrupt database file (custom `openHelperFactory` or callback whose `onCorruption` does nothing), and prove it
+   with a Robolectric test that writes garbage bytes into an on-disk database file, opens it, gets an exception, and
+   finds the file still there with the same bytes. Record the Room version, the API used and the verified behavior in
+   the notes and complete ADR 0012 "Failure contract" with them, so T7 does not choose. If no supported way exists,
+   stop and report to main (root plan, open question 1); do not work around it.
 
 ## Tests
 - Robolectric, in-memory database: insert then read one placeholder row; no main-thread query (use

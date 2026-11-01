@@ -41,7 +41,8 @@ HS1 to HS4, HS6, HS7, PC9, AR8, AR9; "Screens and states" of the root plan (Hist
   landscape, `fontScale = 2f`; home with the new button.
 
 ## Done when
-`./gradlew :game-engine:test`, `./gradlew :app:testDebugUnitTest`, `./gradlew build` green; `kosmo-detekt` exit 0.
+`./gradlew :game-engine:test`, `./gradlew :app:testDebugUnitTest`, `./gradlew build` green; every new test runs on a
+direct (same-thread) executor with a fake `Clock`, with no sleep and no idling wait; `kosmo-detekt` exit 0.
 
 ## Model
 sonnet. Why: screen composed from the design system with state holders tested on the JVM.

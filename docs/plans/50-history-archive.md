@@ -209,8 +209,17 @@ Two `opus` tasks (T5, T7).
     accessibility rules (HS4, HS6, HS7, "Screens and states"); plurals and locale formats; shared `HistoryScaffold`.
   - D20 (T4 to T6 minors, A4, A7): named in their task files.
 
+- Design review round 2 (commit 4f514d4): the four reviewers approved the plan. Minors taken in:
+  - D21 (A8): T1 verifies the corrupt-file behavior with the Room version it keeps and completes ADR 0012 "Failure
+    contract" before T7 starts; T7 uses it and does not choose.
+  - D22 (T8 minor): T7 asserts only what is true for a corrupt file: `Failed`, no crash, the file keeps its bytes, no
+    destructive migration.
+  - D23 (T9 minor): determinism (direct executor, fake `Clock`, no sleep or idling wait) is a "Done when" item of T7
+    and T11.
+- Plan approved at design review round 2; no decision is pending.
+
 ## Open questions
 
-1. If the Room version in use offers no supported way to stop the framework from deleting a corrupt database file
-   (ADR 0012, "Failure contract"), T7 stops and main decides with Kosmo: accept the framework behavior (a corrupt
-   history is lost), or another option T7 reports.
+1. If the Room version kept in T1 offers no supported way to stop the framework from deleting a corrupt database
+   file (ADR 0012, "Failure contract"), T1 stops and main decides with Kosmo: accept the framework behavior (a corrupt
+   history is lost), or another option T1 reports.

@@ -68,7 +68,8 @@ deleted (AR8) and must survive every future version (no destructive migration).
   neither deleted nor recreated by the app: Room is built without a destructive fallback, and the default corruption
   handler of the framework is replaced by one that only reports the failure (`openHelperFactory` with a callback
   whose `onCorruption` does nothing), so the next access fails again with `Failed`. If the Room version in use offers
-  no supported way to do this, T7 stops and reports to main (plan, open question 1) instead of working around it.
+  no supported way to do this, T1 stops and reports to main (plan, open question 1) instead of working around it.
+  T1 completes this point with the Room version, the API used and the verified behavior before T7 starts (review A8).
 - Mapping: launch PF4 `Failed` is ignored (the saved game loads as usual); AR4 check `Failed` means "keep the save";
   archive `Failed` gives `ArchiveFailed` (AR3); History and detail `Failed` give the HS7 failure state.
 - Tests use a repository fake that returns `Failed` and a closed in-memory database (a real exception path).
