@@ -11,7 +11,8 @@ message; an already archived save is cleaned at launch (AR1 to AR4, D4, D9). Roo
 - `app/src/main/kotlin/.../history/MatchArchiveRequest.kt` (archive, then delete the save only on `ARCHIVED` or
   `ALREADY_ARCHIVED`) and `ArchiveCheck.kt` (launch AR4: `Archived`, `NotArchived`, `Failed`; only `Archived`
   deletes); `persistence/Persistence.kt` only sequences them (review A5). Colors from `ui/theme/PlayerPalette.kt` as
-  ARGB; app version from `PackageManager`.
+  ARGB; app version from `PackageManager`, a non-null `String` (`app_version` is `NOT NULL`, D31: the build file
+  sets `versionName`, so its absence is a programming error, not a stored null).
 - `ui/game/GameScreen.kt`, `ui/cricket/CricketGameScreen.kt`: while archiving, confirm disabled with the label
   « Enregistrement… » and a description saying why; failure message as text in a polite live region (review U2).
 - Strings `values/` and `values-fr/`: archiving label and description, failure message (short; FR: « Le match n'a

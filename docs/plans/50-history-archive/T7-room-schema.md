@@ -15,14 +15,16 @@ idempotent archive (AR2, AR4, AR5). ADR 0012 is the specification.
 - Tests in `app/src/test/kotlin/.../history/` (Robolectric, in-memory).
 
 ## Depends on
-T1 (Room wiring), T4 (`ArchivedMatch`).
+T1 (Room wiring), T4 (`ArchivedMatch`); open question 2 answered (D31).
 
 ## Rules
-AR2, AR4, AR5, AR6, AR8, AR9, AR10, PF1, PF2 (profile upsert inside the archive), D8, D11, D13. ADR 0012 "Tables",
+AR2, AR4, AR5, AR6, AR8, AR9, AR10, PF1, PF2 (profile upsert inside the archive), D8, D11, D13, D31. ADR 0012 "Tables",
 "Decision" and "Failure contract".
 
 ## Approach
 - Indexes and keys exactly as in ADR 0012; enum columns as text; `REAL` coordinates.
+- Every column `NOT NULL` and every entity field non-nullable (D31), except what Kosmo's answer to open question 2
+  (root plan "Open questions") keeps nullable; no null branch in the mapping.
 - No `@Delete`, no delete query anywhere (AR8).
 - The archive upserts each player's profile by name key, inserts session, match, players, legs, darts in one
   `runInTransaction`; an existing `match_uuid` returns `ALREADY_ARCHIVED` without writing.
@@ -41,8 +43,9 @@ AR2, AR4, AR5, AR6, AR8, AR9, AR10, PF1, PF2 (profile upsert inside the archive)
   (not deleted, not recreated empty), and no destructive migration runs. Assert only these facts.
 - Failure contract: a closed database gives `Failed` for the archive and each `HistoryDao`-backed read, never an
   exception.
-- Mapping (clean slate, D25): every archived leg is written with `has_journal = 1`, the session with its
-  `started_at`, every manual dart with its `entered_at`; the schema itself is unchanged (ADR 0012).
+- Mandatory columns (D31): the exported `1.json` has `notNull: true` for every column except those that open
+  question 2 left nullable (assert the exact list); no `has_journal` column; the session is read back with its
+  `started_at`, every dart with its `entered_at`, the session with its `app_version`.
 - 1,000 archived matches: the list query time is logged in the notes (no timing assert). Tests run on the calling
   thread with a fixed clock: no sleep, no idling wait (review T5 minor).
 - Merged manifest still has no new permission or exported component (review S3).

@@ -33,13 +33,19 @@ deleted (AR8) and must survive every future version (no destructive migration).
 
 | Table | Columns | Keys and indexes |
 |---|---|---|
-| `profile` | `id`, `name`, `name_key`, `created_at`, `last_used_at`, `reset_at` (null) | unique `name_key`; index `last_used_at` |
-| `session` | `id`, `type` (`MATCH`/`TRAINING`), `started_at` (null), `ended_at`, `rules_version`, `app_version` | index `ended_at` |
+| `profile` | `id`, `name`, `name_key`, `created_at`, `last_used_at`, `reset_at` (open) | unique `name_key`; index `last_used_at` |
+| `session` | `id`, `type` (`MATCH`/`TRAINING`), `started_at`, `ended_at`, `rules_version`, `app_version` | index `ended_at` |
 | `match_record` | `session_id`, `match_uuid`, `mode` (`X01`/`CRICKET`), `variant`, `settings` (text), `settings_version` | primary `session_id` (FK); unique `match_uuid`; index `mode` |
 | `match_player` | `session_id`, `position`, `profile_id`, `color_argb`, `final_rank`, `legs_won`, `sets_won` | primary (`session_id`, `position`); index `profile_id` |
-| `leg` | `id`, `session_id`, `ordinal`, `set_number`, `leg_number`, `starter_position`, `winner_position`, `has_journal` | unique (`session_id`, `ordinal`) |
-| `dart` | `id`, `leg_id`, `player_position`, `visit`, `rank`, `segment`, `multiplier`, `bust`, `voided`, `source`, `x_mm` (null), `y_mm` (null), `entered_at` (null) | index (`leg_id`, `visit`, `rank`) |
+| `leg` | `id`, `session_id`, `ordinal`, `set_number`, `leg_number`, `starter_position`, `winner_position` | unique (`session_id`, `ordinal`) |
+| `dart` | `id`, `leg_id`, `player_position`, `visit`, `rank`, `segment`, `multiplier`, `bust`, `voided`, `source`, `x_mm` (open), `y_mm` (open), `entered_at` | index (`leg_id`, `visit`, `rank`) |
 
+- Every column is `NOT NULL` (plan D31, Kosmo: "on met juste par contre toutes les colonnes mandatory, puisque il
+  n'y a pas d'histoire de backward compatibilité"), and the matching entity fields are non-nullable Kotlin types.
+  The three columns marked "(open)" have no value in some case (`reset_at`: never reset in this mission, PF1; `x_mm`
+  and `y_mm`: a miss has no coordinates, BC2); how they become mandatory is plan open question 2, answered by Kosmo
+  before T7 starts. Until then they are the only nullable columns. There is no `has_journal` column: every archived
+  leg has its journal (D25), so such a flag would always be 1 and nothing would read it.
 - Every foreign key is `NO ACTION` on delete: nothing is deleted (AR8). Times are epoch milliseconds.
 - `segment`: 0 (miss), 1 to 20, 25 (outer bull and bull, with `multiplier` 1 or 2); `multiplier`: 1 to 3.
   `source`: `MANUAL` or `CAMERA`. Coordinates are `REAL` millimetres (BC1).
@@ -81,11 +87,9 @@ deleted (AR8) and must survive every future version (no destructive migration).
 - Evaluating the move from Room 2.8 to Room3 is a backlog item (`docs/backlog.md`), unless T1 already fell back.
 - Tests (Robolectric, in-memory database): every DAO, idempotence, archive failure keeping the save. After each
   build, `git status` shows no change in `app/schemas/`: the committed schema matches the entities.
-- Clean slate (plan D25): this version always writes `started_at`, `entered_at` and `has_journal = 1`; the nullable
-  columns and `has_journal` stay as decided (schema unchanged). Why they stay nullable (review A9): the schema was
-  approved before the clean slate and the mission keeps it as is (D26); these columns describe data that later
-  sources may not have (a `TRAINING` session, a `CAMERA` dart, a match entered afterwards), so after the release they
-  need no migration to accept it; the archive code always fills them and T7 asserts it. Making them `NOT NULL` before
-  the release is an in-place edit that only Kosmo can decide. Until the release version that can be updated
+- Clean slate (plan D25) and mandatory columns (plan D31): `started_at` and `entered_at` are `NOT NULL` and
+  `has_journal` is removed (owner decision, replacing the nullable columns of the earlier schema). A later source
+  that lacks one of these values (a `TRAINING` session, a `CAMERA` dart, a match entered afterwards) is a schema
+  change: in place before the release, a tested `Migration` after it. Until the release version that can be updated
   (plan T15), the schema stays version 1 with its exported schema and no destructive fallback, and may be edited in
   place only by owner decision; from that release on, every change ships a tested `Migration`.

@@ -9,8 +9,8 @@ and the end time (AR5, AR6; AR7 withdrawn, clean slate D25). Root plan "Approach
   `startedAt: Long`, `endedAt`, `rulesVersion`, `mode`, `variant`, typed settings, players, legs, darts),
   `ArchivedPlayer.kt` (position, name, color slot, final rank, legs won, sets won), `ArchivedLeg.kt` (ordinal, set
   number, leg number in set, starter, winner), `ArchivedDart.kt` (`JournalDart` fields + segment,
-  multiplier, `BoardPoint?`), `MatchArchiver.kt` (`fun archive(match: X01Match, journal, endedAt)` and the Cricket
-  overload), `EngineRulesVersion.kt` (`ENGINE_RULES_VERSION = 1`).
+  multiplier, `BoardPoint?` for a miss until open question 2 is answered), `MatchArchiver.kt`
+  (`fun archive(match: X01Match, journal, endedAt)` and the Cricket overload), `EngineRulesVersion.kt` (`ENGINE_RULES_VERSION = 1`).
 - Tests in `game-engine/src/test/kotlin/.../engine/archive/`.
 
 ## Depends on
@@ -25,6 +25,7 @@ AR5, AR6, BC2, DJ3, DJ4; M rules for set and leg numbers (`docs/rules/match.md`)
 - Set and leg numbers come from the leg ordinal and the match format; starter from M6 (`legs % players`) as the
   match does it.
 - Darts: replay of each leg journal (T3), nominal point (T2). Voided darts are kept with `voided = true`.
+- Every field is non-nullable (D31), except the dart point (root plan, open question 2).
 - The journal must have one entry per leg; its last leg's darts in play must equal the match's current leg (DJ4),
   else `IllegalArgumentException`.
 

@@ -22,12 +22,13 @@ Root plan "Screens and states", Match detail.
 T11.
 
 ## Rules
-HS5, HS6, HS7, AR9, AR10, PC9, BC2 (coordinates are not shown).
+HS5, HS6, HS7, AR9, AR10, PC9, BC2 (coordinates are not shown), D31.
 
 ## Tests
 - Grouping: visits in order, voided darts absent, a visit whose darts are all voided absent, bust marked, X01 visit
   totals (bust visit total shown as bust), Cricket marks text as on the game screen.
-- Duration formats (minutes, hours).
+- Duration formats (minutes, hours), from `started_at` and `ended_at`, both always present (D31): no "unknown
+  duration" branch.
 - Back keeps the History filters and scroll anchor; the open detail survives a rotation and a process return.
 - Read failure (AR9, HS7), `HistoryRepository` fake returning `Failed` and a closed database: failure state with
   message and "Retry"; "Retry" reads again. Loading as HS7 (fake clock).

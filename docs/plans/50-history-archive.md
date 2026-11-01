@@ -41,7 +41,7 @@ earlier build, and any creation of profiles from the last setup or the saved gam
    undo records `Undone`; a confirmed leg opens a new leg journal. The ViewModel injects the clock.
 5. **Database (T7)**, ADR 0012: entities, DAOs, `HistoryDatabase`, `ArchiveRepository.archive(...)` in one
    transaction, `HistoryRepository` reads; mapping from `ArchivedMatch` plus colors (slot to ARGB from
-   `PlayerPalette`) and app version (`PackageManager` `versionName`).
+   `PlayerPalette`) and app version (`PackageManager` `versionName`, never null, D31). Every column `NOT NULL` (D31).
 6. **Profiles (T8).** `PlayerListRules.nameKey` made public and used for profiles; profiles written at Start/Rematch
    on the persistence queue (PF2) through the one `ProfileDao.upsertUsed`; a `Failed` result is ignored (AR9). No
    launch migration (PF4 withdrawn, D25).
@@ -245,20 +245,32 @@ One `opus` task (T7).
     ADR 0011 "Clean slate"); T15 opens the release issue; T13 adds its backlog line.
   - D26 (D25, Room, issue constraint unchanged): the database stays schema version 1 with its exported schema and no
     destructive fallback (ADR 0012); until the release version it may be edited in place by owner decision only.
-    Its nullable `started_at`, `entered_at` and `has_journal` columns stay as decided; this version always fills them.
+    Its columns are mandatory (D31): `started_at` and `entered_at` are `NOT NULL`, `has_journal` is removed.
 
 - Design review round 3 (commit e81c60b): the four reviewers approved the revised plan. Minors taken in:
   - D27 (A9): the nullable columns are justified in ADR 0012 (schema kept as approved, room for later sources);
-    making them `NOT NULL` before the release stays an owner decision.
+    making them `NOT NULL` before the release stays an owner decision. Superseded by D31.
   - D28 (A10): ADR 0011 states that ADR 0001, 0005, 0006 and 0008 are historical only and that no code reads them.
   - D29 (T1, security same request): T5 and T14 each keep one literal fixture of the old version 1 layout, rejected
     (R9 for the saved game, R10 silently for the last setup) and never read as the new version 1.
   - D30 (T2): T14 "Done when" requires `SaveFuzzTest` to still cover both codecs once `VERSION_1` to `VERSION_4` are
     removed.
 - Plan approved at design review round 3; no decision is pending.
+- Kosmo approved the plan with one change (2026-11-01):
+  - D31 (Kosmo, verbatim): "Le plan me convient, on met juste par contre toutes les colonnes mandatory, puisque il
+    n'y a pas d'histoire de backward compatibilité." Every column of schema version 1 is `NOT NULL` and every entity
+    field is a non-nullable Kotlin type, with no null branch in mappers, screens or tests (ADR 0012 "Tables").
+    `started_at` and `entered_at` become `NOT NULL`; `has_journal` is removed (always 1 since D25, read by nothing);
+    `app_version` is the build's version name, never null. `reset_at`, `x_mm` and `y_mm` have no value in some case
+    and wait for open question 2.
 
 ## Open questions
 
 1. If the Room version kept in T1 offers no supported way to stop the framework from deleting a corrupt database
    file (ADR 0012, "Failure contract"), T1 stops and main decides with Kosmo: accept the framework behavior (a corrupt
    history is lost), or another option T1 reports.
+2. Mandatory columns that have no value in some case (D31), to answer before T7 starts: `profile.reset_at` (a
+   profile is never reset in this mission, PF1) and `dart.x_mm`, `dart.y_mm` (a miss has no coordinates, BC2). For
+   each: keep it nullable as the only exception, make it `NOT NULL` with a stated value (for example `reset_at` equal
+   to `created_at`), or remove it until the mission that needs it (`reset_at`: H2). Until answered, these three stay
+   nullable in ADR 0012.
