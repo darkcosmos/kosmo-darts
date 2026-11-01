@@ -22,8 +22,8 @@ class HistoryDatabaseSpikeTest {
             .allowMainThreadQueries()
             .build()
         try {
-            db.profileDao().insert(ProfileEntity(id = 0, name = "Ana"))
-            assertEquals(listOf("Ana"), db.profileDao().all().map { it.name })
+            db.profileDao().upsertUsed("Ana", "ana", at = 1L)
+            assertEquals(listOf("Ana"), db.historyDao().profilesByRecency().map { it.name })
         } finally {
             db.close()
         }
@@ -42,7 +42,7 @@ class HistoryDatabaseSpikeTest {
         try {
             repeat(2) {
                 try {
-                    db.profileDao().all()
+                    db.historyDao().profilesByRecency()
                     fail("opening a corrupt database must throw")
                 } catch (expected: Exception) {
                     assertTrue(expected.toString(), expected is RuntimeException)
@@ -67,7 +67,7 @@ class HistoryDatabaseSpikeTest {
             .build()
         try {
             try {
-                db.profileDao().all()
+                db.historyDao().profilesByRecency()
             } catch (ignored: Exception) {
                 // The framework may recreate the file and succeed, or throw: only the file content matters here.
             }

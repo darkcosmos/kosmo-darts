@@ -1,40 +1,56 @@
 package io.github.darkcosmos.kosmodarts.history
 
-import androidx.room.Dao
+import android.content.Context
 import androidx.room.Database
-import androidx.room.Entity
-import androidx.room.Insert
-import androidx.room.PrimaryKey
-import androidx.room.Query
+import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
 
-/** Placeholder entity of the setup spike (T1); T7 replaces it with the real schema, still at version 1. */
-@Entity(tableName = "profile")
-data class ProfileEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long,
-    val name: String,
+/**
+ * The archive database, schema version 1 (ADR 0012). Its exported schema is committed under `app/schemas/`. It is
+ * built without any destructive fallback, now or later: every future version ships a tested `Migration` (plan D26).
+ */
+@Database(
+    entities = [
+        ProfileEntity::class,
+        SessionEntity::class,
+        MatchRecordEntity::class,
+        MatchPlayerEntity::class,
+        LegEntity::class,
+        DartEntity::class,
+    ],
+    version = HistoryDatabase.VERSION,
+    exportSchema = true,
 )
-
-@Dao
-interface ProfileDao {
-    @Insert
-    fun insert(profile: ProfileEntity): Long
-
-    @Query("SELECT * FROM profile ORDER BY id")
-    fun all(): List<ProfileEntity>
-}
-
-@Database(entities = [ProfileEntity::class], version = 1, exportSchema = true)
 abstract class HistoryDatabase : RoomDatabase() {
     abstract fun profileDao(): ProfileDao
 
+    abstract fun archiveDao(): ArchiveDao
+
+    abstract fun historyDao(): HistoryDao
+
     companion object {
         const val FILE_NAME = "kosmo-history.db"
+        const val VERSION = 1
+
+        /**
+         * The builder of the app's database file, in private storage, with the corruption handler that keeps the
+         * file (ADR 0012, "Failure contract"). Nothing opens until the first access, which must run off the main
+         * thread (the persistence queue or the read executor).
+         */
+        fun builder(context: Context): Builder<HistoryDatabase> =
+            Room.databaseBuilder(context, HistoryDatabase::class.java, FILE_NAME).keepingCorruptFile()
+
+        /** The app's database (see [builder]). */
+        fun open(context: Context): HistoryDatabase = builder(context).build()
     }
 }
+
+/** Replaces the framework's corruption handler, which deletes the file, by [KeepCorruptFileOpenHelperFactory]. */
+fun RoomDatabase.Builder<HistoryDatabase>.keepingCorruptFile(): RoomDatabase.Builder<HistoryDatabase> =
+    openHelperFactory(KeepCorruptFileOpenHelperFactory())
 
 /**
  * Open helper factory that keeps a corrupt database file (ADR 0012, "Failure contract"): the framework default
