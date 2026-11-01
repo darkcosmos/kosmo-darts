@@ -45,6 +45,10 @@ and actual resolutions exposed. Camera2 directly would need several hundred line
 for the same result. The system camera app (intent) cannot take a photo while it records a video and gives no
 timestamps, so it cannot produce the data at all.
 
+CameraX brings guava 33.3.1-android through `camera-video` and media3, which is affected by GHSA-xxph-c9ww-hj94.
+`capture/build.gradle.kts` therefore declares a `constraints { implementation(libs.guava) { because(...) } }` block,
+and the catalog sets `guava = "33.7.2-android"`, the release that fixes it.
+
 ### Shared `Download/KosmoCapture/` through MediaStore
 
 Sessions are written with MediaStore under `Download/KosmoCapture/<session>/`, without any storage permission

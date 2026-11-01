@@ -52,6 +52,8 @@ class ZoomRange private constructor(val min: Float, val max: Float) {
         return (ln(r / min) / ln(max.toDouble() / min)).coerceIn(0.0, 1.0).toFloat()
     }
 
+    // Hand-written on purpose: a plain class (not a data class) keeps the private constructor and the checked
+    // [of] factory as the only way in, which a generated copy() would bypass. Equality is by bounds only.
     override fun equals(other: Any?): Boolean = other is ZoomRange && other.min == min && other.max == max
 
     override fun hashCode(): Int = 31 * min.hashCode() + max.hashCode()
