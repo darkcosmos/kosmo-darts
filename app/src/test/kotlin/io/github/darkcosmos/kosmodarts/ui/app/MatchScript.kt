@@ -57,7 +57,10 @@ internal class MatchScript {
     }
 
     /** "Finish …" in the checkout dialog. */
-    fun finish(): MatchScript = send(AppEvent.FinishGameTapped)
+    fun finish(): MatchScript {
+        send(AppEvent.FinishGameTapped)
+        return if (helper.isArchiving(state)) send(AppEvent.ArchiveSucceeded) else this
+    }
 
     fun nextLeg(): MatchScript = send(AppEvent.NextLegTapped)
 

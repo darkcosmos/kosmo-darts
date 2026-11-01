@@ -1,6 +1,9 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
 import androidx.annotation.VisibleForTesting
+import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMatch
+import io.github.darkcosmos.kosmodarts.history.ArchiveCheck
+import io.github.darkcosmos.kosmodarts.history.MatchArchiveRequest
 import io.github.darkcosmos.kosmodarts.history.ProfileRepository
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
@@ -18,6 +21,8 @@ class Persistence(
     private val gameCodec: GameSaveCodec = GameSaveCodec(),
     private val setupCodec: LastSetupCodec = LastSetupCodec(),
     private val profiles: ProfileRepository? = null,
+    private val archiveRequest: MatchArchiveRequest? = null,
+    private val archiveCheck: ArchiveCheck? = null,
 ) {
     private val loader = SaveLoader(gameStore, setupStore, gameCodec, setupCodec)
     private val gameWriter = SaveWriter(gameStore, executor)
@@ -28,7 +33,7 @@ class Persistence(
      * per ViewModel, on the main thread.
      */
     fun load(): LoadResult {
-        val task = FutureTask(loader::load)
+        val task = FutureTask(::loadAndCheckArchive)
         executor.execute(task)
         return try {
             task.get()
@@ -39,6 +44,20 @@ class Persistence(
             setupWriter.delete()
             LoadResult(GameLoad.Invalid(InvalidSaveReason.UNEXPECTED_ERROR), lastSetup = null)
         }
+    }
+
+    /**
+     * AR4: a saved game whose match id the database positively reports as archived (the app stopped between the two
+     * steps of AR2) is deleted through the queue and not offered. Any other answer, a database failure included, keeps
+     * it (AR9).
+     */
+    private fun loadAndCheckArchive(): LoadResult {
+        val loaded = loader.load()
+        val saved = (loaded.game as? GameLoad.Valid)?.saved
+        val isArchived = saved != null && archiveCheck?.isSaveArchived(saved.journal.matchId) == true
+        if (!isArchived) return loaded
+        gameWriter.delete()
+        return loaded.copy(game = GameLoad.Absent)
     }
 
     /**
@@ -61,6 +80,18 @@ class Persistence(
     fun touchProfiles(names: List<String>, at: Long) {
         val repository = profiles ?: return
         executor.execute { repository.touchOrCreate(names, at) }
+    }
+
+    /**
+     * Archives the confirmed match on the queue, then deletes the saved game on the same queue, only if the archive
+     * succeeded (AR2). [onResult] gets `true` when the match is archived, `false` otherwise (AR3), on the queue thread.
+     * Without an archive configured, the answer is `false` and the saved game stays.
+     */
+    fun archiveMatch(archived: ArchivedMatch, colorsArgb: List<Int>, onResult: (Boolean) -> Unit) {
+        executor.execute {
+            val isArchived = archiveRequest?.run(archived, colorsArgb, gameWriter::delete) ?: false
+            onResult(isArchived)
+        }
     }
 
     /** Waits until every read and write requested so far is done. For tests that check the files. */

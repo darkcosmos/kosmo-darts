@@ -36,6 +36,9 @@ import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
 import io.github.darkcosmos.kosmodarts.ui.revealIfScrolled
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
 import org.junit.After
+import io.github.darkcosmos.kosmodarts.history.ArchiveOutcome
+import io.github.darkcosmos.kosmodarts.history.DbResult
+import java.util.concurrent.CountDownLatch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -76,7 +79,10 @@ class PersistenceScreensTest {
 
     private fun newGameFromHome() = key(HomeTags.MODE_X01).performScrollTo().performClick()
 
-    private fun confirmCheckout() = key(GameTags.CONFIRM).revealIfScrolled().performClick()
+    private fun confirmCheckout() {
+        key(GameTags.CONFIRM).revealIfScrolled().performClick()
+        process.settle() // The archive answers on the save thread, then on the main thread (AR2).
+    }
 
     private fun back() {
         composeRule.waitForIdle()
@@ -212,6 +218,49 @@ class PersistenceScreensTest {
         process.launchFresh()
         assertSummaryShown(false)
         assertFalse(process.gameFile.exists())
+    }
+
+    /** AR3: while the archive is written the button says so and cannot be pressed again; the answer ends the match. */
+    @Test
+    fun `AR3 the confirm button shows Saving while the archive is held`() {
+        val gate = CountDownLatch(1)
+        process.archive.gate = gate
+        process.writeGame(SaveFixtures.WAITING_CHECKOUT)
+        process.launchFresh()
+        resume()
+        try {
+            key(GameTags.CONFIRM).revealIfScrolled().performClick()
+            composeRule.waitForIdle()
+
+            key(GameTags.CONFIRM).assertIsNotEnabled()
+            text(R.string.archive_saving_label).assertIsDisplayed()
+            assertTrue(process.gameFile.exists())
+        } finally {
+            gate.countDown()
+        }
+        process.settle()
+        key(EndTags.WINNER).assertTextEquals("ANN")
+        assertFalse(process.gameFile.exists())
+    }
+
+    /** AR3: a failure keeps the game and the file, shows the message, and the same button tries again. */
+    @Test
+    fun `AR3 a failed archive shows the message and Confirm tries again`() {
+        process.archive.archiveAnswer = DbResult.Failed
+        process.writeGame(SaveFixtures.WAITING_CHECKOUT)
+        process.launchFresh()
+        resume()
+
+        confirmCheckout()
+
+        key(GameTags.ARCHIVE_FAILED).assertIsDisplayed()
+        key(GameTags.CONFIRM).assertIsEnabled()
+        assertTrue(process.gameFile.exists())
+        process.archive.archiveAnswer = DbResult.Ok(ArchiveOutcome.ARCHIVED)
+        confirmCheckout()
+        key(EndTags.WINNER).assertTextEquals("ANN")
+        assertFalse(process.gameFile.exists())
+        assertEquals(2, process.archive.archived.size)
     }
 
     /** R6: a confirmed win deletes the saved game; killed on the end screen, the app reopens on home. */

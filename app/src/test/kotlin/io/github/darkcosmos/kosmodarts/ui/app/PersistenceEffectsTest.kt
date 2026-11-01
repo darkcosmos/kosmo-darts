@@ -88,8 +88,15 @@ class PersistenceEffectsTest {
     }
 
     @Test
-    fun `R6 Finish game deletes the saved game`() {
-        assertEquals(listOf(PersistenceEffect.DeleteGame), effectsOf(checkout, AppEvent.FinishGameTapped))
+    fun `AR1 AR2 Finish game asks the archive, and the answer writes nothing else`() {
+        val saving = reducer.reduce(checkout, AppEvent.FinishGameTapped)
+
+        assertEquals(
+            listOf(PersistenceEffect.ArchiveMatch::class),
+            persistenceEffects(checkout, saving).map { it::class },
+        )
+        assertEquals(emptyList<PersistenceEffect>(), effectsOf(saving, AppEvent.ArchiveSucceeded))
+        assertEquals(emptyList<PersistenceEffect>(), effectsOf(saving, AppEvent.ArchiveFailed))
     }
 
     @Test

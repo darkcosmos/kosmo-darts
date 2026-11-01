@@ -3,11 +3,14 @@ package io.github.darkcosmos.kosmodarts.ui.app
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatchConfig
+import io.github.darkcosmos.kosmodarts.engine.archive.MatchArchiver
 import io.github.darkcosmos.kosmodarts.engine.journal.GameProgress
+import io.github.darkcosmos.kosmodarts.engine.journal.JournalReplayException
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.ui.cricket.CricketGameScreenState
+import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 
 // The Cricket screens of [AppReducer] (docs/rules/cricket.md, CR22 to CR28), kept apart so that the X01 branches stay
 // as they are (plan decision D1). Pure.
@@ -16,6 +19,13 @@ import io.github.darkcosmos.kosmodarts.ui.cricket.CricketGameScreenState
 internal fun onCricketGame(state: AppState, screen: Screen.CricketGame, event: AppEvent, at: Long): AppState {
     val game = screen.game
     return when {
+        // AR3: while the archive is written, only its answer counts; a second tap does nothing.
+        game.archive is ArchiveStatus.Saving -> when (event) {
+            AppEvent.ArchiveSucceeded -> state.copy(screen = Screen.CricketEnd(game.match))
+            AppEvent.ArchiveFailed ->
+                state.copy(screen = screen.copy(game = game.copy(archive = ArchiveStatus.Failed)))
+            else -> state
+        }
         // AN16: the message is modal; "OK", back and "Install a voice" close it.
         screen.noVoiceNotice != null -> when (event) {
             AppEvent.NoVoiceNoticeDismissed, AppEvent.InstallVoiceTapped, AppEvent.Back ->
@@ -102,8 +112,19 @@ private fun finishCricket(screen: Screen.CricketGame, at: Long): Screen {
             val confirmed = game.match.confirmLeg()
             Screen.CricketBetweenLegs(confirmed, GameProgress.follow(screen.journal, game.match, confirmed, at))
         }
-        LegOutcome.MATCH, null -> Screen.CricketEnd(game.match)
+        // AR1, AR3: the End screen waits for the archive; the game stays on the win zone meanwhile.
+        LegOutcome.MATCH, null -> screen.copy(game = game.copy(archive = archiveOf(game.match, screen.journal, at)))
     }
+}
+
+/** AR1, AR5: [ArchiveStatus.Saving] with the match to write, or [ArchiveStatus.Failed] if it cannot be built. */
+private fun archiveOf(match: CricketMatch, journal: MatchJournal, at: Long): ArchiveStatus = try {
+    ArchiveStatus.Saving(MatchArchiver.archive(match, journal, at))
+} catch (ignored: IllegalArgumentException) {
+    // A journal out of step with the match (DJ4) is a programming error; it must not crash a finished game.
+    ArchiveStatus.Failed
+} catch (ignored: JournalReplayException) {
+    ArchiveStatus.Failed
 }
 
 /** DJ1, DJ2: the screen after a play event, with the journal that goes with its match. */

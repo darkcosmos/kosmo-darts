@@ -5,8 +5,19 @@ package io.github.darkcosmos.kosmodarts.ui.components
 /** The two button kinds of the design system: principal (`accent`) and secondary (`surfaceHigh`), plus outlined. */
 enum class ButtonKind { PRIMARY, SECONDARY, OUTLINED_ACCENT }
 
-/** One button of an [ActionBar]. */
-class BarAction(val text: String, val tag: String, val isEnabled: Boolean, val onClick: () -> Unit)
+/**
+ * One button of an [ActionBar].
+ *
+ * @property description what a screen reader says instead of [text], or `null` to read [text] (AR3: why the button is
+ *   disabled).
+ */
+class BarAction(
+    val text: String,
+    val tag: String,
+    val isEnabled: Boolean,
+    val description: String? = null,
+    val onClick: () -> Unit,
+)
 
 /**
  * The statistic line of a player's zone (docs/rules/cricket.md, CR22): "AVG 62.40" in X01, "MPR 2.4" in Cricket.

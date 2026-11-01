@@ -79,4 +79,31 @@ class KosmoDartsViewModelTest {
         val saved = checkNotNull(savedGameOf(viewModel.state.value))
         assertEquals(listOf(listOf(PersistenceEffect.SaveGame(saved))), effects)
     }
+
+    /** AR4, AR5: Start takes its match id and time from the injected id source and clock; a dart asks for no new id. */
+    @Test
+    fun `AR4 AR5 Start uses the injected id and clock`() {
+        var now = 1_000L
+        var ids = 0
+        val viewModel = KosmoDartsViewModel(
+            Random(0),
+            AppState(),
+            inMemoryAudioSettings(),
+            clock = { now },
+            newMatchId = { "match-${++ids}" },
+        )
+        listOf(
+            AppEvent.NewGame(GameMode.X01),
+            AppEvent.StartScoreSelected(301),
+            AppEvent.NameChanged(0, "Ann"),
+            AppEvent.NameChanged(1, "Bob"),
+            AppEvent.StartRequested,
+        ).forEach(viewModel::onEvent)
+
+        val journal = (viewModel.state.value.screen as Screen.Game).journal
+        assertEquals("match-1", journal.matchId)
+        assertEquals(1_000L, journal.startedAt)
+        viewModel.onEvent(AppEvent.NumberTapped(20))
+        assertEquals(1, ids)
+    }
 }

@@ -1,8 +1,12 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.engine.archive.MatchArchiver
 import io.github.darkcosmos.kosmodarts.engine.journal.GameProgress
+import io.github.darkcosmos.kosmodarts.engine.journal.JournalReplayException
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
+import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupResult
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
@@ -65,6 +69,13 @@ class AppReducer(private val random: Random) {
     private fun onGame(state: AppState, screen: Screen.Game, event: AppEvent, at: Long): AppState {
         val game = screen.game
         return when {
+            // AR3: while the archive is written, only its answer counts; a second tap does nothing.
+            game.archive is ArchiveStatus.Saving -> when (event) {
+                AppEvent.ArchiveSucceeded -> state.copy(screen = Screen.End(game.match))
+                AppEvent.ArchiveFailed ->
+                    state.copy(screen = screen.copy(game = game.copy(archive = ArchiveStatus.Failed)))
+                else -> state
+            }
             // AN16: the message is modal; "OK", back and "Install a voice" close it.
             screen.noVoiceNotice != null -> when (event) {
                 AppEvent.NoVoiceNoticeDismissed, AppEvent.InstallVoiceTapped, AppEvent.Back ->
@@ -91,8 +102,19 @@ class AppReducer(private val random: Random) {
                 val journal = GameProgress.follow(screen.journal, game.match, confirmed, at)
                 Screen.BetweenLegs(confirmed, journal, checkout = game.checkoutSummary)
             }
-            LegOutcome.MATCH, null -> Screen.End(game.match)
+            // AR1, AR3: the End screen waits for the archive; the game stays on the CHECKOUT zone meanwhile.
+            LegOutcome.MATCH, null -> screen.copy(game = game.copy(archive = archiveOf(game.match, screen.journal, at)))
         }
+    }
+
+    /** AR1, AR5: [ArchiveStatus.Saving] with the match to write, or [ArchiveStatus.Failed] if it cannot be built. */
+    private fun archiveOf(match: X01Match, journal: MatchJournal, at: Long): ArchiveStatus = try {
+        ArchiveStatus.Saving(MatchArchiver.archive(match, journal, at))
+    } catch (ignored: IllegalArgumentException) {
+        // A journal out of step with the match (DJ4) is a programming error; it must not crash a finished game.
+        ArchiveStatus.Failed
+    } catch (ignored: JournalReplayException) {
+        ArchiveStatus.Failed
     }
 
     /** DJ1, DJ2: the screen after a play event, with the journal that goes with its match. */

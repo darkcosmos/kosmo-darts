@@ -88,7 +88,7 @@ class AppReducerResumeTest {
     fun `R6 Finish game opens the end screen`() {
         val checkout = AppState(screen = Screen.Home(resumableGame = SaveFixtures.WAITING_CHECKOUT))
 
-        val state = checkout.after(AppEvent.ResumeTapped, AppEvent.FinishGameTapped)
+        val state = checkout.after(AppEvent.ResumeTapped, AppEvent.FinishGameTapped, AppEvent.ArchiveSucceeded)
 
         assertEquals(Screen.End(SaveFixtures.WAITING_CHECKOUT.game), state.screen)
     }
@@ -96,7 +96,7 @@ class AppReducerResumeTest {
     @Test
     fun `R7 a rematch becomes the last setup, and the next setup is prefilled with it`() {
         val checkout = AppState(screen = Screen.Home(resumableGame = SaveFixtures.WAITING_CHECKOUT))
-        val ended = checkout.after(AppEvent.ResumeTapped, AppEvent.FinishGameTapped)
+        val ended = checkout.after(AppEvent.ResumeTapped, AppEvent.FinishGameTapped, AppEvent.ArchiveSucceeded)
         val rematch = ended.after(AppEvent.Rematch)
         val config = SaveFixtures.WAITING_CHECKOUT.game.config
         // PC7: each player keeps his color slot through the rotation.

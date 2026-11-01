@@ -249,7 +249,7 @@ class AppReducerJournalTest {
         // Replay the winning dart, then end the match: the only leg is won, so "Finish" ends it.
         val match = (driver.state.screen as Screen.Game).game.match
         MatchFixtures.dartsToWin(match, 0).forEach { driver.dart(it) }
-        driver.send(AppEvent.FinishGameTapped)
+        driver.send(AppEvent.FinishGameTapped, AppEvent.ArchiveSucceeded)
         assertTrue(driver.state.screen is Screen.End)
 
         driver.send(AppEvent.Rematch)

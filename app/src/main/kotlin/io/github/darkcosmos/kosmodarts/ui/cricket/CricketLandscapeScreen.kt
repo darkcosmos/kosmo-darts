@@ -3,6 +3,7 @@ package io.github.darkcosmos.kosmodarts.ui.cricket
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -13,9 +14,14 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.game.ArchiveFailedMessage
+import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTypography
 import io.github.darkcosmos.kosmodarts.ui.theme.LocalKosmoTypography
 import io.github.darkcosmos.kosmodarts.ui.theme.Spacing
+
+/** The height kept for the archive failure message (AR3), taken from the board's. */
+private const val ARCHIVE_MESSAGE_HEIGHT_DP = 36f
 
 /**
  * Landscape (CR22, plan R2.2): the top band from the top edge (title and the current player's single-line zone), then
@@ -41,9 +47,16 @@ internal fun LandscapeGame(
             CricketBoardLayoutPolicy.landscapePlayerColumnWidthDp(fullWidth, cutoutInsetDp, players),
             CricketBoardLayoutPolicy.LANDSCAPE_TOTAL_SIZES_SP,
         )
+        // AR3: the failure message takes a line of its own between the band and the board; the board gets the rest.
+        val messageHeightDp = if (game.archive == ArchiveStatus.Failed) ARCHIVE_MESSAGE_HEIGHT_DP else 0f
         val layout = CricketBoardLayoutPolicy.landscapeBand(
             CricketLandscapeBandSpace(
-                fullWidth, screenHeightDp, cutoutInsetDp, header.heightDp, players, game.game.config.targets.size,
+                fullWidth,
+                screenHeightDp - messageHeightDp,
+                cutoutInsetDp,
+                header.heightDp,
+                players,
+                game.game.config.targets.size,
             ),
         )
         val (undo, next) = actionsOf(game, onEvent)
@@ -58,6 +71,7 @@ internal fun LandscapeGame(
                 ),
         ) {
             CricketTopBand(game)
+            ArchiveFailedMessage(game.archive, Modifier.height(ARCHIVE_MESSAGE_HEIGHT_DP.dp))
             Board(
                 game,
                 layout.board,

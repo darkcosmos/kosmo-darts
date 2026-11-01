@@ -1,5 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import android.os.Handler
+import android.os.Looper
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
@@ -95,11 +97,17 @@ class KosmoDartsViewModel(
             wasOnGameScreen: Boolean,
         ): ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                KosmoDartsViewModel(
+                val mainThread = Handler(Looper.getMainLooper())
+                lateinit var viewModel: KosmoDartsViewModel
+                // The archive answers on the persistence thread; events come from the main thread only.
+                viewModel = KosmoDartsViewModel(
                     initial = initialState(persistence.load(), wasOnGameScreen),
                     audioSettings = audioSettings,
-                    onEffects = persistence::applyEffects,
+                    onEffects = { effects ->
+                        persistence.applyEffects(effects) { event -> mainThread.post { viewModel.onEvent(event) } }
+                    },
                 )
+                viewModel
             }
         }
     }

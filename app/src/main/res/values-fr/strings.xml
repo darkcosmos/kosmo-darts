@@ -127,6 +127,10 @@
     <string name="checkout_confirm_leg">VALIDER LA MANCHE</string>
     <string name="checkout_confirm_set">VALIDER LE SET</string>
     <string name="checkout_confirm_match">VALIDER LA PARTIE</string>
+    <!-- Archive of the confirmed match (docs/rules/history.md, AR3) -->
+    <string name="archive_saving_label">Enregistrement…</string>
+    <string name="archive_saving_description">Enregistrement… Le match est en cours d\'enregistrement dans l\'historique.</string>
+    <string name="archive_failed_message">Le match n\'a pas pu être enregistré dans l\'historique.</string>
     <string name="game_abandon_title">Abandonner la partie ?</string>
     <string name="game_abandon_text">La partie en cours sera perdue.</string>
     <string name="game_abandon_confirm">Abandonner</string>

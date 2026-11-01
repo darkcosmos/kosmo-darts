@@ -80,13 +80,23 @@ class CricketPersistenceEffectsTest {
     }
 
     @Test
-    fun `R6 R14 Confirm match and Abandon delete the saved game`() {
+    fun `AR1 AR2 Confirm match asks the archive, and the answer writes nothing else`() {
         val decided = inGame(duel.confirmLegsWonBy(0).playLegWonBy(0), isAwaiting = true)
+        val saving = reducer.reduce(decided, AppEvent.FinishGameTapped)
+
+        assertEquals(
+            listOf(PersistenceEffect.ArchiveMatch::class),
+            persistenceEffects(decided, saving).map { it::class },
+        )
+        assertEquals(emptyList<PersistenceEffect>(), effectsOf(saving, AppEvent.ArchiveSucceeded))
+    }
+
+    @Test
+    fun `R6 R14 Abandon deletes the saved game`() {
         val dialog = reducer.reduce(inGame(duel), AppEvent.Back)
         val betweenDialog =
             AppState(screen = cricketBetweenLegs(duel.confirmLegsWonBy(0), isAbandonDialogShown = true))
 
-        assertEquals(listOf(PersistenceEffect.DeleteGame), effectsOf(decided, AppEvent.FinishGameTapped))
         assertEquals(listOf(PersistenceEffect.DeleteGame), effectsOf(dialog, AppEvent.AbandonConfirmed))
         assertEquals(listOf(PersistenceEffect.DeleteGame), effectsOf(betweenDialog, AppEvent.AbandonConfirmed))
     }

@@ -1,12 +1,16 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import androidx.compose.ui.graphics.toArgb
+import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMatch
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.SavedCricketGame
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.ui.cricket.toSavedGame
+import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.game.toSavedGame
+import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 
 /** A change to make on the device after an event (rules R3, R6, R7, R12, R13, R15). */
 sealed interface PersistenceEffect {
@@ -18,6 +22,12 @@ sealed interface PersistenceEffect {
 
     /** PF2: create or touch the profiles of [names] at [at], the match start time. */
     data class TouchProfiles(val names: List<String>, val at: Long) : PersistenceEffect
+
+    /**
+     * AR1, AR2: write [archived] to the history with one ARGB color per player, then delete the saved game, only if the
+     * write succeeded. The answer comes back as [AppEvent.ArchiveSucceeded] or [AppEvent.ArchiveFailed].
+     */
+    data class ArchiveMatch(val archived: ArchivedMatch, val colorsArgb: List<Int>) : PersistenceEffect
 }
 
 /**
@@ -48,11 +58,30 @@ fun persistenceEffects(before: AppState, after: AppState): List<PersistenceEffec
     val savedAfter = savedGameOf(after)
     val gameEffect = when {
         savedAfter == savedBefore -> null
+        // AR2: the archive request deletes the saved game itself, after the write; no second delete here.
+        archiveOf(before) != null -> null
         savedAfter == null -> PersistenceEffect.DeleteGame
         else -> PersistenceEffect.SaveGame(savedAfter)
     }
     val setupEffect = after.lastSetup?.takeIf { it != before.lastSetup }?.let(PersistenceEffect::SaveLastSetup)
-    return listOfNotNull(setupEffect, gameEffect, touchProfilesEffect(before, after))
+    return listOfNotNull(setupEffect, gameEffect, touchProfilesEffect(before, after), archiveEffect(before, after))
+}
+
+/** The match being written to the history while [state] is shown (AR3), or `null`. */
+private fun archiveOf(state: AppState): ArchivedMatch? {
+    val archive = when (val screen = state.screen) {
+        is Screen.Game -> screen.game.archive
+        is Screen.CricketGame -> screen.game.archive
+        else -> return null
+    }
+    return (archive as? ArchiveStatus.Saving)?.archived
+}
+
+/** AR1: asked once per tap on the confirm button, when [after] starts writing and [before] was not writing. */
+private fun archiveEffect(before: AppState, after: AppState): PersistenceEffect.ArchiveMatch? {
+    val archived = archiveOf(after)?.takeIf { archiveOf(before) == null } ?: return null
+    val colors = archived.players.map { PlayerPalette.colorOf(it.colorSlot).toArgb() }
+    return PersistenceEffect.ArchiveMatch(archived, colors)
 }
 
 /**
@@ -71,12 +100,20 @@ private fun touchProfilesEffect(before: AppState, after: AppState): PersistenceE
     }
 }
 
-/** Applies [effects] in order; writes run in the background. */
-fun Persistence.applyEffects(effects: List<PersistenceEffect>) = effects.forEach { effect ->
-    when (effect) {
-        is PersistenceEffect.SaveGame -> saveGame(effect.saved)
-        PersistenceEffect.DeleteGame -> deleteGame()
-        is PersistenceEffect.SaveLastSetup -> saveLastSetup(effect.setups)
-        is PersistenceEffect.TouchProfiles -> touchProfiles(effect.names, effect.at)
+/**
+ * Applies [effects] in order; writes run in the background. The answer of an archive is handed to [onEvent], on the
+ * persistence thread: the caller moves it to the main thread.
+ */
+fun Persistence.applyEffects(effects: List<PersistenceEffect>, onEvent: (AppEvent) -> Unit = {}) =
+    effects.forEach { effect ->
+        when (effect) {
+            is PersistenceEffect.SaveGame -> saveGame(effect.saved)
+            PersistenceEffect.DeleteGame -> deleteGame()
+            is PersistenceEffect.SaveLastSetup -> saveLastSetup(effect.setups)
+            is PersistenceEffect.TouchProfiles -> touchProfiles(effect.names, effect.at)
+            is PersistenceEffect.ArchiveMatch ->
+                archiveMatch(effect.archived, effect.colorsArgb) { isArchived ->
+                    onEvent(if (isArchived) AppEvent.ArchiveSucceeded else AppEvent.ArchiveFailed)
+                }
+        }
     }
-}

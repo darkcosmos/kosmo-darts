@@ -142,6 +142,10 @@
     <string name="checkout_confirm_leg">CONFIRM LEG</string>
     <string name="checkout_confirm_set">CONFIRM SET</string>
     <string name="checkout_confirm_match">CONFIRM MATCH</string>
+    <!-- Archive of the confirmed match (docs/rules/history.md, AR3) -->
+    <string name="archive_saving_label">Saving…</string>
+    <string name="archive_saving_description">Saving… The match is being saved in the history.</string>
+    <string name="archive_failed_message">The match could not be saved in the history.</string>
     <string name="game_abandon_title">Abandon the game?</string>
     <string name="game_abandon_text">The current game will be lost.</string>
     <string name="game_abandon_confirm">Abandon</string>

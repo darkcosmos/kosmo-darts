@@ -54,3 +54,9 @@ AR1 to AR4, AR9, R2, R6, R9, R14, CR25, PC9; ADR 0012 "Failure contract".
 sonnet. Why: effect and reducer wiring with specified rules and tests.
 
 ## Implementation notes
+- Flow: confirming the win moves `ArchiveStatus` Idle to Saving(archived); `persistenceEffects` emits `ArchiveMatch(archived, colorsArgb)` on that transition. The answer returns as `AppEvent.ArchiveSucceeded` / `ArchiveFailed` (posted on the main looper by `KosmoDartsViewModel`). Success goes to the end screen and deletes the save; failure keeps the save, sets `Failed` and shows a message; Confirm retries (a retry on an already archived match counts as success and deletes the save).
+- `DeleteGame` is suppressed when the previous state was Saving; abandon still emits it. Other events (Back, second Confirm) are ignored while Saving.
+- Code: `history/MatchArchiveRequest`, `history/ArchiveCheck` (AR4 launch check, deletes the save only on a positive "archived"), `history/ArchiveGateway` (seam; `ArchiveRepository` implements it and adds `isArchived`), `ui/game/ArchiveStatus`, `ui/game/ArchiveUi.kt` (`confirmAction`, `ArchiveFailedMessage`), reducers, `PersistenceEffect`, `Persistence.archiveMatch` (answers false without an archive request).
+- UI deviations: the failure message sits above the action bar; Cricket landscape gets a 36dp message line that shrinks the board band; labels are mixed case ("Saving...", "Enregistrement..."); `BarAction` got a `description`.
+- `KosmoDartsApplication` is now `open` with `protected open fun createPersistence()`. Tests: `TestKosmoDartsApplication` + `src/test/resources/robolectric.properties` (direct executor, instant gateway); `FakeArchiveGateway`; `AppProcess` has its own save thread and `settle()` (awaitIdle + main looper idle). Screen tests that confirm a win must settle.
+- A ViewModel test checks the injected id and clock at Start. The 10 new captures in `PersistenceScreenshotTest` are record-only: the PNGs were not inspected.

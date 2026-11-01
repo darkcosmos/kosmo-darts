@@ -140,7 +140,7 @@ class CricketReducerTest {
     fun `M17 Confirm match opens the end screen`() {
         val decided = duel.confirmLegsWonBy(0)
 
-        val ended = withPendingWin(decided).after(AppEvent.FinishGameTapped)
+        val ended = withPendingWin(decided).after(AppEvent.FinishGameTapped, AppEvent.ArchiveSucceeded)
 
         assertEquals(Screen.CricketEnd(decided.playLegWonBy(0)), ended.screen)
     }

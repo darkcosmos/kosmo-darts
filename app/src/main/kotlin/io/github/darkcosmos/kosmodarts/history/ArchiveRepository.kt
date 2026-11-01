@@ -22,7 +22,7 @@ class ArchiveRepository(
     private val database: HistoryDatabase,
     private val nameKey: (String) -> String,
     private val archiveDao: ArchiveDao = database.archiveDao(),
-) {
+) : ArchiveGateway {
 
     /**
      * Archives [archived] in one transaction (AR2): when its match id is already archived, returns
@@ -33,12 +33,19 @@ class ArchiveRepository(
      *
      * @param appVersion the build's version name (AR5, D31).
      */
-    fun archive(archived: ArchivedMatch, colorsArgb: List<Int>, appVersion: String): DbResult<ArchiveOutcome> {
+    override fun archive(
+        archived: ArchivedMatch,
+        colorsArgb: List<Int>,
+        appVersion: String,
+    ): DbResult<ArchiveOutcome> {
         if (colorsArgb.size != archived.players.size) return DbResult.Failed
         return dbResult {
             database.runInTransaction<ArchiveOutcome> { write(archived, colorsArgb, appVersion) }
         }
     }
+
+    /** AR4 at launch: never throws; a closed or corrupt database gives [DbResult.Failed] (AR9). */
+    override fun isArchived(matchId: String): DbResult<Boolean> = dbResult { archiveDao.isArchived(matchId) }
 
     private fun write(archived: ArchivedMatch, colorsArgb: List<Int>, appVersion: String): ArchiveOutcome {
         if (archiveDao.isArchived(archived.matchId)) return ArchiveOutcome.ALREADY_ARCHIVED

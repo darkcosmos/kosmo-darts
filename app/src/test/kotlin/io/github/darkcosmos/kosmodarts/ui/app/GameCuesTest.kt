@@ -119,9 +119,11 @@ class GameCuesTest {
     @Test
     fun `AN5 finish game announces nothing`() {
         val checkout = AppState(screen = gameScreen(SaveFixtures.WAITING_CHECKOUT.toGameScreenState()))
-        val next = reducer.reduce(checkout, AppEvent.FinishGameTapped)
+        val saving = reducer.reduce(checkout, AppEvent.FinishGameTapped)
+        val next = reducer.reduce(saving, AppEvent.ArchiveSucceeded)
         assertEquals(Screen.End::class, next.screen::class)
-        assertEquals(emptyList<X01Cue>(), gameCues(checkout, AppEvent.FinishGameTapped, next))
+        assertEquals(emptyList<X01Cue>(), gameCues(checkout, AppEvent.FinishGameTapped, saving))
+        assertEquals(emptyList<X01Cue>(), gameCues(saving, AppEvent.ArchiveSucceeded, next))
     }
 
     /** AN5, AN6: Undo in the checkout dialog gives the undo cue only, no win. */

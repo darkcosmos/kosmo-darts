@@ -204,6 +204,12 @@ sealed interface AppEvent {
     /** "Confirm leg", "Confirm set" or "Confirm match" of the action bar, in the CHECKOUT zone (M15). */
     data object FinishGameTapped : AppEvent
 
+    /** The archive of the confirmed match was written, or was already there (AR2, AR4): the End screen shows. */
+    data object ArchiveSucceeded : AppEvent
+
+    /** The archive could not be written (AR3): the zone stays, with a message and an enabled confirm button. */
+    data object ArchiveFailed : AppEvent
+
     /** "Next leg" on the between-legs screen (M16). */
     data object NextLegTapped : AppEvent
 

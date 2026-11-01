@@ -11,6 +11,7 @@ import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.ui.game.MatchIndicator
+import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.game.MatchPosition
 
 /**
@@ -25,11 +26,13 @@ import io.github.darkcosmos.kosmodarts.ui.game.MatchPosition
  * @property match the match; its current leg is [game] (docs/rules/match.md).
  * @property isAwaitingConfirmation whether the last dart completed a turn that is not confirmed yet.
  * @property isAbandonDialogShown whether the "Abandon the game?" confirmation is open.
+ * @property archive where the archive of the confirmed match stands (AR3); not saved.
  */
 data class CricketGameScreenState(
     val match: CricketMatch,
     val isAwaitingConfirmation: Boolean = false,
     val isAbandonDialogShown: Boolean = false,
+    val archive: ArchiveStatus = ArchiveStatus.Idle,
 ) {
     /** The current leg: every per-leg figure (marks, points, turn, visit boxes) comes from it (M9). */
     val game: CricketGame
@@ -167,7 +170,7 @@ data class CricketGameScreenState(
      * reopens the turn with its first darts.
      */
     fun undo(): CricketGameScreenState =
-        copy(match = match.undo(), isAwaitingConfirmation = false)
+        copy(match = match.undo(), isAwaitingConfirmation = false, archive = ArchiveStatus.Idle)
 
     fun withAbandonDialog(shown: Boolean): CricketGameScreenState = copy(isAbandonDialogShown = shown)
 

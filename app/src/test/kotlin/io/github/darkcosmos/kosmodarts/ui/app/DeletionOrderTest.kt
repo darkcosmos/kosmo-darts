@@ -2,6 +2,8 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.settings.inMemoryAudioSettings
+import io.github.darkcosmos.kosmodarts.history.FakeArchiveGateway
+import io.github.darkcosmos.kosmodarts.history.MatchArchiveRequest
 import io.github.darkcosmos.kosmodarts.persistence.GameLoad
 import io.github.darkcosmos.kosmodarts.persistence.InvalidSaveReason
 import io.github.darkcosmos.kosmodarts.persistence.ManualExecutor
@@ -28,10 +30,22 @@ class DeletionOrderTest {
 
     private val executor = ManualExecutor()
     private val gameStore = MemoryStore()
-    private val persistence = Persistence(gameStore, MemoryStore(), executor)
+    private val gateway = FakeArchiveGateway()
+    private val persistence = Persistence(
+        gameStore,
+        MemoryStore(),
+        executor,
+        archiveRequest = MatchArchiveRequest(gateway, "1.0"),
+    )
 
-    private fun viewModel(initial: AppState) =
-        KosmoDartsViewModel(Random(0), initial, inMemoryAudioSettings()) { persistence.applyEffects(it) }
+    /** The archive answer comes back as an event, like the application delivers it (AR2). */
+    private fun viewModel(initial: AppState): KosmoDartsViewModel {
+        lateinit var created: KosmoDartsViewModel
+        created = KosmoDartsViewModel(Random(0), initial, inMemoryAudioSettings()) { effects ->
+            persistence.applyEffects(effects) { created.onEvent(it) }
+        }
+        return created
+    }
 
     @Test
     fun `R6 a dart then Finish game leaves no file`() {

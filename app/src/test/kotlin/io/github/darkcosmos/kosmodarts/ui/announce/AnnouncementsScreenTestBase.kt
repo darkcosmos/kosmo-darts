@@ -81,7 +81,11 @@ internal abstract class AnnouncementsScreenTestBase {
 
     protected fun undo() = tap(KeypadTags.UNDO)
 
-    protected fun finishGame() = key(GameTags.CONFIRM).revealIfScrolled().performClick()
+    protected fun finishGame() {
+        key(GameTags.CONFIRM).revealIfScrolled().performClick()
+        process.settle() // The archive answers on the save thread, then on the main looper (AR2).
+        composeRule.waitForIdle()
+    }
 
     /** Lets every pending sound and voice play. */
     protected fun playEverything() {

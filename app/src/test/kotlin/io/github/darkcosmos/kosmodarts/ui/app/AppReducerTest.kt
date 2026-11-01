@@ -42,7 +42,7 @@ class AppReducerTest {
     private val lastWinningEvent = AppEvent.NumberTapped(1)
 
     /** The winning dart, then "Finish game" in the checkout dialog. */
-    private val finishEvents = arrayOf(lastWinningEvent, AppEvent.FinishGameTapped)
+    private val finishEvents = arrayOf(lastWinningEvent, AppEvent.FinishGameTapped, AppEvent.ArchiveSucceeded)
 
     private fun inGame(config: X01Config, darts: List<Dart> = emptyList()) =
         AppState(screen = gameScreen(GameScreenState(X01Game(config, darts))))

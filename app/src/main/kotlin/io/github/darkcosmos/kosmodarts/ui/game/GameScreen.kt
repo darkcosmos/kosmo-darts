@@ -264,9 +264,12 @@ private fun GameActions(
             onEvent(AppEvent.NextPlayerTapped)
         }
     } else {
-        BarAction(confirmLabel(outcome), GameTags.CONFIRM, isEnabled = true) { onEvent(AppEvent.FinishGameTapped) }
+        confirmAction(outcome, game.archive, onEvent)
     }
-    ActionBar(undo, primary, minHeight = layout.actionBarMinHeightDp.dp, modifier = modifier.fillMaxWidth())
+    Column(modifier = modifier.fillMaxWidth()) {
+        ArchiveFailedMessage(game.archive)
+        ActionBar(undo, primary, minHeight = layout.actionBarMinHeightDp.dp, modifier = Modifier.fillMaxWidth())
+    }
 }
 
 @Composable

@@ -117,9 +117,15 @@ class MatchSideEffectsTest {
     fun `R14 the match is deleted only at its end or on abandon`() {
         val start = match("Ann", "Bob", legsPerSet = 2)
         val matchWon = events.playLegWonBy(inGame(start.confirmLegsWonBy(0)), winner = 0)
+        val saving = events.after(matchWon, AppEvent.FinishGameTapped)
+        // AR1, AR2: confirming asks the archive once; its answer ends the match, and the archive deletes the save.
         assertEquals(
-            listOf(PersistenceEffect.DeleteGame),
-            persistenceEffects(matchWon, events.after(matchWon, AppEvent.FinishGameTapped)),
+            listOf(PersistenceEffect.ArchiveMatch::class),
+            persistenceEffects(matchWon, saving).map { it::class },
+        )
+        assertEquals(
+            emptyList<PersistenceEffect>(),
+            persistenceEffects(saving, events.after(saving, AppEvent.ArchiveSucceeded)),
         )
         val between = AppState(screen = betweenLegs(start.confirmLegsWonBy(1)))
         val asking = events.after(between, AppEvent.Back)

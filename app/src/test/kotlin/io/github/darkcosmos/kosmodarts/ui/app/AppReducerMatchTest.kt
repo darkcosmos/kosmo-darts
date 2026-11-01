@@ -73,7 +73,8 @@ class AppReducerMatchTest {
         val won = events.playLegWonBy(inGame(match("Ann", "Bob", legsPerSet = 2).confirmLegsWonBy(0)), winner = 0)
         assertEquals(LegOutcome.MATCH, gameOf(won).checkoutOutcome)
 
-        assertEquals(Screen.End(gameOf(won).match), events.after(won, AppEvent.FinishGameTapped).screen)
+        val ended = events.after(won, AppEvent.FinishGameTapped, AppEvent.ArchiveSucceeded)
+        assertEquals(Screen.End(gameOf(won).match), ended.screen)
     }
 
     /** M16: "Next leg" opens the game screen on the new leg, started by the next player (M6). */
