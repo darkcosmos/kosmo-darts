@@ -270,6 +270,12 @@ One `opus` task (T7).
     pas la position XY." `x_mm` and `y_mm` are the only nullable columns: null means "position unknown", for a miss
     and for any dart without a known position, now or from a later source; both null or both set (BC2, ADR 0012).
     Manual entry is unchanged: a hit gets its nominal point, a miss none. Consumers of positions ignore null ones.
+- Design review round 4 (commit 176888a): the four reviewers approved. Minors taken in:
+  - D34 (A11): "both null or both set" is carried by the types: one `BoardPoint?` everywhere, split into
+    `x_mm`/`y_mm` only by the entity mapper; T7 round-trips a miss and a hit (ADR 0012). No database `CHECK`.
+  - D35 (S5): the saved game journal requires an entry time on every dart event (ADR 0011, no "unknown" marker);
+    T5 tests that `T20@-`, `T20` and `T20@` are `MALFORMED`, so `entered_at` never needs a sentinel.
+- Plan approved by Kosmo (D31 to D33) and at design review round 4; no decision is pending.
 
 ## Open questions
 

@@ -47,8 +47,11 @@ deleted (AR8) and must survive every future version (no destructive migration).
 - `reset_at` (plan D32) is `NOT NULL` and equals `created_at` when the profile is created: statistics count from
   the creation; nothing changes it in this mission (PF1).
 - `x_mm` and `y_mm` (plan D33) are the only nullable columns. Null means "position unknown": a miss (BC2), or any
-  dart whose position is not known, now or from a later source. Both are null or both are set: they are written from
-  one `BoardPoint?` (Room has no `CHECK` annotation; T7 tests both cases read back). Every consumer of positions
+  dart whose position is not known, now or from a later source. Both are null or both are set, carried by the types
+  (review A11): every engine and app type holds the position as one `point: BoardPoint?`, never two nullable
+  numbers; only the entity mapper splits it into `x_mm`/`y_mm` on write and joins them on read (a point only when
+  both are set). Room has no `CHECK` annotation, so no database constraint is added; T7 round-trips a miss and a hit
+  on a Robolectric database. Every consumer of positions
   (later heatmap and statistics) ignores darts whose position is null; it never reads them as (0, 0).
 - Every foreign key is `NO ACTION` on delete: nothing is deleted (AR8). Times are epoch milliseconds.
 - `segment`: 0 (miss), 1 to 20, 25 (outer bull and bull, with `multiplier` 1 or 2); `multiplier`: 1 to 3.

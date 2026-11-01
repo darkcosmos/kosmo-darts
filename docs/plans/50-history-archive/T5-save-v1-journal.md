@@ -37,6 +37,8 @@ R26, R28, R29, R30, R9 to R12, R23, DJ4, AR4. ADR 0011 (all sections), ADR 0008 
 - Old layout (review T1): one literal fixture written in the old version 1 saved game layout (`version=1`, no mode
   line, no journal, valid checksum), kept in the test source: rejected, through R9 (file deleted, message once),
   never decoded as a new version 1 game.
+- Entry time required (review S5, D31): a dart event with an unknown-time token (`T20@-`) or without time (`T20`,
+  `T20@`) is `MALFORMED`; ADR 0011 has no "unknown" marker, so `entered_at` never needs a sentinel at archive time.
 - Each R29 rejection: bad UUID, bad time, journal count, DJ4 mismatch, undo with nothing to undo, confirmed journal
   winner mismatch.
 - Size: a match just under 1 MiB round trips; just over is not encoded; 10,000 darts in play plus 500 voided encodes.

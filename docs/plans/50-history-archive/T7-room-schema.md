@@ -47,8 +47,9 @@ ADR 0012 "Tables", "Decision" and "Failure contract".
 - Mandatory columns (D31 to D33): the exported `1.json` has `notNull: true` for every column except exactly
   `dart.x_mm` and `dart.y_mm`; no `has_journal` column; the session is read back with its `started_at` and
   `app_version`, every dart with its `entered_at`.
-- Positions (D33): a hit is read back with both coordinates, a miss and a dart archived without a point with both
-  null (never one of the two).
+- Positions (D33, review A11): Robolectric round trip through the mapper of a hit (read back with the same
+  `BoardPoint`, both columns set) and a miss (point null, both columns null, never one of the two); a dart archived
+  without a point behaves as the miss. Only the entity mapper sees `x_mm`/`y_mm`; other types hold `BoardPoint?`.
 - `reset_at` (D32): a new profile has `reset_at == created_at`; a later upsert of the same name key changes
   `last_used_at` only.
 - 1,000 archived matches: the list query time is logged in the notes (no timing assert). Tests run on the calling
