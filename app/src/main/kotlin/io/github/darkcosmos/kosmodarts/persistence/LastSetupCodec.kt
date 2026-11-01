@@ -4,16 +4,14 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
-import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 
 /**
- * Encodes the last setup file in format version 4 and decodes versions 1 to 4 (docs/adr/0001-save-format.md,
- * docs/adr/0005-save-format-v2-match.md, docs/adr/0006-save-format-v3-colors.md,
- * docs/adr/0008-save-format-v4-modes.md; rules R7, R10, R11, R13, R16 to R18, R22, R23, R25).
+ * Encodes and decodes the last setup file, format version 1 (docs/adr/0011-save-format-v1-journal.md, "Clean slate";
+ * layout of docs/adr/0008-save-format-v4-modes.md; rules R7, R10, R11, R13, R17, R22, R23, R30). A file of any other
+ * version, including a file of an earlier build, is invalid (R10) and never converted.
  *
- * Version 4: one section per mode started, each opened by its mode line (`x01` then `cricket`, at least one), then
- * the shared roster (`players`, one `player` per player, `colors`). Versions 1 to 3 hold an X01 setup only: a
- * version 1 file has the format 1 and 1, versions 1 and 2 have slots by position.
+ * Version 1: one section per mode started, each opened by its mode line (`x01` then `cricket`, at least one), then
+ * the shared roster (`players`, one `player` per player, `colors`).
  */
 class LastSetupCodec {
 
@@ -23,19 +21,13 @@ class LastSetupCodec {
         add(SaveKey.PLAYERS.text to setups.roster.players.size.toString())
         setups.roster.players.forEach { add(SaveKey.PLAYER.text to SaveFormat.encodeName(it)) }
         add(SaveKey.COLORS.text to setups.roster.colorSlots.joinToString(" ") { it.number.toString() })
-    }, VERSION_4)
+    }, VERSION)
 
     /** The last setups, or `null` for any invalid content (rules R10, R23). Never throws. */
     fun decode(bytes: ByteArray): LastSetups? = try {
         ensure(bytes.size <= MAX_FILE_BYTES, InvalidSaveReason.TOO_LARGE)
-        val file = SaveFormat.decode(bytes, KIND, LAYOUTS.keys + VERSION_4)
-        val setups = if (file.version == VERSION_4) {
-            readVersion4(file.reader)
-        } else {
-            // R25: a version 1 to 3 file is an X01 setup; its layout starts with `game`, so a mode line is MALFORMED.
-            val body = readBody(file.reader, LAYOUTS.getValue(file.version))
-            LastSetups.afterX01(previous = null, X01MatchConfig(body.config, body.format, body.colorSlots))
-        }
+        val file = SaveFormat.decode(bytes, KIND, setOf(VERSION))
+        val setups = readSetups(file.reader)
         file.reader.finish()
         setups
     } catch (ignored: InvalidSaveException) {
@@ -64,7 +56,7 @@ class LastSetupCodec {
      * R23: the first body line is a mode line (missing: MALFORMED; unknown value: OUT_OF_RANGE). The X01 section, if
      * any, comes before the Cricket one; a repeated or out-of-order section is MALFORMED.
      */
-    private fun readVersion4(reader: BodyReader): LastSetups {
+    private fun readSetups(reader: BodyReader): LastSetups {
         var mode: SaveMode? = SaveMode.read(reader)
         var x01: X01Settings? = null
         var cricket: CricketSettings? = null
@@ -123,41 +115,7 @@ class LastSetupCodec {
 
         private const val KIND = "last-setup"
 
-        // The last setup keeps its versions 1 to 4 until task T14 of issue #50 restarts it at version 1 (ADR 0011,
-        // R30). The saved game no longer shares these numbers.
-        private const val VERSION_1 = 1
-        private const val VERSION_2 = 2
-        private const val VERSION_3 = 3
-        private const val VERSION_4 = 4
-
-        /** Version 1 (ADR 0001). */
-        private val V1_LAYOUT = listOf(
-            SaveKey.GAME,
-            SaveKey.START_SCORE,
-            SaveKey.CHECKOUT,
-            SaveKey.PLAYERS,
-            SaveKey.PLAYER,
-        )
-
-        /** Version 2 (ADR 0005): version 1 plus the match format after the checkout rule. */
-        private val V2_LAYOUT = listOf(
-            SaveKey.GAME,
-            SaveKey.START_SCORE,
-            SaveKey.CHECKOUT,
-            SaveKey.LEGS_PER_SET,
-            SaveKey.SETS,
-            SaveKey.PLAYERS,
-            SaveKey.PLAYER,
-        )
-
-        /** Version 3 (ADR 0006): version 2 plus the color slots right after the player lines (R17). */
-        private val V3_LAYOUT = V2_LAYOUT + SaveKey.COLORS
-
-        /** The X01-only layouts of versions 1 to 3; version 4 has its own sections ([readVersion4]). */
-        private val LAYOUTS = mapOf(
-            VERSION_1 to V1_LAYOUT,
-            VERSION_2 to V2_LAYOUT,
-            VERSION_3 to V3_LAYOUT,
-        )
+        /** The only version written and read; the saved game numbers its own versions (ADR 0011, R30). */
+        private const val VERSION = 1
     }
 }

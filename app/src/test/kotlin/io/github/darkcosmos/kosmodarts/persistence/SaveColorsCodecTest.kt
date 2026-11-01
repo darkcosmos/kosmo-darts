@@ -64,14 +64,6 @@ class SaveColorsCodecTest {
         assertEquals(listOf(SLOT_2, SLOT_4, SLOT_1), decoded?.roster?.colorSlots)
     }
 
-    /** R18: the frozen version 1 last setup decodes with the slots of the player positions. */
-    @Test
-    fun `R18 a version 1 last setup gets slots by position`() {
-        val bytes = checkNotNull(javaClass.getResourceAsStream("/persistence/v1/last-setup.save")).readBytes()
-
-        assertEquals(ColorSlot.byPosition(3), setupCodec.decode(bytes)?.roster?.colorSlots)
-    }
-
     /** S1, R9: one slot per player, separated by single spaces; another count or an empty token is malformed. */
     @Test
     fun `R9 a colors line with the wrong count is malformed`() {

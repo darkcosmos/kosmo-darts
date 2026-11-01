@@ -41,3 +41,21 @@ sonnet. Why: removal of specified branches with their tests; judging which test 
 care, no design choice.
 
 ## Implementation notes
+- `LastSetupCodec`: own `VERSION = 1` (only version accepted), written content is the former version 4 layout; the
+  `VERSION_1..4` constants, the V1 to V3 layouts, the "no mode line" branch and `LAYOUTS` are gone. `SaveFormat.kt` and
+  `SaveBody.kt` needed no change (T5 had already removed the constants; `readBody` and layouts stay used by the game).
+- Literal old-layout fixture: `SaveFixtures.OLD_V1_LAST_SETUP` (valid checksum, from the former
+  `resources/persistence/v1/last-setup.save`). Tests: `LastSetupCodecTest` `R30 a file in the layout of the old
+  version 1 is ignored` and `R30 a version 4 last setup is ignored`; `SaveLoaderTest` `R30 a last setup in the old
+  version 1 layout is ignored and deleted` (defaults shown, file deleted, game kept).
+- `src/test/resources/persistence/` (v1 and v3 last setups and READMEs) removed. `SaveFuzzTest` unchanged: it still
+  covers both codecs (it never used the constants).
+- Tests deleted, with the rule each withdraws (R30, clean slate):
+  - `LastSetupCodecTest`: `R13 R17 R25 a version 3 last setup is read as X01` (R17, R25), `R25 an older last setup
+    gives the Cricket defaults with the roster` (R25), `R18 a version 2 last setup has slots by position` (R18),
+    `R16 a version 1 last setup is a single game` (R16).
+  - `SaveColorsCodecTest`: `R18 a version 1 last setup gets slots by position` (R18).
+  - `SaveV3CompatibilityTest` (file): `R25 the version 3 last setup decodes to its X01 setup` (R25).
+- Tests adapted, not weakened: `LastSetupCodecTest` `R23 mode line rejections` lost its two entries for a mode line in
+  versions 2 and 3; `R10 keys must follow the layout of their version` became `R10 keys must follow the version 1
+  layout` (version 1 to 3 cases dropped, version 4 cases kept on version 1); the `version=5` case is now `version=2`.

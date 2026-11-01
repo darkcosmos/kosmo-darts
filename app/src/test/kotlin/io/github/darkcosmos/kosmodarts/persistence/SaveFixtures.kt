@@ -92,6 +92,16 @@ internal fun withChecksum(lines: List<String>): ByteArray {
 /** The covered lines (kind to last body line) of a save file: without the checksum, end and final empty lines. */
 internal fun coveredLines(bytes: ByteArray): List<String> = String(bytes, Charsets.UTF_8).lines().dropLast(3)
 
+/**
+ * A literal last setup file in the layout of the old version 1 (no mode line, `game=x01` first), with its valid
+ * checksum, as the first builds wrote it. It must never be read as a version 1 of the current format (R30, R10).
+ */
+internal val SaveFixtures.OLD_V1_LAST_SETUP: ByteArray
+    get() = (
+        "kosmodarts=last-setup\nversion=1\ngame=x01\nstart-score=301\ncheckout=single-out\nplayers=3\n" +
+            "player=Q2lk\nplayer=QW5u\nplayer=Wm/DqQ==\ncrc32=481ddc42\nend\n"
+        ).toByteArray(Charsets.UTF_8)
+
 /** A [ByteStore] in memory, with counters and an optional failure on read or write. */
 internal class MemoryStore(var content: ByteArray? = null) : ByteStore {
     var failOnRead = false
