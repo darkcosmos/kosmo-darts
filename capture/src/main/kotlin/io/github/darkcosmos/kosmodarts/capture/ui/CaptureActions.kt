@@ -20,6 +20,9 @@ data class CaptureActions(
     val onPhotoMessageShown: () -> Unit = {},
     val onAllowCamera: () -> Unit = {},
     val onOpenSettings: () -> Unit = {},
+    val onZoomChanged: (Float) -> Unit = {},
+    val onZoomChangeFinished: () -> Unit = {},
+    val onZoomStep: (Int) -> Unit = {},
 ) {
     companion object {
         /** Actions backed by [viewModel]; the permission requests are supplied by the activity. */
@@ -43,6 +46,9 @@ data class CaptureActions(
             onPhotoMessageShown = viewModel::onPhotoMessageShown,
             onAllowCamera = onAllowCamera,
             onOpenSettings = onOpenSettings,
+            onZoomChanged = viewModel::onZoomChanged,
+            onZoomChangeFinished = viewModel::onZoomChangeFinished,
+            onZoomStep = viewModel::onZoomStep,
         )
     }
 }

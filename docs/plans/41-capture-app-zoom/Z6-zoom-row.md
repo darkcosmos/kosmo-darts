@@ -56,3 +56,8 @@ If a preview height or slider width minimum fails, stop and report to main (layo
 sonnet. Why: screen change from a specified layout, strings and height budget.
 
 ## Implementation notes
+`ZoomRow.kt` renders the row; `CaptureScreen` places it with `padding(bottom = 4.dp)` on top of the 4dp column gap (8dp).
+Added `CaptureTags.CONTROL_ROW` (control row tag, to measure the 8dp gap: its buttons are centred in a 48dp row).
+`ZoomRowTest` holds the layout and semantics tests; `showZoomHarness` applies steps like the view model. Deviation: the
+`TextLayoutResult` of an autosized text is the unshrunk one, so the value text fit is checked on drawn bounds inside its box.
+Swipe test uses explicit offsets (`swipeRight` from the edge sent no change). Extra capture `zoom_unavailable` font scale 2 FR.

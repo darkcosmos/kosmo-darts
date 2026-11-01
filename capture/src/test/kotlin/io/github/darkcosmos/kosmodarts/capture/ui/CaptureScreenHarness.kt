@@ -8,6 +8,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import io.github.darkcosmos.kosmodarts.camera.zoom.ZoomRange
+import io.github.darkcosmos.kosmodarts.camera.zoom.ZoomSelection
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -67,6 +72,39 @@ internal fun AndroidComposeTestRule<ActivityScenarioRule<CaptureActivity>, Captu
 ) {
     runOnUiThread {
         activity.setContent { Scaled(fontScale) { CaptureScreen(state, actions, PLACEHOLDER_PREVIEW) } }
+    }
+    waitForIdle()
+}
+
+/** Ready camera, idle, with a zoom of [ratio] inside the range [min] to [max] (the range is null when not adjustable). */
+internal fun zoomState(ratio: Float, min: Float = 1f, max: Float = 10f): CaptureUiState = CaptureUiState(
+    permission = CameraPermission.GRANTED,
+    cameraReady = true,
+    zoom = ZoomSelection(ratio, ZoomRange.of(min, max)),
+)
+
+/**
+ * Shows the screen with a zoom applied the way the view model does it: a slider move or a step replaces the selection
+ * in a state of the test, so the screen shows the result. [onFinished] counts released gestures.
+ */
+internal fun AndroidComposeTestRule<ActivityScenarioRule<CaptureActivity>, CaptureActivity>.showZoomHarness(
+    initial: CaptureUiState,
+    fontScale: Float = 1f,
+    onChanged: () -> Unit = {},
+    onFinished: () -> Unit = {},
+) {
+    runOnUiThread {
+        activity.setContent {
+            Scaled(fontScale) {
+                var state by remember { mutableStateOf(initial) }
+                val actions = CaptureActions(
+                    onZoomChanged = { position -> onChanged(); state = state.copy(zoom = state.zoom.movedTo(position)) },
+                    onZoomChangeFinished = onFinished,
+                    onZoomStep = { steps -> state = state.copy(zoom = state.zoom.steppedBy(steps)) },
+                )
+                CaptureScreen(state, actions, PLACEHOLDER_PREVIEW)
+            }
+        }
     }
     waitForIdle()
 }

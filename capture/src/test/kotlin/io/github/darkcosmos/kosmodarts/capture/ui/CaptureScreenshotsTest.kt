@@ -19,7 +19,7 @@ class CaptureScreenshotsTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<CaptureActivity>()
 
-    private val granted = CaptureUiState(permission = CameraPermission.GRANTED, cameraReady = true)
+    private val granted = zoomState(2.4f)
     private val running = granted.copy(
         phase = CapturePhase.RUNNING,
         slots = listOf(DartLabel.Text("T20"), DartLabel.Text("5"), null),
@@ -42,7 +42,30 @@ class CaptureScreenshotsTest {
 
     @Test
     @Config(qualifiers = "en-w915dp-h412dp-land-xxhdpi")
-    fun `landscape 915x412 english`() = captureAll("915x412_en", fontScale = 1f)
+    fun `zoom at minimum english`() = captureOne("zoom_at_minimum", "915x412_en", zoomState(1f))
+
+    @Test
+    @Config(qualifiers = "en-w915dp-h412dp-land-xxhdpi")
+    fun `zoom unavailable english`() = captureOne("zoom_unavailable", "915x412_en", zoomState(1f, max = 1f))
+
+    @Test
+    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")
+    fun `zoom unavailable french`() = captureOne("zoom_unavailable", "915x412_fr", zoomState(1f, max = 1f))
+
+    @Test
+    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")
+    fun `zoom unavailable font scale 2 french`() =
+        captureOne("zoom_unavailable", "915x412_font2_fr", zoomState(1f, max = 1f), fontScale = 2f)
+
+    private fun captureOne(name: String, suffix: String, state: CaptureUiState, fontScale: Float = 1f) {
+        val directory = System.getProperty(SCREENSHOT_DIR_PROPERTY, DEFAULT_SCREENSHOT_DIR)
+        composeRule.showState(state, fontScale = fontScale)
+        composeRule.onRoot().captureRoboImage("$directory/capture_${name}_$suffix.png")
+    }
+
+    @Test
+    @Config(qualifiers = "en-w915dp-h412dp-land-xxhdpi")
+    fun `landscape 915x412 english`()= captureAll("915x412_en", fontScale = 1f)
 
     @Test
     @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")

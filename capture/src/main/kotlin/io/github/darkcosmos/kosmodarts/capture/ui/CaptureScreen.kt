@@ -58,6 +58,10 @@ import io.github.darkcosmos.kosmodarts.capture.ui.theme.States
 /** Height of buttons and keys in landscape (CLAUDE.md exception, owner decision Q14). */
 internal val CONTROL_HEIGHT = 42.dp
 
+/** Zoom buttons: 48dp wide (the landscape exception covers the height only), as tall as the other controls. */
+internal val ZOOM_BUTTON_WIDTH = 48.dp
+internal val ZOOM_BUTTON_HEIGHT = CONTROL_HEIGHT
+
 private const val PREVIEW_COLUMN_WEIGHT = 0.55f
 private const val KEYPAD_COLUMN_WEIGHT = 0.45f
 private val KEY_GAP = 4.dp
@@ -147,6 +151,8 @@ private fun PreviewColumn(
                 }
             }
         }
+        // 4dp from the column arrangement plus 4dp here: 8dp towards the control row (DZ13).
+        ZoomRow(state, actions, Modifier.padding(bottom = KEY_GAP))
         ControlRow(state, actions)
     }
 }
@@ -238,7 +244,7 @@ private fun RecIndicator() {
 private fun ControlRow(state: CaptureUiState, actions: CaptureActions) {
     val deleteDescription = stringResource(R.string.delete_all_description)
     FlowRow(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag(CaptureTags.CONTROL_ROW),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalArrangement = Arrangement.spacedBy(KEY_GAP),
         itemVerticalAlignment = Alignment.CenterVertically,

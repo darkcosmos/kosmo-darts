@@ -50,4 +50,10 @@
     <string name="error_saving">L\'enregistrement a échoué : la session est arrêtée. Les fichiers déjà enregistrés sont conservés.</string>
     <string name="error_delete_all">La suppression a échoué : certains fichiers peuvent rester sur le téléphone.</string>
     <string name="error_dismiss">Fermer</string>
+    <string name="zoom_description">Zoom</string>
+    <string name="zoom_value">%1$.1f×</string>
+    <string name="zoom_state">%1$.1f fois</string>
+    <string name="zoom_unavailable">Zoom non disponible</string>
+    <string name="zoom_out_description">Réduire le zoom</string>
+    <string name="zoom_in_description">Augmenter le zoom</string>
 </resources>

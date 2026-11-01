@@ -51,4 +51,12 @@
     <string name="error_saving">Saving failed: the session was stopped. Files saved until now are kept.</string>
     <string name="error_delete_all">Deleting failed: some files may remain on the phone.</string>
     <string name="error_dismiss">Dismiss</string>
+    <string name="zoom_description">Zoom</string>
+    <string name="zoom_value">%1$.1f×</string>
+    <string name="zoom_state">%1$.1f times</string>
+    <string name="zoom_unavailable">Zoom not available</string>
+    <string name="zoom_out_description">Zoom out</string>
+    <string name="zoom_in_description">Zoom in</string>
+    <string name="zoom_out_symbol" translatable="false">−</string>
+    <string name="zoom_in_symbol" translatable="false">+</string>
 </resources>
