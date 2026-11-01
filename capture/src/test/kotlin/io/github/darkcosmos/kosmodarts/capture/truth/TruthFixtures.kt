@@ -22,6 +22,7 @@ internal object TruthFixtures {
         endedAt: Stamp? = null,
         endReason: EndReason? = null,
         device: DeviceInfo = DeviceInfo(manufacturer = "Google", model = "Pixel 7", sdk = 37),
+        zoom: ZoomRecord = ZoomRecord(requestedRatio = 2.4f, ratio = 2.4f),
     ): TruthSession =
         TruthSession(
             session = "20261031-140322",
@@ -32,6 +33,7 @@ internal object TruthFixtures {
             endReason = endReason,
             video = VideoSettings(VideoQuality.UHD, Resolution(width = 3840, height = 2160)),
             photo = PhotoSettings(Resolution(width = 4080, height = 3072), TimestampSource.REALTIME),
+            zoom = zoom,
             volleys = volleys,
         )
 

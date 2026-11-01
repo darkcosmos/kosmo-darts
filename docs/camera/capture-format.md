@@ -1,6 +1,7 @@
-# Kosmo Capture truth file format, version 1
+# Kosmo Capture truth file format, version 2
 
-Status: v1 (issue #41, camera phase 0a). Written by the Kosmo Capture app (`:capture`), read by the phase 0b tools.
+Status: v2 (issue #41, camera phase 0a; version 2 adds the zoom record, CP17). Version 1 is described in the section
+"Version 1" at the end. Written by the Kosmo Capture app (`:capture`), read by the phase 0b tools.
 Rules cited as CPn are in `docs/rules/capture.md`; the dart values follow rules D1 and D2 of `docs/rules/x01.md`.
 Reference implementation: `capture/src/main/kotlin/io/github/darkcosmos/kosmodarts/capture/truth/` (`TruthJson`).
 
@@ -37,11 +38,13 @@ Download/KosmoCapture/<session>/
 ## Version policy
 
 - `format` is always `"kosmo-capture-truth"` and `version` an integer. A reader checks both first and rejects any
-  other format or any version it does not know (lower or higher). This reader knows version 1 only.
+  other format or any version it does not know (lower or higher). This reader knows version 2 only: it rejects a
+  version 1 file with "unsupported version 1" and does not migrate it.
 - Any change to the file (a field added, removed or renamed, a new allowed value, a change of unit or meaning)
-  increases `version` by 1 and is described in a new section of this document. Version 1 has no optional field, so
-  a version 1 reader also rejects unknown fields.
-- The app writes one version only. Files of an older version stay readable only through a reader that knows it.
+  increases `version` by 1 and is described in a new section of this document. Version 2 has no optional field, so
+  a version 2 reader also rejects unknown fields.
+- The app writes one version only (version 2). Files of an older version stay readable only through a reader that
+  knows it; see "Version 1".
 
 ## Clocks and alignment
 
@@ -71,7 +74,7 @@ Root object:
 | Field | Type | Meaning |
 |---|---|---|
 | `format` | string | Always `"kosmo-capture-truth"`. |
-| `version` | integer | `1` for this document. |
+| `version` | integer | `2` for this document. |
 | `session` | string | Session folder name (CP1). |
 | `app` | object | `id`: application id (`io.github.darkcosmos.kosmodarts.capture`); `version`: version name. |
 | `device` | object | `manufacturer`, `model` (strings) and `sdk` (integer, Android API level) of the phone. |
@@ -81,6 +84,7 @@ Root object:
 | `endReason` | string or null | `"STOP"` (Stop confirmed, CP6) or `"INTERRUPTED"` (screen really left, camera or recording error, CP9); null exactly when `endedAt` is null. |
 | `video` | object | `requestedQuality`: `"UHD"` (4K) or `"FHD"` (1080p), the quality setting (CP11); `width`, `height`: actual video size in pixels. |
 | `photo` | object | `width`, `height`: actual photo size in pixels (CP11); `timestampSource`: `"REALTIME"` or `"UNKNOWN"`. |
+| `zoom` | object | Zoom of the session, recorded once at Start (CP17). `requestedRatio`: the zoom ratio the app last asked the camera for, null when it asked none; `ratio`: the zoom ratio the camera reported at Start, null when it reported none. Each is a float (written like `gravity`) or null, finite and greater than 0 when not null; the two may differ. No upper bound is enforced: the values are whatever the app asked or the camera reported, so phase 0b tools must not assume a plausible range (for example, they must handle a ratio above 1000 themselves). |
 | `volleys` | array of volley | At least one; indexes 1, 2, 3... in order. |
 
 Volley:
@@ -131,7 +135,7 @@ device strings show the escaping.
 ```json
 {
   "format": "kosmo-capture-truth",
-  "version": 1,
+  "version": 2,
   "session": "20261031-140322",
   "app": {
     "id": "io.github.darkcosmos.kosmodarts.capture",
@@ -161,6 +165,10 @@ device strings show the escaping.
     "width": 4080,
     "height": 3072,
     "timestampSource": "REALTIME"
+  },
+  "zoom": {
+    "requestedRatio": 2.4,
+    "ratio": 2.4
   },
   "volleys": [
     {
@@ -238,3 +246,12 @@ device strings show the escaping.
   ]
 }
 ```
+
+## Version 1
+
+Version 1 is identical to version 2 without the root `zoom` object: `"version": 1`, and `photo` is followed directly
+by `volleys`. Every other field, rule and limit is the same.
+
+Every version 1 file was recorded by an app without zoom control, so at the CameraX default zoom ratio 1.0. A phase
+0b tool that reads version 1 files may treat them as `zoom` 1.0 (`requestedRatio` null, `ratio` 1.0). The reference
+reader does not: it knows version 2 only and rejects version 1 with "unsupported version 1".

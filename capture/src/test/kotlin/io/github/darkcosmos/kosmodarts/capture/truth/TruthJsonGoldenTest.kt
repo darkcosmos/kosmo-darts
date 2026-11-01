@@ -7,7 +7,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * The exact text of a small truth file (CP3 to CP6, CP10, CP13): fixed key order, two-space indentation, non-ASCII
+ * The exact text of a small truth file, version 2 (CP3 to CP6, CP10, CP13, CP17): fixed key order, two-space indentation, non-ASCII
  * written as UTF-8, quotes, backslashes and control characters escaped, no trailing newline. The example of
  * `docs/camera/capture-format.md` is this text; update both together.
  */
@@ -58,7 +58,7 @@ class TruthJsonGoldenTest {
         val GOLDEN: String = """
             {
               "format": "kosmo-capture-truth",
-              "version": 1,
+              "version": 2,
               "session": "20261031-140322",
               "app": {
                 "id": "io.github.darkcosmos.kosmodarts.capture",
@@ -88,6 +88,10 @@ class TruthJsonGoldenTest {
                 "width": 4080,
                 "height": 3072,
                 "timestampSource": "REALTIME"
+              },
+              "zoom": {
+                "requestedRatio": 2.4,
+                "ratio": 2.4
               },
               "volleys": [
                 {

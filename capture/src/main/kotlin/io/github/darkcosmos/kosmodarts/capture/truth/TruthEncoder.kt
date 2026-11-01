@@ -35,6 +35,10 @@ internal object TruthEncoder {
                 "height" to number(session.photo.resolution.height.toLong()),
                 "timestampSource" to string(session.photo.timestampSource.name),
             ),
+            "zoom" to obj(
+                "requestedRatio" to float(session.zoom.requestedRatio),
+                "ratio" to float(session.zoom.ratio),
+            ),
             "volleys" to JsonArray(session.volleys.map(::volley)),
         )
 
@@ -86,4 +90,6 @@ internal object TruthEncoder {
     private fun string(value: String): JsonValue = JsonString(value)
 
     private fun number(value: Long): JsonValue = JsonNumber(value.toString())
+
+    private fun float(value: Float?): JsonValue = value?.let { JsonNumber(it.toString()) } ?: JsonNull
 }

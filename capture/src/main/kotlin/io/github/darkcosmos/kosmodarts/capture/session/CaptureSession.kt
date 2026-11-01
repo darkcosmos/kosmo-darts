@@ -11,6 +11,7 @@ import io.github.darkcosmos.kosmodarts.capture.truth.TruthPhoto
 import io.github.darkcosmos.kosmodarts.capture.truth.TruthSession
 import io.github.darkcosmos.kosmodarts.capture.truth.TruthVolley
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoSettings
+import io.github.darkcosmos.kosmodarts.capture.truth.ZoomRecord
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import java.time.temporal.ChronoUnit
 
@@ -43,12 +44,13 @@ data class CaptureOutcome(
     val failedPhoto: Int? = null,
 )
 
-/** What a session records about the app, the phone and the camera, known at Start. */
+/** What a session records about the app, the phone and the camera, known at Start (zoom: rule CP17). */
 data class CaptureSetup(
     val app: AppInfo,
     val device: DeviceInfo,
     val video: VideoSettings,
     val photo: PhotoSettings,
+    val zoom: ZoomRecord,
 )
 
 /**
@@ -78,7 +80,7 @@ data class CaptureSession(
         val first = TruthVolley(1, CaptureNaming.videoFile(1), now, null, emptyList())
         val folder = CaptureNaming.sessionFolder(now.utc, existingFolders)
         val created = TruthSession(
-            folder, setup.app, setup.device, now, null, null, setup.video, setup.photo, listOf(first),
+            folder, setup.app, setup.device, now, null, null, setup.video, setup.photo, setup.zoom, listOf(first),
         )
         return CaptureOutcome(
             CaptureSession(created),

@@ -25,6 +25,7 @@ import io.github.darkcosmos.kosmodarts.capture.truth.Resolution
 import io.github.darkcosmos.kosmodarts.capture.truth.TimestampSource
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoQuality
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoSettings
+import io.github.darkcosmos.kosmodarts.capture.truth.ZoomRecord
 import io.github.darkcosmos.kosmodarts.capture.ui.theme.KosmoDartsTheme
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.test.ext.junit.rules.ActivityScenarioRule
@@ -44,6 +45,7 @@ internal fun testViewModel(settingsFile: File): CaptureViewModel {
         device = DeviceInfo("Google", "Pixel 7", 37),
         video = VideoSettings(VideoQuality.UHD, Resolution(3840, 2160)),
         photo = PhotoSettings(Resolution(4080, 3072), TimestampSource.REALTIME),
+        zoom = ZoomRecord(requestedRatio = 2.4f, ratio = 2.4f),
     )
     return CaptureViewModel(FakeClock(), FakeCaptureStorage(), CaptureSettings(settingsFile))
         .also {

@@ -29,6 +29,7 @@ internal object TruthDecoder {
                 endReason = root.enumOrNull("endReason", EndReason.entries),
                 video = video(root.obj("video")),
                 photo = photoSettings(root.obj("photo")),
+                zoom = zoom(root.obj("zoom")),
                 volleys = root.objects("volleys").map(::volley),
             )
         }
@@ -60,6 +61,11 @@ internal object TruthDecoder {
                 resolution = Resolution(width = fields.int("width"), height = fields.int("height")),
                 timestampSource = fields.enum("timestampSource", TimestampSource.entries),
             )
+        }.also { fields.finish() }
+
+    private fun zoom(fields: JsonFields): ZoomRecord =
+        build(fields.path) {
+            ZoomRecord(requestedRatio = fields.floatOrNull("requestedRatio"), ratio = fields.floatOrNull("ratio"))
         }.also { fields.finish() }
 
     private fun volley(fields: JsonFields): TruthVolley {

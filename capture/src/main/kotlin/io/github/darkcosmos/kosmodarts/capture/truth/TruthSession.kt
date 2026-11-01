@@ -18,6 +18,7 @@ data class TruthSession(
     val endReason: EndReason?,
     val video: VideoSettings,
     val photo: PhotoSettings,
+    val zoom: ZoomRecord,
     val volleys: List<TruthVolley>,
 ) {
 
@@ -58,3 +59,18 @@ data class VideoSettings(val requestedQuality: VideoQuality, val resolution: Res
 
 /** The actual [resolution] of the photos (rule CP11) and the camera's sensor [timestampSource]. */
 data class PhotoSettings(val resolution: Resolution, val timestampSource: TimestampSource)
+
+/**
+ * Zoom of the session, recorded once at Start (rule CP17): [requestedRatio] is the ratio the app last asked the camera
+ * for (null when it asked none) and [ratio] the ratio the camera reported (null when it reported none). Each value is
+ * null or finite and greater than 0; no upper bound is enforced.
+ */
+data class ZoomRecord(val requestedRatio: Float?, val ratio: Float?) {
+
+    init {
+        require(requestedRatio.isValidRatio()) { "requestedRatio must be null or finite and greater than 0" }
+        require(ratio.isValidRatio()) { "ratio must be null or finite and greater than 0" }
+    }
+
+    private fun Float?.isValidRatio(): Boolean = this == null || (isFinite() && this > 0f)
+}

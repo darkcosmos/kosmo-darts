@@ -31,6 +31,8 @@ internal class JsonFields(private val members: Map<String, JsonValue>, val path:
     fun float(key: String): Float =
         (value(key) as? JsonNumber)?.text?.toFloatOrNull()?.takeIf { it.isFinite() } ?: wrongType(key, "a float")
 
+    fun floatOrNull(key: String): Float? = if (isNull(key)) null else float(key)
+
     fun <E : Enum<E>> enum(key: String, entries: List<E>): E {
         val name = string(key)
         return entries.firstOrNull { it.name == name } ?: wrongType(key, "one of ${entries.joinToString()}")

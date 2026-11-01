@@ -19,8 +19,11 @@ object TruthJson {
     /** Value of the `format` field. */
     const val FORMAT: String = "kosmo-capture-truth"
 
-    /** Value of the `version` field; the only version this reader accepts. */
-    const val VERSION: Int = 1
+    /**
+     * Value of the `version` field; the only version this reader accepts. Version 2 added the `zoom` object (rule
+     * CP17); version 1 files are rejected, not migrated (they were all recorded at zoom 1.0, see the format document).
+     */
+    const val VERSION: Int = 2
 
     /** Value of the `clock` field: the monotonic clock of every `monotonicNanos` (rule CP10). */
     const val CLOCK: String = "elapsedRealtimeNanos"

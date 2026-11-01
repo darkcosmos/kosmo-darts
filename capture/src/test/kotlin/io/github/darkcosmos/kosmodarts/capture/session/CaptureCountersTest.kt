@@ -7,6 +7,7 @@ import io.github.darkcosmos.kosmodarts.capture.truth.Resolution
 import io.github.darkcosmos.kosmodarts.capture.truth.TimestampSource
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoQuality
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoSettings
+import io.github.darkcosmos.kosmodarts.capture.truth.ZoomRecord
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -18,6 +19,7 @@ class CaptureCountersTest {
         DeviceInfo("Google", "Pixel 7", 37),
         VideoSettings(VideoQuality.FHD, Resolution(1920, 1080)),
         PhotoSettings(Resolution(4080, 3072), TimestampSource.UNKNOWN),
+        ZoomRecord(requestedRatio = null, ratio = 1f),
     )
     private val clock = FakeClock()
 

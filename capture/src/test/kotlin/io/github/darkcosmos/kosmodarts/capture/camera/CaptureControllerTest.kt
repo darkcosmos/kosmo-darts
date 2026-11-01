@@ -11,6 +11,7 @@ import io.github.darkcosmos.kosmodarts.capture.truth.TimestampSource
 import io.github.darkcosmos.kosmodarts.capture.truth.TruthDecodeResult
 import io.github.darkcosmos.kosmodarts.capture.truth.TruthJson
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoQuality
+import io.github.darkcosmos.kosmodarts.capture.truth.ZoomRecord
 import io.github.darkcosmos.kosmodarts.capture.ui.CameraPermission
 import io.github.darkcosmos.kosmodarts.capture.ui.CapturePhase
 import io.github.darkcosmos.kosmodarts.capture.ui.CaptureViewModel
@@ -189,6 +190,27 @@ class CaptureControllerTest {
         // Dart 1: entry and photo stamps, both before the Start event.
         assertEquals(2, Regex("\"videoPositionMs\"\\s*:\\s*null").findAll(truth).count())
         assertTrue(Regex("\"videoPositionMs\"\\s*:\\s*1000").containsMatchIn(truth))
+    }
+
+    @Test
+    fun `CP17 setup copies the camera zoom ratio, with no requested ratio`() {
+        val app = AppInfo("io.github.darkcosmos.kosmodarts.capture", "0.1.0")
+        val device = DeviceInfo("Google", "Pixel 7", 37)
+        fun setupZoom() = controller.setup(app, device, VideoQuality.UHD).zoom
+
+        camera.zoomRatio = 2.4f
+        assertEquals(ZoomRecord(requestedRatio = null, ratio = 2.4f), setupZoom())
+        camera.zoomRatio = null
+        assertEquals(ZoomRecord(requestedRatio = null, ratio = null), setupZoom())
+    }
+
+    @Test
+    fun `CP17 the zoom at Start is written to the truth file`() {
+        camera.zoomRatio = 2.4f
+        val vm = viewModel()
+        vm.onStart()
+        val decoded = TruthJson.decode(lastTruth()) as TruthDecodeResult.Success
+        assertEquals(ZoomRecord(requestedRatio = null, ratio = 2.4f), decoded.session.zoom)
     }
 
     @Test

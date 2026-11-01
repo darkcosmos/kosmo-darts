@@ -9,6 +9,7 @@ import io.github.darkcosmos.kosmodarts.capture.truth.TimestampSource
 import io.github.darkcosmos.kosmodarts.capture.truth.TruthSession
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoQuality
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoSettings
+import io.github.darkcosmos.kosmodarts.capture.truth.ZoomRecord
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import java.time.Instant
@@ -27,6 +28,7 @@ class CaptureSessionTest {
         device = DeviceInfo("Google", "Pixel 7", 37),
         video = VideoSettings(VideoQuality.UHD, Resolution(3840, 2160)),
         photo = PhotoSettings(Resolution(4080, 3072), TimestampSource.REALTIME),
+        zoom = ZoomRecord(requestedRatio = 2.4f, ratio = 2.4f),
     )
     private val clock = FakeClock()
     private val t20 = Dart(20, Multiplier.TRIPLE)
@@ -47,6 +49,7 @@ class CaptureSessionTest {
         assertEquals(listOf<CaptureEffect>(CaptureEffect.StartVideo(1, "volley-001.mp4")), outcome.effects)
         assertTrue(outcome.session.running)
         assertNull(truth.endedAt)
+        assertEquals("CP17 zoom recorded at Start", setup.zoom, truth.zoom)
     }
 
     @Test

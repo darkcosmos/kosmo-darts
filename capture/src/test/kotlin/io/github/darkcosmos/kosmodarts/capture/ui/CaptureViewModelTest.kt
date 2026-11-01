@@ -13,6 +13,7 @@ import io.github.darkcosmos.kosmodarts.capture.truth.Resolution
 import io.github.darkcosmos.kosmodarts.capture.truth.TimestampSource
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoQuality
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoSettings
+import io.github.darkcosmos.kosmodarts.capture.truth.ZoomRecord
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import org.junit.Assert.assertEquals
@@ -58,6 +59,7 @@ class CaptureViewModelTest {
         device = DeviceInfo("Google", "Pixel 7", 37),
         video = VideoSettings(VideoQuality.UHD, Resolution(3840, 2160)),
         photo = PhotoSettings(Resolution(4080, 3072), TimestampSource.REALTIME),
+        zoom = ZoomRecord(requestedRatio = 2.4f, ratio = 2.4f),
     )
 
     private fun settings() = CaptureSettings(folder.root.resolve("settings.txt"))

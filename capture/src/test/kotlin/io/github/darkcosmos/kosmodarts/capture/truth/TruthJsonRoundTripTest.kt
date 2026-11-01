@@ -7,10 +7,11 @@ import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Encode then decode gives back the same session (CP3, CP4, CP5, CP6, CP9, CP10, CP13). */
+/** Encode then decode gives back the same session (CP3, CP4, CP5, CP6, CP9, CP10, CP13, CP17). */
 class TruthJsonRoundTripTest {
 
     private fun roundTrip(session: TruthSession): TruthSession {
@@ -46,6 +47,61 @@ class TruthJsonRoundTripTest {
         assertNull(decoded.endedAt)
         assertNull(decoded.endReason)
         assertNull(decoded.volleys.last().end)
+    }
+
+    @Test
+    fun `CP17 zoom requested 2_4 and reported 2_3999999 round trip exactly`() {
+        val zoom = ZoomRecord(requestedRatio = 2.4f, ratio = 2.3999999f)
+
+        val decoded = roundTrip(TruthFixtures.full().copy(zoom = zoom))
+
+        assertEquals(zoom, decoded.zoom)
+    }
+
+    @Test
+    fun `CP17 zoom with both values null round trips`() {
+        val zoom = ZoomRecord(requestedRatio = null, ratio = null)
+
+        val decoded = roundTrip(TruthFixtures.session(TruthFixtures.killed().volleys, zoom = zoom))
+
+        assertEquals(zoom, decoded.zoom)
+    }
+
+    @Test
+    fun `CP17 zoom values have no upper bound and exponent forms round trip`() {
+        listOf(
+            ZoomRecord(requestedRatio = 1500f, ratio = 1.0E10f),
+            ZoomRecord(requestedRatio = 1.0E-4f, ratio = Float.MIN_VALUE),
+            ZoomRecord(requestedRatio = null, ratio = Float.MAX_VALUE),
+        ).forEach { zoom ->
+            val decoded = roundTrip(TruthFixtures.session(TruthFixtures.killed().volleys, zoom = zoom))
+
+            assertEquals(zoom, decoded.zoom)
+        }
+    }
+
+    @Test
+    fun `CP9 CP17 killed session keeps its zoom record`() {
+        val session = TruthFixtures.killed().copy(zoom = ZoomRecord(requestedRatio = 3f, ratio = 2.9f))
+
+        val decoded = roundTrip(session)
+
+        assertEquals(session, decoded)
+        assertNull(decoded.endedAt)
+        assertEquals(ZoomRecord(requestedRatio = 3f, ratio = 2.9f), decoded.zoom)
+    }
+
+    @Test
+    fun `CP17 ZoomRecord refuses NaN, infinities, 0 and negative ratios`() {
+        val invalid = listOf(Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY, 0f, -0f, -1f, -Float.MIN_VALUE)
+        invalid.forEach { value ->
+            assertThrows("requestedRatio $value", IllegalArgumentException::class.java) {
+                ZoomRecord(requestedRatio = value, ratio = 1f)
+            }
+            assertThrows("ratio $value", IllegalArgumentException::class.java) {
+                ZoomRecord(requestedRatio = 1f, ratio = value)
+            }
+        }
     }
 
     @Test

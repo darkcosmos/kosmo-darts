@@ -7,6 +7,7 @@ import io.github.darkcosmos.kosmodarts.capture.truth.DeviceInfo
 import io.github.darkcosmos.kosmodarts.capture.truth.PhotoSettings
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoQuality
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoSettings
+import io.github.darkcosmos.kosmodarts.capture.truth.ZoomRecord
 import io.github.darkcosmos.kosmodarts.capture.ui.CaptureEffects
 import io.github.darkcosmos.kosmodarts.capture.ui.CaptureReports
 
@@ -27,7 +28,10 @@ class CaptureController(private val camera: CaptureCamera) : CaptureEffects, Cap
         this.reports = reports
     }
 
-    /** The session setup with the actual resolutions and the timestamp source (rule CP11). */
+    /**
+     * The session setup with the actual resolutions and the timestamp source (rule CP11) and the zoom ratio the camera
+     * reports (rule CP17); `requestedRatio` stays null here, the view model fills it.
+     */
     fun setup(app: AppInfo, device: DeviceInfo, quality: VideoQuality): CaptureSetup = CaptureSetup(
         app = app,
         device = device,
@@ -36,6 +40,7 @@ class CaptureController(private val camera: CaptureCamera) : CaptureEffects, Cap
             checkNotNull(camera.photoResolution) { "Camera is not bound" },
             camera.timestampSource,
         ),
+        zoom = ZoomRecord(requestedRatio = null, ratio = camera.zoomRatio),
     )
 
     override fun startVideo(volley: Int, target: CaptureOutputTarget) {

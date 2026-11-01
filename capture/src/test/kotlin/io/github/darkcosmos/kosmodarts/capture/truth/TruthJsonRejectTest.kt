@@ -8,7 +8,7 @@ import org.junit.Test
 
 /**
  * The decoder is strict (format and version policy of `docs/camera/capture-format.md`; darts per rule D2 through the
- * engine; stamps per CP10; voided per CP4; empty per CP5; end of session per CP6 and CP9).
+ * engine; stamps per CP10; voided per CP4; empty per CP5; end of session per CP6 and CP9; zoom per CP17).
  */
 class TruthJsonRejectTest {
 
@@ -39,11 +39,46 @@ class TruthJsonRejectTest {
 
     @Test
     fun `rejects any other version, checked before the rest of the file`() {
-        assertRejected(golden("\"version\": 1,", "\"version\": 2,"), "$.version", "unsupported version 2")
-        assertRejected(golden("\"version\": 1,", "\"version\": 0,"), "unsupported version 0")
-        assertRejected(golden("\"version\": 1,", "\"version\": \"1\","), "$.version", "expected an integer")
-        assertRejected(golden("\"version\": 1,", "\"version\": 1.0,"), "$.version", "expected an integer")
-        assertRejected("{\"format\": \"kosmo-capture-truth\", \"version\": 2}", "unsupported version 2")
+        assertRejected(golden("\"version\": 2,", "\"version\": 3,"), "$.version", "unsupported version 3")
+        assertRejected(golden("\"version\": 2,", "\"version\": 0,"), "unsupported version 0")
+        assertRejected(golden("\"version\": 2,", "\"version\": \"2\","), "$.version", "expected an integer")
+        assertRejected(golden("\"version\": 2,", "\"version\": 2.0,"), "$.version", "expected an integer")
+        assertRejected("{\"format\": \"kosmo-capture-truth\", \"version\": 3}", "unsupported version 3")
+    }
+
+    @Test
+    fun `CP17 rejects a valid version 1 file, which is not migrated`() {
+        val version1 = GOLDEN.replace("\"version\": 2,", "\"version\": 1,").replace(ZOOM_BLOCK, "")
+        assertFalse("zoom left in the version 1 text", version1.contains("zoom"))
+
+        assertRejected(version1, "$.version", "unsupported version 1")
+        // The zoom block alone does not make a version 1 file acceptable either.
+        assertRejected(golden("\"version\": 2,", "\"version\": 1,"), "$.version", "unsupported version 1")
+    }
+
+    @Test
+    fun `CP17 rejects a missing, mistyped or extended zoom object`() {
+        assertRejected(golden(ZOOM_BLOCK, ""), "$.zoom", "missing field")
+        assertRejected(golden(ZOOM_BLOCK, "  \"zoom\": 2.4,\n"), "$.zoom", "expected an object")
+        assertRejected(golden(ZOOM_BLOCK, "  \"zoom\": null,\n"), "$.zoom", "expected an object")
+        assertRejected(golden("\"ratio\": 2.4", "\"ratio\": 2.4, \"min\": 1.0"), "$.zoom", "unknown field \"min\"")
+        assertRejected(golden(",\n    \"ratio\": 2.4", ""), "$.zoom.ratio", "missing field")
+        assertRejected(golden("\"requestedRatio\": 2.4,\n    ", ""), "$.zoom.requestedRatio", "missing field")
+    }
+
+    @Test
+    fun `CP17 rejects zoom ratios that are not null nor finite and greater than 0`() {
+        assertRejected(golden("\"ratio\": 2.4", "\"ratio\": 0"), "$.zoom", "ratio must be null or finite")
+        assertRejected(golden("\"ratio\": 2.4", "\"ratio\": -1"), "$.zoom", "ratio must be null or finite")
+        assertRejected(golden("\"ratio\": 2.4", "\"ratio\": \"2.4\""), "$.zoom.ratio", "expected a float")
+        assertRejected(golden("\"ratio\": 2.4", "\"ratio\": 1e999"), "$.zoom.ratio", "expected a float")
+        assertRejected(golden("\"ratio\": 2.4", "\"ratio\": true"), "$.zoom.ratio", "expected a float")
+        assertRejected(
+            golden("\"requestedRatio\": 2.4", "\"requestedRatio\": 0"), "$.zoom", "requestedRatio must be null or finite",
+        )
+        assertRejected(
+            golden("\"requestedRatio\": 2.4", "\"requestedRatio\": -0.0"), "$.zoom", "requestedRatio must be null",
+        )
     }
 
     @Test
@@ -170,5 +205,10 @@ class TruthJsonRejectTest {
         assertRejected("é".repeat(limit / 2 + 1), "larger than $limit bytes")
         // Exactly at the limit: parsed, and rejected as JSON instead.
         assertRejected(" ".repeat(limit), "Invalid JSON", "unexpected end")
+    }
+
+    private companion object {
+        /** The `zoom` member of [GOLDEN], with its indentation and newline: what version 2 added to version 1. */
+        const val ZOOM_BLOCK = "  \"zoom\": {\n    \"requestedRatio\": 2.4,\n    \"ratio\": 2.4\n  },\n"
     }
 }
