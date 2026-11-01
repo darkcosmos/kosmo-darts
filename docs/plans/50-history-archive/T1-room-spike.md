@@ -45,3 +45,20 @@ ADR 0012. D3.
 sonnet. Why: build wiring with a written fallback rule; no design choice left.
 
 ## Implementation notes
+- Versions re-checked 2026-11-01: Room 2.8.5 (Google Maven, latest 2.8.x; Room3 3.0.3 exists), KSP 2.3.13 (Maven
+  Central). Room 2.8.5 + KSP 2.3.13 compile with AGP 9.4.1 built-in Kotlin and Kotlin 2.4.21 first try: no fallback to
+  Room3 was needed.
+- Wiring: catalog entries `room`, `ksp`, `androidx-room-runtime`, `androidx-room-compiler`, plugins `ksp` and
+  `androidx-room` (declared `apply false` in the root build, applied in `app`); `room { schemaDirectory }` in
+  `app/build.gradle.kts`; `ksp(libs.androidx.room.compiler)`. Schema `app/schemas/.../HistoryDatabase/1.json`
+  committed; unchanged after a second build.
+- Code: `history/HistoryDatabase.kt` (placeholder `ProfileEntity`, `ProfileDao`, `HistoryDatabase`,
+  `KeepCorruptFileOpenHelperFactory`). T7 replaces the placeholder and keeps `KeepCorruptFileOpenHelperFactory`.
+- Merged manifest (debug and release): no `INTERNET`, no new permission, no new exported component. The only addition
+  is `androidx.room.MultiInstanceInvalidationService` with `exported="false"` (`directBootAware="true"`).
+- Corrupt file (open question 1, answered): a supported way exists. `RoomDatabase.Builder.openHelperFactory` with a
+  `SupportSQLiteOpenHelper.Factory` that wraps the configuration callback in a `SupportSQLiteOpenHelper.Callback`
+  whose `onCorruption` is empty (the default implementation deletes the file). Verified by Robolectric tests: garbage
+  bytes in `kosmo-history.db`, first and second access throw a `RuntimeException`, the file still exists with the same
+  bytes. Control test: with Room's default factory the original bytes are gone (file replaced). Use
+  `allowMainThreadQueries()` only in tests.

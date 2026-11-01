@@ -2,6 +2,7 @@
 
 - Status: Proposed (design review of issue #50); accepted when its PR is merged. T1 of
   `docs/plans/50-history-archive.md` records here whether Room 2.8 or Room3 is used (fallback rule, decision D3).
+  T1 result: Room 2.8.5 with KSP 2.3.13 compiles and runs with Kotlin 2.4.21; Room3 is not used.
 
 ## Context
 
@@ -80,9 +81,12 @@ deleted (AR8) and must survive every future version (no destructive migration).
 - The database is opened lazily, on the queue or the read executor, never on the main thread. A corrupt file is
   neither deleted nor recreated by the app: Room is built without a destructive fallback, and the default corruption
   handler of the framework is replaced by one that only reports the failure (`openHelperFactory` with a callback
-  whose `onCorruption` does nothing), so the next access fails again with `Failed`. If the Room version in use offers
-  no supported way to do this, T1 stops and reports to main (plan, open question 1) instead of working around it.
-  T1 completes this point with the Room version, the API used and the verified behavior before T7 starts (review A8).
+  whose `onCorruption` does nothing), so the next access fails again with `Failed`.
+- Verified in T1 (review A8) with Room 2.8.5 (no fallback to Room3 was needed): `RoomDatabase.Builder.openHelperFactory`
+  takes `KeepCorruptFileOpenHelperFactory`, which wraps Room's `SupportSQLiteOpenHelper.Callback` in one whose
+  `onCorruption` is empty. On a database file of garbage bytes, every access throws a `RuntimeException` and the file
+  keeps its bytes; with Room's default factory the framework replaces the file (Robolectric tests
+  `HistoryDatabaseSpikeTest`). T7 uses this factory and does not choose.
 - Mapping: AR4 check `Failed` means "keep the save";
   archive `Failed` gives `ArchiveFailed` (AR3); History and detail `Failed` give the HS7 failure state.
 - Tests use a repository fake that returns `Failed` and a closed in-memory database (a real exception path).
