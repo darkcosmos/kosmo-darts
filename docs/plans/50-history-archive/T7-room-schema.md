@@ -65,3 +65,34 @@ no sleep and no idling wait; `kosmo-detekt` exit 0.
 opus. Why: case "new or changed stored format" (schema v1 that can never be dropped, no destructive migration).
 
 ## Implementation notes
+- Code in `app/.../history/`: `HistoryEntities.kt` (the six entities, enum columns via Room's built-in enum-as-text
+  converter), `ProfileDao.kt` (abstract class: `findByNameKey`, `@Transaction upsertUsed(name, nameKey, at): Long`),
+  `ArchiveDao.kt` (interface: `isArchived(matchUuid)` for T9's `ArchiveCheck`, inserts only), `HistoryDao.kt`
+  (`matchSummaries(mode?, profileId?)`, `matchPlayers(mode?, profileId?)` with the same filters, so no `IN` list over
+  1,000 ids; `profilesByRecency`, `matchSummary`, `playersOf`, `legsOf`, `dartsOf`; `null` filter = "All"),
+  `ArchiveMapper.kt`, `SettingsText.kt` (`encode`, `decode(text, mode)`), `DbResult.kt` (`DbResult` and the
+  `dbResult { }` wrapper every repository uses), `ArchiveRepository.kt`, `HistoryDatabase.kt`
+  (`builder(context)` / `open(context)`, `keepingCorruptFile()`; `KeepCorruptFileOpenHelperFactory` of T1 kept).
+- Deviations and choices a later task must know:
+  - Name key: `PlayerListRules.nameKey` is made public by T8, so `ArchiveRepository(database, nameKey, archiveDao)`
+    takes the key function; T9 wires `PlayerListRules::nameKey`. Tests use trim + lower case.
+  - Profile time at archive: `upsertUsed(..., at = archived.startedAt)` (PF2: last use = start). `upsertUsed`
+    moves `last_used_at` only forward (`MAX`), never changes name, `created_at` or `reset_at`.
+  - Bull: the engine's bull (segment 50, single) is stored as segment 25, multiplier 2, as ADR 0012 says; only
+    `ArchiveMapper` converts, both ways. `ArchiveMapper.archivedDart(DartWithLegRow)` gives back the engine
+    `ArchivedDart` (with `point: BoardPoint?`): T12 reads darts through it, never `x_mm`/`y_mm`.
+  - Read faults: an unreadable stored dart or settings text throws `IllegalStateException`, which `dbResult` maps to
+    `Failed` (HS7). `colorsArgb` is one ARGB per player by position; a wrong size gives `Failed` without writing.
+  - `dbResult` catches `android.database.SQLException` (all `SQLiteException`s) and `IllegalStateException`; the
+    cause is dropped, never logged.
+  - Tests build the database with `inMemoryHistoryDatabase(context)` / `onCallingThread()` (`HistoryFixtures.kt`:
+    direct executors, `allowMainThreadQueries`, `FakeClock`, `x01Match`, `cricketMatch`); reuse them in T8 to T12.
+  - `HistoryDatabaseSpikeTest` (T1) now uses the real DAOs; its corrupt-file control tests are unchanged.
+- Corrupt file: garbage `kosmo-history.db` opened through `HistoryDatabase.builder` gives `Failed` for the archive and
+  every read, twice, and keeps its bytes (`HistoryDatabaseFailureTest`). A closed database gives `Failed` everywhere.
+- 1,000 archived matches (2 players, 2 legs, 7 darts each): the three list queries (summaries, players, one
+  filtered summary) took 52 ms in total under Robolectric on the sandbox (`HistoryDaoTest`, printed, not asserted).
+- Merged manifest (debug and release) after this task: no `INTERNET`, no new permission, no new exported component;
+  `MultiInstanceInvalidationService` stays `exported="false"`. T7 adds no dependency and no manifest entry.
+- Checks: `./gradlew :game-engine:test`, `./gradlew :app:testDebugUnitTest`, `./gradlew build` green; second build
+  leaves `app/schemas/` clean; `kosmo-detekt` exit 0.
