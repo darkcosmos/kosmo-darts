@@ -40,3 +40,13 @@ CP17, CP9 (killed session reads back), format rules of `docs/camera/capture-form
 opus. Why: new stored format version (case 1): schema change, strict decoder, version 1 rejected and documented.
 
 ## Implementation notes
+- `ZoomRecord` lives in `TruthSession.kt`; `TruthSession.zoom` sits between `photo` and `volleys` (positional
+  constructor order changed). Invalid values fail with "requestedRatio must be null or finite and greater than 0" /
+  "ratio must be ...", reported by the decoder at path `$.zoom`; type errors at `$.zoom.ratio` ("expected a float").
+- `CaptureSetup.zoom` is required (no default). `CaptureController.setup` returns `ZoomRecord(null, camera.zoomRatio)`;
+  Z5 must replace `requestedRatio` (for example `setup.copy(zoom = setup.zoom.copy(requestedRatio = ...))` in the
+  view model's setup provider path) so that Start records the last ratio asked.
+- Extra tests beyond the list: exponent forms and no upper bound (1500, 1e10, `Float.MIN_VALUE`, `Float.MAX_VALUE`)
+  round trip; `-0.0` rejected; Start copies `setup.zoom` (`CaptureSessionTest`); the zoom at Start reaches
+  `truth.json` through the controller (`CaptureControllerTest`). `CaptureCountersTest` fixture also updated.
+- The format document example equals `TruthJsonGoldenTest.GOLDEN` (checked by diff before commit).
