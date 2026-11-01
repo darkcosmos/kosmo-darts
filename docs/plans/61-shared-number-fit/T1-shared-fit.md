@@ -37,3 +37,8 @@ byte-identical to `a6745c5` (`cmp`), with the file count written in the notes; `
 sonnet. Why: small specified refactoring inside `:app`, with listed tests; no stored format, no cross-module change.
 
 ## Implementation notes
+- No deviation. Helper in `ui/components/FittedNumberSize.kt`; `ScoreArea` and `CricketZoneTotal` call
+  `rememberFittedNumberSize`. `remember` keys `(constraints, style, baseSize, density, reference)` are the union of the
+  original keys of both callers (checked against the original code).
+- `MprReferenceWidthTest`: "8,8" and "8.8" measure the same width; the A2 comment is on `ZONE_MPR_REFERENCE`.
+- Captures: 212 PNG in both directories, same names, `cmp` finds 0 difference against `a6745c5`.
