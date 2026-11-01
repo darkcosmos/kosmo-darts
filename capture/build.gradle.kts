@@ -84,6 +84,13 @@ tasks.withType<Test>().configureEach {
 dependencies {
     implementation(project(":game-engine"))
 
+    constraints {
+        // Transitive through camera-video -> media3: imposes the release that fixes GHSA-xxph-c9ww-hj94 (high).
+        implementation(libs.guava) {
+            because("GHSA-xxph-c9ww-hj94: guava before 33.7.2 is vulnerable; CameraX brings 33.3.1-android")
+        }
+    }
+
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
