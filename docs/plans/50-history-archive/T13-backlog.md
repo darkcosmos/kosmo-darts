@@ -31,3 +31,6 @@ None (documentation only).
 haiku. Why: three documentation entries whose text is given.
 
 ## Implementation notes
+- T1 kept Room 2.8.5 (no Room3 fallback), so the first entry is "Evaluate the move from Room 2.8 to Room3", as written.
+- `docs/backlog.md` created with the title, one purpose line and the three items; item 3 names "the GitHub issue opened
+  by T15" without a number, as the task file says (T15 does not change this file).
