@@ -39,6 +39,7 @@
     <string name="setup_player_placeholder">Nom du joueur %1$d</string>
     <string name="setup_add_player">AJOUTER UN JOUEUR</string>
     <string name="setup_remove_player">Retirer %1$s</string>
+    <string name="setup_use_name">Utiliser le nom %1$s</string>
     <string name="setup_shuffle">MÉLANGER</string>
     <string name="setup_start">COMMENCER</string>
     <string name="setup_error_blank_name">Saisissez un nom</string>

@@ -8,6 +8,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerListRules
+import io.github.darkcosmos.kosmodarts.history.Profile
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
@@ -22,6 +24,8 @@ import io.github.darkcosmos.kosmodarts.ui.setup.SetupScreen
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 import io.github.darkcosmos.kosmodarts.ui.setup.withBullInPlay
 import io.github.darkcosmos.kosmodarts.ui.setup.withCricketVariant
+import io.github.darkcosmos.kosmodarts.ui.setup.withFocusOn
+import io.github.darkcosmos.kosmodarts.ui.setup.withProfiles
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 import org.junit.Rule
 import org.junit.Test
@@ -98,6 +102,43 @@ class CricketSetupScreenshotTest {
         "setup_font200_fr",
         cricketSetup.withCricketVariant(CricketVariant.CUT_THROAT),
     )
+
+    private val known = listOf("Kevin", "Zoé", "Anna", "Maximilien-Alexandre", "Bob").mapIndexed { rank, name ->
+        Profile(name, PlayerListRules.nameKey(name), 100L - rank)
+    }
+
+    private val cricketAnna = SetupState(names = listOf("Anna", "")).copy(mode = GameMode.CRICKET)
+
+    private fun withSuggestions(state: SetupState) = state.withProfiles(known).withFocusOn(1)
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun setupSuggestionsCricket() = setup("setup_suggestions_fr", withSuggestions(cricketAnna))
+
+    @Test
+    @Config(qualifiers = "+fr-port", fontScale = LARGEST_FONT_SCALE)
+    fun setupSuggestionsCricketLargestFont() =
+        setup("setup_suggestions_font200_fr", withSuggestions(cricketAnna))
+
+    @Test
+    @Config(qualifiers = "+fr-land", fontScale = LARGEST_FONT_SCALE)
+    fun setupSuggestionsCricketLandscapeLargestFont() =
+        setup("setup_suggestions_land_font200_fr", withSuggestions(cricketAnna))
+
+    @Test
+    @Config(qualifiers = "+fr-port", fontScale = LARGEST_FONT_SCALE)
+    fun setupSuggestionsX01LargestFont() =
+        setup("x01_setup_suggestions_font200_fr", withSuggestions(SetupState(names = listOf("Anna", ""))))
+
+    @Test
+    @Config(qualifiers = "+fr-land", fontScale = LARGEST_FONT_SCALE)
+    fun setupSuggestionsX01LandscapeLargestFont() =
+        setup("x01_setup_suggestions_land_font200_fr", withSuggestions(SetupState(names = listOf("Anna", ""))))
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun setupSuggestionsEnglish() =
+        setup("x01_setup_suggestions_en", withSuggestions(SetupState(names = listOf("Anna", ""))))
 
     @Test
     @Config(qualifiers = "+fr-port")

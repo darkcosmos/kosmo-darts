@@ -9,6 +9,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
+import io.github.darkcosmos.kosmodarts.history.Profile
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.ui.cricket.CricketGameScreenState
@@ -165,6 +166,18 @@ sealed interface AppEvent {
     data class BullInPlayToggled(val isInPlay: Boolean) : AppEvent
 
     data class NameChanged(val index: Int, val name: String) : AppEvent
+
+    /** The name field at [index] got the focus (PF3). */
+    data class NameFieldFocused(val index: Int) : AppEvent
+
+    /** The name field at [index] lost the focus (PF3). */
+    data class NameFieldFocusLost(val index: Int) : AppEvent
+
+    /** A tap on the profile suggestion [name] under the field at [index] (PF3). */
+    data class SuggestionPicked(val index: Int, val name: String) : AppEvent
+
+    /** The profiles read when the setup opened; an unreadable archive gives an empty list (PF3, AR9). */
+    data class ProfilesLoaded(val profiles: List<Profile>) : AppEvent
 
     data object PlayerAdded : AppEvent
 

@@ -3,7 +3,9 @@ package io.github.darkcosmos.kosmodarts.persistence
 import androidx.annotation.VisibleForTesting
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMatch
 import io.github.darkcosmos.kosmodarts.history.ArchiveCheck
+import io.github.darkcosmos.kosmodarts.history.DbResult
 import io.github.darkcosmos.kosmodarts.history.MatchArchiveRequest
+import io.github.darkcosmos.kosmodarts.history.Profile
 import io.github.darkcosmos.kosmodarts.history.ProfileRepository
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
@@ -80,6 +82,17 @@ class Persistence(
     fun touchProfiles(names: List<String>, at: Long) {
         val repository = profiles ?: return
         executor.execute { repository.touchOrCreate(names, at) }
+    }
+
+    /**
+     * Reads the profiles for the setup suggestions (PF3) on the queue, after every write still pending. [onResult] gets
+     * them, most recently used first; a failed read (AR9) or no repository gives an empty list. On the queue thread.
+     */
+    fun loadProfiles(onResult: (List<Profile>) -> Unit) {
+        executor.execute {
+            val read = profiles?.recent()
+            onResult((read as? DbResult.Ok)?.value.orEmpty())
+        }
     }
 
     /**

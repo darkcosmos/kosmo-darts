@@ -110,7 +110,8 @@ class PersistenceEffectsTest {
     fun `R3 Delete in the new-game dialog deletes the saved game`() {
         val dialog = AppState(screen = Screen.Home(SaveFixtures.MID_TURN, newGameDialogMode = GameMode.X01))
 
-        assertEquals(listOf(PersistenceEffect.DeleteGame), effectsOf(dialog, AppEvent.NewGameConfirmed))
+        val expected = listOf(PersistenceEffect.DeleteGame, PersistenceEffect.LoadProfiles)
+        assertEquals(expected, effectsOf(dialog, AppEvent.NewGameConfirmed))
     }
 
     @Test

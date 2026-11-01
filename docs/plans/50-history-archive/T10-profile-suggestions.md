@@ -41,3 +41,18 @@ PF3, PC9, R7, R22, M13, AR9; D18.
 sonnet. Why: screen change from written rules with a pure state function tested on the JVM.
 
 ## Implementation notes
+- `ui/setup/ProfileSuggestions.kt`: pure `suggestions(profiles, names, focused)` (key "contains" in memory, other fields
+  excluded by key, exact-text profile hidden, recency order, max 5). `SetupState` gained `profiles` and `focusedIndex`;
+  the helpers `suggestionsFor`, `withProfiles`, `withFocusOn`, `withFocusLostBy` are extension functions (detekt
+  function count). Remove and shuffle reset the focus.
+- Events `NameFieldFocused`, `NameFieldFocusLost`, `SuggestionPicked` (reuses `withName`: focus and prefill untouched),
+  `ProfilesLoaded`. Effect `LoadProfiles` is emitted by `persistenceEffects` when the setup opens from another screen;
+  `Persistence.loadProfiles` answers on the queue, `Failed` or no repository gives an empty list. The two tests that
+  expected `[DeleteGame]` on opening the setup now expect `[DeleteGame, LoadProfiles]`.
+- Limitation: a setup shown at launch (restore-failed dialog) reads no profiles, so it has no suggestions.
+- `PlayerNameRow`: `SuggestionSpec`, rows of at least 48dp under the row (button role, description « Utiliser le nom X »),
+  brought into view once when the list first shows (not per key). When the list shrinks at the end of the scroll the
+  content can move up or down by the height difference; this is scroll clamping, not a layout shift under a tap.
+- Tests: `ProfileSuggestionsTest` (JVM), `SetupSuggestionsScreenTest` (Compose). Captures in `CricketSetupScreenshotTest`
+  (6, portrait/landscape, fontScale 2, FR and EN). I viewed the portrait and landscape font 200 PNGs: rows readable,
+  nothing clipped, START stays visible. The others were recorded, not inspected. The real IME is not simulated.

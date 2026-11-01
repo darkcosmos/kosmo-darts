@@ -50,6 +50,7 @@
     <string name="setup_minus_symbol" translatable="false">−</string>
     <string name="setup_add_player">ADD A PLAYER</string>
     <string name="setup_remove_player">Remove %1$s</string>
+    <string name="setup_use_name">Use the name %1$s</string>
     <string name="setup_shuffle">SHUFFLE</string>
     <string name="setup_start">START</string>
     <string name="setup_error_blank_name">Enter a name</string>

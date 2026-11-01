@@ -118,7 +118,8 @@ class CricketSetupFlowTest {
 
         assertEquals(GameMode.X01, (asked.screen as Screen.Home).newGameDialogMode)
         assertEquals(GameMode.X01, setup.setup().mode)
-        assertEquals(listOf(PersistenceEffect.DeleteGame), persistenceEffects(asked, setup))
+        val expected = listOf(PersistenceEffect.DeleteGame, PersistenceEffect.LoadProfiles)
+        assertEquals(expected, persistenceEffects(asked, setup))
     }
 
     /** R20, R21: after a kill, the saved Cricket game is offered on the home screen, or its screen comes back. */

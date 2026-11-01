@@ -23,6 +23,9 @@ sealed interface PersistenceEffect {
     /** PF2: create or touch the profiles of [names] at [at], the match start time. */
     data class TouchProfiles(val names: List<String>, val at: Long) : PersistenceEffect
 
+    /** PF3: read the profiles for the suggestions; the answer comes back as [AppEvent.ProfilesLoaded]. */
+    data object LoadProfiles : PersistenceEffect
+
     /**
      * AR1, AR2: write [archived] to the history with one ARGB color per player, then delete the saved game, only if the
      * write succeeded. The answer comes back as [AppEvent.ArchiveSucceeded] or [AppEvent.ArchiveFailed].
@@ -64,8 +67,18 @@ fun persistenceEffects(before: AppState, after: AppState): List<PersistenceEffec
         else -> PersistenceEffect.SaveGame(savedAfter)
     }
     val setupEffect = after.lastSetup?.takeIf { it != before.lastSetup }?.let(PersistenceEffect::SaveLastSetup)
-    return listOfNotNull(setupEffect, gameEffect, touchProfilesEffect(before, after), archiveEffect(before, after))
+    return listOfNotNull(
+        setupEffect,
+        gameEffect,
+        touchProfilesEffect(before, after),
+        archiveEffect(before, after),
+        loadProfilesEffect(before, after),
+    )
 }
+
+/** PF3: the profiles are read each time the setup opens (and only then). */
+private fun loadProfilesEffect(before: AppState, after: AppState): PersistenceEffect.LoadProfiles? =
+    PersistenceEffect.LoadProfiles.takeIf { after.screen is Screen.Setup && before.screen !is Screen.Setup }
 
 /** The match being written to the history while [state] is shown (AR3), or `null`. */
 private fun archiveOf(state: AppState): ArchivedMatch? {
@@ -111,6 +124,7 @@ fun Persistence.applyEffects(effects: List<PersistenceEffect>, onEvent: (AppEven
             PersistenceEffect.DeleteGame -> deleteGame()
             is PersistenceEffect.SaveLastSetup -> saveLastSetup(effect.setups)
             is PersistenceEffect.TouchProfiles -> touchProfiles(effect.names, effect.at)
+            PersistenceEffect.LoadProfiles -> loadProfiles { onEvent(AppEvent.ProfilesLoaded(it)) }
             is PersistenceEffect.ArchiveMatch ->
                 archiveMatch(effect.archived, effect.colorsArgb) { isArchived ->
                     onEvent(if (isArchived) AppEvent.ArchiveSucceeded else AppEvent.ArchiveFailed)
