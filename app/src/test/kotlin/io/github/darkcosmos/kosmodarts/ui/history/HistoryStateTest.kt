@@ -92,6 +92,14 @@ class HistoryStateTest {
     }
 
     @Test
+    fun `the snapshot of an open match detail round-trips its session`() {
+        val filters = HistoryFilters(ArchivedMode.CRICKET, 4)
+        val snapshot = HistorySnapshot(filters, HistoryScroll(3, 8), detailSessionId = 17)
+        assertEquals(snapshot, HistorySnapshot.decode(snapshot.encode()))
+        assertNull(HistorySnapshot.decode(snapshot.copy(detailSessionId = null).encode())?.detailSessionId)
+    }
+
+    @Test
     fun `the default snapshot round-trips`() {
         val snapshot = HistoryState().snapshot()
         assertEquals(snapshot, HistorySnapshot.decode(snapshot.encode()))
@@ -103,13 +111,17 @@ class HistoryStateTest {
             null,
             "",
             "-;-;0",
+            "-;-;0;0",
             "-;-;0;0;0",
-            "DARTS;-;0;0",
-            "X01;abc;0;0",
-            "-;-;x;0",
-            "-;-;0;y",
-            "-;-;-1;0",
-            "-;-;0;-5",
+            "-;-;0;0;-3",
+            "-;-;0;0;abc",
+            "-;-;0;0;-;-",
+            "DARTS;-;0;0;-",
+            "X01;abc;0;0;-",
+            "-;-;x;0;-",
+            "-;-;0;y;-",
+            "-;-;-1;0;-",
+            "-;-;0;-5;-",
         ).forEach { assertNull("should refuse: $it", HistorySnapshot.decode(it)) }
     }
 }

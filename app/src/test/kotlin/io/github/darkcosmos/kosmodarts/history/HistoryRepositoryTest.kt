@@ -104,6 +104,60 @@ class HistoryRepositoryTest {
         assertEquals(DbResult.Failed, repository.list(HistoryFilters(ArchivedMode.X01, 1L)))
     }
 
+    private fun detail(sessionId: Long): MatchDetail = (repository.match(sessionId) as DbResult.Ok).value
+
+    @Test
+    fun `HS5 the detail gives the settings, times, players, legs and every dart, voided ones included`() {
+        val match = x01Match(matchId = "m1", clock = clock)
+        archive(match)
+        val sessionId = read().matches.single().sessionId
+
+        val detail = detail(sessionId)
+
+        assertEquals(sessionId, detail.sessionId)
+        assertEquals(match.startedAt, detail.startedAt)
+        assertEquals(match.endedAt, detail.endedAt)
+        assertEquals(match.settings, detail.settings)
+        assertEquals(listOf("Ana", "Bob"), detail.players.map { it.name })
+        assertEquals(match.legs, detail.legs)
+        assertEquals(match.darts.size, detail.darts.size)
+        assertEquals(1, detail.darts.count { it.isVoided })
+        assertEquals(true, detail.darts.any { it.legOrdinal == 1 && it.isBust })
+    }
+
+    @Test
+    fun `HS5 a Cricket match comes back with its variant and Bull setting`() {
+        val match = cricketMatch(matchId = "m2", clock = clock)
+        archive(match)
+        assertEquals(match.settings, detail(read().matches.single().sessionId).settings)
+    }
+
+    @Test
+    fun `HS5 the detail of a match that does not exist gives Failed`() {
+        archive(x01Match(matchId = "m1", clock = clock))
+        assertEquals(DbResult.Failed, repository.match(9_999L))
+    }
+
+    @Test
+    fun `AR9 HS7 the detail of a closed database gives Failed, not an exception`() {
+        archive(x01Match(matchId = "m1", clock = clock))
+        val sessionId = read().matches.single().sessionId
+        db.close()
+        assertEquals(DbResult.Failed, repository.match(sessionId))
+    }
+
+    @Test
+    fun `HS7 a leg or a dart naming a player that is not in the match gives Failed`() {
+        archive(x01Match(matchId = "m1", clock = clock))
+        val sessionId = read().matches.single().sessionId
+        db.openHelper.writableDatabase.execSQL("UPDATE leg SET winner_position = 9")
+        assertEquals(DbResult.Failed, repository.match(sessionId))
+
+        db.openHelper.writableDatabase.execSQL("UPDATE leg SET winner_position = 0")
+        db.openHelper.writableDatabase.execSQL("UPDATE dart SET player_position = 7")
+        assertEquals(DbResult.Failed, repository.match(sessionId))
+    }
+
     @Test
     fun `HS5 a thousand matches are read in one go, the time is only reported`() {
         repeat(MATCH_COUNT) { index ->

@@ -5,11 +5,12 @@ import io.github.darkcosmos.kosmodarts.history.ArchiveCheck
 import io.github.darkcosmos.kosmodarts.history.ArchiveGateway
 import io.github.darkcosmos.kosmodarts.history.ArchiveOutcome
 import io.github.darkcosmos.kosmodarts.history.DbResult
-import io.github.darkcosmos.kosmodarts.history.HistoryList
+import io.github.darkcosmos.kosmodarts.history.HistoryFilters
 import io.github.darkcosmos.kosmodarts.history.HistoryRepository
 import io.github.darkcosmos.kosmodarts.history.MatchArchiveRequest
 import io.github.darkcosmos.kosmodarts.persistence.AtomicFileStore
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
+import io.github.darkcosmos.kosmodarts.ui.history.FakeHistoryRepository
 import java.io.File
 
 /**
@@ -28,14 +29,18 @@ class TestKosmoDartsApplication : KosmoDartsApplication() {
             executor = { it.run() },
             archiveRequest = MatchArchiveRequest(archive, "test"),
             archiveCheck = ArchiveCheck(archive),
-            history = HistoryRepository { filters -> history.list(filters) },
+            history = object : HistoryRepository {
+                override fun list(filters: HistoryFilters) = history.list(filters)
+
+                override fun match(sessionId: Long) = history.match(sessionId)
+            },
         )
     }
 
     companion object {
         /** What the History screen of a test reads; a test sets it before it opens History, and puts it back after. */
         @Volatile
-        var history: HistoryRepository = HistoryRepository { DbResult.Ok(HistoryList(emptyList(), emptyList())) }
+        var history: HistoryRepository = FakeHistoryRepository()
     }
 }
 

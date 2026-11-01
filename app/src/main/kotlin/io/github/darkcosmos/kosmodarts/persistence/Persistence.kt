@@ -7,6 +7,7 @@ import io.github.darkcosmos.kosmodarts.history.DbResult
 import io.github.darkcosmos.kosmodarts.history.HistoryFilters
 import io.github.darkcosmos.kosmodarts.history.HistoryList
 import io.github.darkcosmos.kosmodarts.history.HistoryRepository
+import io.github.darkcosmos.kosmodarts.history.MatchDetail
 import io.github.darkcosmos.kosmodarts.history.MatchArchiveRequest
 import io.github.darkcosmos.kosmodarts.history.Profile
 import io.github.darkcosmos.kosmodarts.history.ProfileRepository
@@ -107,6 +108,14 @@ class Persistence(
      */
     fun loadHistory(filters: HistoryFilters, onResult: (DbResult<HistoryList>) -> Unit) {
         readExecutor.execute { onResult(history?.list(filters) ?: DbResult.Failed) }
+    }
+
+    /**
+     * Reads the match of session [sessionId] for the detail screen (HS5) on the read executor, like [loadHistory].
+     * [onResult] gets the match, or [DbResult.Failed] when the read fails or no history is configured (AR9, HS7).
+     */
+    fun loadMatch(sessionId: Long, onResult: (DbResult<MatchDetail>) -> Unit) {
+        readExecutor.execute { onResult(history?.match(sessionId) ?: DbResult.Failed) }
     }
 
     /**

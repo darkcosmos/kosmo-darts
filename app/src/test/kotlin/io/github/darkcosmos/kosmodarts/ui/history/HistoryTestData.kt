@@ -11,6 +11,7 @@ import io.github.darkcosmos.kosmodarts.history.HistoryMatch
 import io.github.darkcosmos.kosmodarts.history.HistoryPlayer
 import io.github.darkcosmos.kosmodarts.history.HistoryProfile
 import io.github.darkcosmos.kosmodarts.history.HistoryRepository
+import io.github.darkcosmos.kosmodarts.history.MatchDetail
 
 const val BLUE: Int = 0xFF2196F3.toInt()
 const val ORANGE: Int = 0xFFFF9800.toInt()
@@ -63,11 +64,27 @@ fun okList(matches: List<HistoryMatch>, profiles: List<HistoryProfile> = emptyLi
     DbResult.Ok(HistoryList(matches, profiles))
 
 /** A repository that answers [answer] to every read and records the filters asked for. */
-class FakeHistoryRepository(var answer: DbResult<HistoryList> = okList(emptyList())) : HistoryRepository {
+class FakeHistoryRepository(
+    var answer: DbResult<HistoryList> = okList(emptyList()),
+    var matchAnswer: DbResult<MatchDetail> = DbResult.Failed,
+) : HistoryRepository {
     val asked = mutableListOf<HistoryFilters>()
+    val matchesAsked = mutableListOf<Long>()
 
     override fun list(filters: HistoryFilters): DbResult<HistoryList> {
         asked += filters
         return answer
     }
+
+    override fun match(sessionId: Long): DbResult<MatchDetail> {
+        matchesAsked += sessionId
+        return matchAnswer
+    }
+}
+
+/** A repository whose list is computed by [read]; the detail of a match always fails. */
+fun listRepository(read: (HistoryFilters) -> DbResult<HistoryList>): HistoryRepository = object : HistoryRepository {
+    override fun list(filters: HistoryFilters): DbResult<HistoryList> = read(filters)
+
+    override fun match(sessionId: Long): DbResult<MatchDetail> = DbResult.Failed
 }

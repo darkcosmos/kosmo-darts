@@ -12,6 +12,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMode
 import io.github.darkcosmos.kosmodarts.history.DbResult
 import io.github.darkcosmos.kosmodarts.history.HistoryList
+import io.github.darkcosmos.kosmodarts.history.MatchDetail
 import io.github.darkcosmos.kosmodarts.history.Profile
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.persistence.StoredGame
@@ -19,6 +20,7 @@ import io.github.darkcosmos.kosmodarts.ui.cricket.CricketGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.game.CheckoutSummary
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
+import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 
 /** The screen on display, with its content. There is no navigation library: the screen is plain state. */
@@ -57,6 +59,12 @@ sealed interface Screen {
      * scroll position live in [history] so that Back from the detail can restore them (HS6).
      */
     data class History(val home: Home, val history: HistoryState = HistoryState()) : Screen
+
+    /**
+     * The read-only detail of one archived match (HS5, HS6). It keeps the whole [list] screen it came from, so that
+     * Back returns to History with its filters, matches and scroll position, without a new read.
+     */
+    data class MatchDetail(val list: History, val detail: MatchDetailState) : Screen
 
     /**
      * Between two legs of a match, after "Finish leg" or "Finish set" (docs/rules/match.md, M16). [match] already has
@@ -263,11 +271,17 @@ sealed interface AppEvent {
     /** The list stopped scrolling at [index], [offset] pixels into it (HS6). */
     data class HistoryScrolled(val index: Int, val offset: Int) : AppEvent
 
-    /** A tap on the row of the match of session [sessionId]; the detail screen opens (HS5, task T12). */
+    /** A tap on the row of the match of session [sessionId]; the detail screen opens (HS5). */
     data class HistoryMatchTapped(val sessionId: Long) : AppEvent
 
     /** The answer to read [loadId] of History (HS7); an answer to an older read is ignored. */
     data class HistoryLoaded(val loadId: Int, val result: DbResult<HistoryList>) : AppEvent
+
+    /** "Retry" after a failed read of the match detail (HS7). */
+    data object MatchDetailRetryTapped : AppEvent
+
+    /** The answer to read [loadId] of the match detail (HS7); an answer to an older read is ignored. */
+    data class MatchDetailLoaded(val loadId: Int, val result: DbResult<MatchDetail>) : AppEvent
 
     /** The game screen found no usable voice (AN16). The ViewModel decides whether the message shows. */
     data class VoiceUnavailable(val canInstall: Boolean) : AppEvent

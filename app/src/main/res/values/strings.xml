@@ -282,4 +282,31 @@
     <string name="history_failed">The history cannot be read right now.</string>
     <string name="history_retry">Retry</string>
     <string name="history_loading">Loading the history</string>
+
+    <!-- Match detail (docs/rules/history.md, HS5) -->
+    <string name="detail_title">MATCH</string>
+    <string name="detail_duration">Duration: %1$s</string>
+    <string name="detail_duration_under_a_minute">less than a minute</string>
+    <plurals name="detail_duration_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
+    <plurals name="detail_duration_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <string name="detail_duration_separator" translatable="false">" "</string>
+    <string name="detail_rank" translatable="false">%1$d. %2$s</string>
+    <string name="detail_leg_starter">Started by %1$s</string>
+    <string name="detail_leg_winner">Won by %1$s</string>
+    <plurals name="detail_visit_marks">
+        <item quantity="one">%d mark</item>
+        <item quantity="other">%d marks</item>
+    </plurals>
+    <string name="detail_visit_total_description">Total %1$d</string>
+    <string name="detail_visit_description">%1$s: %2$s. %3$s</string>
+    <string name="detail_dart_miss_spoken">Miss</string>
+    <string name="detail_dart_spoken_separator" translatable="false">", "</string>
+    <string name="detail_failed">This match cannot be read right now.</string>
+    <string name="detail_loading">Loading the match</string>
 </resources>

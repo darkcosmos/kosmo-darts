@@ -59,6 +59,15 @@ object ArchiveMapper {
         winnerPosition = leg.winnerPosition,
     )
 
+    /** The archived leg of [entity]. */
+    fun archivedLeg(entity: LegEntity): ArchivedLeg = ArchivedLeg(
+        ordinal = entity.ordinal,
+        setNumber = entity.setNumber,
+        legNumberInSet = entity.legNumber,
+        starterPosition = entity.starterPosition,
+        winnerPosition = entity.winnerPosition,
+    )
+
     /** The row of [dart] in leg [legId]; its position goes to both coordinates or to neither (D33). */
     fun dart(dart: ArchivedDart, legId: Long): DartEntity {
         val isBull = dart.segment == Dart.BULL_SEGMENT

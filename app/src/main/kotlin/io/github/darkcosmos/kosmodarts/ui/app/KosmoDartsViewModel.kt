@@ -49,11 +49,15 @@ class KosmoDartsViewModel(
         get() = mutableState.value.screen.isGameOrBetweenLegs
 
     /**
-     * The filters and scroll position to store when the activity may be killed, or `null` outside History (HS6). The
-     * detail screen of T12 reports the History screen it came from.
+     * The filters and scroll position to store when the activity may be killed, or `null` outside History (HS6). Over
+     * the match detail, it also holds the session of that match, so that the detail comes back.
      */
     val historySnapshot: HistorySnapshot?
-        get() = (mutableState.value.screen as? Screen.History)?.history?.snapshot()
+        get() = when (val screen = mutableState.value.screen) {
+            is Screen.History -> screen.history.snapshot()
+            is Screen.MatchDetail -> screen.list.history.snapshot().copy(detailSessionId = screen.detail.sessionId)
+            else -> null
+        }
 
     /** Called after an event changed the screen, before its cues are handed over (ADR 0004, decision 1). */
     var onScreenChanged: (Screen) -> Unit = {}

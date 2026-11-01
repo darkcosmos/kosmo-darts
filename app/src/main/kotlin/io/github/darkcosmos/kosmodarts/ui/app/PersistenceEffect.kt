@@ -11,6 +11,7 @@ import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.ui.cricket.toSavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.game.toSavedGame
+import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
 import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 
 /** A change to make on the device after an event (rules R3, R6, R7, R12, R13, R15). */
@@ -32,6 +33,12 @@ sealed interface PersistenceEffect {
      * [loadId].
      */
     data class LoadHistory(val filters: HistoryFilters, val loadId: Int) : PersistenceEffect
+
+    /**
+     * HS5, HS7: read the match of session [sessionId] for the detail screen; the answer comes back as
+     * [AppEvent.MatchDetailLoaded] with the same [loadId].
+     */
+    data class LoadMatch(val sessionId: Long, val loadId: Int) : PersistenceEffect
 
     /**
      * AR1, AR2: write [archived] to the history with one ARGB color per player, then delete the saved game, only if the
@@ -57,6 +64,7 @@ fun savedGameOf(state: AppState): StoredGame? = when (val screen = state.screen)
     is Screen.Settings -> screen.home.resumableGame
     // The same for History (HS1): it is read-only and leaves the saved game as it is.
     is Screen.History -> screen.home.resumableGame
+    is Screen.MatchDetail -> screen.list.home.resumableGame
     // R12, R20, R21: a Cricket game is saved like an X01 one, between legs included, and deleted at its end.
     is Screen.CricketGame -> screen.game.toSavedGame(screen.journal)
     is Screen.CricketBetweenLegs ->
@@ -83,19 +91,41 @@ fun persistenceEffects(before: AppState, after: AppState): List<PersistenceEffec
         archiveEffect(before, after),
         loadProfilesEffect(before, after),
         loadHistoryEffect(before, after),
+        loadMatchEffect(before, after),
     )
 }
 
-/** HS7: History reads when it opens and each time its filters or a retry raise the read number. */
+/** The History list a screen shows or hides behind the detail (HS6), or `null`. */
+private fun historyOf(screen: Screen): HistoryState? = when (screen) {
+    is Screen.History -> screen.history
+    is Screen.MatchDetail -> screen.list.history
+    else -> null
+}
+
+/**
+ * HS7: History reads when it opens and each time its filters or a retry raise the read number. Opening a detail does
+ * not read the list again: the same list screen is still there for Back (HS6).
+ */
 private fun loadHistoryEffect(before: AppState, after: AppState): PersistenceEffect.LoadHistory? {
-    val history = (after.screen as? Screen.History)?.history ?: return null
-    val previous = (before.screen as? Screen.History)?.history
+    val history = historyOf(after.screen) ?: return null
+    val previous = historyOf(before.screen)
     return PersistenceEffect.LoadHistory(history.filters, history.loadId).takeIf { previous?.loadId != history.loadId }
 }
 
-/** The reads to make for a state the app starts in, which no event led to: a History screen restored (HS6). */
+/** HS7: the match is read when its detail opens and each time a retry raises the read number. */
+private fun loadMatchEffect(before: AppState, after: AppState): PersistenceEffect.LoadMatch? {
+    val detail = (after.screen as? Screen.MatchDetail)?.detail ?: return null
+    val previous = (before.screen as? Screen.MatchDetail)?.detail
+    val isNewRead = previous == null || previous.sessionId != detail.sessionId || previous.loadId != detail.loadId
+    return PersistenceEffect.LoadMatch(detail.sessionId, detail.loadId).takeIf { isNewRead }
+}
+
+/**
+ * The reads to make for a state the app starts in, which no event led to: a History screen or a match detail restored
+ * (HS6). The restored detail reads its list too, for Back.
+ */
 fun startupEffects(state: AppState): List<PersistenceEffect> =
-    listOfNotNull(loadHistoryEffect(AppState(), state))
+    listOfNotNull(loadHistoryEffect(AppState(), state), loadMatchEffect(AppState(), state))
 
 /** PF3: the profiles are read each time the setup opens (and only then). */
 private fun loadProfilesEffect(before: AppState, after: AppState): PersistenceEffect.LoadProfiles? =
@@ -148,6 +178,8 @@ fun Persistence.applyEffects(effects: List<PersistenceEffect>, onEvent: (AppEven
             PersistenceEffect.LoadProfiles -> loadProfiles { onEvent(AppEvent.ProfilesLoaded(it)) }
             is PersistenceEffect.LoadHistory ->
                 loadHistory(effect.filters) { onEvent(AppEvent.HistoryLoaded(effect.loadId, it)) }
+            is PersistenceEffect.LoadMatch ->
+                loadMatch(effect.sessionId) { onEvent(AppEvent.MatchDetailLoaded(effect.loadId, it)) }
             is PersistenceEffect.ArchiveMatch ->
                 archiveMatch(effect.archived, effect.colorsArgb) { isArchived ->
                     onEvent(if (isArchived) AppEvent.ArchiveSucceeded else AppEvent.ArchiveFailed)

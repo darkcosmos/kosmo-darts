@@ -58,7 +58,7 @@ fun HistoryMatch.toRowText(resources: Resources, locale: Locale, zone: ZoneId): 
 }
 
 /** "X01 · 501 · DOUBLE OUT" or "CRICKET · CUT-THROAT", like the format lines of the game screens. */
-private fun modeText(resources: Resources, settings: ArchivedSettings): String {
+internal fun modeText(resources: Resources, settings: ArchivedSettings): String {
     val parts = when (settings) {
         is ArchivedSettings.X01 -> listOf(
             resources.getString(R.string.mode_x01_title),

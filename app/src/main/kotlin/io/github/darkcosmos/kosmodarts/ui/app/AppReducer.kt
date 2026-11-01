@@ -26,6 +26,7 @@ class AppReducer(private val random: Random) {
         is Screen.End -> onEnd(state, screen.match, event, stamp)
         is Screen.Settings -> onSettings(state, screen, event)
         is Screen.History -> reduceHistory(state, screen, event)
+        is Screen.MatchDetail -> reduceMatchDetail(state, screen, event)
         is Screen.CricketGame -> onCricketGame(state, screen, event, stamp.at)
         is Screen.CricketBetweenLegs -> onCricketBetweenLegs(state, screen, event)
         is Screen.CricketEnd -> onCricketEnd(state, screen, event, stamp)

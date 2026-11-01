@@ -9,6 +9,7 @@ import io.github.darkcosmos.kosmodarts.ui.cricket.toGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.game.toGameScreenState
 import io.github.darkcosmos.kosmodarts.ui.history.HistorySnapshot
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
+import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 
 /**
@@ -31,9 +32,12 @@ fun initialState(load: LoadResult, wasOnGameScreen: Boolean, history: HistorySna
     return AppState(screen = screen, lastSetup = load.lastSetup)
 }
 
-/** HS6: the History screen over [this] home screen when a snapshot was stored, else [this]. */
-private fun Screen.Home.backToHistory(snapshot: HistorySnapshot?): Screen =
-    if (snapshot == null) this else Screen.History(this, HistoryState.restored(snapshot))
+/** HS6: the History screen, or its match detail, over [this] home screen when a snapshot was stored, else [this]. */
+private fun Screen.Home.backToHistory(snapshot: HistorySnapshot?): Screen {
+    if (snapshot == null) return this
+    val list = Screen.History(this, HistoryState.restored(snapshot))
+    return snapshot.detailSessionId?.let { Screen.MatchDetail(list, MatchDetailState(it)) } ?: list
+}
 
 /** R14: the screen the saved game was on: the between-legs screen (owner Q6 ii), else the game screen. */
 fun SavedGame.toScreen(): Screen =

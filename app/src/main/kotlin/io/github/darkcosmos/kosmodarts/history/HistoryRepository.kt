@@ -1,5 +1,7 @@
 package io.github.darkcosmos.kosmodarts.history
 
+import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedDart
+import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedLeg
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMode
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedSettings
 
@@ -50,16 +52,63 @@ data class HistoryMatch(
 data class HistoryList(val matches: List<HistoryMatch>, val profiles: List<HistoryProfile>)
 
 /**
- * History reads (HS2, HS3). Blocking: runs on the read executor, never on the main thread. Never throws: a database
- * failure gives [DbResult.Failed] (ADR 0012, "Failure contract", AR9, HS7).
+ * One archived match as its detail shows it (HS5): the stored values, not recomputed (AR10).
+ *
+ * @property startedAt start of the match, milliseconds since the epoch (D31: always present).
+ * @property endedAt confirmation of the match, milliseconds since the epoch.
+ * @property players in throwing order: the index of a player is its position.
+ * @property legs in play order.
+ * @property darts every dart of every leg, voided ones included, by leg then entry order.
  */
-fun interface HistoryRepository {
+data class MatchDetail(
+    val sessionId: Long,
+    val startedAt: Long,
+    val endedAt: Long,
+    val settings: ArchivedSettings,
+    val players: List<HistoryPlayer>,
+    val legs: List<ArchivedLeg>,
+    val darts: List<ArchivedDart>,
+)
+
+/**
+ * History reads (HS2, HS3, HS5). Blocking: runs on the read executor, never on the main thread. Never throws: a
+ * database failure gives [DbResult.Failed] (ADR 0012, "Failure contract", AR9, HS7).
+ */
+interface HistoryRepository {
     /** The matches matching [filters] and every profile, read in one transaction. One light query per table. */
     fun list(filters: HistoryFilters): DbResult<HistoryList>
+
+    /** The match of session [sessionId] with its legs and darts, read in one transaction (HS5). */
+    fun match(sessionId: Long): DbResult<MatchDetail>
 }
 
 /** The Room implementation: summaries and players in two queries, joined in memory (no query per match). */
 class RoomHistoryRepository(private val database: HistoryDatabase) : HistoryRepository {
+
+    override fun match(sessionId: Long): DbResult<MatchDetail> = dbResult {
+        val dao = database.historyDao()
+        database.runInTransaction<MatchDetail> {
+            // A match that is not there is a database fault for the screen (HS7), like a row it cannot read.
+            val summary = checkNotNull(dao.matchSummary(sessionId)) { "Missing match" }
+            MatchDetail(
+                sessionId = summary.sessionId,
+                startedAt = summary.startedAt,
+                endedAt = summary.endedAt,
+                settings = SettingsText.decode(summary.settings, summary.mode),
+                players = dao.playersOf(sessionId).map { it.toHistoryPlayer() },
+                legs = dao.legsOf(sessionId).map(ArchiveMapper::archivedLeg),
+                darts = dao.dartsOf(sessionId).map(ArchiveMapper::archivedDart),
+            ).also(::checkPositions)
+        }
+    }
+
+    /** Every position a leg or a dart names must be a player of the match, or the rows are a database fault. */
+    private fun checkPositions(match: MatchDetail) {
+        val positions = match.players.indices
+        check(match.players.isNotEmpty()) { "Match without players" }
+        check(match.legs.all { it.starterPosition in positions && it.winnerPosition in positions }) { "Bad leg" }
+        check(match.darts.all { it.playerPosition in positions }) { "Bad dart" }
+    }
 
     override fun list(filters: HistoryFilters): DbResult<HistoryList> = dbResult {
         val dao = database.historyDao()

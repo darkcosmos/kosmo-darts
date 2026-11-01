@@ -11,6 +11,9 @@ import io.github.darkcosmos.kosmodarts.ui.history.HistoryScroll
 import io.github.darkcosmos.kosmodarts.ui.history.HistorySnapshot
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryView
+import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailContent
+import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailState
+import io.github.darkcosmos.kosmodarts.ui.history.x01Detail
 import io.github.darkcosmos.kosmodarts.ui.history.okList
 import io.github.darkcosmos.kosmodarts.ui.history.profilesOf
 import io.github.darkcosmos.kosmodarts.ui.history.x01HistoryMatch
@@ -120,10 +123,68 @@ class HistoryNavigationTest {
         assertEquals(emptyList<PersistenceEffect>(), persistenceEffects(before, after))
     }
 
+    private fun detail(state: AppState): MatchDetailState = (state.screen as Screen.MatchDetail).detail
+
+    private fun opened(from: AppState): AppState = reducer.reduce(from, AppEvent.HistoryMatchTapped(1))
+
     @Test
-    fun `a tap on a match is ignored until the detail screen exists`() {
-        val state = loaded()
-        assertSame(state, reducer.reduce(state, AppEvent.HistoryMatchTapped(1)))
+    fun `HS5 a tap on a match opens its detail and reads it once`() {
+        val list = loaded()
+        val state = opened(list)
+        assertEquals(1L, detail(state).sessionId)
+        assertEquals(listOf(PersistenceEffect.LoadMatch(1, 1)), persistenceEffects(list, state))
+        assertEquals(SaveFixtures.MID_TURN, savedGameOf(state))
+    }
+
+    @Test
+    fun `HS6 Back from the detail restores the list with its filters and scroll, without a new read`() {
+        val filtered = reducer.reduce(loaded(), AppEvent.HistoryModeSelected(ArchivedMode.X01))
+        val ready = reducer.reduce(filtered, AppEvent.HistoryLoaded(2, okList(listOf(x01HistoryMatch(1, "Ana")))))
+        val scrolled = reducer.reduce(ready, AppEvent.HistoryScrolled(5, 30))
+
+        val back = reducer.reduce(opened(scrolled), AppEvent.Back)
+
+        assertSame(scrolled.screen, back.screen)
+        assertEquals(emptyList<PersistenceEffect>(), persistenceEffects(opened(scrolled), back))
+    }
+
+    @Test
+    fun `HS7 the answer shows the match, Retry after a failure reads again, an old answer is ignored`() {
+        val state = opened(loaded())
+        val failed = reducer.reduce(state, AppEvent.MatchDetailLoaded(1, DbResult.Failed))
+        assertEquals(MatchDetailContent.Failed, detail(failed).content)
+
+        val retried = reducer.reduce(failed, AppEvent.MatchDetailRetryTapped)
+        assertEquals(listOf(PersistenceEffect.LoadMatch(1, 2)), persistenceEffects(failed, retried))
+        assertSame(retried, reducer.reduce(retried, AppEvent.MatchDetailLoaded(1, DbResult.Failed)))
+
+        val shown = reducer.reduce(retried, AppEvent.MatchDetailLoaded(2, DbResult.Ok(x01Detail(sessionId = 1))))
+        assertEquals(MatchDetailContent.Loaded(x01Detail(sessionId = 1)), detail(shown).content)
+        assertEquals(emptyList<PersistenceEffect>(), persistenceEffects(retried, shown))
+    }
+
+    @Test
+    fun `HS5 the detail neither writes nor deletes the saved game`() {
+        val list = loaded()
+        val state = opened(list)
+        val effects = persistenceEffects(list, state) + persistenceEffects(state, reducer.reduce(state, AppEvent.Back))
+        assertTrue(effects.none { it is PersistenceEffect.SaveGame || it is PersistenceEffect.DeleteGame })
+    }
+
+    @Test
+    fun `HS6 the process snapshot of the detail names its match, and the return reads the list and the match`() {
+        val state = opened(loaded())
+        val snapshot = HistorySnapshot(HistoryFilters(), HistoryScroll(2, 4), detailSessionId = 1)
+        val restored = initialState(LoadResult(GameLoad.Absent, null), wasOnGameScreen = false, snapshot)
+
+        val screen = restored.screen as Screen.MatchDetail
+        assertEquals(MatchDetailState(1), screen.detail)
+        assertEquals(HistoryScroll(2, 4), screen.list.history.scroll)
+        assertEquals(
+            listOf(PersistenceEffect.LoadHistory(HistoryFilters(), 1), PersistenceEffect.LoadMatch(1, 1)),
+            startupEffects(restored),
+        )
+        assertEquals(1L, detail(state).sessionId)
     }
 
     @Test

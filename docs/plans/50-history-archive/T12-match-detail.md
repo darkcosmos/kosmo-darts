@@ -44,3 +44,11 @@ HS5, HS6, HS7, AR9, AR10, PC9, BC2 (coordinates are not shown), D31.
 sonnet. Why: screen composed from the design system with a state holder tested on the JVM.
 
 ## Implementation notes
+- `MatchDetailState` (pure) builds the summary from stored columns; `MatchDetailText` maps them to string resources
+  and the TalkBack visit text (Cricket marks worded as on the game screen, via `CricketMarks` in `:game-engine`).
+- `MatchDetailScreen` uses T11's `HistoryScaffold`; leg headings (« Set 2 · Leg 3 ») are headings, NOT pinned.
+  The list scrolls; read-only, no delete, no popup. Failure state shows a message and "Retry".
+- `Screen.MatchDetail(id)` lives in `AppState`; Back (`AppReducer`) restores the History filters and scroll anchor.
+- Captures in `app/build/outputs/roborazzi/detail_*.png` (X01, Cricket, failure; portrait, landscape, fontScale 2).
+  Viewed: X01 landscape font 200 (viewport clips the summary: it is a static capture of a scrolling list, Back is in
+  the top bar) and Cricket portrait FR. The other PNGs were not opened.

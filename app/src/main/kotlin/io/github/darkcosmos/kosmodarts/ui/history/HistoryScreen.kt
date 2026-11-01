@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.history
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -114,14 +115,14 @@ private fun StateMessage(view: HistoryView, onEvent: (AppEvent) -> Unit) {
 
 /** HS7: nothing for the first 300 ms, so a quick read never flashes; then an indicator TalkBack can describe. */
 @Composable
-private fun LoadingIndicator() {
+internal fun LoadingIndicator(@StringRes descriptionRes: Int = R.string.history_loading) {
     var isShown by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         delay(LOADING_INDICATOR_DELAY_MILLIS)
         isShown = true
     }
     if (!isShown) return
-    val description = stringResource(R.string.history_loading)
+    val description = stringResource(descriptionRes)
     Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp)) {
         CircularProgressIndicator(
             color = KosmoTheme.colors.accent,

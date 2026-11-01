@@ -48,6 +48,15 @@ class CricketMarksTest {
     }
 
     @Test
+    fun `CR2 the marks of a dart are the same from the Bull setting alone`() {
+        val darts = listOf(Dart.triple(20), Dart.double(15), Dart.single(3), Dart.OUTER_BULL, Dart.BULL, Dart.MISS)
+        darts.forEach { dart ->
+            assertEquals(CricketMarks.of(dart, withoutBull), CricketMarks.of(dart, isBullInPlay = false))
+            assertEquals(CricketMarks.of(dart, withBull), CricketMarks.of(dart, isBullInPlay = true))
+        }
+    }
+
+    @Test
     fun `CR2 marks are 1 to 3 on a target and 0 without one`() {
         assertThrows<IllegalArgumentException> { CricketMarks(CricketTarget.TWENTY, 0) }
         assertThrows<IllegalArgumentException> { CricketMarks(CricketTarget.TWENTY, 4) }

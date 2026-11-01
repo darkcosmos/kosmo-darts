@@ -101,31 +101,36 @@ data class HistoryState(
  * The filters and the scroll position, as the activity stores them for a return after the process was killed (HS6).
  * Numbers and a mode name only: no player name leaves the app's memory through the saved instance state.
  */
-data class HistorySnapshot(val filters: HistoryFilters, val scroll: HistoryScroll) {
+data class HistorySnapshot(
+    val filters: HistoryFilters,
+    val scroll: HistoryScroll,
+    /** The session of the match detail open over the list (HS5, HS6), or `null` on the list itself. */
+    val detailSessionId: Long? = null,
+) {
 
     fun encode(): String = listOf(
         filters.mode?.name ?: NONE,
         filters.profileId?.toString() ?: NONE,
         scroll.index.toString(),
         scroll.offset.toString(),
+        detailSessionId?.toString() ?: NONE,
     ).joinToString(SEPARATOR)
 
     companion object {
         private const val NONE = "-"
         private const val SEPARATOR = ";"
-        private const val FIELD_COUNT = 4
+        private const val FIELD_COUNT = 5
 
         /** The snapshot [text] stands for, or `null` when it is missing or not exactly what [encode] writes. */
         fun decode(text: String?): HistorySnapshot? {
             val fields = text?.split(SEPARATOR)?.takeIf { it.size == FIELD_COUNT }
             val mode = fields?.get(0)?.let(::decodeMode)
             val profileId = fields?.get(1)?.let(::decodeProfile)
+            val filters = if (mode == null || profileId == null) null else HistoryFilters(mode.value, profileId.value)
             val scroll = fields?.let { decodeScroll(it[2], it[3]) }
-            return if (mode == null || profileId == null || scroll == null) {
-                null
-            } else {
-                HistorySnapshot(HistoryFilters(mode.value, profileId.value), scroll)
-            }
+            val detail = fields?.get(4)?.let(::decodeSession)
+            if (filters == null || scroll == null || detail == null) return null
+            return HistorySnapshot(filters, scroll, detail.value)
         }
 
         private fun decodeMode(field: String): Optional<ArchivedMode>? =
@@ -133,6 +138,10 @@ data class HistorySnapshot(val filters: HistoryFilters, val scroll: HistoryScrol
 
         private fun decodeProfile(field: String): Optional<Long>? =
             if (field == NONE) Optional(null) else field.toLongOrNull()?.let(::Optional)
+
+        /** The open match: none, or the id of a session (ids start at 1). */
+        private fun decodeSession(field: String): Optional<Long>? =
+            decodeProfile(field)?.takeIf { (it.value ?: 1L) > 0L }
 
         private fun decodeScroll(index: String, offset: String): HistoryScroll? {
             val i = index.toIntOrNull()

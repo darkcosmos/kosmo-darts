@@ -268,4 +268,31 @@
     <string name="history_failed">L\'historique ne peut pas être lu pour le moment.</string>
     <string name="history_retry">Réessayer</string>
     <string name="history_loading">Chargement de l\'historique</string>
+
+    <!-- Match detail (docs/rules/history.md, HS5).   before the colon (French typography). -->
+    <string name="detail_title">MATCH</string>
+    <string name="detail_duration">Durée : %1$s</string>
+    <string name="detail_duration_under_a_minute">moins d\'une minute</string>
+    <plurals name="detail_duration_hours">
+        <item quantity="one">%d heure</item>
+        <item quantity="many">%d heures</item>
+        <item quantity="other">%d heures</item>
+    </plurals>
+    <plurals name="detail_duration_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="many">%d minutes</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <string name="detail_leg_starter">Commencée par %1$s</string>
+    <string name="detail_leg_winner">Gagnée par %1$s</string>
+    <plurals name="detail_visit_marks">
+        <item quantity="one">%d marque</item>
+        <item quantity="many">%d marques</item>
+        <item quantity="other">%d marques</item>
+    </plurals>
+    <string name="detail_visit_total_description">Total %1$d</string>
+    <string name="detail_visit_description">%1$s : %2$s. %3$s</string>
+    <string name="detail_dart_miss_spoken">Raté</string>
+    <string name="detail_failed">Ce match ne peut pas être lu pour le moment.</string>
+    <string name="detail_loading">Chargement du match</string>
 </resources>
