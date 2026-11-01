@@ -31,7 +31,11 @@ New file `app/src/main/kotlin/io/github/darkcosmos/kosmodarts/ui/components/Fitt
 2. `@Composable internal fun rememberFittedNumberSize(reference: String, style: TextStyle, baseSize: Float,
    constraints: Constraints): Float`: reads `LocalDensity`, uses `rememberTextMeasurer()`, measures `reference` with
    `style.copy(fontSize = density.fixedSp(baseSize))`, `softWrap = false`, `maxLines = 1`, and returns
-   `baseSize * fitScale(...)`, inside `remember(constraints, style, baseSize, density, reference)`.
+   `baseSize * fitScale(...)`, inside `remember(constraints, style, baseSize, density, reference)`. These keys are
+   the union of today's keys: `ScoreArea` uses `(constraints, baseStyle, scoreSize, density)` (its reference is a
+   constant) and `CricketZoneTotal` uses `(constraints, baseStyle, density, reference)` (its base size is a
+   constant). Every input of the computation is a key, and the extra key in each caller never changes, so the
+   result and the recomposition behavior stay as they are (D4).
 
 `ScoreArea` calls it with `SCORE_REFERENCE`, `scoreHuge`, `scoreSize`, `constraints`. `CricketZoneTotal` calls it with
 `reference`, `scoreHuge`, `KosmoTypography.SCORE_PORTRAIT`, `constraints`. Each one keeps its own `BoxWithConstraints`,
@@ -85,7 +89,9 @@ Rules: CR22 (Cricket zone number); the X01 score area has no rule identifier in 
 - max width 0 -> `0f`.
 
 `MprReferenceWidthTest` (Robolectric, Pixel 7): measure `"8,8"` and `"8.8"` with `scoreHuge` at
-`SCORE_PORTRAIT` (`fixedSp`) and assert the same width; also assert that `ZONE_MPR_REFERENCE` is `"8,8"`.
+`SCORE_PORTRAIT` (`fixedSp`) and assert the same width; also assert that `ZONE_MPR_REFERENCE` is `"8,8"`. Both
+strings are measured in the same test method, with one `TextMeasurer`, one `Density` and one style, so the comparison
+cannot depend on the Robolectric default locale or on environment drift between runs (D5).
 
 Existing tests stay green unchanged, including `X01ScreensTest`, `ZoneLayoutTest`, `CricketScreenTest`.
 
@@ -118,6 +124,12 @@ No `opus` task.
 - D1: pure refactoring, no product question (Kosmo, via main).
 - D2: the helper lives in `:app`, `ui/components`, `internal`; the pure ratio is a separate function tested on the JVM.
 - D3: every Roborazzi PNG, not only X01 and Cricket, is compared with `cmp` against `a6745c5`; any difference blocks.
+- D4 (design review, A1 minor): the `remember` keys of `rememberFittedNumberSize` are the union of the original keys
+  of both callers (see "Approach"); the build agent checks this against the original code.
+- D5 (design review, T1 minor): `MprReferenceWidthTest` measures both strings in one test with the same
+  `TextMeasurer`, `Density` and style.
+- D6: on a width mismatch in `MprReferenceWidthTest`, the build agent stops and main decides (open question 1).
+- Design review: the four reviewers approved the plan (0 blocking); minors A1 and T1 are folded in as D4 and D5.
 
 ## Open questions
 

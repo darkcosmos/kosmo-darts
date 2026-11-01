@@ -16,12 +16,14 @@ exact expression: root plan "Approach".
 None. Baseline commit for the captures: `a6745c5`.
 
 ## Rules
-CR22. Decisions D1 to D3 of the root plan.
+CR22. Decisions D1 to D6 of the root plan. Check that the `remember` keys are the union of the original keys of
+both callers (D4, root plan "Approach").
 
 ## Tests
 - `FitScaleTest`: the cases of root plan "Test plan", exact float equality (the expression is unchanged).
 - `MprReferenceWidthTest`: `"8,8"` and `"8.8"` measure the same width in `scoreHuge` at `SCORE_PORTRAIT`; setup as in
-  `ui/theme/SairaWidthSpikeTest.kt`. If they differ, stop and report to main (root plan, open question 1); do not
+  `ui/theme/SairaWidthSpikeTest.kt`; both strings in one test with the same `TextMeasurer`, `Density` and style
+  (D5). If they differ, stop and report to main (root plan, open question 1); do not
   change the reference or invent another comment.
 - Existing tests unchanged and green.
 - Captures: the `cmp` procedure of root plan "Test plan" over every PNG and file name. Any difference: stop and
