@@ -46,3 +46,7 @@ CP14 (slider and buttons), CP16 (parse fallbacks). Decisions DZ1, DZ2, DZ3, DZ10
 sonnet. Why: pure logic fully specified, tests listed.
 
 ## Implementation notes
+Package in `capture/src/main/kotlin/io/github/darkcosmos/kosmodarts/camera/zoom/`. Deviations: `ZoomRange` is built with
+`ZoomRange.of(min, max)` (private constructor, plain class with equals); `adjustable` is computed in `BigDecimal` on
+the shortest decimal form; `ZoomSettingFormat` is an object; non-finite ratios quantize to 1.0. `ZoomSelection.steppedBy`
+starts from `quantizeZoom(ratio)`. Later tasks use `ZoomSelection` as the state holder and keep the lock rule outside.
