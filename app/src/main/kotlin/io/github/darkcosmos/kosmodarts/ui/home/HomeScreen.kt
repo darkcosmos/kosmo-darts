@@ -32,6 +32,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
@@ -39,7 +40,9 @@ import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.app.Screen
+import io.github.darkcosmos.kosmodarts.ui.components.ButtonKind
 import io.github.darkcosmos.kosmodarts.ui.components.DialogAction
+import io.github.darkcosmos.kosmodarts.ui.components.KosmoButton
 import io.github.darkcosmos.kosmodarts.ui.components.KosmoDialog
 import io.github.darkcosmos.kosmodarts.ui.components.ModeCard
 import io.github.darkcosmos.kosmodarts.ui.components.ResumeCard
@@ -102,6 +105,15 @@ fun HomeScreen(home: Screen.Home, onEvent: (AppEvent) -> Unit, modifier: Modifie
                 modifier = Modifier
                     .fillMaxWidth()
                     .testTag(HomeTags.MODE_CRICKET),
+            )
+            // HS1: the archive of finished matches, under the game modes.
+            KosmoButton(
+                text = stringResource(R.string.home_history),
+                onClick = { onEvent(AppEvent.HistoryTapped) },
+                kind = ButtonKind.SECONDARY,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(HomeTags.HISTORY),
             )
         }
     }
@@ -166,15 +178,22 @@ private fun NewGameDialog(onEvent: (AppEvent) -> Unit) {
 @Composable
 private fun HomeScreenPreview() {
     KosmoDartsTheme {
-        HomeScreen(home = Screen.Home(), onEvent = {})
+        HomeScreen(
+            home = Screen.Home(), onEvent = {})
     }
 }
 
 @Preview(widthDp = 412, heightDp = 915)
 @Composable
 private fun HomeScreenWithSavedGamePreview() {
-    val game = X01Game(X01Config(listOf("Ann", "Bob", "Cid")), listOf(Dart.triple(20), Dart.single(5)))
+    val darts = listOf(Dart.triple(20), Dart.single(5))
+    val game = X01Game(X01Config(listOf("Ann", "Bob", "Cid")), darts)
+    val empty = MatchJournal("00000000-0000-4000-8000-000000000000", 0L)
+    val journal = darts.foldIndexed(empty) { i, acc, dart -> acc.enter(dart, i.toLong()) }
     KosmoDartsTheme {
-        HomeScreen(home = Screen.Home(resumableGame = SavedGame(game, isAwaitingNextPlayer = false)), onEvent = {})
+        HomeScreen(
+            home = Screen.Home(resumableGame = SavedGame(game, isAwaitingNextPlayer = false, journal = journal)),
+            onEvent = {},
+        )
     }
 }

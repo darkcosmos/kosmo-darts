@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedCricketGame
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatchConfig
@@ -37,7 +38,7 @@ internal object CricketSaveFixtures {
         val darts = match.currentLeg.darts.size
         val inCompletedTurns = state.completedTurns.sumOf { it.darts.size }
         val waits = state.isFinished || (darts > 0 && inCompletedTurns == darts)
-        return SavedCricketGame(match, isAwaitingNextPlayer = waits, isBetweenLegs = isBetweenLegs)
+        return savedCricketGame(match, isAwaitingNextPlayer = waits, isBetweenLegs = isBetweenLegs)
     }
 
     /** Ann and Bob, a single standard game: Ann has thrown T20 and 19 of her first turn. */

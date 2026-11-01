@@ -176,7 +176,7 @@ private fun HeaderRow(
 @Composable
 private fun UndoKey(action: BarAction, order: Float, modifier: Modifier) {
     BoardKey(
-        description = action.text,
+        description = action.description ?: action.text,
         tags = KeyTags(CricketTags.LANDSCAPE_UNDO, action.tag),
         isEnabled = action.isEnabled,
         onClick = action.onClick,
@@ -197,7 +197,7 @@ private fun UndoKey(action: BarAction, order: Float, modifier: Modifier) {
 private fun NextKey(actions: CricketBoardActions, modifier: Modifier) {
     val action = actions.next
     BoardKey(
-        description = action.text,
+        description = action.description ?: action.text,
         tags = KeyTags(CricketTags.LANDSCAPE_NEXT, action.tag),
         isEnabled = action.isEnabled,
         onClick = action.onClick,

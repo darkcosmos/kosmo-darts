@@ -1,5 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.reduce
+import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
@@ -22,7 +24,7 @@ class GameCuesTest {
     private val config = X01Config(listOf("Ann", "Bob"), startScore = 301)
 
     private fun inGame(darts: List<Dart> = emptyList(), config: X01Config = this.config) =
-        AppState(screen = Screen.Game(GameScreenState(X01Game(config, darts))))
+        AppState(screen = gameScreen(GameScreenState(X01Game(config, darts))))
 
     /** Applies [events] in order and returns the cues of the last one. */
     private fun cuesOf(start: AppState, vararg events: AppEvent): List<X01Cue> {
@@ -95,7 +97,7 @@ class GameCuesTest {
     /** AN4: "Next player" after a bust announces the next player too. */
     @Test
     fun `AN4 next player after a bust`() {
-        val bust = AppState(screen = Screen.Game(SaveFixtures.WAITING_BUST.toGameScreenState()))
+        val bust = AppState(screen = gameScreen(SaveFixtures.WAITING_BUST.toGameScreenState()))
         val expected = listOfNotNull(X01Cues.turnStart(SaveFixtures.WAITING_BUST.game))
         assertEquals(1, expected.size)
         assertEquals(expected, cuesOf(bust, AppEvent.NextPlayerTapped))
@@ -105,7 +107,7 @@ class GameCuesTest {
     @Test
     fun `AN5 the winning dart announces the win`() {
         val saved = SaveFixtures.WAITING_CHECKOUT.game
-        val beforeWin = AppState(screen = Screen.Game(GameScreenState(X01Game(saved.config, saved.darts.dropLast(1)))))
+        val beforeWin = AppState(screen = gameScreen(GameScreenState(X01Game(saved.config, saved.darts.dropLast(1)))))
         val winningDart = saved.darts.last()
         val cues = enter(beforeWin, winningDart)
         assertEquals(X01Cue.DartHit(winningDart), cues.first())
@@ -116,23 +118,25 @@ class GameCuesTest {
     /** AN5 (E3): "Finish game" produces nothing: the win was announced on the winning dart. */
     @Test
     fun `AN5 finish game announces nothing`() {
-        val checkout = AppState(screen = Screen.Game(SaveFixtures.WAITING_CHECKOUT.toGameScreenState()))
-        val next = reducer.reduce(checkout, AppEvent.FinishGameTapped)
+        val checkout = AppState(screen = gameScreen(SaveFixtures.WAITING_CHECKOUT.toGameScreenState()))
+        val saving = reducer.reduce(checkout, AppEvent.FinishGameTapped)
+        val next = reducer.reduce(saving, AppEvent.ArchiveSucceeded)
         assertEquals(Screen.End::class, next.screen::class)
-        assertEquals(emptyList<X01Cue>(), gameCues(checkout, AppEvent.FinishGameTapped, next))
+        assertEquals(emptyList<X01Cue>(), gameCues(checkout, AppEvent.FinishGameTapped, saving))
+        assertEquals(emptyList<X01Cue>(), gameCues(saving, AppEvent.ArchiveSucceeded, next))
     }
 
     /** AN5, AN6: Undo in the checkout dialog gives the undo cue only, no win. */
     @Test
     fun `AN5 AN6 undo in the checkout dialog gives no win`() {
-        val checkout = AppState(screen = Screen.Game(SaveFixtures.WAITING_CHECKOUT.toGameScreenState()))
+        val checkout = AppState(screen = gameScreen(SaveFixtures.WAITING_CHECKOUT.toGameScreenState()))
         assertEquals(listOf(X01Cue.DartUndone), cuesOf(checkout, AppEvent.UndoTapped))
     }
 
     /** AN6: undo of a checkout dart, then the same dart again: its dart cue is produced again. */
     @Test
     fun `AN6 an undone dart entered again gives its cue again`() {
-        val checkout = AppState(screen = Screen.Game(SaveFixtures.WAITING_CHECKOUT.toGameScreenState()))
+        val checkout = AppState(screen = gameScreen(SaveFixtures.WAITING_CHECKOUT.toGameScreenState()))
         val undone = reduceAll(checkout, AppEvent.UndoTapped)
         val lastDart = SaveFixtures.WAITING_CHECKOUT.game.darts.last()
         val again = enter(undone, lastDart)

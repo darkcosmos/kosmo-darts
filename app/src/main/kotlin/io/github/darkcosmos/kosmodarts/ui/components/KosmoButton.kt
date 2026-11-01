@@ -8,6 +8,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
@@ -26,6 +28,7 @@ fun KosmoButton(
     kind: ButtonKind = ButtonKind.PRIMARY,
     enabled: Boolean = true,
     minHeight: Dp = States.minTouchTarget,
+    description: String? = null,
 ) {
     val colors = KosmoTheme.colors
     val (container, content) = when (kind) {
@@ -45,7 +48,9 @@ fun KosmoButton(
         ),
         border = if (kind == ButtonKind.OUTLINED_ACCENT) BorderStroke(1.dp, colors.accent) else null,
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-        modifier = modifier.heightIn(min = maxOf(minHeight, States.minTouchTarget)),
+        modifier = modifier
+            .heightIn(min = maxOf(minHeight, States.minTouchTarget))
+            .semantics { description?.let { contentDescription = it } },
     ) {
         WordSafeText(text = text, style = KosmoTheme.typography.button)
     }

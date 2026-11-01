@@ -1,22 +1,28 @@
 package io.github.darkcosmos.kosmodarts.ui.resume
 
 import android.os.Bundle
+import android.os.Looper
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
 import io.github.darkcosmos.kosmodarts.KosmoDartsApplication
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
+import io.github.darkcosmos.kosmodarts.history.ArchiveCheck
+import io.github.darkcosmos.kosmodarts.history.FakeArchiveGateway
+import io.github.darkcosmos.kosmodarts.history.MatchArchiveRequest
 import io.github.darkcosmos.kosmodarts.persistence.AtomicFileStore
 import io.github.darkcosmos.kosmodarts.persistence.ByteStore
 import io.github.darkcosmos.kosmodarts.persistence.GameSaveCodec
 import io.github.darkcosmos.kosmodarts.persistence.LastSetupCodec
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.ReadResult
+import io.github.darkcosmos.kosmodarts.history.HistoryRepository
 import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.persistence.toLastSetups
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import org.robolectric.Robolectric
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.android.controller.ActivityController
 import java.io.File
 import java.util.concurrent.Executors
@@ -31,7 +37,7 @@ import java.util.concurrent.Executors
  * The [persistence] counts reads and writes of the game file, so that tests can check that nothing is read or written
  * again on rotation.
  */
-internal class AppProcess {
+internal class AppProcess(history: HistoryRepository? = null) {
 
     val app: KosmoDartsApplication = ApplicationProvider.getApplicationContext()
 
@@ -40,7 +46,15 @@ internal class AppProcess {
 
     val gameStore = CountingStore(AtomicFileStore(gameFile))
     private val saveThread = Executors.newSingleThreadExecutor()
-    val persistence = Persistence(gameStore, AtomicFileStore(setupFile), saveThread)
+    val archive = FakeArchiveGateway()
+    val persistence = Persistence(
+        gameStore,
+        AtomicFileStore(setupFile),
+        saveThread,
+        archiveRequest = MatchArchiveRequest(archive, "1.0"),
+        archiveCheck = ArchiveCheck(archive),
+        history = history,
+    )
 
     private var controller: ActivityController<MainActivity>? = null
 
@@ -85,6 +99,12 @@ internal class AppProcess {
     /** Recreates the activity as Android does on a configuration change, keeping its ViewModel. */
     fun rotate() {
         checkNotNull(controller).recreate()
+    }
+
+    /** Waits for the save thread, then delivers its answers to the main thread (the archive result, AR2). */
+    fun settle() {
+        persistence.awaitIdle()
+        shadowOf(Looper.getMainLooper()).idle()
     }
 
     fun pressBack() = activity.onBackPressedDispatcher.onBackPressed()

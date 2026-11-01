@@ -25,6 +25,8 @@ object SetupTags {
     fun nameField(index: Int): String = "setup_name_$index"
 
     /** The remove cross of the row at [index] (M13, PC3). */
+    fun suggestion(index: Int, rank: Int): String = "setup_suggestion_${index}_$rank"
+
     fun remove(index: Int): String = "setup_remove_$index"
 
     /** Visible label of the stepper [prefix]. */

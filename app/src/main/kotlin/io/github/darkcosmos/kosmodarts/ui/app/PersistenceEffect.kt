@@ -1,12 +1,18 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import androidx.compose.ui.graphics.toArgb
+import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMatch
+import io.github.darkcosmos.kosmodarts.history.HistoryFilters
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.SavedCricketGame
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.ui.cricket.toSavedGame
+import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.game.toSavedGame
+import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
+import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 
 /** A change to make on the device after an event (rules R3, R6, R7, R12, R13, R15). */
 sealed interface PersistenceEffect {
@@ -15,6 +21,30 @@ sealed interface PersistenceEffect {
     data object DeleteGame : PersistenceEffect
 
     data class SaveLastSetup(val setups: LastSetups) : PersistenceEffect
+
+    /** PF2: create or touch the profiles of [names] at [at], the match start time. */
+    data class TouchProfiles(val names: List<String>, val at: Long) : PersistenceEffect
+
+    /** PF3: read the profiles for the suggestions; the answer comes back as [AppEvent.ProfilesLoaded]. */
+    data object LoadProfiles : PersistenceEffect
+
+    /**
+     * HS2, HS7: read the History list for [filters]; the answer comes back as [AppEvent.HistoryLoaded] with the same
+     * [loadId].
+     */
+    data class LoadHistory(val filters: HistoryFilters, val loadId: Int) : PersistenceEffect
+
+    /**
+     * HS5, HS7: read the match of session [sessionId] for the detail screen; the answer comes back as
+     * [AppEvent.MatchDetailLoaded] with the same [loadId].
+     */
+    data class LoadMatch(val sessionId: Long, val loadId: Int) : PersistenceEffect
+
+    /**
+     * AR1, AR2: write [archived] to the history with one ARGB color per player, then delete the saved game, only if the
+     * write succeeded. The answer comes back as [AppEvent.ArchiveSucceeded] or [AppEvent.ArchiveFailed].
+     */
+    data class ArchiveMatch(val archived: ArchivedMatch, val colorsArgb: List<Int>) : PersistenceEffect
 }
 
 /**
@@ -22,19 +52,23 @@ sealed interface PersistenceEffect {
  * screen must state whether it carries the saved game, since `null` deletes it.
  */
 fun savedGameOf(state: AppState): StoredGame? = when (val screen = state.screen) {
-    is Screen.Game -> screen.game.toSavedGame()
+    is Screen.Game -> screen.game.toSavedGame(screen.journal)
     is Screen.Home -> screen.resumableGame
     // R14, R15: the match stays saved between legs, with the screen to come back to.
-    is Screen.BetweenLegs -> SavedGame(screen.match, isAwaitingNextPlayer = false, isBetweenLegs = true)
+    is Screen.BetweenLegs ->
+        SavedGame(screen.match, isAwaitingNextPlayer = false, isBetweenLegs = true, journal = screen.journal)
     is Screen.Setup -> null
     // R6, R14: the saved match is deleted when its win is confirmed.
     is Screen.End -> null
     // Opening Settings from home keeps the saved game of that home screen.
     is Screen.Settings -> screen.home.resumableGame
+    // The same for History (HS1): it is read-only and leaves the saved game as it is.
+    is Screen.History -> screen.home.resumableGame
+    is Screen.MatchDetail -> screen.list.home.resumableGame
     // R12, R20, R21: a Cricket game is saved like an X01 one, between legs included, and deleted at its end.
-    is Screen.CricketGame -> screen.game.toSavedGame()
+    is Screen.CricketGame -> screen.game.toSavedGame(screen.journal)
     is Screen.CricketBetweenLegs ->
-        SavedCricketGame(screen.match, isAwaitingNextPlayer = false, isBetweenLegs = true)
+        SavedCricketGame(screen.match, isAwaitingNextPlayer = false, isBetweenLegs = true, journal = screen.journal)
     is Screen.CricketEnd -> null
 }
 
@@ -44,18 +78,111 @@ fun persistenceEffects(before: AppState, after: AppState): List<PersistenceEffec
     val savedAfter = savedGameOf(after)
     val gameEffect = when {
         savedAfter == savedBefore -> null
+        // AR2: the archive request deletes the saved game itself, after the write; no second delete here.
+        archiveOf(before) != null -> null
         savedAfter == null -> PersistenceEffect.DeleteGame
         else -> PersistenceEffect.SaveGame(savedAfter)
     }
     val setupEffect = after.lastSetup?.takeIf { it != before.lastSetup }?.let(PersistenceEffect::SaveLastSetup)
-    return listOfNotNull(setupEffect, gameEffect)
+    return listOfNotNull(
+        setupEffect,
+        gameEffect,
+        touchProfilesEffect(before, after),
+        archiveEffect(before, after),
+        loadProfilesEffect(before, after),
+        loadHistoryEffect(before, after),
+        loadMatchEffect(before, after),
+    )
 }
 
-/** Applies [effects] in order; writes run in the background. */
-fun Persistence.applyEffects(effects: List<PersistenceEffect>) = effects.forEach { effect ->
-    when (effect) {
-        is PersistenceEffect.SaveGame -> saveGame(effect.saved)
-        PersistenceEffect.DeleteGame -> deleteGame()
-        is PersistenceEffect.SaveLastSetup -> saveLastSetup(effect.setups)
+/** The History list a screen shows or hides behind the detail (HS6), or `null`. */
+private fun historyOf(screen: Screen): HistoryState? = when (screen) {
+    is Screen.History -> screen.history
+    is Screen.MatchDetail -> screen.list.history
+    else -> null
+}
+
+/**
+ * HS7: History reads when it opens and each time its filters or a retry raise the read number. Opening a detail does
+ * not read the list again: the same list screen is still there for Back (HS6).
+ */
+private fun loadHistoryEffect(before: AppState, after: AppState): PersistenceEffect.LoadHistory? {
+    val history = historyOf(after.screen) ?: return null
+    val previous = historyOf(before.screen)
+    return PersistenceEffect.LoadHistory(history.filters, history.loadId).takeIf { previous?.loadId != history.loadId }
+}
+
+/** HS7: the match is read when its detail opens and each time a retry raises the read number. */
+private fun loadMatchEffect(before: AppState, after: AppState): PersistenceEffect.LoadMatch? {
+    val detail = (after.screen as? Screen.MatchDetail)?.detail ?: return null
+    val previous = (before.screen as? Screen.MatchDetail)?.detail
+    val isNewRead = previous == null || previous.sessionId != detail.sessionId || previous.loadId != detail.loadId
+    return PersistenceEffect.LoadMatch(detail.sessionId, detail.loadId).takeIf { isNewRead }
+}
+
+/**
+ * The reads to make for a state the app starts in, which no event led to: a History screen or a match detail restored
+ * (HS6). The restored detail reads its list too, for Back.
+ */
+fun startupEffects(state: AppState): List<PersistenceEffect> =
+    listOfNotNull(loadHistoryEffect(AppState(), state), loadMatchEffect(AppState(), state))
+
+/** PF3: the profiles are read each time the setup opens (and only then). */
+private fun loadProfilesEffect(before: AppState, after: AppState): PersistenceEffect.LoadProfiles? =
+    PersistenceEffect.LoadProfiles.takeIf { after.screen is Screen.Setup && before.screen !is Screen.Setup }
+
+/** The match being written to the history while [state] is shown (AR3), or `null`. */
+private fun archiveOf(state: AppState): ArchivedMatch? {
+    val archive = when (val screen = state.screen) {
+        is Screen.Game -> screen.game.archive
+        is Screen.CricketGame -> screen.game.archive
+        else -> return null
+    }
+    return (archive as? ArchiveStatus.Saving)?.archived
+}
+
+/** AR1: asked once per tap on the confirm button, when [after] starts writing and [before] was not writing. */
+private fun archiveEffect(before: AppState, after: AppState): PersistenceEffect.ArchiveMatch? {
+    val archived = archiveOf(after)?.takeIf { archiveOf(before) == null } ?: return null
+    val colors = archived.players.map { PlayerPalette.colorOf(it.colorSlot).toArgb() }
+    return PersistenceEffect.ArchiveMatch(archived, colors)
+}
+
+/**
+ * PF2: Start (from the setup) and Rematch (from an end screen) open a new game; its players' profiles are created or
+ * touched at the match start time. Any other change of screen touches nothing.
+ */
+private fun touchProfilesEffect(before: AppState, after: AppState): PersistenceEffect.TouchProfiles? {
+    val isStart = before.screen is Screen.Setup || before.screen is Screen.End || before.screen is Screen.CricketEnd
+    if (!isStart) return null
+    return when (val screen = after.screen) {
+        is Screen.Game ->
+            PersistenceEffect.TouchProfiles(screen.game.match.config.players, screen.journal.startedAt)
+        is Screen.CricketGame ->
+            PersistenceEffect.TouchProfiles(screen.game.match.config.players, screen.journal.startedAt)
+        else -> null
     }
 }
+
+/**
+ * Applies [effects] in order; writes run in the background. The answer of an archive is handed to [onEvent], on the
+ * persistence thread: the caller moves it to the main thread.
+ */
+fun Persistence.applyEffects(effects: List<PersistenceEffect>, onEvent: (AppEvent) -> Unit = {}) =
+    effects.forEach { effect ->
+        when (effect) {
+            is PersistenceEffect.SaveGame -> saveGame(effect.saved)
+            PersistenceEffect.DeleteGame -> deleteGame()
+            is PersistenceEffect.SaveLastSetup -> saveLastSetup(effect.setups)
+            is PersistenceEffect.TouchProfiles -> touchProfiles(effect.names, effect.at)
+            PersistenceEffect.LoadProfiles -> loadProfiles { onEvent(AppEvent.ProfilesLoaded(it)) }
+            is PersistenceEffect.LoadHistory ->
+                loadHistory(effect.filters) { onEvent(AppEvent.HistoryLoaded(effect.loadId, it)) }
+            is PersistenceEffect.LoadMatch ->
+                loadMatch(effect.sessionId) { onEvent(AppEvent.MatchDetailLoaded(effect.loadId, it)) }
+            is PersistenceEffect.ArchiveMatch ->
+                archiveMatch(effect.archived, effect.colorsArgb) { isArchived ->
+                    onEvent(if (isArchived) AppEvent.ArchiveSucceeded else AppEvent.ArchiveFailed)
+                }
+        }
+    }

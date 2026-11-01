@@ -19,6 +19,9 @@ object HomeTags {
     const val MODE_CRICKET = "home_mode_cricket"
     const val SETTINGS = "home_settings"
 
+    /** The "History" button (HS1). */
+    const val HISTORY = "home_history"
+
     fun player(index: Int): String = "home_summary_player_$index"
 
     fun score(index: Int): String = "home_summary_score_$index"

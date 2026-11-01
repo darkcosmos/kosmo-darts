@@ -50,6 +50,7 @@
     <string name="setup_minus_symbol" translatable="false">−</string>
     <string name="setup_add_player">ADD A PLAYER</string>
     <string name="setup_remove_player">Remove %1$s</string>
+    <string name="setup_use_name">Use the name %1$s</string>
     <string name="setup_shuffle">SHUFFLE</string>
     <string name="setup_start">START</string>
     <string name="setup_error_blank_name">Enter a name</string>
@@ -142,6 +143,10 @@
     <string name="checkout_confirm_leg">CONFIRM LEG</string>
     <string name="checkout_confirm_set">CONFIRM SET</string>
     <string name="checkout_confirm_match">CONFIRM MATCH</string>
+    <!-- Archive of the confirmed match (docs/rules/history.md, AR3) -->
+    <string name="archive_saving_label">Saving…</string>
+    <string name="archive_saving_description">Saving… The match is being saved in the history.</string>
+    <string name="archive_failed_message">The match could not be saved in the history.</string>
     <string name="game_abandon_title">Abandon the game?</string>
     <string name="game_abandon_text">The current game will be lost.</string>
     <string name="game_abandon_confirm">Abandon</string>
@@ -250,4 +255,59 @@
         <item quantity="one">Last turn: %1$d mark</item>
         <item quantity="other">Last turn: %1$d marks</item>
     </plurals>
+
+    <!-- History (docs/rules/history.md, HS1 to HS7) -->
+    <string name="home_history">History</string>
+    <string name="history_title">HISTORY</string>
+    <string name="history_filter_mode">MODE</string>
+    <string name="history_filter_player">PLAYER</string>
+    <string name="history_filter_all">All</string>
+    <plurals name="history_players_description">
+        <item quantity="one">Player: %2$s</item>
+        <item quantity="other">Players: %2$s</item>
+    </plurals>
+    <plurals name="history_winner">
+        <item quantity="one">Winner: %2$s</item>
+        <item quantity="other">Winners: %2$s</item>
+    </plurals>
+    <string name="history_score_sets">Sets %1$s</string>
+    <string name="history_score_legs">Legs %1$s</string>
+    <string name="history_score_separator" translatable="false">–</string>
+    <string name="history_score_spoken_player" translatable="false">%1$s %2$d</string>
+    <string name="history_description_separator" translatable="false">". "</string>
+    <string name="history_row_action">Open the match</string>
+    <string name="history_empty_title">No match yet</string>
+    <string name="history_empty_hint">Finished matches appear here.</string>
+    <string name="history_no_match">No match matches these filters</string>
+    <string name="history_show_all">Show all matches</string>
+    <string name="history_failed">The history cannot be read right now.</string>
+    <string name="history_retry">Retry</string>
+    <string name="history_loading">Loading the history</string>
+
+    <!-- Match detail (docs/rules/history.md, HS5) -->
+    <string name="detail_title">MATCH</string>
+    <string name="detail_duration">Duration: %1$s</string>
+    <string name="detail_duration_under_a_minute">less than a minute</string>
+    <plurals name="detail_duration_hours">
+        <item quantity="one">%d hour</item>
+        <item quantity="other">%d hours</item>
+    </plurals>
+    <plurals name="detail_duration_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
+    <string name="detail_duration_separator" translatable="false">" "</string>
+    <string name="detail_rank" translatable="false">%1$d. %2$s</string>
+    <string name="detail_leg_starter">Started by %1$s</string>
+    <string name="detail_leg_winner">Won by %1$s</string>
+    <plurals name="detail_visit_marks">
+        <item quantity="one">%d mark</item>
+        <item quantity="other">%d marks</item>
+    </plurals>
+    <string name="detail_visit_total_description">Total %1$d</string>
+    <string name="detail_visit_description">%1$s: %2$s. %3$s</string>
+    <string name="detail_dart_miss_spoken">Miss</string>
+    <string name="detail_dart_spoken_separator" translatable="false">", "</string>
+    <string name="detail_failed">This match cannot be read right now.</string>
+    <string name="detail_loading">Loading the match</string>
 </resources>

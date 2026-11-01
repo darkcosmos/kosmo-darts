@@ -14,6 +14,7 @@ import io.github.darkcosmos.kosmodarts.audio.ResourcePhrases
 import io.github.darkcosmos.kosmodarts.ui.KosmoDartsApp
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
+import io.github.darkcosmos.kosmodarts.ui.history.HistorySnapshot
 import io.github.darkcosmos.kosmodarts.ui.settings.SettingsEvent
 import io.github.darkcosmos.kosmodarts.ui.settings.SettingsViewModel
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
@@ -27,8 +28,11 @@ class MainActivity : ComponentActivity() {
         get() = application as KosmoDartsApplication
 
     private val viewModel: KosmoDartsViewModel by viewModels {
-        KosmoDartsViewModel.factory(app.persistence, app.audioSettings, wasOnGameScreen)
+        KosmoDartsViewModel.factory(app.persistence, app.audioSettings, wasOnGameScreen, restoredHistory)
     }
+
+    /** The History filters and scroll position found in the saved instance state (HS6), or `null`. */
+    private var restoredHistory: HistorySnapshot? = null
 
     private val settingsViewModel: SettingsViewModel by viewModels {
         SettingsViewModel.factory(app.audioSettings) { ResourcePhrases(app.resources) }
@@ -45,6 +49,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Read before the ViewModel is first used. The bundle only comes back when Android restores the task.
         wasOnGameScreen = savedInstanceState?.getBoolean(KEY_WAS_ON_GAME_SCREEN) == true
+        restoredHistory = HistorySnapshot.decode(savedInstanceState?.getString(KEY_HISTORY))
         audioBinder = AudioBinder(this, viewModel, settingsViewModel, app.audioSettings, app.audioFactory)
         audioBinder.bind()
         setContent {
@@ -61,10 +66,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** Only this boolean is kept by Android, never names or darts: the game itself is in the app's files. */
+    /**
+     * Only this boolean and the History filters and scroll position (numbers and a mode name) are kept by Android,
+     * never names or darts: the game itself is in the app's files, the matches in the database.
+     */
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putBoolean(KEY_WAS_ON_GAME_SCREEN, viewModel.isOnGameScreen)
+        viewModel.historySnapshot?.let { outState.putString(KEY_HISTORY, it.encode()) }
     }
 
     /** "Install a voice" opens another app's screen (AN17); the rest is state. */
@@ -83,5 +92,6 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val KEY_WAS_ON_GAME_SCREEN = "wasOnGameScreen"
+        const val KEY_HISTORY = "history"
     }
 }

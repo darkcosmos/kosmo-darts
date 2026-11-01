@@ -13,6 +13,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.InvalidX01ConfigException
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01ConfigError
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
+import io.github.darkcosmos.kosmodarts.history.Profile
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import kotlin.random.Random
@@ -31,6 +32,8 @@ import kotlin.random.Random
  *   [start] returns. The start score and the checkout rule are X01 settings.
  * @property cricketVariant Standard or Cut-throat (CR21), a Cricket setting.
  * @property isBullInPlay whether the Bull is a target (CR21, "25-Bull"), a Cricket setting.
+ * @property profiles the known profiles, most recently used first (PF3); empty until read or when the read failed.
+ * @property focusedIndex the position of the name field that has the focus, or `null` (PF3).
  */
 data class SetupState(
     val startScore: Int = X01Config.DEFAULT_START_SCORE,
@@ -43,6 +46,8 @@ data class SetupState(
     val mode: GameMode = GameMode.X01,
     val cricketVariant: CricketVariant = CricketVariant.STANDARD,
     val isBullInPlay: Boolean = true,
+    val profiles: List<Profile> = emptyList(),
+    val focusedIndex: Int? = null,
 ) {
     /** [names] with the color slots of their positions (PC5), for a setup typed in one go. */
     constructor(
@@ -112,13 +117,13 @@ data class SetupState(
     /** PC3, M13: removes the row at [index] and its typed name at once; its color slot becomes free. */
     fun withPlayerRemoved(index: Int): SetupState =
         if (canRemovePlayer && index in roster.entries.indices) {
-            edited(copy(roster = roster.withPlayerRemoved(index)))
+            edited(copy(roster = roster.withPlayerRemoved(index), focusedIndex = null))
         } else {
             this
         }
 
     /** PC4: shuffles the throwing order with [random], injected so that tests are deterministic. */
-    fun shuffled(random: Random): SetupState = edited(copy(roster = roster.shuffled(random)))
+    fun shuffled(random: Random): SetupState = edited(copy(roster = roster.shuffled(random), focusedIndex = null))
 
     /**
      * Validates the setup of its [mode] with the engine rules (rules C5, M1, CR1); the slots go with the names (PC5).
@@ -219,3 +224,17 @@ private fun SetupState.invalid(errors: List<Pair<X01ConfigError, List<Int>>>): S
     val screenLevel = errors.filter { it.second.isEmpty() }.map { it.first }
     return SetupResult.Invalid(copy(nameErrors = byField, screenErrors = screenLevel))
 }
+
+/** PF3: the profiles suggested under the name field at [index]; none unless that field has the focus. */
+fun SetupState.suggestionsFor(index: Int): List<Profile> =
+    if (index == focusedIndex) suggestions(profiles, names, index) else emptyList()
+
+/** PF3: the profiles read from the device. Not an edit: the errors shown stay. */
+fun SetupState.withProfiles(value: List<Profile>): SetupState = copy(profiles = value)
+
+/** PF3: the field at [index] got the focus. Not an edit. */
+fun SetupState.withFocusOn(index: Int): SetupState =
+    if (index in roster.entries.indices) copy(focusedIndex = index) else this
+
+/** PF3: the field at [index] lost the focus; another field that already took it keeps it. */
+fun SetupState.withFocusLostBy(index: Int): SetupState = if (focusedIndex == index) copy(focusedIndex = null) else this

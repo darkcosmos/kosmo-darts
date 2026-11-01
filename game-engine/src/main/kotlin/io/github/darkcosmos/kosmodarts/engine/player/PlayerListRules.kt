@@ -73,15 +73,22 @@ object PlayerListRules {
     /** One violation per duplicated name. Blank names are reported as [PlayerListError.BLANK_NAME] only. */
     private fun duplicateNameViolations(players: List<String>): List<PlayerListViolation> = players.indices
         .filterNot { players[it].isBlank() }
-        .groupBy { caseInsensitiveKey(players[it]) }
+        .groupBy { nameKey(players[it]) }
         .values
         .filter { it.size > 1 }
         .map { PlayerListViolation(PlayerListError.DUPLICATE_NAME, it) }
 
     /**
-     * Locale-independent case folding, code point by code point (also correct for letters outside the BMP). Upper
-     * then lower case maps every case variant to one form, like [String.equals] with `ignoreCase = true`.
+     * The key under which two names are the same player: [name] trimmed, normalized to NFC and case folded, whatever
+     * the default locale (rule C4, history rule PF1). Accents are kept. Used by the duplicate check and by profiles.
+     *
+     * Case folding goes code point by code point (also correct for letters outside the BMP). Upper then lower case
+     * maps every case variant to one form, like [String.equals] with `ignoreCase = true`.
      */
-    private fun caseInsensitiveKey(name: String): List<Int> =
-        name.codePoints().map { Character.toLowerCase(Character.toUpperCase(it)) }.toArray().toList()
+    fun nameKey(name: String): String {
+        val normalized = Normalizer.normalize(name.trim(), Normalizer.Form.NFC)
+        return buildString {
+            normalized.codePoints().forEach { appendCodePoint(Character.toLowerCase(Character.toUpperCase(it))) }
+        }
+    }
 }

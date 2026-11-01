@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.reduce
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures
 import kotlin.random.Random
@@ -56,7 +57,10 @@ internal class MatchScript {
     }
 
     /** "Finish …" in the checkout dialog. */
-    fun finish(): MatchScript = send(AppEvent.FinishGameTapped)
+    fun finish(): MatchScript {
+        send(AppEvent.FinishGameTapped)
+        return if (helper.isArchiving(state)) send(AppEvent.ArchiveSucceeded) else this
+    }
 
     fun nextLeg(): MatchScript = send(AppEvent.NextLegTapped)
 
