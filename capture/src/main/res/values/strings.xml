@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Kosmo Capture</string>
+    <string name="dart_single" translatable="false">%1$d</string>
+    <string name="dart_outer_bull" translatable="false">25</string>
+    <string name="dart_bull">BULL</string>
+    <string name="dart_miss">MISS</string>
+    <string name="key_double">DOUBLE</string>
+    <string name="key_triple">TRIPLE</string>
+    <string name="key_selected_mark" translatable="false">✓</string>
+    <string name="action_start">Start session</string>
+    <string name="action_stop">Stop session</string>
+    <string name="action_next_volley">Next volley</string>
+    <string name="action_undo">Undo</string>
+    <plurals name="session_count">
+        <item quantity="one">Session: %1$d dart</item>
+        <item quantity="other">Session: %1$d darts</item>
+    </plurals>
+    <plurals name="total_count">
+        <item quantity="one">Total: %1$d dart</item>
+        <item quantity="other">Total: %1$d darts</item>
+    </plurals>
+    <string name="rec_label">REC</string>
+    <string name="rec_description">Recording</string>
+    <string name="readout_volley">Volley %1$d</string>
+    <string name="readout_empty_slot">-</string>
+    <string name="readout_bull">Bull</string>
+    <string name="readout_miss">Miss</string>
+    <string name="readout_description">Volley %1$d: %2$s</string>
+    <string name="readout_no_dart">no dart yet</string>
+    <string name="volley_full_hint">Volley full: press Next volley</string>
+    <string name="quality_uhd">4K</string>
+    <string name="quality_fhd">1080p</string>
+    <string name="quality_description">Video quality: %1$s</string>
+    <string name="preview_description">Camera preview</string>
+    <string name="camera_starting">Starting camera...</string>
+    <string name="delete_all">Delete all</string>
+    <string name="delete_all_description">Delete all sessions</string>
+    <string name="delete_all_message">Delete every session of this installation? Sessions from an earlier installation stay on the phone.</string>
+    <string name="delete_all_confirm">Delete</string>
+    <string name="dialog_cancel">Cancel</string>
+    <string name="stop_message">Stop the session? The current volley is saved.</string>
+    <string name="stop_confirm">Stop</string>
+    <string name="stop_cancel">Continue</string>
+    <string name="saving">Saving...</string>
+    <string name="permission_message">Kosmo Capture needs the camera.</string>
+    <string name="permission_allow">Allow camera</string>
+    <string name="permission_open_settings">Open settings</string>
+    <string name="photo_failure">Photo failed for this dart. The entry is kept.</string>
+    <string name="photo_failure_dismiss">Dismiss</string>
+    <string name="error_saving">Saving failed: the session was stopped. Files saved until now are kept.</string>
+    <string name="error_delete_all">Deleting failed: some files may remain on the phone.</string>
+    <string name="error_dismiss">Dismiss</string>
+    <string name="zoom_description">Zoom</string>
+    <string name="zoom_value">%1$.1f×</string>
+    <string name="zoom_state">%1$.1f times</string>
+    <string name="zoom_unavailable">Zoom not available</string>
+    <string name="zoom_out_description">Zoom out</string>
+    <string name="zoom_in_description">Zoom in</string>
+    <string name="zoom_out_symbol" translatable="false">−</string>
+    <string name="zoom_in_symbol" translatable="false">+</string>
+</resources>

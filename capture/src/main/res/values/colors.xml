@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Teal background, distinct from the Kosmo Darts launcher icon. -->
+    <color name="ic_launcher_background">#FF00695C</color>
+    <color name="window_background">#FF1B1B1F</color>
+</resources>
