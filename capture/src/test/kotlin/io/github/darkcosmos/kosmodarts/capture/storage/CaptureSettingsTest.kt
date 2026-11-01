@@ -49,6 +49,42 @@ class CaptureSettingsTest {
     }
 
     @Test
+    fun `CP16 an old file without zoom reads 1_0 and keeps quality and total`() {
+        file().writeText("quality=FHD\ntotal=7\n")
+        assertEquals(StoredSettings(VideoQuality.FHD, 7, 1.0f), CaptureSettings(file()).read())
+    }
+
+    @Test
+    fun `CP16 an invalid zoom reads 1_0`() {
+        listOf("abc", "NaN", "0", "-1").forEach { bad ->
+            file().writeText("quality=FHD\ntotal=7\nzoom=$bad\n")
+            assertEquals(bad, StoredSettings(VideoQuality.FHD, 7, 1.0f), CaptureSettings(file()).read())
+        }
+    }
+
+    @Test
+    fun `CP16 zoom, quality and total keep each other`() {
+        val settings = CaptureSettings(file())
+        settings.saveQuality(VideoQuality.FHD)
+        settings.saveTotal(5)
+        settings.saveZoom(2.4f)
+        assertEquals(StoredSettings(VideoQuality.FHD, 5, 2.4f), CaptureSettings(file()).read())
+        settings.saveQuality(VideoQuality.UHD)
+        settings.saveTotal(6)
+        assertEquals(StoredSettings(VideoQuality.UHD, 6, 2.4f), CaptureSettings(file()).read())
+    }
+
+    @Test
+    fun `S10 an unknown line is ignored on read and dropped by the next write`() {
+        file().writeText("quality=FHD\nfoo=bar\nzoom=3.0\n")
+        val settings = CaptureSettings(file())
+        assertEquals(StoredSettings(VideoQuality.FHD, 0, 3.0f), settings.read())
+        settings.saveTotal(1)
+        assertFalse(file().readText().contains("foo"))
+        assertEquals(StoredSettings(VideoQuality.FHD, 1, 3.0f), settings.read())
+    }
+
+    @Test
     fun `CP7 a corrupt file is repaired by the next write and no temporary file is left`() {
         file().writeText("%%%")
         val settings = CaptureSettings(file())

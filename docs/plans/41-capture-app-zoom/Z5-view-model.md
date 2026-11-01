@@ -55,3 +55,9 @@ CP14 (buttons), CP15, CP16, CP17, CP2. Decisions DZ4, DZ7, DZ11.
 sonnet. Why: state holder with JVM tests, behavior fully specified.
 
 ## Implementation notes
+`CaptureViewModel` keeps `zoom: ZoomSelection`, `lastRequestedRatio` and `storedZoom`. `onStart` builds
+`ZoomRecord(lastRequestedRatio, setup.zoom.ratio)` and copies it into the setup. Saving compares `zoom.remembered` with the
+stored ratio (so a stored 12 clamped to 10 is not rewritten as 10 on release). `changeZoom` checks `render().zoomEnabled`.
+`onZoomRange` is called by the activity before `onCameraReady(true)`. Z6 reads `state.zoom` (`ratio`, `position`,
+`unavailable`) and `zoomEnabled`, `zoomOutEnabled`, `zoomInEnabled`; it calls `onZoomChanged(position)`,
+`onZoomChangeFinished()` and `onZoomStep(+1/-1)`.

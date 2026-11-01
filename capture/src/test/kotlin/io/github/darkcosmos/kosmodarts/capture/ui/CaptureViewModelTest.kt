@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.capture.ui
 
+import io.github.darkcosmos.kosmodarts.camera.zoom.ZoomRange
 import io.github.darkcosmos.kosmodarts.capture.session.CaptureSetup
 import io.github.darkcosmos.kosmodarts.capture.session.FakeClock
 import io.github.darkcosmos.kosmodarts.capture.storage.CaptureOutputTarget
@@ -11,6 +12,8 @@ import io.github.darkcosmos.kosmodarts.capture.truth.EndReason
 import io.github.darkcosmos.kosmodarts.capture.truth.PhotoSettings
 import io.github.darkcosmos.kosmodarts.capture.truth.Resolution
 import io.github.darkcosmos.kosmodarts.capture.truth.TimestampSource
+import io.github.darkcosmos.kosmodarts.capture.truth.TruthDecodeResult
+import io.github.darkcosmos.kosmodarts.capture.truth.TruthJson
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoQuality
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoSettings
 import io.github.darkcosmos.kosmodarts.capture.truth.ZoomRecord
@@ -314,5 +317,188 @@ class CaptureViewModelTest {
         val vm = viewModel().running()
         vm.onDart(t20)
         assertEquals(listOf("start 1 volley-001.mp4", "photo 1 dart-001.jpg"), effects.calls)
+    }
+
+    private val range = ZoomRange.of(1.0f, 10.0f)!!
+
+    private fun zoomViewModel(stored: Float? = 2.4f, bound: ZoomRange? = range): CaptureViewModel {
+        stored?.let { settings().saveZoom(it) }
+        return viewModel().also { if (bound != null) it.onZoomRange(bound) }
+    }
+
+    private fun savedZoom(): Float = settings().read().zoom
+
+    private fun startedZoom(): ZoomRecord {
+        val text = storage.writes.last()
+        return (TruthJson.decode(text) as TruthDecodeResult.Success).session.zoom
+    }
+
+    @Test
+    fun `CP16 the stored zoom is the state before any range, then it is applied once`() {
+        settings().saveZoom(2.4f)
+        val vm = viewModel()
+        assertEquals(2.4f, vm.ui().zoom.ratio, 0f)
+        assertTrue(effects.zoomCalls.isEmpty())
+        vm.onZoomRange(range)
+        assertEquals(listOf(2.4f), effects.zoomCalls)
+    }
+
+    @Test
+    fun `CP16 a stored ratio above the range is clamped, applied and not saved`() {
+        val vm = zoomViewModel(stored = 12f)
+        assertEquals(listOf(10.0f), effects.zoomCalls)
+        assertEquals(10.0f, vm.ui().zoom.ratio, 0f)
+        vm.onZoomChangeFinished()
+        assertEquals(12f, savedZoom(), 0f)
+    }
+
+    @Test
+    fun `CP16 a new range re-applies the ratio, also during a session`() {
+        val vm = zoomViewModel().running()
+        vm.onZoomRange(range)
+        assertEquals(listOf(2.4f, 2.4f), effects.zoomCalls)
+    }
+
+    @Test
+    fun `CP16 no range or a range without zoom applies nothing`() {
+        val none = zoomViewModel(bound = null)
+        none.onZoomRange(null)
+        assertTrue(effects.zoomCalls.isEmpty())
+        none.onZoomRange(ZoomRange.of(1.0f, 1.0f))
+        assertTrue(effects.zoomCalls.isEmpty())
+        assertTrue(none.ui().zoom.unavailable)
+    }
+
+    @Test
+    fun `CP16 three moves then the release give three effects and one save`() {
+        val vm = zoomViewModel()
+        effects.zoomCalls.clear()
+        listOf(0.2f, 0.4f, 0.6f).forEach { vm.onZoomChanged(it) }
+        assertEquals(3, effects.zoomCalls.size)
+        assertEquals(2.4f, savedZoom(), 0f)
+        vm.onZoomChangeFinished()
+        assertEquals(vm.ui().zoom.ratio, savedZoom(), 0f)
+        val saved = savedZoom()
+        vm.onZoomChangeFinished()
+        assertEquals(saved, savedZoom(), 0f)
+    }
+
+    @Test
+    fun `CP16 a release without a change does not write`() {
+        val vm = zoomViewModel()
+        val file = folder.root.resolve("settings.txt")
+        file.delete()
+        vm.onZoomChangeFinished()
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun `CP16 a failing settings write keeps the ratio and shows no error`() {
+        val vm = zoomViewModel(stored = null)
+        val file = folder.root.resolve("settings.txt")
+        file.mkdir()
+        file.resolve("keep").writeText("x")
+        vm.onZoomChanged(0.5f)
+        vm.onZoomChangeFinished()
+        vm.onZoomStep(1)
+        assertNull(vm.ui().error)
+        assertEquals(vm.ui().zoom.ratio, vm.ui().zoom.remembered, 0f)
+        assertTrue(vm.ui().zoom.ratio > 2f)
+    }
+
+    @Test
+    fun `CP14 steps move by 0_1, apply and save at once`() {
+        val vm = zoomViewModel()
+        effects.zoomCalls.clear()
+        vm.onZoomStep(1)
+        assertEquals(2.5f, vm.ui().zoom.ratio, 0f)
+        assertEquals(listOf(2.5f), effects.zoomCalls)
+        assertEquals(2.5f, savedZoom(), 0f)
+        vm.onZoomStep(-1)
+        vm.onZoomStep(-1)
+        assertEquals(2.3f, vm.ui().zoom.ratio, 0f)
+        assertEquals(2.3f, savedZoom(), 0f)
+    }
+
+    @Test
+    fun `CP14 at the ends a step does nothing and the button is disabled`() {
+        val top = zoomViewModel(stored = 10f)
+        effects.zoomCalls.clear()
+        top.onZoomStep(1)
+        assertTrue(effects.zoomCalls.isEmpty())
+        assertFalse(top.ui().zoomInEnabled)
+        assertTrue(top.ui().zoomOutEnabled)
+        val bottom = zoomViewModel(stored = 1f)
+        assertFalse(bottom.ui().zoomOutEnabled)
+        assertTrue(bottom.ui().zoomInEnabled)
+    }
+
+    @Test
+    fun `CP15 the zoom is enabled only when idle, ready, granted and adjustable`() {
+        val vm = zoomViewModel()
+        assertTrue(vm.ui().zoomEnabled)
+        vm.onCameraReady(false)
+        assertFalse(vm.ui().zoomEnabled)
+        vm.onCameraReady(true)
+        vm.onPermission(CameraPermission.ASK)
+        assertFalse(vm.ui().zoomEnabled)
+        vm.onPermission(CameraPermission.GRANTED)
+        vm.onZoomRange(null)
+        assertFalse(vm.ui().zoomEnabled)
+        vm.onZoomRange(ZoomRange.of(1.0f, 1.0f))
+        assertFalse(vm.ui().zoomEnabled)
+        vm.onZoomRange(range)
+        assertTrue(vm.ui().zoomEnabled)
+        vm.onStart()
+        assertFalse(vm.ui().zoomEnabled)
+    }
+
+    @Test
+    fun `CP15 moves and steps are ignored while disabled`() {
+        val vm = zoomViewModel().running()
+        effects.zoomCalls.clear()
+        val before = vm.ui()
+        vm.onZoomChanged(0.9f)
+        vm.onZoomStep(1)
+        vm.onZoomChangeFinished()
+        assertEquals(before, vm.ui())
+        assertTrue(effects.zoomCalls.isEmpty())
+        assertEquals(2.4f, savedZoom(), 0f)
+        val ask = zoomViewModel()
+        ask.onPermission(CameraPermission.ASK)
+        ask.onZoomStep(1)
+        assertEquals(2.4f, ask.ui().zoom.ratio, 0f)
+    }
+
+    @Test
+    fun `CP17 Start records the requested ratio and the setup ratio`() {
+        zoomViewModel().onStart()
+        assertEquals(ZoomRecord(requestedRatio = 2.4f, ratio = 2.4f), startedZoom())
+    }
+
+    @Test
+    fun `CP17 without a zoom range the requested ratio is null`() {
+        zoomViewModel(bound = null).onStart()
+        assertNull(startedZoom().requestedRatio)
+        val flat = zoomViewModel()
+        flat.onZoomRange(ZoomRange.of(1.0f, 1.0f))
+        flat.onStart()
+        assertNull(startedZoom().requestedRatio)
+    }
+
+    @Test
+    fun `CP17 a range lost after an application leaves the requested ratio null`() {
+        val vm = zoomViewModel()
+        vm.onZoomRange(null)
+        vm.onStart()
+        assertNull(startedZoom().requestedRatio)
+    }
+
+    @Test
+    fun `CP17 a step before Start is the requested ratio`() {
+        val vm = zoomViewModel()
+        vm.onZoomStep(1)
+        vm.onStart()
+        assertEquals(2.5f, startedZoom().requestedRatio!!, 0f)
     }
 }

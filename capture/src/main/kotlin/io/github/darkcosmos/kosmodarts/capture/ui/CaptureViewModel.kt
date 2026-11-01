@@ -1,6 +1,8 @@
 package io.github.darkcosmos.kosmodarts.capture.ui
 
 import androidx.lifecycle.ViewModel
+import io.github.darkcosmos.kosmodarts.camera.zoom.ZoomRange
+import io.github.darkcosmos.kosmodarts.camera.zoom.ZoomSelection
 import io.github.darkcosmos.kosmodarts.capture.session.CaptureClock
 import io.github.darkcosmos.kosmodarts.capture.session.CaptureCounters
 import io.github.darkcosmos.kosmodarts.capture.session.CaptureEffect
@@ -14,6 +16,7 @@ import io.github.darkcosmos.kosmodarts.capture.storage.CaptureStorage
 import io.github.darkcosmos.kosmodarts.capture.storage.TruthWriter
 import io.github.darkcosmos.kosmodarts.capture.truth.Gravity
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoQuality
+import io.github.darkcosmos.kosmodarts.capture.truth.ZoomRecord
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import java.io.IOException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +52,11 @@ class CaptureViewModel(
     private val finalizing = mutableSetOf<Int>()
 
     private var quality: VideoQuality
+    private var zoom: ZoomSelection
+
+    /** Ratio last sent to the camera while the range allowed it; null when none (rule CP17). */
+    private var lastRequestedRatio: Float? = null
+    private var storedZoom: Float
     private val mutableState: MutableStateFlow<CaptureUiState>
 
     /** What the screen shows. */
@@ -57,8 +65,10 @@ class CaptureViewModel(
     init {
         val stored = settings.read()
         quality = stored.quality
+        storedZoom = stored.zoom
+        zoom = ZoomSelection(stored.zoom)
         counters = CaptureCounters(total = stored.total)
-        mutableState = MutableStateFlow(CaptureUiState(quality = quality, totalCount = stored.total))
+        mutableState = MutableStateFlow(CaptureUiState(quality = quality, totalCount = stored.total, zoom = zoom))
         state = mutableState.asStateFlow()
     }
 
@@ -96,7 +106,9 @@ class CaptureViewModel(
         if (!isIdle() || !cameraReady || permission != CameraPermission.GRANTED) return@update
         error = null
         counters = counters.forNewSession()
-        val outcome = session.start(clock, provider(), ownFolders())
+        val setup = provider()
+        val zoomRecord = ZoomRecord(lastRequestedRatio, setup.zoom.ratio)
+        val outcome = session.start(clock, setup.copy(zoom = zoomRecord), ownFolders())
         val folder = outcome.session.truth?.session ?: return@update
         val created = try {
             storage.createTruthFile(folder)
@@ -159,6 +171,48 @@ class CaptureViewModel(
             quality = value
         } catch (_: IOException) {
             error = CaptureError.START
+        }
+    }
+
+    /**
+     * Rule CP16: the camera was bound and offers [range] (null when unknown). The remembered ratio is applied again
+     * after every binding, also during a session.
+     */
+    fun onZoomRange(range: ZoomRange?) = update {
+        zoom = zoom.withRange(range)
+        lastRequestedRatio = if (zoom.adjustable) zoom.ratio else null
+        lastRequestedRatio?.let { effects?.setZoomRatio(it) }
+    }
+
+    /** Rules CP15 and CP16: the slider moved to [position]. */
+    fun onZoomChanged(position: Float) = update { changeZoom(zoom.movedTo(position)) }
+
+    /** Rule CP16: the slider was released; the ratio is saved when it differs from the stored one. */
+    fun onZoomChangeFinished() = update { saveZoom() }
+
+    /** Rules CP14 and CP16: [steps] times 0.1 from the current ratio, saved at once. */
+    fun onZoomStep(steps: Int) = update {
+        if (changeZoom(zoom.steppedBy(steps))) saveZoom()
+    }
+
+    /** Applies [next] when the zoom is enabled and the ratio changed; returns true when it did. */
+    private fun changeZoom(next: ZoomSelection): Boolean {
+        if (!render().zoomEnabled || next.ratio == zoom.ratio) return false
+        zoom = next
+        lastRequestedRatio = next.ratio
+        effects?.setZoomRatio(next.ratio)
+        return true
+    }
+
+    /** A failed write keeps the ratio and shows no error (DZ7); the next release tries again. */
+    private fun saveZoom() {
+        val ratio = zoom.remembered
+        if (ratio == storedZoom) return
+        try {
+            settings.saveZoom(ratio)
+            storedZoom = ratio
+        } catch (_: IOException) {
+            // Not saved: the ratio stays chosen for this launch.
         }
     }
 
@@ -271,6 +325,7 @@ class CaptureViewModel(
             stopConfirmVisible = stopConfirmVisible && running,
             deleteAllConfirmVisible = deleteAllConfirmVisible,
             photoFailure = photoFailure,
+            zoom = zoom,
         )
     }
 }

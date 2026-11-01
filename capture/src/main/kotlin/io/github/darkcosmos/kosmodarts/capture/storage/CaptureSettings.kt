@@ -1,13 +1,22 @@
 package io.github.darkcosmos.kosmodarts.capture.storage
 
+import io.github.darkcosmos.kosmodarts.camera.zoom.DEFAULT_ZOOM_RATIO
+import io.github.darkcosmos.kosmodarts.camera.zoom.ZoomSettingFormat
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoQuality
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
-/** Values kept between launches: the video [quality] (rule CP11) and the persisted [total] of darts (rule CP7). */
-data class StoredSettings(val quality: VideoQuality = VideoQuality.UHD, val total: Int = 0)
+/**
+ * Values kept between launches: the video [quality] (rule CP11), the persisted [total] of darts (rule CP7) and the
+ * camera [zoom] ratio (rule CP16).
+ */
+data class StoredSettings(
+    val quality: VideoQuality = VideoQuality.UHD,
+    val total: Int = 0,
+    val zoom: Float = DEFAULT_ZOOM_RATIO,
+)
 
 /**
  * Private settings in one small text file ([file], under the app's files directory), `key=value` per line. Writes go
@@ -25,11 +34,14 @@ class CaptureSettings(private val file: File) {
     /** Keeps [total] and the stored quality. A negative total is stored as 0. */
     fun saveTotal(total: Int) = update { it.copy(total = total.coerceAtLeast(0)) }
 
+    /** Keeps the stored quality and total. */
+    fun saveZoom(ratio: Float) = update { it.copy(zoom = ratio) }
+
     private fun update(change: (StoredSettings) -> StoredSettings) = synchronized(lock) {
         val next = change(readLocked())
         val temp = File(file.parentFile, "${file.name}.tmp")
         try {
-            temp.writeText("quality=${next.quality.name}\ntotal=${next.total}\n")
+            temp.writeText("quality=${next.quality.name}\ntotal=${next.total}\nzoom=${ZoomSettingFormat.format(next.zoom)}\n")
             Files.move(temp.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE)
         } catch (e: IOException) {
             temp.delete()
@@ -47,6 +59,6 @@ class CaptureSettings(private val file: File) {
             .associate { (key, value) -> key.trim() to value.trim() }
         val quality = VideoQuality.entries.firstOrNull { it.name == values["quality"] } ?: VideoQuality.UHD
         val total = values["total"]?.toIntOrNull()?.takeIf { it >= 0 } ?: 0
-        return StoredSettings(quality, total)
+        return StoredSettings(quality, total, ZoomSettingFormat.parse(values["zoom"]))
     }
 }

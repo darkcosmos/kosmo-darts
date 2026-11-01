@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.capture.ui
 
+import io.github.darkcosmos.kosmodarts.camera.zoom.ZoomSelection
 import io.github.darkcosmos.kosmodarts.capture.session.DARTS_PER_VOLLEY
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoQuality
 
@@ -29,6 +30,7 @@ data class CaptureUiState(
     val deleteAllConfirmVisible: Boolean = false,
     /** Dart number whose photo failed, until the screen reports the message as shown (rule CP13). */
     val photoFailure: Int? = null,
+    val zoom: ZoomSelection = ZoomSelection(),
 ) {
     private val running: Boolean get() = phase == CapturePhase.RUNNING
     private val idle: Boolean get() = phase == CapturePhase.IDLE || phase == CapturePhase.ERROR
@@ -50,6 +52,15 @@ data class CaptureUiState(
     val qualityEnabled: Boolean get() = idle
 
     val deleteAllEnabled: Boolean get() = idle
+
+    /** Rule CP15: the zoom changes only outside a session, with a ready camera, a granted permission and a range. */
+    val zoomEnabled: Boolean
+        get() = idle && cameraReady && permission == CameraPermission.GRANTED && zoom.adjustable
+
+    /** Rule CP14. */
+    val zoomOutEnabled: Boolean get() = zoomEnabled && zoom.canStepDown
+
+    val zoomInEnabled: Boolean get() = zoomEnabled && zoom.canStepUp
 
     /** Rule CP12. */
     val keepScreenOn: Boolean get() = running

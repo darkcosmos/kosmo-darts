@@ -186,7 +186,10 @@ class CaptureActivity : ComponentActivity() {
         boundKey = key
         viewModel.onCameraReady(false)
         camera.bind(this, view, state.quality, displayRotation()) { bound ->
-            if (boundKey == key) viewModel.onCameraReady(bound)
+            if (boundKey == key) {
+                if (bound) viewModel.onZoomRange(camera.zoomRange)
+                viewModel.onCameraReady(bound)
+            }
         }
     }
 
