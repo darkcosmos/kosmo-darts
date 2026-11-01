@@ -14,7 +14,8 @@
   ratio = camera.zoomRatio)`; Z5 sets `requestedRatio` in the view model.
 - `docs/camera/capture-format.md`: title and status version 2, field table row `zoom`, version policy "this reader
   knows version 2 only", section "Version 1" (identical without `zoom`, recorded at zoom 1.0, see root plan "Truth
-  file version 2"), example regenerated from the golden test.
+  file version 2"), example regenerated from the golden test; the `zoom` row says the values have no upper bound
+  and phase 0b tools must not assume a plausible range (S9, root "Truth file version 2").
 - Tests: `TruthFixtures`, `TruthJsonGoldenTest`, `TruthJsonRoundTripTest`, `TruthJsonRejectTest`,
   `CaptureControllerTest`; fixtures building `CaptureSetup` in `CaptureSessionTest` and `CaptureViewModelTest`.
 
