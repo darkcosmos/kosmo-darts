@@ -46,3 +46,14 @@ DJ1 to DJ4. Existing X01 and Cricket rules (`docs/rules/x01.md`, `docs/rules/cri
 sonnet. Why: specified engine rules DJ1 to DJ4 with listed tests.
 
 ## Implementation notes
+- Package `...engine.journal` in `:game-engine`. `LegReplay.replay(LegJournal, LegSetup)` returns `ReplayedLeg(darts:
+  List<JournalDart>, dartsInPlay: List<Dart>, isFinished)`. `LegSetup` is `X01(config, starter)` or `Cricket(config,
+  starter)`; `LegGame.kt` holds the internal adapter over `X01Game` / `CricketGame`.
+- `MatchJournal` starts with one empty leg (`legs` never empty); `enter(dart, at, source = MANUAL)`, `undo()`,
+  `startNextLeg()`, `currentLeg`. `Clock` is only the injection point: callers pass `clock.nowMillis()` as `at`.
+- Errors: `JournalReplayException` (undo with nothing to undo, dart after the win); T5 maps it to `REJECTED_BY_ENGINE`.
+- Bust flag choice (DJ3 wording left room): darts in play carry the bust state of their visit now; a voided dart keeps
+  the flag it had at the moment it was voided (so an undone bust dart stays bust, the rest of that visit is not).
+- Cost: each event replays the engine leg (`X01Game` is rebuilt per throw), fine for real legs, quadratic on the
+  30,000-event cap of D17: T5 should not replay on every event of a huge journal.
+- Done: `./gradlew :game-engine:test build` green, `kosmo-detekt` exit 0.
