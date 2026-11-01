@@ -70,7 +70,7 @@ deleted (AR8) and must survive every future version (no destructive migration).
   whose `onCorruption` does nothing), so the next access fails again with `Failed`. If the Room version in use offers
   no supported way to do this, T1 stops and reports to main (plan, open question 1) instead of working around it.
   T1 completes this point with the Room version, the API used and the verified behavior before T7 starts (review A8).
-- Mapping: launch PF4 `Failed` is ignored (the saved game loads as usual); AR4 check `Failed` means "keep the save";
+- Mapping: AR4 check `Failed` means "keep the save";
   archive `Failed` gives `ArchiveFailed` (AR3); History and detail `Failed` give the HS7 failure state.
 - Tests use a repository fake that returns `Failed` and a closed in-memory database (a real exception path).
 
@@ -79,6 +79,9 @@ deleted (AR8) and must survive every future version (no destructive migration).
 - The app gains Room and its transitive libraries (SQLite framework wrapper, kotlinx-coroutines); the PR lists them
   with their versions.
 - Evaluating the move from Room 2.8 to Room3 is a backlog item (`docs/backlog.md`), unless T1 already fell back.
-- Tests (Robolectric, in-memory database): every DAO, idempotence, archive failure keeping the save, profile
-  migration and legacy match archive. After each build, `git status` shows no change in `app/schemas/`: the committed
-  schema matches the entities.
+- Tests (Robolectric, in-memory database): every DAO, idempotence, archive failure keeping the save. After each
+  build, `git status` shows no change in `app/schemas/`: the committed schema matches the entities.
+- Clean slate (plan D25): this version always writes `started_at`, `entered_at` and `has_journal = 1`; the nullable
+  columns and `has_journal` stay as decided (schema unchanged). Until the release version that can be updated
+  (plan T15), the schema stays version 1 with its exported schema and no destructive fallback, and may be edited in
+  place only by owner decision; from that release on, every change ships a tested `Migration`.

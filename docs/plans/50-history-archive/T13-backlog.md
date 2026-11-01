@@ -1,7 +1,8 @@
 # T13: Backlog entries
 
 ## Goal
-Create `docs/backlog.md` with the two entries the issue asks for (issue #50, "Documentation").
+Create `docs/backlog.md` with the two entries the issue asks for (issue #50, "Documentation") and the
+release entry of D25.
 
 ## Files
 - Added `docs/backlog.md`: title "Backlog", one short line of purpose, then a list.
@@ -17,6 +18,8 @@ None (documentation).
 2. Re-enable Android Auto Backup (no `INTERNET` permission needed) so that the history survives a change of phone.
    This revises the decision "backup and device transfer disabled" (`allowBackup="false"`,
    `docs/rules/persistence.md`). Owner decision required; nothing changes in this mission.
+3. Move to a real release version that can be updated (signing key, release build); backward compatibility of saves,
+   database and settings becomes mandatory only from that release (decision D25, the GitHub issue opened by T15).
 
 ## Tests
 None (documentation only).
@@ -25,6 +28,6 @@ None (documentation only).
 `./gradlew build` green; `kosmo-detekt` exit 0.
 
 ## Model
-haiku. Why: two documentation entries whose text is given.
+haiku. Why: three documentation entries whose text is given.
 
 ## Implementation notes

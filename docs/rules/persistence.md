@@ -121,15 +121,13 @@ Vocabulary:
   saved match is deleted only when the match win is confirmed ("Finish game") or on abandon (owner Q7, R6).
 - R15. Writes (R12) also happen on "Finish leg", "Finish set" and "Next leg"; resuming on the between-legs screen
   writes nothing.
-- R16. A saved game or last setup written by the previous version (format 1) is read as a single game (1 leg and
-  1 set), without any message.
+- R16. Withdrawn by R30 (issue #50, clean slate): files of earlier builds are no longer read.
 
 ## Player colors (issue #49, `docs/rules/players.md`, ADR 0006)
 
-- R17. Each player's color slot is saved with the game and with the last setup (format version 3), so a resume, a
-  rematch (PC7) and the next setup (PC8) keep every player's color.
-- R18. A saved game or last setup written by an older version (format 1 or 2) gives each player the slot of his
-  position (1 to n), without any message.
+- R17. Each player's color slot is saved with the game and with the last setup, so a resume, a rematch (PC7) and the
+  next setup (PC8) keep every player's color.
+- R18. Withdrawn by R30 (issue #50, clean slate).
 - R19. A resumed game whose checkout waited for confirmation shows the CHECKOUT zone (score replaced by the CHECKOUT
   banner, keypad locked, "Undo" and the M15 confirm button in the action bar), exactly as before the app was closed.
 
@@ -143,10 +141,9 @@ Vocabulary:
   start score and checkout rule; Cricket: variant and 25-Bull; owner Q9). "Start" and "Rematch" write the roster and
   the settings of their mode, and keep the settings of the other mode. A mode never started since the file was
   written uses its defaults, with the shared roster.
-- R23. Format version 4 adds the mode line, and every write uses it. A file is rejected (the R9 message, file
+- R23. The saved game has a mode line, and every write uses it. A file is rejected (the R9 message, file
   deleted; for the last setup, R10, ignored silently) when:
-  - its version 4 mode line is missing or has an unknown value;
-  - a version 1 to 3 file contains a mode line;
+  - its mode line is missing or has an unknown value;
   - the body does not match its mode (`cricket` with an X01 body, or the reverse);
   - the checksum does not cover the mode line correctly.
 - R24. Cricket saves are validated like X01 saves (R9 to R11), with these bounds checked by the decoder:
@@ -165,18 +162,21 @@ Vocabulary:
   The confirmed-leg summaries are the match's accepted record, as in ADR 0001 and 0005. They cannot be replayed
   (their darts are not stored), so the decoder checks only the bounds above and their consistency with the match
   score. A file that would be over the size limit of R9 is not written either (ADR 0008, "Size limit").
-- R25. A version 1 to 3 saved game or last setup is read as X01 (R16, R18), without any message. Cricket then uses its
-  defaults, with the shared roster.
+- R25. Withdrawn by R30 (issue #50, clean slate).
 
 ## Match history (issue #50, `docs/rules/history.md`, ADR 0011)
 
-- R26. Format version 5 adds to the saved game the match id (AR4), the match start time and the dart journal of every
-  leg (DJ1), and every write of the saved game uses it. The last setup file keeps version 4 (unchanged).
-- R27. A version 1 to 4 saved game is read without any message: it gets a new match id, no start time, no journal for
-  its confirmed legs and a current-leg journal rebuilt from its darts (DJ5, AR7).
+- R26. The saved game carries the match id (AR4), the match start time and the dart journal of every leg (DJ1), and
+  every write of the saved game uses them.
+- R27. Withdrawn (clean slate, R30): there is no older saved game to convert.
 - R28. The 10,000-dart limit of R12 counts the darts in play of the current leg, as before; voided darts do not count.
-  The size limit of R9 becomes 1,048,576 bytes for every saved game, and a file over it is not written (the previous
+  The size limit of R9 becomes 1,048,576 bytes for the saved game, and a file over it is not written (the previous
   file is kept). The archive never depends on the saved file: it is built from the match in memory (AR1).
-- R29. A version 5 file is rejected (R9) when its match id is not a UUID, its start time or an entry time is not a
+- R29. A saved game is rejected (R9) when its match id is not a UUID, its start time or an entry time is not a
   canonical non-negative integer, its journal count differs from the leg count plus one, or a journal replay
   breaks DJ4 or the engine rejects it.
+- R30. Clean slate (owner decisions D24, D25 of issue #50): until a release version that can be updated exists, the
+  app is always installed on empty storage. The saved game and the last setup restart at format version 1 and read
+  no earlier version. A file of an earlier build, if one exists anyway, is handled by the existing checks only: the
+  saved game by R9 (message once, deleted), the last setup by R10 (ignored silently); no crash (R11). From the
+  release version on, every stored format change keeps the previous files readable.

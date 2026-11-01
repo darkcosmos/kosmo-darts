@@ -22,14 +22,15 @@ message; an already archived save is cleaned at launch (AR1 to AR4, D4, D9). Roo
 T6, T7, T8.
 
 ## Rules
-AR1 to AR4, AR7, AR9, R2, R6, R9, R14, CR25, PC9; ADR 0012 "Failure contract".
+AR1 to AR4, AR9, R2, R6, R9, R14, CR25, PC9; ADR 0012 "Failure contract".
 
 ## Tests
 - Confirm: effect `ArchiveMatch` then nothing else until `ArchiveSucceeded` (End screen, as today); `ArchiveFailed`
   keeps the zone, shows the message, re-enables confirm; retry archives once.
 - Queue order: archive before delete; failing repository keeps the saved file; closed database fails cleanly.
 - Abandon, "New game" then "Delete", unreadable save: no archive call (AR1).
-- Launch with a save whose id is archived: deleted, no resume; with a pre-update save: archived on confirm (AR7).
+- Launch with a save whose id is archived: deleted, no resume; with a save whose id is not archived: offered (R2),
+  then archived on confirm with its start time and every leg's darts.
 - Named tests (review T3), in `AppReducerArchiveTest` unless stated:
   - `secondConfirmWhileArchivingEmitsNothing`: a second `FinishGameTapped` while archiving emits no second
     `ArchiveMatch`;

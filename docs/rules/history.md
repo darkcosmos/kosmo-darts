@@ -1,7 +1,7 @@
 # History rules (profiles, dart journal, board coordinates, match archive, history screens)
 
-Status: draft for design review (issue #50, owner answers Q1 to Q8 of 2026-11-01, recorded in
-`docs/plans/50-history-archive.md`, section "Decisions").
+Status: draft for design review (issue #50, owner answers Q1 to Q8 of 2026-11-01 and the clean slate decisions D24,
+D25, recorded in `docs/plans/50-history-archive.md`, section "Decisions").
 This document is the single source of truth for the match history: tests cite these rules, never the issue text.
 Rule ids are stable. Prefixes: PF (profiles), DJ (dart journal), BC (board coordinates), AR (archive), HS (history
 screens). They never collide with R, M, PC, CR, AN, VT, CS or the X01 rules.
@@ -24,9 +24,8 @@ Vocabulary:
   profile whose name is exactly the text of the focused field (a profile with the same key but another spelling stays,
   so tapping it applies the profile's spelling). Tapping one puts its name in the field. Typing a new name is always
   possible. No popup (owner Q1, Q2). Matching is done in memory on name keys, never with SQL `LIKE`.
-- PF4. On every launch, before the setup can open, each name of the last setup and of the saved game whose name key
-  matches no profile becomes a profile (at most 4 names per file). This replaces the remembered names; it is
-  idempotent and never changes an existing profile.
+- PF4. Withdrawn (owner decision D25, clean slate): no profile is created from the last setup or the saved game.
+  Profiles are created only by PF2, at the first "Start" or "Rematch" with a name.
 - PF5. No profile is ever deleted. There is no profile management screen in this mission.
 
 ## Dart journal
@@ -40,8 +39,7 @@ Vocabulary:
   the starter's first visit, counting every player's visits in order), the rank in the visit (1 to 3), and for X01 the
   bust flag of its visit (Cricket: never bust). The values of a voided dart are those of the moment it was entered.
 - DJ4. The darts still in play of the current leg journal are exactly the darts of the current leg of the match.
-- DJ5. A match started before this version has no journal for its confirmed legs (unknown) and a current leg journal
-  rebuilt from its darts, without entry times and without voided darts.
+- DJ5. Withdrawn (clean slate, R30): every match has a journal for each of its legs and an entry time for each dart.
 
 ## Board coordinates
 
@@ -77,12 +75,11 @@ Vocabulary:
   multiplier, bust, voided, source, x and y (BC2), entry time.
 - AR6. Results (ranks, legs and sets won, leg winners) come from the engine at confirmation and are stored, not
   recomputed when read.
-- AR7. A match started before this version (DJ5) is archived with what exists: no start time, no entry times, no
-  voided darts, and no darts for its confirmed legs.
+- AR7. Withdrawn (clean slate, R30): every archived match has its start time, all its legs' darts and their times.
 - AR8. No match is ever deleted, anywhere in the app.
 - AR9. A database that cannot open, is corrupt, is full or fails on a read or write never crashes the app and is
-  never deleted or recreated empty by the app. At launch, PF4 is then skipped and the saved game is loaded and offered
-  as usual (R2). The archive fails as AR3 says. History and detail show HS7.
+  never deleted or recreated empty by the app. At launch, the saved game is then loaded and offered as usual (R2).
+  The archive fails as AR3 says. History and detail show HS7.
 - AR10. The archived dart values derived by the engine (visit, rank, bust) are a snapshot under the session's rules
   version; they are never recomputed when read.
 
@@ -97,8 +94,8 @@ Vocabulary:
 - HS4. With no archived match, History says so explicitly. With matches but none matching the filters, it says that
   no match matches, with the filters still shown and a "Show all matches" button that resets both filters.
 - HS5. Tapping a match opens its detail: summary (settings, duration, ranks, legs and sets), then leg by leg and visit
-  by visit, the darts of each visit. Voided darts are not shown; bust visits are marked. A leg without journal (AR7)
-  says that its darts were not recorded. Duration: from start to end; "—" without a start time (owner Q8).
+  by visit, the darts of each visit. Voided darts are not shown; bust visits are marked. Duration: from start to end
+  (owner Q8).
 - HS6. Both screens are read-only (no delete button), without popups, in portrait and landscape, follow
   `docs/design/`, and stay fluid with 1,000 archived matches. Each has a visible Back action with a description;
   filters, scroll position and the open detail survive a rotation and a return to the app; Back from the detail
@@ -109,7 +106,7 @@ Vocabulary:
 
 ## Related rules
 
-- Persistence: R6 (deletion at the confirmed win, now after the archive, AR2), R12 (save size), R26 to R29
-  (format version 5, `docs/adr/0011-save-format-v5-journal.md`) (`docs/rules/persistence.md`).
+- Persistence: R6 (deletion at the confirmed win, now after the archive, AR2), R12 (save size), R26 to R30
+  (clean slate, format version 1, `docs/adr/0011-save-format-v1-journal.md`) (`docs/rules/persistence.md`).
 - Database: `docs/adr/0012-archive-database.md`.
 - Players: PC9 (the color never carries information alone).

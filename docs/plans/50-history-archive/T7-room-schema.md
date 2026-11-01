@@ -41,7 +41,8 @@ AR2, AR4, AR5, AR6, AR8, AR9, AR10, PF1, PF2 (profile upsert inside the archive)
   (not deleted, not recreated empty), and no destructive migration runs. Assert only these facts.
 - Failure contract: a closed database gives `Failed` for the archive and each `HistoryDao`-backed read, never an
   exception.
-- Legacy match: legs without journal, null start time.
+- Mapping (clean slate, D25): every archived leg is written with `has_journal = 1`, the session with its
+  `started_at`, every manual dart with its `entered_at`; the schema itself is unchanged (ADR 0012).
 - 1,000 archived matches: the list query time is logged in the notes (no timing assert). Tests run on the calling
   thread with a fixed clock: no sleep, no idling wait (review T5 minor).
 - Merged manifest still has no new permission or exported component (review S3).
