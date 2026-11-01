@@ -19,7 +19,6 @@ import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures.match
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
-import io.github.darkcosmos.kosmodarts.persistence.V1Fixtures
 import io.github.darkcosmos.kosmodarts.persistence.confirmLegsWonBy
 import io.github.darkcosmos.kosmodarts.persistence.throwing
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
@@ -124,20 +123,6 @@ class MatchResumeScreensTest {
         process.launchFresh()
 
         tag(HomeTags.matchScore(1)).performScrollTo().assertTextEquals("M1")
-    }
-
-    /** R16: a game saved by the previous version resumes as a single game, without any message. */
-    @Test
-    @Config(qualifiers = "+en-port")
-    fun `R16 a version 1 save resumes as a single game`() {
-        process.writeRawGame(V1Fixtures.bytes("game-mid-turn.save"))
-        process.launchFresh()
-
-        composeRule.onNodeWithTag(HomeTags.SUMMARY).performScrollTo().assertIsDisplayed()
-        composeRule.onNodeWithText(string(R.string.restore_failed_message)).assertDoesNotExist()
-        composeRule.onNodeWithTag(HomeTags.matchScore(0), useUnmergedTree = true).assertDoesNotExist()
-        composeRule.onNodeWithTag(HomeTags.RESUME).performScrollTo().performClick()
-        composeRule.onNodeWithTag(GameTags.matchIndicators(0), useUnmergedTree = true).assertDoesNotExist()
     }
 
     /** U1: after a return from process death, the highlighted card is fully visible (4 long names, 200 %). */

@@ -63,17 +63,6 @@ class SaveColorsCodecTest {
         assertEquals(listOf(SLOT_2, SLOT_4, SLOT_1), decoded?.roster?.colorSlots)
     }
 
-    /** R18: every frozen version 1 game decodes with the slots of the player positions. */
-    @Test
-    fun `R18 version 1 games get slots by position`() {
-        V1Fixtures.GAMES.keys.forEach { name ->
-            val decoded = gameCodec.decode(V1Fixtures.bytes(name)) as GameDecodeResult.Valid
-            val players = decoded.x01.match.config.players.size
-
-            assertEquals(name, ColorSlot.byPosition(players), decoded.x01.match.colorSlots)
-        }
-    }
-
     /** R18: the frozen version 1 last setup decodes with the slots of the player positions. */
     @Test
     fun `R18 a version 1 last setup gets slots by position`() {

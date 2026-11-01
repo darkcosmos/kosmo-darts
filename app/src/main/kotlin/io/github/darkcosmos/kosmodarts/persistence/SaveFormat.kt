@@ -20,6 +20,9 @@ enum class InvalidSaveReason {
     REJECTED_BY_ENGINE,
     INCONSISTENT_WAITING_FLAG,
 
+    /** The journal of a saved game disagrees with the match: its count, its darts in play or a leg winner (R29). */
+    INCONSISTENT_JOURNAL,
+
     /** The loader failed in an unforeseen way: both files are deleted, so it cannot recur at every launch (R11). */
     UNEXPECTED_ERROR,
 }
@@ -54,21 +57,6 @@ internal class DecodedFile(val version: Int, val reader: BodyReader)
  */
 internal object SaveFormat {
 
-    /** Version 1: the format of ADR 0001, still decoded (rule R16). */
-    const val VERSION_1: Int = 1
-
-    /** Version 2: adds the match format and the confirmed legs (ADR 0005), still decoded. */
-    const val VERSION_2: Int = 2
-
-    /** Version 3: adds the players' color slots (ADR 0006), still decoded. */
-    const val VERSION_3: Int = 3
-
-    /** Version 4: adds the mode line and the Cricket saved game (ADR 0008, R23). */
-    const val VERSION_4: Int = 4
-
-    /** The version [encode] writes unless told otherwise. */
-    const val VERSION: Int = VERSION_4
-
     /** Largest canonical integer of the format (five nines). Larger values are never written (R24). */
     const val MAX_INTEGER: Int = 99_999
 
@@ -86,7 +74,7 @@ internal object SaveFormat {
     private val CRC_LINE = Regex("$CRC_KEY=[0-9a-f]{$CRC_HEX_DIGITS}")
 
     /** Encodes a file of the given [kind] and [version] with the [body] lines, in order. */
-    fun encode(kind: String, body: List<Pair<String, String>>, version: Int = VERSION): ByteArray {
+    fun encode(kind: String, body: List<Pair<String, String>>, version: Int): ByteArray {
         val covered = buildString {
             appendLine(KIND_KEY, kind)
             appendLine(VERSION_KEY, version.toString())

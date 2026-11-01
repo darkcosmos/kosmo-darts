@@ -77,29 +77,6 @@ internal object SaveFixtures {
     val LONGEST: SavedGame = SavedGame(X01Game(config(players = 1), List(GameSaveCodec.MAX_DARTS) { Dart.MISS }), false)
 }
 
-/** The frozen version 1 files of `src/test/resources/persistence/v1` (see its README), written by the v1 encoders. */
-internal object V1Fixtures {
-
-    /** Every saved game fixture, with the game it holds. */
-    val GAMES: Map<String, SavedGame> = mapOf(
-        "game-golden.save" to SaveFixtures.savedAfter(
-            X01Config(listOf("Ann", "Clément")),
-            listOf(Dart.triple(20), Dart.single(20), Dart.double(5)),
-        ),
-        "game-empty.save" to SaveFixtures.EMPTY,
-        "game-mid-turn.save" to SaveFixtures.MID_TURN,
-        "game-after-next-player.save" to SaveFixtures.AFTER_NEXT_PLAYER,
-        "game-waiting-checkout.save" to SaveFixtures.WAITING_CHECKOUT,
-        "game-four-players-301-single-out.save" to SaveFixtures.savedAfter(
-            SaveFixtures.config(players = 4, startScore = 301, rule = CheckoutRule.SINGLE_OUT),
-            listOf(Dart.triple(20), Dart.BULL, Dart.MISS, Dart.OUTER_BULL),
-        ),
-    )
-
-    fun bytes(name: String): ByteArray =
-        checkNotNull(V1Fixtures::class.java.getResourceAsStream("/persistence/v1/$name")) { name }.readBytes()
-}
-
 /** The X01 game of a valid result; fails the test if the file held another mode. */
 internal val GameDecodeResult.Valid.x01: SavedGame
     get() = saved as SavedGame

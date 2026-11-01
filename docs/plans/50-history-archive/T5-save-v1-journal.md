@@ -56,3 +56,47 @@ sonnet. Why: no migration any more (D24, D25); the format, its limits and every 
 ADR 0011 with listed tests, so none of the three `opus` cases applies.
 
 ## Implementation notes
+Where: `persistence/JournalCodec.kt` (`writeJournal`, `readJournal`, `checkJournal`), `GameSaveCodec` (version 1 only,
+journal lines after the body), `SaveFormat` (`encode` takes the version; new `InvalidSaveReason.INCONSISTENT_JOURNAL`),
+`StoredGame.journal`. Tests: `SaveJournalCodecTest`, `JournalFixtures`.
+
+Deviations and what later tasks must know:
+- **Transitional bridge, T6 must remove it.** `SavedGame` and `SavedCricketGame` get a last constructor parameter
+  `journal`, defaulting to `TransitionalJournal.of(match)` (`TransitionalJournal.kt`): a made-up journal (id
+  `0000...`, times 0, 1, 2...) in which each confirmed leg is won by its winner and the current leg holds its darts.
+  It exists only so that the ~60 existing call sites keep compiling. T6 records the real journal, drops the default
+  and deletes `TransitionalJournal.kt`. The version 1 goldens of the match and of Cricket use it (id `0000...`).
+- **No `LegReplay` on decode.** It is quadratic near the 30,000-event cap. `checkJournal` uses a lazy stack
+  (`LegCheck`) that rejects exactly what `LegReplay` would (undo with nothing, dart after the win, 10,000 darts in
+  play), checking the engine only at local maxima of the stack, so the archive replay cannot throw later. A decode of
+  a file of 58,028 events (580,873 bytes, four legs) took 10 ms on this machine (logged, not asserted).
+- Rejections: journal count, darts-in-play (D25) and confirmed-leg winner mismatches are the new
+  `INCONSISTENT_JOURNAL`; undo with nothing to undo and a dart after the win are `REJECTED_BY_ENGINE` (so would be a
+  `JournalReplayException`); unknown dart token is `OUT_OF_RANGE`; a missing entry time (`T20@-`, `T20`, `T20@`, `@-`),
+  a bad number or a bad id is `MALFORMED`. The engine check of the match itself still runs before the journal check.
+- `encode` returns `null` (previous file kept) when the id is not a lower-case UUID, a time is negative, a source is
+  not `MANUAL`, the journal count is wrong, a leg journal has more than 30,000 events, or the file exceeds 1 MiB.
+- `LastSetupCodec` keeps its own private `VERSION_1..4` constants (marked "until T14"), because `SaveFormat.VERSION_*`
+  were removed; T14 replaces them with its own version 1.
+- `src/test/resources/persistence/v1` and `v3`: only the `game-*.save` files are removed; `last-setup.save` and the
+  READMEs stay (T14). `V1Fixtures` and `V3Fixtures.GAMES` are removed.
+- The literal old-version-1 layout fixture is inline in `R30 a file in the layout of the old version 1 is rejected`.
+
+Tests deleted, each with the rule it withdraws (R30: clean slate, no migration):
+- `GameSaveCodecTest`: `format v1 golden file`, `format v2 golden file`, `format v3 golden file` (R16, R18, R25).
+  The v4 golden is now `format v1 golden file of a single game`.
+- `GameSaveMatchCodecTest`: `format v2 golden file of a match`, `format v3 golden file of a match`,
+  `R16 version 1 files decode as single games`, `R13 a single game is its version 1 content plus the new keys`
+  (R13, R16). The v4 golden is now `format v1 golden file of a match`; the V1 key cases of `R9 keys must follow the
+  layout of their version` were dropped (no version 1 old layout any more).
+- `GameSaveDecodeInvalidTest`: `R23 a mode line in a version 1, 2 or 3 file is malformed` (R23 for old versions).
+- `SaveColorsCodecTest`: `R18 version 1 games get slots by position` (R18; the last-setup test stays for T14).
+- `SaveV3CompatibilityTest`: `R25 every version 3 saved game decodes to its X01 game` and `R25 a version 3 saved game
+  re-encodes as version 4 with the X01 mode line` (R25; the last-setup test stays for T14).
+- `MatchResumeScreensTest`: `R16 a version 1 save resumes as a single game` (R16).
+
+Tests adapted (not weakened): `CricketSaveCodecTest` golden (now version 1 with journal lines);
+`CricketSaveDecodeBoundsTest` R12 size test (the 1 MiB limit is now reached with 14,000 voided darts in each of four
+legs, not with the darts alone) and the R24 decided-match test (journal lines added so the engine check is reached);
+the same for `GameSaveMatchCodecTest` R9 decided-match; `SaveFuzzTest` seeds (version 1 games with journals, journal
+mutations, canonical re-encoding check).

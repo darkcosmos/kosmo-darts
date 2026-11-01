@@ -23,13 +23,13 @@ class LastSetupCodec {
         add(SaveKey.PLAYERS.text to setups.roster.players.size.toString())
         setups.roster.players.forEach { add(SaveKey.PLAYER.text to SaveFormat.encodeName(it)) }
         add(SaveKey.COLORS.text to setups.roster.colorSlots.joinToString(" ") { it.number.toString() })
-    })
+    }, VERSION_4)
 
     /** The last setups, or `null` for any invalid content (rules R10, R23). Never throws. */
     fun decode(bytes: ByteArray): LastSetups? = try {
         ensure(bytes.size <= MAX_FILE_BYTES, InvalidSaveReason.TOO_LARGE)
-        val file = SaveFormat.decode(bytes, KIND, LAYOUTS.keys + SaveFormat.VERSION_4)
-        val setups = if (file.version == SaveFormat.VERSION_4) {
+        val file = SaveFormat.decode(bytes, KIND, LAYOUTS.keys + VERSION_4)
+        val setups = if (file.version == VERSION_4) {
             readVersion4(file.reader)
         } else {
             // R25: a version 1 to 3 file is an X01 setup; its layout starts with `game`, so a mode line is MALFORMED.
@@ -123,6 +123,13 @@ class LastSetupCodec {
 
         private const val KIND = "last-setup"
 
+        // The last setup keeps its versions 1 to 4 until task T14 of issue #50 restarts it at version 1 (ADR 0011,
+        // R30). The saved game no longer shares these numbers.
+        private const val VERSION_1 = 1
+        private const val VERSION_2 = 2
+        private const val VERSION_3 = 3
+        private const val VERSION_4 = 4
+
         /** Version 1 (ADR 0001). */
         private val V1_LAYOUT = listOf(
             SaveKey.GAME,
@@ -148,9 +155,9 @@ class LastSetupCodec {
 
         /** The X01-only layouts of versions 1 to 3; version 4 has its own sections ([readVersion4]). */
         private val LAYOUTS = mapOf(
-            SaveFormat.VERSION_1 to V1_LAYOUT,
-            SaveFormat.VERSION_2 to V2_LAYOUT,
-            SaveFormat.VERSION_3 to V3_LAYOUT,
+            VERSION_1 to V1_LAYOUT,
+            VERSION_2 to V2_LAYOUT,
+            VERSION_3 to V3_LAYOUT,
         )
     }
 }

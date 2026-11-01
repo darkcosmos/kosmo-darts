@@ -1,5 +1,8 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.engine.journal.JournalEvent
+import io.github.darkcosmos.kosmodarts.engine.journal.LegJournal
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
@@ -95,66 +98,6 @@ class GameSaveCodecTest {
         assertNull(codec.encode(tooLong))
     }
 
-    /**
-     * ADR 0001, R16: format version 1 is frozen; the file written by the version 1 encoder (fixture generated before
-     * version 2) must keep decoding the same in every later version.
-     */
-    @Test
-    fun `format v1 golden file`() {
-        val darts = listOf(Dart.triple(20), Dart.single(20), Dart.double(5))
-        val saved = savedAfter(X01Config(listOf("Ann", "Clément")), darts)
-        val golden = """
-            kosmodarts=saved-game
-            version=1
-            game=x01
-            start-score=501
-            checkout=double-out
-            players=2
-            player=QW5u
-            player=Q2zDqW1lbnQ=
-            darts=T20 20 D5
-            awaiting-next-player=true
-            crc32=b79a0fda
-            end
-
-        """.trimIndent().toByteArray(Charsets.UTF_8)
-
-        assertArrayEquals(golden, V1Fixtures.bytes("game-golden.save"))
-        assertEquals(GameDecodeResult.Valid(saved), codec.decode(golden))
-    }
-
-    /**
-     * ADR 0005, R18: format version 2 of a single game, exact bytes written by the version 2 encoder. Frozen since
-     * version 3 (ADR 0006): it must keep decoding the same, with the color slots of the player positions.
-     */
-    @Test
-    fun `format v2 golden file of a single game`() {
-        val darts = listOf(Dart.triple(20), Dart.single(20), Dart.double(5))
-        val saved = savedAfter(X01Config(listOf("Ann", "Clément")), darts)
-        val golden = """
-            kosmodarts=saved-game
-            version=2
-            game=x01
-            start-score=501
-            checkout=double-out
-            legs-per-set=1
-            sets=1
-            players=2
-            player=QW5u
-            player=Q2zDqW1lbnQ=
-            legs=0
-            darts=T20 20 D5
-            awaiting-next-player=true
-            between-legs=false
-            crc32=83195349
-            end
-
-        """.trimIndent().toByteArray(Charsets.UTF_8)
-
-        assertEquals(GameDecodeResult.Valid(saved), codec.decode(golden))
-        assertEquals(ColorSlot.byPosition(2), saved.match.colorSlots)
-    }
-
     /** A single game whose players hold slots 2 and 1, waiting for "Next player". */
     private val singleGameWithSlots: SavedGame = run {
         val config = X01Config(listOf("Ann", "Clément"))
@@ -163,45 +106,31 @@ class GameSaveCodecTest {
             emptyList(),
             X01Game(config, listOf(Dart.triple(20), Dart.single(20), Dart.double(5))),
         )
-        SavedGame(match, isAwaitingNextPlayer = true)
+        // Ann's second dart, a 5, was undone and replaced by a 20.
+        val journal = MatchJournal(
+            JournalFixtures.MATCH_ID,
+            JournalFixtures.STARTED_AT,
+            listOf(
+                LegJournal(
+                    listOf(
+                        JournalFixtures.dart(Dart.triple(20), 1_793_520_001_200),
+                        JournalFixtures.dart(Dart.single(5), 1_793_520_003_400),
+                        JournalEvent.Undone,
+                        JournalFixtures.dart(Dart.single(20), 1_793_520_005_000),
+                        JournalFixtures.dart(Dart.double(5), 1_793_520_006_100),
+                    ),
+                ),
+            ),
+        )
+        SavedGame(match, isAwaitingNextPlayer = true, journal = journal)
     }
 
-    /**
-     * ADR 0006, R17: format version 3 of a single game whose players hold slots 2 and 1, exact bytes written by the
-     * version 3 encoder. Frozen since version 4 (ADR 0008, R25): it keeps decoding the same, as X01.
-     */
+    /** ADR 0011, R26: format version 1 of the same game with a voided dart, exact bytes: the body, then the journal. */
     @Test
-    fun `format v3 golden file of a single game`() {
+    fun `format v1 golden file of a single game`() {
         val golden = """
             kosmodarts=saved-game
-            version=3
-            game=x01
-            start-score=501
-            checkout=double-out
-            legs-per-set=1
-            sets=1
-            players=2
-            player=QW5u
-            player=Q2zDqW1lbnQ=
-            colors=2 1
-            legs=0
-            darts=T20 20 D5
-            awaiting-next-player=true
-            between-legs=false
-            crc32=58d3f295
-            end
-
-        """.trimIndent().toByteArray(Charsets.UTF_8)
-
-        assertEquals(GameDecodeResult.Valid(singleGameWithSlots), codec.decode(golden))
-    }
-
-    /** ADR 0008, R23: format version 4 of the same game, exact bytes: the mode line, then the version 3 body. */
-    @Test
-    fun `format v4 golden file of a single game`() {
-        val golden = """
-            kosmodarts=saved-game
-            version=4
+            version=1
             mode=x01
             game=x01
             start-score=501
@@ -216,7 +145,11 @@ class GameSaveCodecTest {
             darts=T20 20 D5
             awaiting-next-player=true
             between-legs=false
-            crc32=e5c018a7
+            match-id=1b4e28ba-2d1c-41f1-9b7e-6a2f1c0d9e55
+            started-at=1793520000000
+            journals=1
+            journal=T20@1793520001200 5@1793520003400 u 20@1793520005000 D5@1793520006100
+            crc32=863f6d03
             end
 
         """.trimIndent().toByteArray(Charsets.UTF_8)

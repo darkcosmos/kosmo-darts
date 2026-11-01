@@ -98,18 +98,6 @@ class GameSaveDecodeInvalidTest {
         assertInvalid(InvalidSaveReason.MALFORMED, withChecksum(x01Mode))
     }
 
-    /** R23, R25: versions 1 to 3 have no mode line; one inside them is malformed. */
-    @Test
-    fun `R23 a mode line in a version 1, 2 or 3 file is malformed`() {
-        listOf("1", "2", "3").forEach { version ->
-            val old = validBody.map { if (it == "version=4") "version=$version" else it }
-            assertInvalid(InvalidSaveReason.MALFORMED, withChecksum(old))
-        }
-        val v1 = coveredLines(V1Fixtures.bytes("game-golden.save"))
-        val v1WithMode = v1.take(2) + "mode=x01" + v1.drop(2)
-        assertInvalid(InvalidSaveReason.MALFORMED, withChecksum(v1WithMode))
-    }
-
     /** R23: the checksum covers the mode line. */
     @Test
     fun `R23 a checksum that does not cover the mode line is a mismatch`() {

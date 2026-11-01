@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.persistence
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketGame
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 
 /**
  * The Cricket game in progress as stored on the device (rules R20, R21; docs/adr/0008-save-format-v4-modes.md): the
@@ -14,6 +15,7 @@ data class SavedCricketGame(
     val match: CricketMatch,
     override val isAwaitingNextPlayer: Boolean,
     override val isBetweenLegs: Boolean = false,
+    override val journal: MatchJournal = TransitionalJournal.of(match),
 ) : StoredGame {
 
     /** The current leg. */
