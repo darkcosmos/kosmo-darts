@@ -92,18 +92,19 @@ Per test, with what it protects besides the size and its disposition (D5: a rule
 
 ## Production code for smaller screens
 
-Listed for a later decision, **not changed in this mission**: none is trivially dead, and each is also a safety net
-on a Pixel 7 whose display size is set larger than default, which D9 puts out of scope.
+Listed for a later decision, **not changed in this mission**: none is trivially dead (P1 step 4 and P2 are live code
+on the Pixel 7, see the last column).
 
 | Id | Code | What it does | Reached on the Pixel 7? |
 |---|---|---|---|
-| P1 | `GameLayoutPolicy` step 4 (`isScrolling`, `SCORE_FLOOR_*`) and the scroll of `GameScreen`; test helper `RevealNode` | the X01 game screen scrolls below the score floor | T2 records it (D7) |
-| P2 | `CricketBoardLayoutPolicy.scrolls` and the `verticalScroll` of `CricketBoard` | the Cricket rows scroll ("a screen smaller than the Pixel 7", KDoc) | no, by its own KDoc; T3 confirms |
-| P3 | `CricketBoardLayoutPolicy` `showsTotal = false` (two-line zone, R2.1) | Cricket zone without the big total | no at 411x814 (KDoc of the 760 test) |
+| P1 | `GameLayoutPolicy` step 4 (`isScrolling`, `SCORE_FLOOR_*`) and the scroll of `GameScreen`; test helper `RevealNode` | the X01 game screen scrolls below the score floor | yes: step 4 is reached at 411x814 at scale 2.0 (T2 records it, D7) |
+| P2 | `CricketBoardLayoutPolicy.scrolls` and the `verticalScroll` of `CricketBoard` | the Cricket rows scroll ("a screen smaller than the Pixel 7", KDoc) | yes in landscape: at 800x360 (Pixel 7 inside its bars), scale 2.0, 7 rows when the bull is in play (T3 measured it; the KDoc is wrong for landscape) |
+| P3 | `CricketBoardLayoutPolicy` `showsTotal = false` (two-line zone, R2.1) | Cricket zone without the big total | no Robolectric test reaches it at a supported size; proven only by the policy tests (T3) |
 | P4 | `ScreenLayoutPolicy` and `ScrollingScreen` scroll | other screens scroll, buttons pinned | yes at font scale 2.0: not a fallback, keep |
 
-Proposal: Kosmo answered Q2 (D9), so a separate mission may remove P1 step 4, P2 and P3 with their policy tests; only the default
-display size of the Pixel 7 is supported.
+Proposal: Kosmo answered Q2 (D9), so a separate mission may remove P3 with its policy tests; only the default
+display size of the Pixel 7 is supported. **P1 step 4 and P2 must not be removed** by that mission: the Pixel 7 inside
+its bars reaches both (P1 at 411x814 scale 2.0, P2 at 800x360 scale 2.0), they are not fallbacks.
 
 ## Approach
 
@@ -168,13 +169,13 @@ Before: `main` at 2f9e437, command `time ./gradlew build --rerun-tasks` on the s
 
 | Measure | Before | After (T4) |
 |---|---|---|
-| Tests `:app` (JUnit XML, `testDebugUnitTest`) | 1595 (0 skipped, 0 failures) | |
-| Tests `:capture` | 225 | |
-| Tests `:game-engine` | 424 (unchanged expected) | |
-| Captures `:app` (PNG under `app/build/outputs/roborazzi`) | 279 (expected after: 279, 7 renamed) | |
-| Captures `:capture` | 68 (expected after: 68, 20 renamed) | |
-| `./gradlew build --rerun-tasks` wall time | 5 min 50 s (BUILD SUCCESSFUL, 205 tasks executed) | |
-| `kosmo-detekt` exit code | 0 | |
+| Tests `:app` (JUnit XML, `testDebugUnitTest`) | 1595 (0 skipped, 0 failures) | 1590 (0 skipped, 0 failures) |
+| Tests `:capture` | 225 | 225 (0 skipped, 0 failures) |
+| Tests `:game-engine` | 424 (unchanged expected) | 424 |
+| Captures `:app` (PNG under `app/build/outputs/roborazzi`) | 279 (expected after: 279, 7 renamed) | 279 |
+| Captures `:capture` | 68 (expected after: 68, 20 renamed) | 68 (20 renamed to `800x360`, plus 44 moved from `915x412` to `914x411`, see T4 notes) |
+| `./gradlew build --rerun-tasks` wall time | 5 min 50 s (BUILD SUCCESSFUL, 205 tasks executed) | 5 min 27 s (BUILD SUCCESSFUL, 205 tasks executed) |
+| `kosmo-detekt` exit code | 0 | 0 |
 
 Captures on a smaller size, as recorded at 2f9e437 (`find */build/outputs/roborazzi -name '*.png'`): none is
 deleted, all 27 move to the Pixel 7 inside its bars (A3: the Pixel 7 captures of the same screens are full-screen
@@ -228,12 +229,13 @@ its bars (`411x814`, `800x360`); no image is at a size smaller than the Pixel 7.
   branch under test (the existing "branch reached" assertions prove it); when no supported size reaches it, the input
   stays with a one-line comment naming P1, P2 or P3, because the branch is still production code. It goes with that
   code if a later mission removes it.
-- D8: the Robolectric CR22 fallback test at 411 x 760 is deleted (no supported size reaches it); the fallback stays
+- D8: the Robolectric CR22 fallback test at 411 x 760 is deleted (no supported size reaches P3; P2 is reached, see
+  "Production code for smaller screens"); the fallback stays
   proven by `CricketBoardLayoutPolicyTest` under D7 until P3 is decided. T3 confirms that `CricketScreenTest` keeps a
   4-player test at scale 2.0 with the CR22 fit assertions at 411 x 814 and at 800 x 360, and adds the missing one
   (design review U2).
 - D9 (Kosmo, Q2 = default only): only the default display size of the Pixel 7 is supported; a larger "Display size"
-  setting is out of scope like smaller phones. P1 to P3 stay in this mission and may be removed by a later one.
+  setting is out of scope like smaller phones. P1 to P3 stay in this mission; a later one may remove P3 only (P1 step 4 and P2 are reached on the Pixel 7 inside its bars).
 - D10 (design review A1): `TestDevices` sizes are literals sourced from Roborazzi 1.76.0 `Pixel7` (see A1).
 - D11 (design review A2): `:capture` gets no `robolectric.properties` default; all its UI tests name their size.
 - D12 (design review T1, T2): T1 proves the default device with a temporary, reverted assertion; the final grep also

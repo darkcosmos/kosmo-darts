@@ -44,3 +44,17 @@ T1, T2, T3 (the "after" measures need every task done).
 `sonnet`. Why: test edits from a specified table plus measures, no design choice.
 
 ## Implementation notes
+
+- Added `capture/.../capture/TestDevices.kt` (landscape constants). `ZoomRowTest`, `CaptureActionRowTest`,
+  `CaptureScreenshotsTest`, `CaptureScreenTest` use it. 640x360 moved to `PIXEL7_LANDSCAPE_INSIDE_BARS` (800x360);
+  the `w915dp-h412dp-xxhdpi` literals moved to `PIXEL7_LANDSCAPE` (914x411, 420 dpi), no test turned red. Test names
+  and capture set names that said `915x412` now say `914x411` (44 PNGs renamed, beyond the 20 of the plan, so no name
+  lies about its size); the 20 `640x360` ones are `800x360`.
+- D11: `KeypadScreenTest` and `CaptureScreenTest` have a class `@Config` with a size; `ZoomRowTest` (18/18),
+  `CaptureActionRowTest` (2/2), `CaptureScreenshotsTest` (10/10) have one per test; no other class uses a compose rule.
+- D13: before (2f9e437) and after, per test source file with `@Test` counts: no file disappeared in `:app`, `:capture`
+  or `:game-engine` (214 test files both sides); `:capture` and `:game-engine` counts identical; `:app` changed only in
+  `CheckoutBannerFitTest` 23 to 17, `CricketScreenTest` 38 to 37, `CricketLandscapeScreenTest` 12 to 13,
+  `GameScreenFitTest` 18 to 19. No persistence, corrupt-save or input-validation test touched. The before list came
+  from git (source files), the after from git and the JUnit XML (141 `:app`, 25 `:capture` files).
+- Final greps (D12) print nothing; no `@Suppress` added.
