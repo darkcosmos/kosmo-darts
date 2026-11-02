@@ -172,7 +172,7 @@ class CheckoutBannerFitTest {
 
     @Test
     @Config(qualifiers = "+fr-land", fontScale = 1.0f)
-    fun `M15 fr-land at font scale 1_0`() = checkFit(1.0f, preFix = PRE_FIX["frland"])
+    fun `M15 fr-land at font scale 1_0`() = checkFit(1.0f)
 
     @Test
     @Config(qualifiers = "+fr-land", fontScale = 1.3f)
@@ -265,7 +265,6 @@ class CheckoutBannerFitTest {
         val PRE_FIX: Map<String, PreFix> = mapOf(
             "port411" to PreFix(109.333336f, 100.95238f),
             "port360" to PreFix(35f, 27f),
-            "frland" to PreFix(36f, 28f),
             "land640" to PreFix(35f, 27f),
             "land800" to PreFix(65.333336f, 57.333332f),
         )

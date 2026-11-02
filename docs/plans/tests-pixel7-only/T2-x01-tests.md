@@ -38,8 +38,8 @@ themselves do not change).
 - `VisitTotalLayoutTest` VT11 393x852 at 2.0: retargeted to 411x814 at 2.0 (not deleted).
 - `DesignSystemScreenshotTest`: the 4 `ds_game_4p_small_*` captures and the setup capture move to 411x814 / 800x360
   with the names of root plan "Measures".
-- `CheckoutBannerFitTest`: the `+fr-land` group moves to the Pixel 7 landscape without its `frland` pre-fix check
-  (D6); the sets-match, long-name and undo edge cases move to the inside-bars sizes at scale 2.0.
+- `CheckoutBannerFitTest`: the `+fr-land` group moves to the Pixel 7 landscape (its `frland` pre-fix check was already
+  dropped in T1, D6); the sets-match, long-name and undo edge cases move to the inside-bars sizes at scale 2.0.
 - `GameLayoutPolicyTest` (pure JVM): apply D7. For each smaller-size input, try the inside-bars size; keep the small
   input only when no supported size reaches the branch, with a one-line comment naming P1 of the root plan, and write
   in the Implementation notes which branch is unreachable on the Pixel 7 (evidence for P1).

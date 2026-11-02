@@ -52,6 +52,6 @@ None changed. The tests moved to the Pixel 7 keep their rule identifiers.
   on exactly those literals). No test added or removed: 141 classes, 1595 tests before and after.
 - D12 proof: a temporary `HomeScreenTest` test read the display metrics (rounded dp): `411x914` green, expected
   `411x913` red (`but was 411x914`). Reverted file by file; not in the commits.
-- Known red, planned for T2 (D6): `CheckoutBannerFitTest` `M15 fr-land at font scale 1_0` now fails on the Pixel 7
-  landscape with `chip height as before #69 expected:<36.0> but was:<94.85714>`: its `PRE_FIX["frland"]` value
-  was measured on the old 470 x 320 default device. T2 drops that value (D6); left untouched here.
+- D6 folded into T1 (the build must be green): `CheckoutBannerFitTest` `M15 fr-land at font scale 1_0` lost its
+  `PRE_FIX["frland"]` entry and check (36 dp was measured on the old 470 x 320 default device; the Pixel 7 landscape
+  gives 94.857 dp). Its other assertions are unchanged. T2 must not repeat it.
