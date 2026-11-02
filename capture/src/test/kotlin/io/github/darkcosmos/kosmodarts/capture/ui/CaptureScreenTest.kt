@@ -15,6 +15,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.capture.CaptureActivity
+import io.github.darkcosmos.kosmodarts.capture.TestDevices
 import io.github.darkcosmos.kosmodarts.capture.ui.keypad.KeypadTags
 import io.github.darkcosmos.kosmodarts.capture.truth.VideoQuality
 import org.junit.Assert.assertEquals
@@ -25,10 +26,10 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** The capture screen at 915x412dp landscape, driven by the real view model or by fixed states. */
+/** The capture screen at 914x411dp landscape, driven by the real view model or by fixed states. */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = "en-w915dp-h412dp-land-xxhdpi")
+@Config(qualifiers = TestDevices.EN_PIXEL7_LANDSCAPE)
 class CaptureScreenTest {
 
     @get:Rule
@@ -167,7 +168,7 @@ class CaptureScreenTest {
     }
 
     @Test
-    fun `CP2 buttons and keys are at least 42dp tall and 48dp wide at 412dp height and at font scale 2`() {
+    fun `CP2 buttons and keys are at least 42dp tall and 48dp wide at 411dp height and at font scale 2`() {
         listOf(1f, 2f).forEach { scale ->
             composeRule.showState(runningWithTwoDarts(), fontScale = scale)
             listOf(

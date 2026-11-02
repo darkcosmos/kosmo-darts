@@ -5,6 +5,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.darkcosmos.kosmodarts.capture.CaptureActivity
+import io.github.darkcosmos.kosmodarts.capture.TestDevices
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -41,21 +42,21 @@ class CaptureScreenshotsTest {
     )
 
     @Test
-    @Config(qualifiers = "en-w915dp-h412dp-land-xxhdpi")
-    fun `zoom at minimum english`() = captureOne("zoom_at_minimum", "915x412_en", zoomState(1f))
+    @Config(qualifiers = TestDevices.EN_PIXEL7_LANDSCAPE)
+    fun `zoom at minimum english`() = captureOne("zoom_at_minimum", "914x411_en", zoomState(1f))
 
     @Test
-    @Config(qualifiers = "en-w915dp-h412dp-land-xxhdpi")
-    fun `zoom unavailable english`() = captureOne("zoom_unavailable", "915x412_en", zoomState(1f, max = 1f))
+    @Config(qualifiers = TestDevices.EN_PIXEL7_LANDSCAPE)
+    fun `zoom unavailable english`() = captureOne("zoom_unavailable", "914x411_en", zoomState(1f, max = 1f))
 
     @Test
-    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")
-    fun `zoom unavailable french`() = captureOne("zoom_unavailable", "915x412_fr", zoomState(1f, max = 1f))
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE)
+    fun `zoom unavailable french`() = captureOne("zoom_unavailable", "914x411_fr", zoomState(1f, max = 1f))
 
     @Test
-    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE)
     fun `zoom unavailable font scale 2 french`() =
-        captureOne("zoom_unavailable", "915x412_font2_fr", zoomState(1f, max = 1f), fontScale = 2f)
+        captureOne("zoom_unavailable", "914x411_font2_fr", zoomState(1f, max = 1f), fontScale = 2f)
 
     private fun captureOne(name: String, suffix: String, state: CaptureUiState, fontScale: Float = 1f) {
         val directory = System.getProperty(SCREENSHOT_DIR_PROPERTY, DEFAULT_SCREENSHOT_DIR)
@@ -64,28 +65,28 @@ class CaptureScreenshotsTest {
     }
 
     @Test
-    @Config(qualifiers = "en-w915dp-h412dp-land-xxhdpi")
-    fun `landscape 915x412 english`()= captureAll("915x412_en", fontScale = 1f)
+    @Config(qualifiers = TestDevices.EN_PIXEL7_LANDSCAPE)
+    fun `landscape 914x411 english`()= captureAll("914x411_en", fontScale = 1f)
 
     @Test
-    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")
-    fun `landscape 915x412 french`() = captureAll("915x412_fr", fontScale = 1f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE)
+    fun `landscape 914x411 french`() = captureAll("914x411_fr", fontScale = 1f)
 
     @Test
-    @Config(qualifiers = "en-w640dp-h360dp-land-xxhdpi")
-    fun `landscape 640x360 english`() = captureAll("640x360_en", fontScale = 1f)
+    @Config(qualifiers = TestDevices.EN_PIXEL7_LANDSCAPE_INSIDE_BARS)
+    fun `landscape 800x360 english`() = captureAll("800x360_en", fontScale = 1f)
 
     @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xxhdpi")
-    fun `landscape 640x360 french`() = captureAll("640x360_fr", fontScale = 1f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
+    fun `landscape 800x360 french`() = captureAll("800x360_fr", fontScale = 1f)
 
     @Test
-    @Config(qualifiers = "en-w915dp-h412dp-land-xxhdpi")
-    fun `font scale 2 english`() = captureAll("915x412_font2_en", fontScale = 2f)
+    @Config(qualifiers = TestDevices.EN_PIXEL7_LANDSCAPE)
+    fun `font scale 2 english`() = captureAll("914x411_font2_en", fontScale = 2f)
 
     @Test
-    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")
-    fun `font scale 2 french`() = captureAll("915x412_font2_fr", fontScale = 2f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE)
+    fun `font scale 2 french`() = captureAll("914x411_font2_fr", fontScale = 2f)
 
     private fun captureAll(suffix: String, fontScale: Float) {
         val directory = System.getProperty(SCREENSHOT_DIR_PROPERTY, DEFAULT_SCREENSHOT_DIR)
