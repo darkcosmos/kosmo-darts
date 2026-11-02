@@ -282,6 +282,12 @@ Two `opus` tasks (T3, T4).
   `PlayerPaletteTest` (same ARGB and text colors as the former tokens).
 - D19 (review U7): the home screen already scrolls (`verticalScroll` in `HomeScreen.kt`); the landscape capture shows the Players button
   reachable.
+- D20 (design review minors, details in the task files): A2 theme and engine palette equality test (T2); A3/S3
+  child-first deletion under enforced foreign keys and rollback tests (T8); A4 `Random` injected through the
+  reducer (T5); T2/T3 swatch stability and generated color survival tests (T5); T5 collapsed card after reload and
+  in-transaction erased count (T8, T9); U1/U2 wrapping swatches, ring plus check in the PC13 text color (T5); U3
+  "Color %1$d of %2$d" (T5); U4/U6 2 x 2 actions with Delete apart, scroll into view above the keyboard (T10); U5
+  plurals with a zero form and a PM8 message naming the player (T9, T10); U8 every seed reaches `MIN_CHOICES` (T2).
 
 ## Open questions
 
