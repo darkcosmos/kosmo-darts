@@ -42,19 +42,26 @@ in portrait and landscape, at font scales 1.0, 1.3, 1.5 and 2.0.
    `clamp((available - fixed) / sum(textHeightsAtScale1), 1f, fontScale)`. The zone, in CHECKOUT mode only, measures
    its height (`BoxWithConstraints`), the heights of the name row and the line at scale 1 (`TextMeasurer`), and
    provides a `LocalDensity` with the reduced `fontScale` to `NameRow` and the checkout line only. Other modes are
-   unchanged.
+   unchanged. The `TextMeasurer` measurement and the call to `checkoutTextScale` sit in one small named helper
+   (`rememberCheckoutTextScale` in `CheckoutFit.kt`, like `FittedNumberSize.kt`); the composable does no arithmetic
+   (A1). A one-line code comment explains why the `LocalDensity.fontScale` override is scoped to `NameRow` and the
+   checkout line only (A2). T1 confirms in its notes that these heights are linear in the font scale, including any
+   `lineHeight` in sp; if not, the single estimate at scale 1 is wrong and T1 reports it (A2).
 4. **Policy.** `checkoutZoneMinHeight` stays the estimate at the user's scale; the landscape `minOf` stays (U10:
    the zone gives height back). A new policy test proves that, for every supported screen and scale 1.0 to 2.0,
    `zoneMinHeightDp` in CHECKOUT mode is at least the zone frame at scale 1.0 + `CHECKOUT_BANNER_MIN` + gap + one
    checkout line at scale 1.0, so the floor of D2 always fits. If it does not, T1 raises the landscape least
-   height to that floor (and reports it).
+   height to that floor (and reports it). This policy test is the guard that keeps the text readable (U3): if the
+   D2 floor is hit and the zone still overflows in any configuration, T1 reports it to main instead of letting the
+   text clip silently.
 - Alternatives rejected: ellipsis or scrolling of the banner (refused by Kosmo, Q1); letting the banner shrink
   below 40 dp (option a, not chosen); a `SubcomposeLayout` for the whole zone (more code for the same result: the
   measured heights are linear in the font scale since every zone text style uses `lineHeight = 1.em` or sp).
 
 ## Files and types added or changed
 
-- Added `app/src/main/kotlin/io/github/darkcosmos/kosmodarts/ui/components/CheckoutFit.kt` (`checkoutTextScale`).
+- Added `app/src/main/kotlin/io/github/darkcosmos/kosmodarts/ui/components/CheckoutFit.kt` (`checkoutTextScale`,
+  `rememberCheckoutTextScale`).
 - Changed `ui/components/CurrentPlayerZone.kt` (`CurrentPlayerZone`, `CheckoutBanner`: least chip height, least
   text size, reduced scale for `NameRow` and the line in CHECKOUT mode).
 - Changed `ui/layout/GameLayoutPolicy.kt` (`CHECKOUT_BANNER_MIN` becomes `internal const`; floor only if T1's
@@ -81,15 +88,22 @@ Rule identifiers: M15, CS8, design system 6.3, U10.
 - `CheckoutFitTest` (JVM): enough room returns `fontScale`; no room returns 1.0 (floor); exact fit; `fontScale`
   1.0 always returns 1.0; result is monotonic in `available`; negative room returns 1.0.
 - `CheckoutBannerFitTest` (Robolectric, X01 with ANN at 121, darts T20 T20 1, as in `ZoneLayoutTest`), written and
-  run red **before** the fix, its failing output pasted in T1's notes. Parameters: `fr`, portrait
-  `w411dp-h814dp-port-420dpi` and `w360dp-h640dp-port-xhdpi`, landscape the Robolectric default `+fr-land` and
-  `w640dp-h360dp-land-xhdpi`, each at font scale 1.3, 1.5, 2.0. Assertions:
+  run red **before** the fix, its failing output pasted in T1's notes. The red run uses the same committed
+  `CheckoutBannerFitTest` file; no assertion is loosened afterwards; the pasted lines show `fr-land` at scale 2.0
+  (T1). Parameters: `fr`, portrait `w411dp-h814dp-port-420dpi` and `w360dp-h640dp-port-xhdpi`, landscape the
+  Robolectric default `+fr-land` and `w640dp-h360dp-land-xhdpi`, each at font scale 1.0 (regression guard, U1),
+  1.3, 1.5, 2.0. Assertions:
   - text layout height of `CHECKOUT_BANNER_LABEL`'s text <= chip inner height (chip minus vertical padding), one line,
     width <= chip width (the missing check that let the bug pass);
   - chip height >= `CHECKOUT_BANNER_MIN` - epsilon;
   - name, line, dart slots whole on screen and apart (`assertWhole`, `assertApart` of `ZoneLayoutTest`);
   - edge cases: 4 players (tiles row), a sets match (S/M chips), the archive-failure state (message in the right
-    column).
+    column), and one long player name. Each runs on the smallest landscape screen `w640dp-h360dp-land-xhdpi` at
+    scale 2.0 (U2) and in portrait `w360dp-h640dp-port-xhdpi` at scale 2.0 (T3);
+  - at scale 1.0: the scale function returns 1.0 and the chip and text sizes equal the pre-fix values, recorded
+    on 7441ae3 during the measurement (T2);
+  - after "ANNULER" (undo of the final dart) from the pending checkout, the zone is back to normal mode, with the
+    name row at the user's font scale and no reduced text scale left (T4).
 - `ZoneLayoutTest` M15 landscape tests: add the text-height assertion.
 - `GameLayoutPolicyTest`: the floor of Approach 4 for all screens already listed in it, scales 1.0, 1.3, 1.5, 2.0.
 - Captures (T2, Roborazzi, record-only): CHECKOUT mode, `+fr-port`, `+en-port`, `+fr-land`, `+en-land`, each at
@@ -116,12 +130,21 @@ No `opus` task.
 
 - D1 (Kosmo, Q1 = b): the CHECKOUT banner keeps a least readable height; the name, average and checkout line shrink
   instead. No ellipsis, no scrolling.
-- D2 (proposed, to confirm in design review): the name row and the line never go below their size at font scale
+- D2 (proposed, pending Kosmo's confirmation): the name row and the line never go below their size at font scale
   1.0. Reason: they stay at least as readable as for a user with the default font size.
 - D3 (Kosmo, Q2): covered at font scales 1.3, 1.5 and 2.0, portrait and landscape, X01 pending checkout.
 - D4: one shared token, `CHECKOUT_BANNER_MIN` (40 dp), for the policy and the zone; the least text size uses
   `fixedSp` (design system tokens, no new magic number in the composable).
 - D5: the failing test is written and run red before the fix, inside T1 (a task never hands over a red build).
+- D6 (design review, A1, A2): measurement and scale computation in one helper `rememberCheckoutTextScale`; scoped
+  `fontScale` override with a code comment; linearity of heights in the font scale confirmed in T1 notes.
+- D7 (design review, U3): the Approach 4 policy test guards readability; a floor-hit overflow is reported, never
+  clipped silently.
+- D8 (design review, U1, U2, T1 to T4): `CheckoutBannerFitTest` also runs at 1.0 with pre-fix values, edge cases
+  (4 players, sets, archive failure, long name) in landscape `w640dp-h360dp` and portrait `w360dp-h640dp` at 2.0,
+  an undo case, and a red run of the same committed file showing `fr-land` 2.0.
+- Design review: the four reviewers approved the plan (0 blocking); minors U1, U2, U3, A1, A2, T1, T2, T3, T4 are
+  folded in as D6 to D8.
 
 ## Open questions
 
