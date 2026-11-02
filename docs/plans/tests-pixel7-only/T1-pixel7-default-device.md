@@ -29,6 +29,10 @@ None changed. The tests moved to the Pixel 7 keep their rule identifiers.
 ## Tests
 
 - No test added or removed. Record the test count of `:app:testDebugUnitTest` before and after (same number).
+- `TestDevices`: literals as in root plan "Approach" A1 (KDoc naming Roborazzi 1.76.0 `Pixel7` as the source).
+- Prove the default applies (D12): in one class without a size (for example `HomeScreenTest`), add a temporary
+  assertion that the screen is 411 x 914 dp; run it red with a wrong expected value, then green; commit the real work
+  first and revert the canary file by file. Name the check and its result in the Implementation notes.
 - A test that turns red on the Pixel 7 is a finding: stop, keep it red locally, and report to main with the failure
   (never weaken, skip or retarget it to a smaller size).
 

@@ -31,7 +31,13 @@ themselves do not change).
 ## Tests
 
 - Retargeted tests keep their rule identifier and assertions; only the device and the size in the name change
-  (for example `U1 small portrait` becomes `U1 Pixel 7 portrait inside its bars`).
+  (for example `U1 small portrait` becomes `U1 Pixel 7 portrait inside its bars`). A full-screen Pixel 7 test never
+  justifies a deletion (A3, D5).
+- `GameScreenFitTest` U10 action bar: the 360x640 pair moves to 411x814 (4 players, scale 1 and 2), the 640x360 one
+  to 800x360 at 2.0, plus a new 800x360 at scale 1; U10 checkout confirm to 411x814.
+- `VisitTotalLayoutTest` VT11 393x852 at 2.0: retargeted to 411x814 at 2.0 (not deleted).
+- `DesignSystemScreenshotTest`: the 4 `ds_game_4p_small_*` captures and the setup capture move to 411x814 / 800x360
+  with the names of root plan "Measures".
 - `CheckoutBannerFitTest`: the `+fr-land` group moves to the Pixel 7 landscape without its `frland` pre-fix check
   (D6); the sets-match, long-name and undo edge cases move to the inside-bars sizes at scale 2.0.
 - `GameLayoutPolicyTest` (pure JVM): apply D7. For each smaller-size input, try the inside-bars size; keep the small
@@ -42,7 +48,8 @@ themselves do not change).
 ## Done when
 
 `./gradlew :app:testDebugUnitTest` and `./gradlew build` green, `kosmo-detekt` exit 0, and
-`grep -rnE 'w(360|640|393)dp' app/src/test` prints nothing for these files.
+`grep -rnE 'w(360|640|393)dp|SmallPhone' app/src/test` prints nothing for these files. The report lists the test
+classes touched with their test counts before and after (D13).
 
 ## Model
 

@@ -33,8 +33,11 @@ CR22, CR26, CR27 (`docs/rules/cricket.md`), HS2, HS5 (`docs/rules/history.md`), 
 - `CricketScreenTest` CR22 at 411 x 760: apply D8 (keep the pure policy proof in `CricketBoardLayoutPolicyTest`, delete
   the Robolectric test, add a one-line comment naming P3 at the policy test).
 - `CricketBoardLayoutPolicyTest` (pure JVM): apply D7 as in T2; record the unreachable branches (P2, P3) in the notes.
-- `CricketScreenshotTest`: delete `between_legs_4p_360x640_fr` and `end_4p_360x640_fr` (the Pixel 7 4-player
-  captures `between_legs_4p_portrait_fr_font200` and `end_4p_portrait_fr_font200` stay).
+- `CricketScreenshotTest`: retarget `between_legs_4p_360x640_fr` and `end_4p_360x640_fr` to 411x814, renamed
+  `between_legs_4p_411x814_fr` and `end_4p_411x814_fr` (the existing Pixel 7 4-player captures are full-screen only,
+  A3).
+- `CricketScreenTest` (design review U2): confirm a 4-player test at scale 2.0 with the CR22 fit assertions exists at
+  411x814 and at 800x360 (Cricket landscape tests run at 914x411 today); add the missing one.
 - `SetupSuggestionsScreenTest`: Pixel 7 portrait (class), 4 tests kept.
 - History HS2 and HS5 landscape at scale 2.0: Pixel 7 landscape inside its bars; the test must still show that the
   last item needs a scroll (its "does not exist before scrolling" assertion stays).
@@ -42,7 +45,8 @@ CR22, CR26, CR27 (`docs/rules/cricket.md`), HS2, HS5 (`docs/rules/history.md`), 
 ## Done when
 
 `./gradlew :app:testDebugUnitTest` and `./gradlew build` green, `kosmo-detekt` exit 0, and
-`grep -rnE 'w(360|640|731)dp|h760dp' app/src/test` prints nothing.
+`grep -rnE 'w(360|640|731)dp|h760dp|SmallPhone' app/src/test` prints nothing. The report lists the test classes
+touched with their test counts before and after (D13).
 
 ## Model
 
