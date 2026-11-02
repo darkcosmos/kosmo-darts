@@ -14,9 +14,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -36,12 +41,15 @@ import io.github.darkcosmos.kosmodarts.ui.layout.GameLayoutPolicy
 import io.github.darkcosmos.kosmodarts.ui.layout.TileVariant
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
+import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTypography
 import io.github.darkcosmos.kosmodarts.ui.theme.LABEL_FIGURES
 import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
+import io.github.darkcosmos.kosmodarts.ui.theme.fixedSp
 
 private val STRIP = 4.dp
 private val TILE_PADDING = 8.dp
 private const val TWO_LINE_NAME_MAX_LINES = 2
+private const val NO_WIDTH = -1
 
 /** What a tile shows of another player. */
 class TileContent(
@@ -98,7 +106,7 @@ private fun TileBody(content: TileContent, variant: TileVariant, modifier: Modif
         typography.tileScore
     }
     val name: @Composable (Modifier, Int) -> Unit = { nameModifier, maxLines ->
-        TileName(content, nameModifier, maxLines)
+        TileName(content, variant, nameModifier, maxLines)
     }
     val matchLine: @Composable () -> Unit = { content.indicator?.let { MatchLine(it, content.index) } }
     val score: @Composable () -> Unit = {
@@ -161,20 +169,48 @@ private fun ScoreLine(score: @Composable () -> Unit, box: @Composable () -> Unit
     }
 }
 
-/** The name; on the next player's tile, TalkBack reads "Next player: Anna, 301 points left" (U4). */
+/**
+ * The name, never broken inside a word (#70, VT11, U3, U11): it shrinks from the user's size down to its size at font
+ * scale 1.0, then ends with "…". Two lines only when the variant allows them and the name has two words; a one-word
+ * name stays on one line. On the next player's tile, TalkBack reads "Next player: Anna, 301 points left" (U4).
+ */
 @Composable
-private fun TileName(content: TileContent, modifier: Modifier, maxLines: Int) {
+private fun TileName(content: TileContent, variant: TileVariant, modifier: Modifier, maxLines: Int) {
     val description = if (content.isNext) {
         nextPlayerDescription(LocalResources.current, content.name, content.remaining)
     } else {
         null
     }
+    val text = displayName(content.name)
+    val style = KosmoTheme.typography.playerNameTile
+    val density = LocalDensity.current
+    val autoSize = remember(style.fontSize, density.density, density.fontScale) {
+        // At font scale 1.0 (and below) the minimum equals the maximum: the size does not change.
+        val fixed = density.fixedSp(KosmoTypography.PLAYER_NAME_TILE)
+        val smallest = with(density) { if (fixed.toPx() < style.fontSize.toPx()) fixed else style.fontSize }
+        WordSafeAutoSize(smallest, style.fontSize)
+    }
+    // A multi-word name can still have a word wider than its line, even at the minimum size (e.g. "MAXIME DUPONT" in a
+    // narrow landscape tile): the second line would then break that word. The layout reports it here, and this flag
+    // (the width of that layout) puts the name on one line, ending with "…": one extra composition, rare. It resets
+    // when the name, the variant or the font scale changes, and the layout clears it when its width changes (rotation).
+    var oneLineAtWidth by remember(text, variant, density.fontScale) { mutableIntStateOf(NO_WIDTH) }
+    val twoLinesAllowed = maxLines > 1 && wordCount(text) > 1 && oneLineAtWidth == NO_WIDTH
     Text(
-        text = displayName(content.name),
-        style = KosmoTheme.typography.playerNameTile,
+        text = text,
+        style = style,
         color = KosmoTheme.colors.onBackground,
-        maxLines = maxLines,
+        maxLines = if (twoLinesAllowed) maxLines else 1,
         overflow = TextOverflow.Ellipsis,
+        autoSize = autoSize,
+        onTextLayout = { layout ->
+            val width = layout.layoutInput.constraints.maxWidth
+            if (layout.lineCount > 1 && !breaksOnlyBetweenWords(text, layout.lineEnds())) {
+                oneLineAtWidth = width
+            } else if (oneLineAtWidth != NO_WIDTH && oneLineAtWidth != width) {
+                oneLineAtWidth = NO_WIDTH
+            }
+        },
         modifier = modifier
             .testTag(GameTags.playerName(content.index))
             .then(if (description == null) Modifier else Modifier.semantics { contentDescription = description }),

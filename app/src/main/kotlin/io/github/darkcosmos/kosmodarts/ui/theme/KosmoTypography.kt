@@ -76,6 +76,8 @@ data class KosmoTypography(
         const val SCORE_PORTRAIT: Float = 220f
         const val SCORE_PORTRAIT_FOUR_PLAYERS: Float = 204f
         const val SCORE_LANDSCAPE: Float = 160f
+        /** Size of a tile name: `playerNameTile` follows the font scale, `TileName` shrinks down to this size (#70). */
+        const val PLAYER_NAME_TILE: Float = 18f
         private const val KEYPAD = 28f
         private const val KEYPAD_LABEL = 20f
         private const val DART = 26f
@@ -97,7 +99,7 @@ data class KosmoTypography(
             tileScoreSmall = display(density.fixedSp(TILE_SCORE_FOUR_PLAYERS), WEIGHT_EXTRA_BOLD),
             route = display(28.sp, WEIGHT_BOLD, letterSpacing = 0.04.em),
             playerNameZone = display(28.sp, WEIGHT_EXTRA_BOLD, letterSpacing = 0.04.em),
-            playerNameTile = display(18.sp, WEIGHT_BOLD, letterSpacing = 0.04.em),
+            playerNameTile = display(PLAYER_NAME_TILE.sp, WEIGHT_BOLD, letterSpacing = 0.04.em),
             label = display(14.sp, WEIGHT_BOLD, letterSpacing = 0.1.em),
             labelLarge = display(18.sp, WEIGHT_BOLD, letterSpacing = 0.06.em),
             button = display(20.sp, WEIGHT_EXTRA_BOLD, letterSpacing = 0.06.em),
