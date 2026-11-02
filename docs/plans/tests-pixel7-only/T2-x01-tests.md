@@ -56,3 +56,18 @@ classes touched with their test counts before and after (D13).
 `sonnet`. Why: test edits from a fully specified table, with per-test judgement on Pixel 7 equivalents.
 
 ## Implementation notes
+
+- Applied the Inventory rows S1/S2/S3 of the X01 classes; no test red after the retargets, no assertion changed.
+- Test counts before -> after (@Test): `GameScreenFitTest` 18 -> 19 (800x360 at scale 1 added), `CheckoutBannerFitTest`
+  23 -> 17 (4 at 360x640 and 4 at 640x360 deleted, 800x360 at 1.3 and 1.5 added; the 411x814 and 800x360 M15 tests of the
+  same rule stay), `RedesignScreensTest` 16, `VisitTotalLayoutTest` 6, `ZoneLayoutTest` 14, `BetweenLegsLayoutTest` 3,
+  `DesignSystemScreenshotTest` 36, `GameLayoutPolicyTest` 11, `ScreenLayoutPolicyTest` 2 (two assertions on 640x360 and
+  360x640 removed, the 800x360 and 412x915 ones remain). No persistence, corrupt-save or input-validation test removed.
+- D7 evidence (P1): in `GameLayoutPolicyTest` the 360x640 and 640x360 inputs all moved to 411x814 and 800x360 and the
+  assertions held, including the step 4 scroll (`isScrolling`, score at the floor) at 411x814, 4 players, scale 2.0. So
+  P1 step 4 is still reached on the Pixel 7 inside its bars at the largest font scale; no input was kept small.
+  The "keys never below 48 dp" test keeps its height sweep (200..915 at width 360): a space sweep, not a device.
+- Pixel 7 constants of the pure tests moved from 412x915 to 411x914 (D2) without any red.
+- Captures renamed: `game_4p_411x814_fr`, `_font200`, `game_4p_800x360_fr`, `_font200`,
+  `setup_4p_focused_411x814_fr_font200` (methods `portraitInsideBars*`, `landscapeInsideBars*`).
+- Literals `fr-w800dp...`, `fr-w412dp...`, `fr-w915dp...`, `w393dp...` of these files now use `TestDevices`.
