@@ -45,7 +45,7 @@ private val WORD_SAFE_MIN_FONT = 8.sp
 private val WORD_SAFE_STEP = 0.5.sp
 
 /** Steps down from [max] to [min] until the text fits without overflow and without a break inside a word. */
-private class WordSafeAutoSize(private val min: TextUnit, private val max: TextUnit) : TextAutoSize {
+internal class WordSafeAutoSize(private val min: TextUnit, private val max: TextUnit) : TextAutoSize {
 
     override fun TextAutoSizeLayoutScope.getFontSize(constraints: Constraints, text: AnnotatedString): TextUnit {
         val minPx = min.toPx()

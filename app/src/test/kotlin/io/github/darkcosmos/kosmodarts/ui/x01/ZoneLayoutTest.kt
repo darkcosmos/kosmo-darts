@@ -116,6 +116,7 @@ class ZoneLayoutTest {
     fun `M6 landscape 800 x 360, 2 players in a match, tiles whole`() = checkLandscapeFit(2)
 
     // U3: in landscape, at 2 and 3 players too, a long name keeps at least 8 characters before "…", tiles whole.
+    // The 8-character rule holds here (match, 1.0, 2 and 3 players); #70 relaxes it only at 4 players (D3).
 
     private fun checkLongNames(playerCount: Int) {
         send(*startMatch(*LONG_NAMES.take(playerCount).toTypedArray()))

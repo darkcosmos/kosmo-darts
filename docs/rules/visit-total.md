@@ -85,8 +85,12 @@ The engine derives one state per player from the game state (configuration and o
   - the remaining score of a tile is never truncated; on a narrow tile at a large font size, the box goes under the
     score;
   - the score of the zone keeps its place and size while a turn is played, waits, busts or is confirmed;
-  - a player name longer than its space is cut with an ellipsis (on two lines at most on the landscape tiles at
-    4 players, U3 of issue #49).
+  - a player name on a tile is never broken inside a word (issue #70). A name longer than its space first shrinks,
+    whole words only, down to its 100 % size (`playerNameTile`); if it still does not fit it ends with an ellipsis on
+    one line. It takes two lines only when the break falls between two words (on the landscape tiles at 4 players, U3
+    of issue #49). The "at least 8 characters before the ellipsis" of issue #49 is no longer guaranteed in a sets
+    match, in landscape, with 4 players, at large font sizes (D3 of the issue #70 plan); the full name stays in the
+    accessibility description.
 - VT12. Translating states to texts happens outside composables (UI state mapping); composables only render the
   mapped texts.
 - VT13. While a bust waits for "Next player", the zone turns `danger` with the white BUST banner in the route area

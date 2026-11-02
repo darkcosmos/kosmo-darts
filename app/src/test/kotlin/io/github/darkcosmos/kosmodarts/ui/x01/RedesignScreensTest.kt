@@ -181,7 +181,10 @@ class RedesignScreensTest {
         assertTrue("not cut vertically", !layout.didOverflowHeight)
     }
 
-    /** U3, T5, owner Q9: landscape with 4 long names: scores whole, names with at least 8 characters before "…". */
+    /**
+     * U3, T5, owner Q9: landscape with 4 long names: scores whole, names with at least 8 characters before "…". Without
+     * a match; names are also never broken inside a word (#70, TileNameFitTest).
+     */
     @Test
     @Config(qualifiers = "+en-land", fontScale = LARGEST_FONT_SCALE)
     fun `U3 landscape 4 players with long names at the largest font size`() = checkLandscapeTiles()
