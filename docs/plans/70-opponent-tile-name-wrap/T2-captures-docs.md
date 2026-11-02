@@ -36,3 +36,16 @@ VT11, design system `PlayerTile`, U3, T8. Decisions D1 to D3.
 sonnet. Why: captures are mechanical, but deciding which PNG differences are expected needs judgment.
 
 ## Implementation notes
+- Captures: `TileNamesScreenshotTest` (4 captures, record only, 301 sets match 3x3). Plan sentence on the 2-player
+  case corrected (it does not end with "…" in landscape).
+- Comparison against main ec4ee46 (worktree), 279 PNGs on head vs 275 on main. Run twice on main and twice on head
+  (valid runs): render noise on both sides, same files: `archive_cricket_*` (5) and `settings_voice_available_portrait_en`
+  (unrelated to tiles, ignored). Stable differences (head identical across runs, main identical across runs), 13 files,
+  all tile-name changes (mid-word break gone, shrink then "…"): `checkout_banner_landscape_fr_font200`,
+  `ds_game_4p_long_names_{landscape_fr,portrait_fr,portrait_fr_font200}`,
+  `ds_game_4p_small_{360x640,640x360}_fr{,_font200}` (4), `match_game_4p_long_names_last_player_portrait_en_font200`,
+  `visit_total_4p_{long_names,waiting_bust}_{landscape,portrait}_en_font200` (4). 4 new files (tile_names_*).
+  All others are byte-identical.
+- Doubts for the ux-reviewer: landscape 4 players at 1.5 and 2.0 leave "MAXI…", "KOS…", "MA…" (D3, accepted); at
+  640x360 fr 1.0 the tiles show "CLÉ…", "AN…", "MA…" (main broke "CLÉM/ENT…"); at 640x360 fr 2.0 the tiles are cut off
+  by the screen on main and on head alike.
