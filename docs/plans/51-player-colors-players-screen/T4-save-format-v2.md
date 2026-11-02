@@ -35,3 +35,15 @@ R17, R31, R9, R10, R11, R30; PC1, PC7, PC8.
 opus. Why: case "new or changed stored format" (saved game and last setup format version 2).
 
 ## Implementation notes
+- Deviation: `parseColors(value, playerCount)` and `colorsValue(colors)` live in `persistence/SaveColors.kt` (the
+  T3 file `SlotColors.kt`, renamed with `git mv` and rewritten), not in `SaveBody.kt`: detekt `TooManyFunctions`.
+  `SlotColors.kt`, `parseSlotColors` and `slotColorsValue` no longer exist.
+- Reasons: wrong count or empty token `MALFORMED`; token not matching `FF[0-9A-F]{6}` or repeated color
+  `OUT_OF_RANGE`; version 1 `UNSUPPORTED_VERSION` (envelope check). No PC11 to PC13 check on load (D15).
+- Writing: `String.format(Locale.ROOT, "%08X", argb)`.
+- `GameSaveCodec.VERSION` and `LastSetupCodec.VERSION` are 2. Golden files (X01 single game, X01 match, Cricket)
+  re-recorded at version 2 with new CRCs; `LastSetupCodecTest.V1_BOTH_LINES` renamed `V2_BOTH_LINES`.
+- Tests: `SaveColorsCodecTest` (round trips with a generated color for X01, Cricket and last setup; PC7 through
+  `rematchSetup`/`cricketRematchSetup` on decoded games; PC8 through `SetupState.prefilled`; D15; rejects);
+  `SaveFuzzTest` seeds now include a generated color for both codecs.
+- Left as is: the KDoc of `SaveBody` still cites ADR 0006 and R18 for the default colors (stale since #50).
