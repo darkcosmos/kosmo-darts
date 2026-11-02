@@ -51,3 +51,8 @@ PC2, PC10 to PC15, PC17.
 sonnet. Why: rules PC10 to PC15 specified with their thresholds and tests.
 
 ## Implementation notes
+- API: `ColorChoices.defaultFor(taken, random = Random.Default)` and `ColorChoices.choicesFor(index, colors, random)`
+  (`colors` = all players' colors, `index` = the player); `PlayerColorRules` is an `object`.
+- Generator draws OKLCH (L 0.45-0.95, C 0.05-0.22, any hue), rejects out-of-gamut, then `isAcceptable` (PC12).
+- `PaletteContrastTest` already existed: the engine-constant test was added to it.
+- Mid-luminance colors failing PC13 text contrast (4.5) are rejected by `isAcceptable`.
