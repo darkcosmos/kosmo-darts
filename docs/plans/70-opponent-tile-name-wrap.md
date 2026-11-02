@@ -40,8 +40,11 @@ New `TileName` behaviour (D1, D2):
    `WordSafeText` centres, and it is not used here).
 4. Fallback for a multi-word name that does not fit word-safe on 2 lines even at the minimum size (a word alone wider
    than the line, e.g. "MAXIME DUPONT" in a 44 dp name box): `onTextLayout` checks `breaksOnlyBetweenWords` on the
-   result; if it fails, a remembered flag (keys: name, variant, the layout's max width) switches the name to one line,
-   so it ends with "…". One extra composition, only in that case.
+   result; if it fails, a remembered flag (keys: name, variant, the layout's max width, font scale) switches the name
+   to one line, so it ends with "…". One extra composition, only in that case. A comment in `TileName` says why the
+   flag exists (A1). The flag keeps the one-line state across recompositions; a rotation or a setting change gives a
+   new width or scale, so the flag is recomputed: a flash at most once per name and width (U1). Tests and captures
+   check the final state (after `waitForIdle`).
 5. TalkBack: unchanged mechanism. The `Text` semantics keep the full name whatever is drawn; the next player's tile
    keeps its content description "Prochain joueur : <full name>, n restants" (U4).
 
@@ -62,11 +65,12 @@ that stays valid (the name never gets more lines nor a larger size than today). 
   fallback), comments U3/T8/U19 updated.
 - `app/src/main/kotlin/io/github/darkcosmos/kosmodarts/ui/components/WordSafeText.kt`: `WordSafeAutoSize` becomes
   `internal` (no behaviour change for buttons and keypad).
-- `app/src/main/kotlin/io/github/darkcosmos/kosmodarts/ui/theme/KosmoTypography.kt`: the 18 constant of
-  `playerNameTile` named so `TileName` can use its 1.0 size (no value change).
+- `app/src/main/kotlin/io/github/darkcosmos/kosmodarts/ui/theme/KosmoTypography.kt`: one single named constant for
+  18 sp, read by both the `playerNameTile` style and `TileName` (its 1.0 size); no second literal 18 (A2). No value
+  change.
 - New `app/src/test/kotlin/io/github/darkcosmos/kosmodarts/ui/x01/TileNameFitTest.kt` (Robolectric, native graphics).
-- Changed tests: `RedesignScreensTest` (U3), `GameScreenFitTest` (T8), `ZoneLayoutTest` (U3 comment and
-  assertions).
+- Changed tests, comments only (assertions unchanged): `RedesignScreensTest` (U3), `GameScreenFitTest` (T8),
+  `ZoneLayoutTest` (U3).
 - New capture test or captures in `screenshots/` (T2), `docs/design/design-system.md`, `docs/rules/visit-total.md`.
 
 ## Data read, stored or exposed
@@ -97,13 +101,15 @@ Write `TileNameFitTest` first and show it red on the current code (BOB/DAN at 2.
   - font size between the 1.0 size and the style size; when "…" shows, the size is the 1.0 size (shrink first);
   - left-aligned (`getLineLeft(0)` is 0);
   - semantics text = the full displayed name (`displayName`), even when "…" shows.
+- Fallback canary (T2 of review): the "Maxime Dupont" and "Bartholomew Jonathan" cases must fail if the
+  `onTextLayout` fallback is removed; run that canary once and note the result in T1's notes.
 - CID unchanged: at every configuration CID is on one line at the full style size (as today).
 - Next player (U4): tile 1's name keeps the content description built by `nextPlayerDescription` with the full
   name (compared with the string resource, not a literal) when that name ends with "…" (set Ann + (Bartholomew, …):
   BARTHOLOMEW is next and ends with "…" in landscape at 2.0 in a match).
 - Existing tests: U3 (`RedesignScreensTest`, no match, landscape 4 long names, 1.0 and 2.0), T8 (`GameScreenFitTest`,
   portrait 4 players at 2.0) and U3 in `ZoneLayoutTest` (2 and 3 players, match, 1.0) still require 8 characters:
-  they must stay green unchanged except their comments; if one goes red, report it to main (never weaken it
+  they must stay green, comments only (assertions unchanged, `ZoneLayoutTest` included); if one goes red, report it to main (never weaken it
   without a decision). Only the new match/landscape/4-player test at large scales allows fewer than 8 (D3).
 - `GameLayoutPolicyTest`: unchanged, must stay green.
 - Captures (T2): re-record all, `cmp` every PNG against `main` ec4ee46; new captures
@@ -117,8 +123,10 @@ Write `TileNameFitTest` first and show it red on the current code (BOB/DAN at 2.
 2. Même réglage, joueurs Ann, Kevin, Kosmo, Julien : aucun nom coupé au milieu ; un nom trop long finit par « … »
    sur une seule ligne, dans une taille pas plus petite qu'à 100 %.
 3. Portrait, 4 joueurs dont « Bartholomew » : plus de « BARTHOLOM / EW » ; le nom tient en entier ou finit par « … ».
-4. Avec TalkBack, toucher une tuile dont le nom finit par « … » : le nom complet est lu.
-5. Police à 100 % : les tuiles sont comme avant.
+4. Police à 200 %, paysage, partie en sets à 4 joueurs dont « Maxime Dupont » : le nom finit par « … » sur une
+   seule ligne, jamais coupé au milieu d'un mot.
+5. Avec TalkBack, toucher une tuile dont le nom finit par « … » : le nom complet est lu.
+6. Police à 100 % : les tuiles sont comme avant.
 
 ## Tasks
 
@@ -137,10 +145,30 @@ No `opus` task.
   inside a word anywhere.
 - D3 (Kosmo, Q3): the rule "at least 8 characters before …" (U3, T8) gives way where the space is too small (sets
   match, landscape, 4 players, large font scales); docs and tests are updated to say so.
-- D4 (developer, for review): lines picked from the word count plus an `onTextLayout` fallback (see Approach).
-- D5 (developer, for review): `GameLayoutPolicy` unchanged (upper bound still valid).
+- D4 (developer, approved in design review): lines picked from the word count plus an `onTextLayout` fallback (see Approach).
+- D5 (developer, approved in design review): `GameLayoutPolicy` unchanged (upper bound still valid).
+- D6 (design review, all four reviewers APPROVE, 0 blocking): D4 and D5 approved; the hyphen default below is kept.
+  Minors integrated (verbatim):
+  - A1 [minor] plan:41 - onTextLayout fallback flag: add a comment in TileName saying why it exists (one extra
+    composition, rare multi-word overflow); the flag key must include the max width / font scale so it does not stick
+    after a setting change. State both in T1.
+  - A2 [minor] plan:65 - one single named constant for 18 sp read by both the playerNameTile style
+    (KosmoTypography.kt) and TileName; no second literal 18.
+  - T1 [minor] plan:68-69 - ZoneLayoutTest: write "comments only" in both the root plan and T1/Test plan.
+  - T2 [minor] plan:41-44 - state in T1 that the "Maxime Dupont"/"Bartholomew Jonathan" cases must fail if the
+    fallback is removed (quick canary result in the notes).
+  - T3 [minor] T2 task file - check VT11 in docs/rules/visit-total.md stays the identifier cited by tests, with
+    amended text mentioning D3.
+  - U1 [minor] plan:41-44 - say in T1 that the remembered flag keeps the one-line state across recompositions and
+    rotation (flash at most once per name and width), and that the capture/test checks the final state.
+  - U2 [minor] plan:115-118 - add a phone-check step with a two-word long name such as "Maxime Dupont" in 4-player
+    landscape match at 200%: ends with "…" on one line, never cut mid-word.
+  - U3 [minor] plan:145 - keep the hyphen default (no break after a hyphen) as a note for Kosmo in the plan.
 
 ## Open questions
 
-- Is a break after a hyphen allowed ("MAXIMILIEN- / ALEXANDRE")? Default in this plan: no (only spaces separate
-  words, as for buttons, U11), so such a name is on one line with "…". Ask Kosmo only if a reviewer contests it.
+None blocking.
+
+Note for Kosmo (U3 of design review): a name is never broken after a hyphen either ("MAXIMILIEN- / ALEXANDRE"
+does not happen): only spaces separate words, as for buttons (U11), so such a name stays on one line and ends with
+"…" when it is too long. Kosmo may ask for hyphen breaks later.

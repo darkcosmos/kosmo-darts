@@ -25,7 +25,9 @@ VT11, design system `PlayerTile`, U3, T8. Decisions D1 to D3.
   total count; re-run the head twice to separate render noise. Any other difference: stop and report.
 - Docs: VT11 and the design-system row say a tile name shrinks word-safe down to its 100 % size, then ends with "…" on
   one line, two lines only between words, and that "at least 8 characters" is not guaranteed in a sets match in
-  landscape at 4 players at large font sizes (D3). No rule identifier changes.
+  landscape at 4 players at large font sizes (D3). No rule identifier changes: VT11 in `docs/rules/visit-total.md`
+  stays the identifier cited by the tests (`grep -rn VT11 app/src/test`), its amended text mentions D3 (T3 of review).
+- How to verify: the PR steps include the "Maxime Dupont" check of the root plan (step 4, U2 of review).
 
 ## Done when
 `./gradlew :app:testDebugUnitTest` and `./gradlew build` green; comparison done and listed; `kosmo-detekt` exit 0.
