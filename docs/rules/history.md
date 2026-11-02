@@ -14,9 +14,8 @@ Vocabulary:
 
 ## Profiles
 
-- PF1. A profile has a name (the spelling of its first use), a name key (unique), a reset date (equal to the creation
-  date when the profile is created, never changed in this mission: statistics count from it), a creation date and a
-  last-used date. It has no color.
+- PF1. A profile has a name, a name key (unique), a reset date (equal to the creation date at creation, then changed
+  only by PM4 and PM5; statistics count from it), a creation date and a last-used date. It has no color.
 - PF2. "Start" and "Rematch" create a profile for each player whose name key matches no profile, and set the
   last-used date of every player's profile to the start time. An existing profile keeps its first spelling (owner Q3).
 - PF3. The setup screen keeps the last-setup prefill (R7, R22). Under the name field that has the focus, it lists the
@@ -24,10 +23,11 @@ Vocabulary:
   recently used first, at most 5, without the profiles already named in another field of the setup, and without the
   profile whose name is exactly the text of the focused field (a profile with the same key but another spelling stays,
   so tapping it applies the profile's spelling). Tapping one puts its name in the field. Typing a new name is always
-  possible. No popup (owner Q1, Q2). Matching is done in memory on name keys, never with SQL `LIKE`.
+  possible. No popup (owner Q1, Q2). Matching is done in memory on name keys, never with SQL `LIKE`. The anonymous
+  profile (PM7) is never suggested.
 - PF4. Withdrawn (owner decision D25, clean slate): no profile is created from the last setup or the saved game.
   Profiles are created only by PF2, at the first "Start" or "Rematch" with a name.
-- PF5. No profile is ever deleted. There is no profile management screen in this mission.
+- PF5. A profile is deleted only by PM4 (merge source) and PM6. The anonymous profile is never deleted.
 
 ## Dart journal
 
@@ -79,7 +79,7 @@ Vocabulary:
 - AR6. Results (ranks, legs and sets won, leg winners) come from the engine at confirmation and are stored, not
   recomputed when read.
 - AR7. Withdrawn (clean slate, R30): every archived match has its start time, all its legs' darts and their times.
-- AR8. No match is ever deleted, anywhere in the app.
+- AR8. A match is deleted only by PM6, when every one of its players is the anonymous profile.
 - AR9. A database that cannot open, is corrupt, is full or fails on a read or write never crashes the app and is
   never deleted or recreated empty by the app. At launch, the saved game is then loaded and offered as usual (R2).
   The archive fails as AR3 says. History and detail show HS7.
@@ -91,14 +91,15 @@ Vocabulary:
 - HS1. The home screen has a "History" button that opens the History screen.
 - HS2. History lists the archived matches from the most recent end to the oldest. Each row shows the end date, the
   mode and variant, each player's name (profile name) in the match color, the winner, and the legs and sets score
-  when the format has more than one leg.
+  when the format has more than one leg. A player of the anonymous profile is shown as "Deleted player" ("Joueur
+  supprimé").
 - HS3. Two filters: mode (All, X01, Cricket) and player (All, or one profile). They combine. No variant filter
-  (owner Q6).
+  (owner Q6). The anonymous profile is not a player filter.
 - HS4. With no archived match, History says so explicitly. With matches but none matching the filters, it says that
   no match matches, with the filters still shown and a "Show all matches" button that resets both filters.
 - HS5. Tapping a match opens its detail: summary (settings, duration, ranks, legs and sets), then leg by leg and visit
   by visit, the darts of each visit. Voided darts are not shown; bust visits are marked. Duration: from start to end
-  (owner Q8).
+  (owner Q8). A player of the anonymous profile is shown as "Deleted player" ("Joueur supprimé").
 - HS6. Both screens are read-only (no delete button), without popups, in portrait and landscape, follow
   `docs/design/`, and stay fluid with 1,000 archived matches. Each has a visible Back action with a description;
   filters, scroll position and the open detail survive a rotation and a return to the app; Back from the detail
@@ -117,6 +118,40 @@ Vocabulary:
   above it.
 
 The archived app version (AR5) is unchanged: it stays `versionName` alone, without the build number.
+
+## Players screen
+
+- PM1. The home screen has a "Players" button under "History", same form; both carry an icon (decorative, the text is
+  the accessible name), 48dp touch targets.
+- PM2. The Players screen lists every profile except the anonymous one, most recently used first. Each shows its
+  name, its number of matches and the end date of its last match ("No match yet" when none). The reset date is not
+  shown (Q7). With no profile, the screen says so.
+- PM3. Rename: the new name is trimmed and normalized and must be valid under `PlayerListRules` (non-blank, at most
+  20 code points). Same name key as the profile: the spelling changes (case-only rename allowed). Name key of another
+  profile: refused, and the screen offers to merge this profile (source) into that one (target). History shows the
+  current name.
+- PM4. Merge a source into a target: every participation of the source moves to the target, then the source is
+  deleted. The target keeps its name; its reset date and last-used date become the latest of the two, its creation
+  date the earliest. Refused, with a short message, when both profiles played a same match. One transaction.
+  Irreversible, so preceded by an explicit confirmation inside the screen.
+- PM5. Reset: the reset date becomes now; nothing else changes and no match leaves History. Preceded by an explicit
+  confirmation inside the screen.
+- PM6. Delete: in one transaction, every participation of the profile moves to the anonymous profile, every match
+  whose players are then all the anonymous profile is deleted (with its legs, darts and players), then the profile is
+  deleted. Preceded by an explicit confirmation inside the screen that gives the number of matches that will be
+  erased. Irreversible.
+- PM7. One anonymous profile for the whole app, with the reserved name key `""`, created at the first deletion. It is
+  never listed, suggested, filtered on, renamed, merged, reset or deleted. It is shown as "Deleted player".
+- PM8. Rename, merge (source or target) and delete are refused, with a short message, while the saved game in
+  progress has a player whose name key is that of a profile concerned.
+- PM9. After a successful rename, merge or delete, the last setup is updated: rename gives the entry the new spelling;
+  merge gives the source entry the target's name, or removes it when the target is already in the roster; delete
+  removes the entry, and when it was the only one, leaves one entry with an empty name and its color. Other entries
+  and colors are unchanged. A failure to write the last setup is ignored (R10).
+- PM10. A database error leaves everything unchanged (transaction) and shows a short message in the screen; the
+  action can be retried.
+- PM11. No popup: confirmations, refusals and errors are shown inside the Players screen, announced by TalkBack, in
+  portrait and landscape and at 200% font size.
 
 ## Related rules
 

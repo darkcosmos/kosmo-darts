@@ -125,8 +125,8 @@ Vocabulary:
 
 ## Player colors (issue #49, `docs/rules/players.md`, ADR 0006)
 
-- R17. Each player's color slot is saved with the game and with the last setup, so a resume, a rematch (PC7) and the
-  next setup (PC8) keep every player's color.
+- R17. Each player's color (ARGB, PC1) is saved with the game and with the last setup, so a resume, a rematch (PC7)
+  and the next setup (PC8) keep every player's color.
 - R18. Withdrawn by R30 (issue #50, clean slate).
 - R19. A resumed game whose checkout waited for confirmation shows the CHECKOUT zone (score replaced by the CHECKOUT
   banner, keypad locked, "Undo" and the M15 confirm button in the action bar), exactly as before the app was closed.
@@ -180,3 +180,7 @@ Vocabulary:
   no earlier version. A file of an earlier build, if one exists anyway, is handled by the existing checks only: the
   saved game by R9 (message once, deleted), the last setup by R10 (ignored silently); no crash (R11). From the
   release version on, every stored format change keeps the previous files readable.
+- R31. The saved game and the last setup are at format version 2: the `colors` line holds one 8-digit uppercase hex
+  ARGB value per player, alpha `FF`, all distinct; anything else rejects the file (R9, R10). Version 1 files are
+  handled as R30 says (clean slate). On load, PC11 to PC13 are not checked again: a stored opaque, distinct color is
+  accepted as it is (D15).
