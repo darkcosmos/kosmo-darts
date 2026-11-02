@@ -228,7 +228,10 @@ class GameScreenFitTest {
         assertTrue("header on $lines lines", lines <= 2)
     }
 
-    /** T8: the narrow portrait tiles (4 players) show at least 8 characters of a long name at the largest size. */
+    /**
+     * T8: the narrow portrait tiles (4 players) show at least 8 characters of a long name at the largest size. Names
+     * are also never broken inside a word (#70, TileNameFitTest); this rule gives way only in a match (D3).
+     */
     @Test
     @Config(qualifiers = "fr-w412dp-h915dp-port-xxhdpi", fontScale = LARGEST_FONT_SCALE)
     fun `T8 narrow tiles keep 8 name characters at the largest font size`() {

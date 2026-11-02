@@ -131,7 +131,7 @@ private fun TileBody(content: TileContent, variant: TileVariant, modifier: Modif
             ScoreLine(score, box)
         }
         TileVariant.NARROW -> Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            // T8: on two lines at most, as in landscape at 4 players, so at least 8 characters show before "…".
+            // T8: two lines at most, only for a name of several words; no break inside a word (#70, VT11 as amended).
             name(Modifier.fillMaxWidth(), TWO_LINE_NAME_MAX_LINES)
             ScoreLine(score, box)
             matchLine()
@@ -140,9 +140,9 @@ private fun TileBody(content: TileContent, variant: TileVariant, modifier: Modif
             modifier,
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            // U3, U19: the name on two lines at most, so at least 8 characters show before "…", never sharing its
-            // line with the score and the box; the match line beside it keeps the tile on two lines (owner review of
-            // PR #57: lower tiles in landscape).
+            // U3, U19: the name on two lines at most (only for several words, never broken inside a word, #70), never
+            // sharing its line with the score and the box; the match line beside it keeps the tile on two lines (owner
+            // review of PR #57: lower tiles in landscape).
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 name(Modifier.weight(1f), TWO_LINE_NAME_MAX_LINES)
                 matchLine()

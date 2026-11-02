@@ -81,7 +81,8 @@ class TileNameFitTest(private val case: NameCase) {
             val text = layout.layoutInput.text.text
             val label = "$case ${if (isLandscape) "land" else "port"} x$fontScale player $player \"$text\""
             assertEquals("$label semantics text", displayName(name, Locale.FRENCH), shownText(player))
-            assertTrue("$label breaks inside a word: ${layout.lineEnds()}", breaksOnlyBetweenWords(text, layout.lineEnds()))
+            val lineEnds = layout.lineEnds()
+            assertTrue("$label breaks inside a word: $lineEnds", breaksOnlyBetweenWords(text, lineEnds))
             assertTrue("$label overflows its width", !layout.didOverflowWidth)
             val maxLines = if (name.trim().contains(' ')) 2 else 1
             assertTrue("$label on ${layout.lineCount} lines, at most $maxLines", layout.lineCount <= maxLines)
@@ -106,7 +107,8 @@ class TileNameFitTest(private val case: NameCase) {
     /** The height of one line of [layout]'s text and style at a font size of [sizePx]. */
     private fun lineHeightAt(layout: TextLayoutResult, sizePx: Float): Float {
         val input = layout.layoutInput
-        val measurer = TextMeasurer(createFontFamilyResolver(composeRule.activity), input.density, input.layoutDirection)
+        val resolver = createFontFamilyResolver(composeRule.activity)
+        val measurer = TextMeasurer(resolver, input.density, input.layoutDirection)
         val style = input.style.copy(fontSize = with(input.density) { sizePx.toSp() })
         // Same number of lines: the first line of a text on several lines is trimmed differently from a lone line.
         val measured = measurer.measure(List(layout.lineCount) { "A" }.joinToString("\n"), style)

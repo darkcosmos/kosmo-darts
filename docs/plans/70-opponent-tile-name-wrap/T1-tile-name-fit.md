@@ -41,3 +41,22 @@ VT11, U3, U4, T8, U11; design system `PlayerTile`; Decisions D1 to D5.
 sonnet. Why: the behaviour, the API to reuse and every test case are specified; no stored format, no cross-module work.
 
 ## Implementation notes
+- Red first (commit 98eca9f, unchanged code): 30 of 88 `TileNameFitTest` cases failed, among them
+  `4p_match_bob_cid_dan land x2.0` ("BOB" breaks inside a word: [2, 3]), `4p_match_mim_kevin_kosmo land x2.0` ("MIM"
+  [2, 3]), `4p_match_julien_maxime_jeanpaul land x2.0` ("JULIEN" [3, 6]), `4p_*_bartholomew_two_words port x1.0..2.0`
+  ("BARTHOLOMEW" [10, 11] .. [7, 11]). DAN breaks the same way as BOB (same test, first failing assertion shown).
+- Test deviation (commit 0503fff): under autosize `layoutInput.style.fontSize` keeps the style size, so the size
+  assertions could not see the shrinking. The drawn size is now read from the first line height, compared with a
+  `TextMeasurer` reference at the 1.0 size and the style size (same line count). The "no break inside a word"
+  assertions did not change. Re-run on the unchanged main code with the final file: 29 of 88 red (BOB, MIM, ...).
+- The 2p "Bartholomew" case is not ellipsized in landscape (wide tile); the "ends with …" next-player check (U4) runs
+  on the 4p match case (BARTHOLOMEW is next, landscape 2.0). `TalkBack` description is asserted in every case.
+- Fix: `TileName` (PlayerTile.kt) = `WordSafeAutoSize` (now `internal`) from the style size to
+  `fixedSp(KosmoTypography.PLAYER_NAME_TILE)` (min never above the style size), lines = 2 only on NARROW/COMPACT
+  variants with 2+ words, plus the `onTextLayout` fallback (`oneLineAtWidth` keyed on name, variant and font scale;
+  it stores the layout width so a rotation clears it). `PLAYER_NAME_TILE` (18f) is the one constant of
+  `KosmoTypography`, read by the `playerNameTile` style and `TileName`.
+- Canary: with the fallback assignment neutralized (`oneLineAtWidth = NO_WIDTH`), 10 of 88 cases fail ("MAXIME
+  DUPONT" land x1.5/x2.0, "BARTHOLOMEW JONATHAN" land x1.0/1.3, port x1.0..1.5 in match and single game). Restored.
+- Comments only in `RedesignScreensTest`, `GameScreenFitTest`, `ZoneLayoutTest`; assertions untouched. All three and
+  the rest of `:app:testDebugUnitTest` are green. T2 still has captures, VT11 and design-system wording.
