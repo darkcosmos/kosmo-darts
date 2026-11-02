@@ -45,3 +45,13 @@ None changed. The tests moved to the Pixel 7 keep their rule identifiers.
 `sonnet`. Why: configuration and wiring with a test-by-test check of red results, no design choice.
 
 ## Implementation notes
+
+- `TestDevices` (app test source set) holds the 4 sizes and the `FR_` / `EN_` variants. `robolectric.properties` sets
+  `qualifiers=` the exact `RobolectricDeviceQualifiers.Pixel7` value (checked with javap on Roborazzi 1.76.0).
+- Turned into `"+xx"` (no size, keep the default device): `en`, `fr`, `de`, `en-rUS`, `fr-rFR`, `land` (10 files, sed
+  on exactly those literals). No test added or removed: 141 classes, 1595 tests before and after.
+- D12 proof: a temporary `HomeScreenTest` test read the display metrics (rounded dp): `411x914` green, expected
+  `411x913` red (`but was 411x914`). Reverted file by file; not in the commits.
+- Known red, planned for T2 (D6): `CheckoutBannerFitTest` `M15 fr-land at font scale 1_0` now fails on the Pixel 7
+  landscape with `chip height as before #69 expected:<36.0> but was:<94.85714>`: its `PRE_FIX["frland"]` value
+  was measured on the old 470 x 320 default device. T2 drops that value (D6); left untouched here.
