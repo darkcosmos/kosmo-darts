@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.playLegWonByScoring20
@@ -28,13 +29,13 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The Cricket between-legs and end screens (docs/rules/cricket.md, CR26, CR27) with four players at 360 x 640, also at
+ * The Cricket between-legs and end screens (docs/rules/cricket.md, CR26, CR27) with four players at 411 x 814, also at
  * font scale 2.0 (review U3): every row, the PTS and MPR MATCH figures and the buttons can be reached, and the buttons
  * are at least 48 dp high.
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi")
+@Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS)
 class CricketEndScreenTest {
 
     @get:Rule
@@ -105,18 +106,18 @@ class CricketEndScreenTest {
     }
 
     @Test
-    fun `CR27 end with four players at 360 x 640`() = checkEnd()
+    fun `CR27 end with four players at 411 x 814`() = checkEnd()
 
     @Test
     @Config(fontScale = 2.0f)
-    fun `CR27 end with four players at 360 x 640 and font scale 2`() = checkEnd()
+    fun `CR27 end with four players at 411 x 814 and font scale 2`() = checkEnd()
 
     @Test
-    fun `CR26 between legs with four players at 360 x 640`() = checkBetweenLegs()
+    fun `CR26 between legs with four players at 411 x 814`() = checkBetweenLegs()
 
     @Test
     @Config(fontScale = 2.0f)
-    fun `CR26 between legs with four players at 360 x 640 and font scale 2`() = checkBetweenLegs()
+    fun `CR26 between legs with four players at 411 x 814 and font scale 2`() = checkBetweenLegs()
 
     @Test
     fun `CR28 new game from a Cricket end screen asks for Cricket`() {

@@ -53,3 +53,20 @@ touched with their test counts before and after (D13).
 `sonnet`. Why: test edits from a specified table, with per-test judgement on Pixel 7 equivalents.
 
 ## Implementation notes
+
+- Test counts (@Test) before -> after: `CricketScreenTest` 38 -> 37 (CR22 411 x 760 deleted, D8; CR22 portrait 411 x 814
+  at scale 2 with 4 players, `assertFitsAtThisScale`, already covers U2 in portrait), `CricketLandscapeScreenTest` 12 -> 13
+  (800 x 360 at scale 2 added), `CricketBoardLayoutPolicyTest` 23, `CricketEndScreenTest` 6 (names say 411 x 814),
+  `CricketScreenshotTest` 40 (2 retargeted and renamed), `SetupSuggestionsScreenTest` 4, `HistoryScreenTest` 16,
+  `MatchDetailScreenTest` 10, `CricketSystemBarsTest` 8, `VerticalKeyLabelTest` 4 (literals only). `:app` total 1590, no
+  failure. No persistence, corrupt-save or input-validation test touched.
+- FINDING (P2 is reached on the Pixel 7): at 800 x 360, scale 2.0, the Cricket rows scroll whenever the bull is in play
+  (7 rows) for 1, 2, 3 and 4 players, with and without a pending win: they cannot keep the 42 dp floor. 6 rows fit in all
+  8 cases. The new U2 landscape test therefore covers 6 rows only and says so in a comment; the 7-row case is red with
+  the CR22 fit assertion ("the rows scroll") and was not added. Consistent with `CricketBoardLayoutPolicyTest`
+  (`band(width = 800f, height = 360f).board.scrolls`, 42 dp rows). So P2 (`scrolls`, `verticalScroll`) is not dead code.
+- D7 in `CricketBoardLayoutPolicyTest`: the 360 dp wide portraitSplit input moved to 411; the landscape 355 and 360 dp high
+  inputs moved to 800 x 360 (`band` got a `width` parameter), assertions unchanged and green. The 600 dp tall portrait
+  input stays with a comment naming P2 and P3: no supported size reaches it. P3 stays proven by the policy tests only.
+- Captures renamed: `between_legs_4p_411x814_fr`, `end_4p_411x814_fr` (methods `*4PlayersInsideBars`).
+- HS2 (`HistoryScreenTest`) has no "does not exist before scrolling" assertion (never had one); HS5 has it and stays green.

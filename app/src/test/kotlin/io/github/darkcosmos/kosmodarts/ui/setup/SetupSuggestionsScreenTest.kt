@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerListRules
 import io.github.darkcosmos.kosmodarts.history.Profile
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
@@ -36,7 +37,7 @@ import kotlin.random.Random
 /** PF3 on the setup screen: the suggestions under the focused field, with the real focus handling (review U3). */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = "en-w360dp-h640dp-port-xhdpi")
+@Config(qualifiers = TestDevices.EN_PIXEL7_PORTRAIT_INSIDE_BARS)
 class SetupSuggestionsScreenTest {
 
     @get:Rule

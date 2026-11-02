@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTarget
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
@@ -54,7 +55,7 @@ import org.robolectric.annotation.GraphicsMode
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = "fr-w411dp-h814dp-port-420dpi")
+@Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS)
 class CricketScreenTest {
 
     @get:Rule
@@ -365,22 +366,8 @@ class CricketScreenTest {
     @Config(fontScale = 2.0f)
     fun `CR22 the zone reads its total at scale 2`() = assertZoneTotalAtThisScale()
 
-    /**
-     * R2.1: when 48 dp rows leave the total under 32 dp the zone is the two-line zone and the total stays in the
-     * header. On the 411 x 814 dp Pixel 7 the real bars are lower than the plan's estimates (the action bar has two
-     * lines at most), so the fallback is exercised on a 760 dp tall screen at scale 2.0.
-     */
-    @Test
-    @Config(qualifiers = "fr-w411dp-h760dp-port-420dpi", fontScale = 2.0f)
-    fun `CR22 a short screen at scale 2 has the two-line zone with the MPR on the name line`() {
-        assertFits(4, isWinPending = true)
-        node(CricketTags.ZONE_TOTAL).assertDoesNotExist()
-        assertFits(4, isWinPending = false)
-        node(CricketTags.ZONE_TOTAL).assertDoesNotExist()
-        node(CricketTags.ZONE_STAT).assertExists()
-        node(CricketTags.columnTotal(0)).assertExists()
-        assertEquals(px(36f), bounds(GameTags.dartSlot(0)).height, 1f)
-    }
+    // The two-line zone fallback (R2.1, P3 of the plan) is not reached at 411 x 814 dp: a 760 dp tall test was its only
+    // Robolectric proof and is gone with the smaller screens; CricketBoardLayoutPolicyTest still proves the branch.
 
     /** The size is fitted on "8888": the digits shown do not change it (same header, so the same room). */
     @Test
@@ -635,7 +622,7 @@ class CricketScreenTest {
     fun `CR25 action bar labels, VALIDER LA PARTIE, scale 2`() = assertActionBarLabels()
 
     @Test
-    @Config(qualifiers = "en-w411dp-h814dp-port-420dpi")
+    @Config(qualifiers = TestDevices.EN_PIXEL7_PORTRAIT_INSIDE_BARS)
     fun `CR25 action bar label in English is CONFIRM MATCH`() {
         show(pendingWin(fourPlayers))
         assertEquals("CONFIRM MATCH", actionBarLayout(GameTags.CONFIRM).layoutInput.text.text)

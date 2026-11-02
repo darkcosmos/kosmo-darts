@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.history.DbResult
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
@@ -90,7 +91,7 @@ class MatchDetailScreenTest {
     }
 
     @Test
-    @Config(qualifiers = "en-w731dp-h411dp-xxhdpi", fontScale = 2f)
+    @Config(qualifiers = TestDevices.EN_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = 2f)
     fun `HS5 U3 the detail scrolls to the last leg in landscape at the largest font`() {
         showState(loaded())
         composeRule.onNode(hasText("SET 2 · LEG 3")).assertDoesNotExist()
