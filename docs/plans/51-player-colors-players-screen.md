@@ -49,6 +49,10 @@ showing the reset date (Q7), any new dependency, any Room schema change, screens
    resource. Merge, reset and delete each run in one `runInTransaction`. Deletion removes rows child first (dart,
    leg, match_player, match_record, session), since every foreign key is NO ACTION.
    - Alternative rejected: a `hidden` column. Needs schema version 2 and a migration for a single flag.
+   - ADR 0014 (T8) records the convention, the rejected alternative and the invariant: every query that lists
+     profiles, suggestions or player filters excludes the reserved key.
+   - Colors read from Room (`match_player.color_argb`) are mapped without throwing: a value whose alpha is not `FF`
+     is drawn opaque (alpha forced to `FF`) in History, never a crash (D16).
 6. **Players screen** follows the History pattern: `PlayersState` state holder (JVM tests), `Screen.Players`, effects
    queued on the persistence executor, results as events. Every confirmation is an inline panel under the profile,
    never a dialog. After a successful action the last setup file is rewritten (PM9).
@@ -69,7 +73,8 @@ showing the reset date (Q7), any new dependency, any Room schema change, screens
 - Resources: `drawable/ic_history.xml`, `drawable/ic_players.xml` (new vector drawables), `values/strings.xml`,
   `values-fr/strings.xml`.
 - Docs: `docs/rules/players.md`, `docs/rules/history.md`, `docs/rules/persistence.md`,
-  `docs/design/design-system.md`, `docs/adr/0013-save-format-v2-argb-colors.md` (new).
+  `docs/design/design-system.md`, `docs/adr/0013-save-format-v2-argb-colors.md` (new, T4),
+  `docs/adr/0014-anonymous-profile.md` (new, T8).
 
 ## Data read, stored or exposed
 
@@ -88,7 +93,8 @@ T1 copies this section into `docs/rules/`. Rule ids are stable; a rewritten rule
 `docs/rules/players.md` (title becomes "Player rules (colors)"; vocabulary: *player color*, an opaque ARGB color
 `PlayerColor`; *palette*: blue `#1F63D6`, orange `#E07020`, teal `#0C7C6A`, lilac `#C9A7FF`, in this order):
 - PC1. A player has exactly one color; two players of a setup or a match never share a color.
-- PC2. Adding a player gives him the first palette color no other player has, in palette order.
+- PC2. Adding a player gives him the first palette color acceptable for him (PC12), in palette order. When none is
+  (other players hold generated colors close to the free palette colors), he gets a generated color (PC15).
 - PC3. Removing a player frees his color; the other players keep theirs.
 - PC4. Shuffle changes the order only; each player keeps his color.
 - PC5. A match configuration with colors of the wrong count or repeated colors is rejected. Without explicit colors,
@@ -101,15 +107,17 @@ T1 copies this section into `docs/rules/`. Rule ids are stable; a rewritten rule
 - PC11. Readable: a player color has a WCAG contrast ratio of at least `MIN_COLOR_CONTRAST` = 3.0 against the
   background and against the surface. A name written in the player color (History) uses this threshold (Q4).
 - PC12. Distinct: the OKLab Euclidean distance between two colors of a setup is at least `MIN_COLOR_DISTANCE` = 0.12.
-  The four palette colors satisfy it pairwise.
+  The four palette colors satisfy it pairwise. A color is *acceptable* for a player when it satisfies PC11, PC13 and
+  this distance against the colors of every other player (`PlayerColorRules.isAcceptable(color, others)`); every
+  color given by PC2 or offered by PC14 and PC15 is acceptable. One function serves all three.
 - PC13. Text on a player color is white `#FFFFFF` or dark `#0A0F1E`, whichever has the higher WCAG contrast ratio
   (white on a tie). For every palette color and every generated color that ratio is at least `MIN_TEXT_CONTRAST`
   = 4.5. This applies to the giant score, the current player zone and keypad area, the tiles and History.
-- PC14. The swatches offered to a player: his own color first, then the palette colors no other player has, in
+- PC14. The swatches offered to a player: his own color first, then the palette colors acceptable for him (PC12), in
   palette order, then generated colors until at least `MIN_CHOICES` = 4 swatches are offered. A color of another
-  player is never offered.
-- PC15. A generated color is drawn at random (injected random source) and satisfies PC11, PC13 and PC12 against every
-  color of the setup and every swatch already offered. After `MAX_GENERATION_ATTEMPTS` = 200 failed draws for one
+  player, or a palette color too close to one, is never offered.
+- PC15. A generated color is drawn at random (injected random source) and is acceptable (PC12) against every other
+  player's color and every swatch already offered. After `MAX_GENERATION_ATTEMPTS` = 200 failed draws for one
   swatch, fewer swatches are offered; a non-conforming color is never offered.
 - PC16. Tapping a swatch gives that color to the player and closes the swatch row; the other players keep theirs.
   Closing the row without a choice changes nothing.
@@ -160,7 +168,8 @@ T1 copies this section into `docs/rules/`. Rule ids are stable; a rewritten rule
   rematch (PC7) and the next setup (PC8) keep every player's color.
 - R31. The saved game and the last setup are at format version 2: the `colors` line holds one 8-digit uppercase hex
   ARGB value per player, alpha `FF`, all distinct; anything else rejects the file (R9, R10). Version 1 files are
-  handled as R30 says (clean slate).
+  handled as R30 says (clean slate). On load, PC11 to PC13 are not checked again: a stored opaque, distinct color is
+  accepted as it is (D15).
 
 ## Screens and states
 
@@ -168,7 +177,8 @@ T1 copies this section into `docs/rules/`. Rule ids are stable; a rewritten rule
   color of Kevin"). Tapping it opens, under the row, a single row of 48dp round swatches (PC14), the current one with
   a check mark and "selected" for TalkBack; palette swatches are described by their name (blue, orange, teal, lilac),
   generated ones as "Color 5", "Color 6"... Tapping a swatch applies it (PC16); tapping the player's swatch again
-  closes the row. One row open at a time. In landscape the row stays on one line (at most 4 to 7 swatches).
+  closes the row. One row open at a time. The swatches (4 to 7) wrap onto a second line when needed, and the open row is
+  brought into view.
 - **Home**: "History" and "Players" secondary buttons with leading icons.
 - **Players**: top bar "Players" with back. States: loading, failed (HS7 message and retry), empty (PM2), list.
   Tapping a profile card expands it (one at a time) with four buttons: Rename, Merge, Reset, Delete.
@@ -260,6 +270,18 @@ Two `opus` tasks (T3, T4).
 - D13: the icons of the home buttons are decorative (`contentDescription = null`): the button text is already its
   accessible name, a description would make TalkBack read it twice. This is how Q8's "content descriptions" is met.
 - D14: Players list order is most recently used first, as the setup suggestions (PF3).
+- D15 (review S2): on load, a stored color is checked for format, opacity and uniqueness only, not PC11 to PC13:
+  thresholds may change later, and a resume must never fail for a color that was valid when chosen.
+- D16 (review S1): Room colors are never passed to the throwing `PlayerColor` constructor; the History mapping
+  forces alpha `FF` (`PlayerColor.fromStored(argb)`), tested with a stored alpha `00` row.
+- D17 (review T1): PC12 applies to every color given or offered (PC2, PC14, PC15) through one function,
+  `PlayerColorRules.isAcceptable(color, others)`.
+- D18 (review T4): T3's "no visual change" is checked by a byte comparison (`cmp`) of the captures recorded on
+  `main` and on the branch, run by hand: the build records Roborazzi images but has no compare task, and adding one
+  is out of scope; the colors are proved by
+  `PlayerPaletteTest` (same ARGB and text colors as the former tokens).
+- D19 (review U7): the home screen already scrolls (`verticalScroll` in `HomeScreen.kt`); the landscape capture shows the Players button
+  reachable.
 
 ## Open questions
 

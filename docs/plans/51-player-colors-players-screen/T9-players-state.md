@@ -28,6 +28,10 @@ PM2 to PM10.
 - Lock: a profile of the saved game cannot be renamed, merged (source or target) or deleted; reset allowed.
 - Last setup after rename, merge (target present or not), delete (only entry); write failure ignored.
 - Database failure keeps the panel open with the message (PM10).
+- After a reload, an expanded profile that no longer exists (merged or deleted) collapses, no panel left open
+  (review T5). The delete result carries the count recomputed in the transaction.
+- PM8 message names the player and says what to do (U5): "Kevin is in the game in progress. Finish or abandon it
+  first."
 
 ## Done when
 `./gradlew :app:testDebugUnitTest`, `./gradlew build` green; `kosmo-detekt` exit 0.

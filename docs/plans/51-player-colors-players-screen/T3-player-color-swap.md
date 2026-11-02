@@ -25,8 +25,9 @@ PC1 to PC9, PC13; R17.
 - Existing tests stay green after the rename, none removed or weakened; slot assertions become color assertions.
 - New `PlayerPaletteTest` (JVM): `onColorOf` equals the former `onPlayerN` token for each palette color (PC13).
 - `Roster` tests for PC2 to PC5 with colors; a roster with a non-palette color (T5 will create them) passes PC1.
-- Captures (recorded by `testDebugUnitTest` under `app/build/outputs/roborazzi`): same images as on `main`, compared
-  by eye on the setup, game and History captures.
+- Captures: manual check (D18; the build records Roborazzi images but has no compare task). Record on `main` and on
+  this branch, then `cmp` each PNG of `app/build/outputs/roborazzi`; list in the notes any image that differs and
+  why. The colors themselves are proved by `PlayerPaletteTest`.
 
 ## Done when
 `./gradlew :game-engine:test`, `./gradlew :app:testDebugUnitTest`, `./gradlew build` green; `kosmo-detekt` exit 0.

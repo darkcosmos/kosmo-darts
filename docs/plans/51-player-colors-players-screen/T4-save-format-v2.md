@@ -25,6 +25,8 @@ R17, R31, R9, R10, R11, R30; PC1, PC7, PC8.
   lowercase hex; alpha not `FF`; a repeated color; a wrong count. No crash (R11).
 - Rematch after resume keeps the colors (PC7); setup from the last setup restores them (PC8).
 - Fuzz test still runs on both codecs.
+- D15 (review S2): a save whose opaque, distinct colors fail PC11 (for example `FF000000` and `FF0A0F1E`) is
+  accepted and resumes with those colors.
 
 ## Done when
 `./gradlew :app:testDebugUnitTest`, `./gradlew build` green; `kosmo-detekt` exit 0.
