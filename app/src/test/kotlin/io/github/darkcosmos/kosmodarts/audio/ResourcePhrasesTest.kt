@@ -34,7 +34,7 @@ class ResourcePhrasesTest {
         Dart.NUMBERS.flatMap { n -> Multiplier.entries.map { Dart(n, it) } } + Dart.OUTER_BULL + Dart.BULL
 
     @Test
-    @Config(qualifiers = "en")
+    @Config(qualifiers = "+en")
     fun `AN8 E1 AN27 English phrases`() {
         val phrases = phrases()
         assertEquals(
@@ -55,7 +55,7 @@ class ResourcePhrasesTest {
     }
 
     @Test
-    @Config(qualifiers = "fr")
+    @Config(qualifiers = "+fr")
     fun `AN8 E1 AN27 French phrases`() {
         val phrases = phrases()
         assertEquals(
@@ -76,7 +76,7 @@ class ResourcePhrasesTest {
     }
 
     @Test
-    @Config(qualifiers = "en")
+    @Config(qualifiers = "+en")
     fun `AN25 English dart calls`() {
         val phrases = phrases()
         assertEquals("18", phrases.dartCall(Dart.single(18)))
@@ -89,7 +89,7 @@ class ResourcePhrasesTest {
     }
 
     @Test
-    @Config(qualifiers = "fr")
+    @Config(qualifiers = "+fr")
     fun `AN25 French dart calls`() {
         val phrases = phrases()
         assertEquals("18", phrases.dartCall(Dart.single(18)))
@@ -102,7 +102,7 @@ class ResourcePhrasesTest {
     }
 
     @Test
-    @Config(qualifiers = "de")
+    @Config(qualifiers = "+de")
     fun `AN11 a phone in another language gets the English texts`() {
         assertEquals("Game shot! Ann wins", phrases().win("Ann"))
     }

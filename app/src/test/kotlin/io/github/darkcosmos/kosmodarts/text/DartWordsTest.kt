@@ -30,10 +30,10 @@ class DartWordsTest {
     }
 
     @Test
-    @Config(qualifiers = "en")
+    @Config(qualifiers = "+en")
     fun `CS9 English words`() = checkWords()
 
     @Test
-    @Config(qualifiers = "fr")
+    @Config(qualifiers = "+fr")
     fun `CS9 French words`() = checkWords()
 }

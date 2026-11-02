@@ -22,7 +22,7 @@ class MatchTextTest {
         get() = ApplicationProvider.getApplicationContext<android.content.Context>().resources
 
     @Test
-    @Config(qualifiers = "en")
+    @Config(qualifiers = "+en")
     fun `M14 M19 English positions, chips and tile line (owner Q12)`() {
         assertEquals("SET 2 · LEG 3", positionText(resources, MatchPosition(2, 3)))
         assertEquals("LEG 3", positionText(resources, MatchPosition(null, 3)))
@@ -37,7 +37,7 @@ class MatchTextTest {
     }
 
     @Test
-    @Config(qualifiers = "fr")
+    @Config(qualifiers = "+fr")
     fun `M14 M19 French positions, chips and tile line`() {
         assertEquals("SET 2 · MANCHE 3", positionText(resources, MatchPosition(2, 3)))
         assertEquals("MANCHE 3", positionText(resources, MatchPosition(null, 3)))
@@ -48,7 +48,7 @@ class MatchTextTest {
     }
 
     @Test
-    @Config(qualifiers = "fr")
+    @Config(qualifiers = "+fr")
     fun `format lines in French`() {
         assertEquals("501 · SORTIE DOUBLE", modeText(resources, 501, CheckoutRule.DOUBLE_OUT))
         assertEquals("301 · SORTIE SIMPLE", formatText(resources, 301, CheckoutRule.SINGLE_OUT, MatchFormat()))
@@ -67,7 +67,7 @@ class MatchTextTest {
     }
 
     @Test
-    @Config(qualifiers = "en")
+    @Config(qualifiers = "+en")
     fun `U2 U5 English checkout texts are plurals`() {
         assertEquals("141 IN 3 DARTS", checkoutDartsText(resources, 141, 3))
         assertEquals("40 IN 1 DART", checkoutDartsText(resources, 40, 1))
@@ -76,7 +76,7 @@ class MatchTextTest {
     }
 
     @Test
-    @Config(qualifiers = "fr")
+    @Config(qualifiers = "+fr")
     fun `U2 U5 French checkout texts are plurals`() {
         assertEquals("141 EN 3 FLÉCHETTES", checkoutDartsText(resources, 141, 3))
         assertEquals("40 EN 1 FLÉCHETTE", checkoutDartsText(resources, 40, 1))
@@ -84,7 +84,7 @@ class MatchTextTest {
     }
 
     @Test
-    @Config(qualifiers = "en")
+    @Config(qualifiers = "+en")
     fun `U4 next player description, plural on the points`() {
         assertEquals("Next player: Anna, 1 point left", nextPlayerDescription(resources, "Anna", 1))
         assertEquals("Next player: Anna, 301 points left", nextPlayerDescription(resources, "Anna", 301))

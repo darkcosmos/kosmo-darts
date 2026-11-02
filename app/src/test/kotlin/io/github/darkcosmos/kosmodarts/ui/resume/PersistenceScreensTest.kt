@@ -490,7 +490,7 @@ class PersistenceScreensTest {
 
     /** R2 layout: 4 players with 20-character names in landscape; no score is clipped, Resume is reachable. */
     @Test
-    @Config(qualifiers = "land")
+    @Config(qualifiers = "+land")
     fun `R2 long names and 4 players fit in landscape`() {
         val names = listOf("Maximilien-Alexandre", "Bartholomew Jonathan", "Anne-Charlotte Marie", "Dan")
         process.writeGame(savedGame(X01Game(X01Config(names), listOf(Dart.triple(20))), isAwaitingNextPlayer = false))

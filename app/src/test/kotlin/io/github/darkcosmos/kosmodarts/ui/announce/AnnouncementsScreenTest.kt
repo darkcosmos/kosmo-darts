@@ -49,7 +49,7 @@ import java.time.Duration
 internal class AnnouncementsScreenTest : AnnouncementsScreenTestBase() {
     /** AN8, E1, E2: every English announcement of a game, in order; bust and 180 have no voice. */
     @Test
-    @Config(qualifiers = "en-rUS")
+    @Config(qualifiers = "+en-rUS")
     fun `AN8 English announcements`() {
         launchWithVoice(TtsTestSupport.englishLocal)
         playEveryAnnouncement()
@@ -76,7 +76,7 @@ internal class AnnouncementsScreenTest : AnnouncementsScreenTestBase() {
 
     /** AN8, E1, E2: the same game in French; the voice says "tu". */
     @Test
-    @Config(qualifiers = "fr-rFR")
+    @Config(qualifiers = "+fr-rFR")
     fun `AN8 French announcements`() {
         launchWithVoice(TtsTestSupport.frenchLocal)
         playEveryAnnouncement()
