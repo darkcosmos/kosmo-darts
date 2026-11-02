@@ -57,3 +57,30 @@ wraps to 3 lines at 2.0, width ~235 dp), hence D6 amended.
 | 360x640 port xhdpi | 2.0 | 264.5 | 64 | 59 | 47 |
 
 Dart slots: 46 dp.
+
+### Red run (commit b30bd40, before the fix; 11 of 23 failed)
+```
+M15 fr-land at font scale 1_3: AssertionError: chip 34.0 dp lower than the least 40.0 dp at font scale 1.3
+M15 fr-land at font scale 1_5: AssertionError: banner text overflows in height
+M15 fr-land at font scale 2_0: AssertionError: banner text overflows in height
+M15 landscape 640 x 360 at font scale 1_3: chip 34.5 dp lower than the least 40.0 dp at font scale 1.3
+M15 landscape 640 x 360 at font scale 1_5 / 2_0: banner text overflows in height
+M15 landscape 800 x 360 at font scale 2_0: banner text overflows in height
+M15 portrait 360 x 640 at font scale 1_3: chip 35.0 dp lower than the least 40.0 dp; 1_5: banner text overflows
+M15 landscape 640 x 360 at 2_0 in a sets match / with a long name: banner text overflows in height
+```
+Green before the fix (guards): all 1.0 cases (pre-fix chip and text recorded in the test: fr-land 36 / 28 dp, 640x360
+35 / 27, 360x640 35 / 27, 800x360 65.3 / 57.3, 411x814 109.3 / 101.0), portrait 411 x 814 at every scale, the undo
+case, portrait 360 x 640 at 2.0 (the zone is high enough there).
+
+### Implementation
+- `CheckoutFit.kt`: `checkoutTextScale` (pure; candidates every 0.05 from the font scale down to 1.0, first that
+  fits) and `rememberCheckoutTextScale` (measures the name row and the line with the `TextMeasurer` at each
+  candidate `Density(density, scale)`; fixed part = padding, gaps, dart slots, `CHECKOUT_BANNER_MIN`, gap under chip).
+- `CurrentPlayerZone.kt`: the zone is a `BoxWithConstraints` around `ZoneColumn`; `WithFontScale` scopes the
+  reduced scale to `NameRow` and the checkout line; the CHECKOUT text keeps a least size `fixedSp(12)`.
+  `ZONE_PADDING`, `INNER_GAP` and `GameLayoutPolicy.CHECKOUT_BANNER_MIN` are now `internal`.
+- The landscape `minOf` of the policy is unchanged: the policy test showed the floor already holds everywhere.
+- `PersistenceScreenshotTest`: the X01 archive-failure path also asserts the banner text is whole (edge case of D8).
+- After the fix all 23 `CheckoutBannerFitTest` cases pass: the floor (D2) never overflows in the tested
+  configurations; chips are at least 40 dp above scale 1.0. No config left out.

@@ -118,6 +118,32 @@ class GameLayoutPolicyTest {
         }
     }
 
+    /**
+     * Issue #69, M15, U10: whatever the font scale, the zone's least height while a checkout waits holds the frame at
+     * font scale 1.0, the CHECKOUT chip at its least height, the gap and one checkout line at font scale 1.0, so the
+     * reduced text scale of the zone (never below 1.0) always finds the room it needs.
+     */
+    @Test
+    fun `a waiting checkout zone always has room for the banner at its least height`() {
+        val floor = ZONE_FRAME_AT_1 + GameLayoutPolicy.CHECKOUT_BANNER_MIN + ZONE_GAP + CHECKOUT_LINE_AT_1
+        listOf(
+            PIXEL7_WIDTH to PIXEL7_HEIGHT, PIXEL7_HEIGHT to PIXEL7_WIDTH, 360f to 640f, 640f to 360f,
+            411f to 814f, OWNER_LANDSCAPE_WIDTH to OWNER_LANDSCAPE_HEIGHT,
+        ).forEach { (width, height) ->
+            listOf(1f, 1.3f, 1.5f, 2f).forEach { scale ->
+                (2..4).forEach { players ->
+                    listOf(true, false).forEach { isMatch ->
+                        val layout = GameLayoutPolicy.of(GameSpace(width, height, scale, players, isMatch, true))
+                        assertTrue(
+                            "$width x $height at $scale, $players players: ${layout.zoneMinHeightDp} < $floor",
+                            layout.zoneMinHeightDp >= floor,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     /** Touch targets: keys and action bar never below 48 dp, whatever the space. */
     @Test
     fun `keys and action bar are never below 48 dp`() {
@@ -174,6 +200,10 @@ class GameLayoutPolicyTest {
 
         /** Zone frame (120) with its margin (× 1.1), plus the landscape score floor (72), plus rounding. */
         const val ONE_LINE_ZONE_MIN = 205f
+        /** Padding (2 x 12), name line (34), two gaps (2 x 8) and the dart slots (46) at font scale 1.0. */
+        const val ZONE_FRAME_AT_1 = 120f
+        const val ZONE_GAP = 8f
+        const val CHECKOUT_LINE_AT_1 = 22f
         const val PIXEL7_WIDTH = 412f
         const val PIXEL7_HEIGHT = 915f
     }

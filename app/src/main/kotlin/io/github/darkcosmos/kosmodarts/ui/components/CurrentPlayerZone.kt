@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +35,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
@@ -59,10 +61,13 @@ import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 import io.github.darkcosmos.kosmodarts.ui.theme.fixedSp
 import io.github.darkcosmos.kosmodarts.ui.theme.zoneColorAnimationSpec
 
-private val ZONE_PADDING = 12.dp
-private val INNER_GAP = 8.dp
+internal val ZONE_PADDING = 12.dp
+internal val INNER_GAP = 8.dp
 private val BUST_SQUARE = 22.dp
 private val CHIP_PADDING = 6.dp
+
+/** Least size of the CHECKOUT text, in dp (fixed, not multiplied by the font scale). */
+private const val BANNER_MIN_TEXT = 12f
 
 /** In landscape the CHECKOUT text may grow up to this times the banner size, if the zone has room (6.3). */
 private const val LANDSCAPE_BANNER_GROWTH = 1.5f
@@ -106,21 +111,43 @@ fun CurrentPlayerZone(
     val animate = LocalAnimationSettings.current.areAnimationsEnabled()
     val background by animateColorAsState(target, zoneColorAnimationSpec(animate), label = "zone color")
     val contentColor by animateColorAsState(onTarget, zoneColorAnimationSpec(animate), label = "zone text color")
+    val resources = LocalResources.current
+    val checkout = content.checkout.takeIf { content.mode == ZoneMode.CHECKOUT }
+    val lineText = checkout?.let { checkoutDartsText(resources, it.points, it.darts.size) }
+    BoxWithConstraints(modifier = modifier) {
+        // #69: in a low zone the name row and the checkout line are drawn at a reduced text scale (never below 1.0)
+        // so the CHECKOUT chip keeps its least height; the other modes keep the user's font scale.
+        val textScale = rememberCheckoutTextScale(constraints, lineText, hasChips = content.indicator != null)
+        ZoneColumn(content, scoreSize, isLandscape, background, contentColor, textScale)
+    }
+}
+
+/** The zone itself: [textScale] is the text scale of the name row and the checkout line (see [WithFontScale]). */
+@Composable
+private fun ZoneColumn(
+    content: ZoneContent,
+    scoreSize: Float,
+    isLandscape: Boolean,
+    background: Color,
+    contentColor: Color,
+    textScale: Float,
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(INNER_GAP),
-        modifier = modifier
+        modifier = Modifier
+            .fillMaxSize()
             .testTag(GameTags.CURRENT_PLAYER)
             .semantics { isTraversalGroup = true }
             .clip(KosmoShapes.card)
             .background(background)
             .padding(ZONE_PADDING),
     ) {
-        NameRow(content, contentColor)
+        WithFontScale(textScale) { NameRow(content, contentColor) }
         val area = Modifier.weight(1f)
         if (content.mode == ZoneMode.CHECKOUT) {
             // U10: while a checkout waits there is no route (CS8): the banner takes the whole middle of the zone,
             // which the layout policy may make lower than with a score.
-            ScoreArea(content, scoreSize, isLandscape, contentColor, area.fillMaxWidth())
+            ScoreArea(content, scoreSize, isLandscape, contentColor, area.fillMaxWidth(), textScale)
         } else if (isLandscape) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -238,13 +265,14 @@ private fun ScoreArea(
     isLandscape: Boolean,
     contentColor: Color,
     modifier: Modifier,
+    lineTextScale: Float? = null,
 ) {
     val checkout = content.checkout
     val isCheckout = content.mode == ZoneMode.CHECKOUT && checkout != null
     val alignment = if (isLandscape && !isCheckout) Alignment.CenterStart else Alignment.Center
     BoxWithConstraints(contentAlignment = alignment, modifier = modifier) {
         if (isCheckout && checkout != null) {
-            CheckoutBanner(checkout, contentColor, isLandscape)
+            CheckoutBanner(checkout, contentColor, isLandscape, lineTextScale)
         } else {
             val density = LocalDensity.current
             val baseStyle = KosmoTheme.typography.scoreHuge
@@ -275,7 +303,12 @@ private const val SCORE_REFERENCE = "888"
  * times the banner size, centred (owner review of PR #57).
  */
 @Composable
-private fun CheckoutBanner(checkout: CheckoutSummary, contentColor: Color, isLandscape: Boolean) {
+private fun CheckoutBanner(
+    checkout: CheckoutSummary,
+    contentColor: Color,
+    isLandscape: Boolean,
+    lineTextScale: Float?,
+) {
     val colors = KosmoTheme.colors
     val resources = LocalResources.current
     val dartCount = checkout.darts.size
@@ -309,15 +342,35 @@ private fun CheckoutBanner(checkout: CheckoutSummary, contentColor: Color, isLan
                 color = colors.onAccent,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
-                autoSize = TextAutoSize.StepBased(maxFontSize = maxFontSize),
+                // The least size is not multiplied by the font scale: the text shrinks to the chip, never past it.
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = LocalDensity.current.fixedSp(BANNER_MIN_TEXT),
+                    maxFontSize = maxFontSize,
+                ),
             )
         }
-        Text(
-            text = checkoutDartsText(resources, checkout.points, dartCount),
-            style = KosmoTheme.typography.labelLarge,
-            color = contentColor,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.testTag(GameTags.CHECKOUT_LINE),
-        )
+        WithFontScale(lineTextScale) {
+            Text(
+                text = checkoutDartsText(resources, checkout.points, dartCount),
+                style = KosmoTheme.typography.labelLarge,
+                color = contentColor,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.testTag(GameTags.CHECKOUT_LINE),
+            )
+        }
+    }
+}
+
+/**
+ * Draws [content] with the font scale [scale] (null: the user's). Scoped to the name row and the checkout line only:
+ * the other texts of the zone are already fixed in size or fitted by themselves, and keep the user's scale (#69).
+ */
+@Composable
+private fun WithFontScale(scale: Float?, content: @Composable () -> Unit) {
+    val density = LocalDensity.current
+    if (scale == null || scale == density.fontScale) {
+        content()
+    } else {
+        CompositionLocalProvider(LocalDensity provides Density(density.density, scale), content = content)
     }
 }

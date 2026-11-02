@@ -144,7 +144,7 @@ object GameLayoutPolicy {
     private const val SAFETY = 1.1f
 
     /** Least height of the CHECKOUT banner chip: its text shrinks to fit (design system 6.3). */
-    private const val CHECKOUT_BANNER_MIN = 40f
+    internal const val CHECKOUT_BANNER_MIN = 40f
 
     /** The line under the banner, "141 IN 3 DARTS", in the `labelLarge` style. */
     private const val CHECKOUT_LINE = 22f

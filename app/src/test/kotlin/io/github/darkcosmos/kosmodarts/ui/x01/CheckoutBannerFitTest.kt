@@ -127,7 +127,8 @@ class CheckoutBannerFitTest {
         assertApart(GameTags.CHECKOUT_LINE, GameTags.dartSlot(0))
         preFix?.let {
             assertEquals("chip height as before #69", it.chipDp, dp(chip.height), PRE_FIX_TOLERANCE_DP)
-            assertEquals("banner text height as before #69", it.textDp, dp(text.size.height.toFloat()), PRE_FIX_TOLERANCE_DP)
+            val textDp = dp(text.size.height.toFloat())
+            assertEquals("banner text height as before #69", it.textDp, textDp, PRE_FIX_TOLERANCE_DP)
         }
     }
 

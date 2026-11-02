@@ -5,12 +5,15 @@ import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -177,6 +180,25 @@ class PersistenceScreenshotTest {
         )
     }
 
+    /** Issue #69: the X01 zone still shows the whole word "CHECKOUT" inside its chip next to the failure message. */
+    private fun assertCheckoutBannerWhole() {
+        val chip = composeRule.onNode(hasTestTag(GameTags.CHECKOUT_BANNER_LABEL), useUnmergedTree = true)
+        val textNode = composeRule.onNode(
+            hasAnyAncestor(hasTestTag(GameTags.CHECKOUT_BANNER_LABEL))
+                .and(SemanticsMatcher.keyIsDefined(SemanticsActions.GetTextLayoutResult)),
+            useUnmergedTree = true,
+        )
+        val results = mutableListOf<TextLayoutResult>()
+        textNode.fetchSemanticsNode().config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
+        val layout = results.single()
+        val padding = with(composeRule.density) { (2 * CHIP_VERTICAL_PADDING_DP).dp.toPx() }
+        assertFalse("banner text overflows", layout.didOverflowHeight || layout.didOverflowWidth)
+        assertTrue(
+            "banner text ${layout.size.height} px in a chip of ${chip.fetchSemanticsNode().size.height} px",
+            layout.size.height <= chip.fetchSemanticsNode().size.height - padding + 1f,
+        )
+    }
+
     /** AR3: the confirmed win while the archive is held ("Saving…") or after it failed (the message). */
     private fun confirmWin(saved: StoredGame, name: String, isFailure: Boolean) {
         val gate = CountDownLatch(1)
@@ -191,6 +213,7 @@ class PersistenceScreenshotTest {
             confirm.performClick()
             if (isFailure) process.settle() else composeRule.waitForIdle()
             if (isFailure) assertArchiveMessageNotClipped()
+            if (isFailure && saved == MATCH_WIN) assertCheckoutBannerWhole()
             capture(name)
         } finally {
             gate.countDown()
@@ -257,6 +280,7 @@ class PersistenceScreenshotTest {
         const val SCREENSHOT_DIR_PROPERTY = "kosmodarts.screenshot.dir"
         const val DEFAULT_SCREENSHOT_DIR = "build/outputs/roborazzi"
         const val LARGEST_FONT_SCALE = 2.0f
+        const val CHIP_VERTICAL_PADDING_DP = 4
 
         /** A single game whose winning dart waits for "Confirm match". */
         val MATCH_WIN: SavedGame = SaveFixtures.WAITING_CHECKOUT

@@ -234,6 +234,12 @@ class ZoneLayoutTest {
         val text = innerTextLayout(GameTags.CHECKOUT_BANNER_LABEL)
         assertEquals("banner lines", 1, text.lineCount)
         assertTrue("banner text ${text.size} wider than its chip $chip", text.size.width <= chip.width)
+        // #69: the word is whole inside the chip, the check that let a half-cut word pass.
+        assertTrue(
+            "banner text ${text.size} higher than its chip $chip less its padding",
+            text.size.height <= chip.height - px(CHIP_VERTICAL_PADDING_DP * 2) + EPSILON,
+        )
+        assertTrue("banner text overflows", !text.didOverflowHeight && !text.didOverflowWidth)
         // The chip takes the whole middle of the zone: from under the name row to the line above the dart slots.
         val line = visible(GameTags.CHECKOUT_LINE)
         assertEquals("gap under the chip", px(INNER_GAP_DP), line.top - chip.bottom, EPSILON)
@@ -259,6 +265,7 @@ class ZoneLayoutTest {
         const val BAR_PADDING_DP = 8f
         const val ZONE_PADDING_DP = 12f
         const val INNER_GAP_DP = 8f
+        const val CHIP_VERTICAL_PADDING_DP = 4f
 
         /** The name row may be a little higher than the name (chips); the rest of the middle is the banner's. */
         const val NAME_ROW_SLACK_DP = 8f
