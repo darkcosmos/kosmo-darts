@@ -48,3 +48,14 @@ PC1 to PC4, PC9, PC12 to PC16; M13.
 sonnet. Why: screen and state holder from specified rules, JVM tests listed.
 
 ## Implementation notes
+- Deviations: `ColorSwatchRow` lives in `ui/components/` (not `ui/setup/`) so `PlayerNameRow` and T10 can use it; tags via
+  `swatchTag(rowTag, color)`. `withSwatchesToggled` / `withColorPicked` are extension functions in `SetupState.kt`
+  (detekt TooManyFunctions); `SwatchRow(index, colors)` is there too. `SetupState.withPlayerAdded(random)` takes the Random.
+- Behavior: adding a player or shuffling closes the open row; removing the open player closes it, removing an earlier
+  one shifts its index; a pick of a color not offered or held by another player is ignored.
+- Events `ColorSwatchTapped(index)` and `ColorPicked(color)` go through `editSetup` with the reducer's Random.
+- Strings: `color_blue/orange/teal/lilac`, `color_generated` ("Color %1$d of %2$d"), `color_selected`, `setup_change_color`.
+- No "restart" event exists in the app, so the T3 survival test covers start, undo, rematch, resume then rematch (X01) and
+  start, resume then rematch (Cricket) in `SetupStateColorTest`.
+- Captures: `app/build/outputs/roborazzi/setup_colors_*.png` (default, open, open at 200%, 4th player landscape 200%).
+- Checks: `./gradlew :app:testDebugUnitTest`, `./gradlew build` green; `kosmo-detekt` exit 0.

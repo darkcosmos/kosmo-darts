@@ -184,6 +184,10 @@ private fun Players(setup: SetupState, onEvent: (AppEvent) -> Unit) {
                 } else {
                     null
                 },
+                colorDescription = stringResource(R.string.setup_change_color, removeName),
+                colorTag = SetupTags.color(index),
+                swatches = setup.openSwatches?.takeIf { it.index == index }?.colors,
+                swatchesTag = SetupTags.swatches(index),
                 fieldTag = SetupTags.nameField(index),
                 removeTag = SetupTags.remove(index),
                 suggestions = setup.suggestionsFor(index).mapIndexed { rank, profile ->
@@ -200,6 +204,8 @@ private fun Players(setup: SetupState, onEvent: (AppEvent) -> Unit) {
                 onEvent(if (isFocused) AppEvent.NameFieldFocused(index) else AppEvent.NameFieldFocusLost(index))
             },
             onSuggestionPicked = { onEvent(AppEvent.SuggestionPicked(index, it)) },
+            onColorTap = { onEvent(AppEvent.ColorSwatchTapped(index)) },
+            onColorPicked = { onEvent(AppEvent.ColorPicked(it)) },
         )
     }
     if (setup.canAddPlayer) AddPlayerButton(onEvent)

@@ -55,11 +55,11 @@ class SetupStateTest {
 
     @Test
     fun playersCanBeAddedUpToFour() {
-        val four = SetupState().withPlayerAdded().withPlayerAdded()
+        val four = SetupState().withPlayerAdded(Random(0)).withPlayerAdded(Random(0))
 
         assertEquals(4, four.names.size)
         assertFalse(four.canAddPlayer)
-        assertEquals(four, four.withPlayerAdded())
+        assertEquals(four, four.withPlayerAdded(Random(0)))
     }
 
     /** M13, PC3: the cross removes any row, down to one player, and frees its color. */
@@ -81,7 +81,7 @@ class SetupStateTest {
     /** PC2, PC3: a player added after a removal gets the freed color, with an empty name. */
     @Test
     fun `PC2 a player added after a removal gets the freed color`() {
-        val readded = SetupState(names = listOf("Ann", "Bob", "Cid")).withPlayerRemoved(1).withPlayerAdded()
+        val readded = SetupState(names = listOf("Ann", "Bob", "Cid")).withPlayerRemoved(1).withPlayerAdded(Random(0))
 
         assertEquals(listOf("Ann", "Cid", ""), readded.names)
         assertEquals(listOf(PlayerColor.BLUE, PlayerColor.TEAL, PlayerColor.ORANGE), readded.roster.colors)
@@ -189,7 +189,7 @@ class SetupStateTest {
             { it.withName(0, "Ann") },
             { it.withStartScore(301) },
             { it.withCheckoutRule(CheckoutRule.SINGLE_OUT) },
-            { it.withPlayerAdded() },
+            { it.withPlayerAdded(Random(0)) },
             { it.withPlayerRemoved(0) },
             { it.shuffled(Random(SEED)) },
         )

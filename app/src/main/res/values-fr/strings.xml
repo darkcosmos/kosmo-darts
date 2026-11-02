@@ -40,6 +40,13 @@
     <string name="setup_add_player">AJOUTER UN JOUEUR</string>
     <string name="setup_remove_player">Retirer %1$s</string>
     <string name="setup_use_name">Utiliser le nom %1$s</string>
+    <string name="setup_change_color">Changer la couleur de %1$s</string>
+    <string name="color_blue">Bleu</string>
+    <string name="color_orange">Orange</string>
+    <string name="color_teal">Sarcelle</string>
+    <string name="color_lilac">Lilas</string>
+    <string name="color_generated">Couleur %1$d sur %2$d</string>
+    <string name="color_selected">sélectionnée</string>
     <string name="setup_shuffle">MÉLANGER</string>
     <string name="setup_start">COMMENCER</string>
     <string name="setup_error_blank_name">Saisissez un nom</string>

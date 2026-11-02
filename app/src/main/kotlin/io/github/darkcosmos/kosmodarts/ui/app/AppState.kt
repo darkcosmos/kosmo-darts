@@ -3,6 +3,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -203,6 +204,12 @@ sealed interface AppEvent {
     data class PlayerRemoved(val index: Int) : AppEvent
 
     data object PlayersShuffled : AppEvent
+
+    /** The color swatch of the row at [index] opens or closes the swatch row (PC14). */
+    data class ColorSwatchTapped(val index: Int) : AppEvent
+
+    /** A swatch of the open row was tapped (PC14). */
+    data class ColorPicked(val color: PlayerColor) : AppEvent
 
     /** − (delta -1) or + (delta 1) of "Legs per set" (M13). */
     data class LegsPerSetChanged(val delta: Int) : AppEvent

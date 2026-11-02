@@ -5,6 +5,7 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatchConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.cricket.InvalidCricketConfigException
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
+import io.github.darkcosmos.kosmodarts.engine.player.ColorChoices
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerListError
 import io.github.darkcosmos.kosmodarts.engine.player.Roster
@@ -34,6 +35,7 @@ import kotlin.random.Random
  * @property isBullInPlay whether the Bull is a target (CR21, "25-Bull"), a Cricket setting.
  * @property profiles the known profiles, most recently used first (PF3); empty until read or when the read failed.
  * @property focusedIndex the position of the name field that has the focus, or `null` (PF3).
+ * @property openSwatches the swatch row open under a player, or `null` (PC14).
  */
 data class SetupState(
     val startScore: Int = X01Config.DEFAULT_START_SCORE,
@@ -48,6 +50,7 @@ data class SetupState(
     val isBullInPlay: Boolean = true,
     val profiles: List<Profile> = emptyList(),
     val focusedIndex: Int? = null,
+    val openSwatches: SwatchRow? = null,
 ) {
     /** [names] with the colors of their positions (PC5), for a setup typed in one go. */
     constructor(
@@ -111,19 +114,27 @@ data class SetupState(
 
     fun withName(index: Int, name: String): SetupState = edited(copy(roster = roster.withName(index, name)))
 
-    /** PC2: a new empty row with the first free color. */
-    fun withPlayerAdded(): SetupState = if (canAddPlayer) edited(copy(roster = roster.withPlayerAdded())) else this
+    /** PC2: a new empty row with the first acceptable color, else one generated with [random]; closes the swatches. */
+    fun withPlayerAdded(random: Random): SetupState =
+        if (canAddPlayer) edited(copy(roster = roster.withPlayerAdded(random), openSwatches = null)) else this
 
     /** PC3, M13: removes the row at [index] and its typed name at once; its color becomes free. */
     fun withPlayerRemoved(index: Int): SetupState =
         if (canRemovePlayer && index in roster.entries.indices) {
-            edited(copy(roster = roster.withPlayerRemoved(index), focusedIndex = null))
+            edited(
+                copy(
+                    roster = roster.withPlayerRemoved(index),
+                    focusedIndex = null,
+                    openSwatches = openSwatches?.afterRemoval(index),
+                ),
+            )
         } else {
             this
         }
 
     /** PC4: shuffles the throwing order with [random], injected so that tests are deterministic. */
-    fun shuffled(random: Random): SetupState = edited(copy(roster = roster.shuffled(random), focusedIndex = null))
+    fun shuffled(random: Random): SetupState =
+        edited(copy(roster = roster.shuffled(random), focusedIndex = null, openSwatches = null))
 
     /**
      * Validates the setup of its [mode] with the engine rules (rules C5, M1, CR1); the colors go with the names (PC5).
@@ -187,6 +198,16 @@ data class SetupState(
     }
 }
 
+/** PC14: the swatches [colors] offered to the player at [index]; [colors] start with his own color. */
+data class SwatchRow(val index: Int, val colors: List<PlayerColor>) {
+    /** The row after the player at [removed] left: closed for him, moved up when a player before him left. */
+    fun afterRemoval(removed: Int): SwatchRow? = when {
+        removed == index -> null
+        removed < index -> copy(index = index - 1)
+        else -> this
+    }
+}
+
 /** Outcome of [SetupState.start]. */
 sealed interface SetupResult {
     /** A valid X01 setup. */
@@ -238,3 +259,22 @@ fun SetupState.withFocusOn(index: Int): SetupState =
 
 /** PF3: the field at [index] lost the focus; another field that already took it keeps it. */
 fun SetupState.withFocusLostBy(index: Int): SetupState = if (focusedIndex == index) copy(focusedIndex = null) else this
+
+/**
+ * PC14: opens the swatch row of the player at [index] (drawn once with [random] and kept until it closes), closes it
+ * when it is already open for him, and moves it when another player's row is open.
+ */
+fun SetupState.withSwatchesToggled(index: Int, random: Random): SetupState = when {
+    index !in roster.entries.indices -> this
+    openSwatches?.index == index -> copy(openSwatches = null)
+    else -> copy(openSwatches = SwatchRow(index, ColorChoices.choicesFor(index, roster.colors, random)))
+}
+
+/** PC14: gives the open player [color] if the row offers it and no other player holds it; closes the row. */
+fun SetupState.withColorPicked(color: PlayerColor): SetupState {
+    val row = openSwatches
+    val isTakenByAnother = roster.colors.withIndex().any { (i, c) -> i != row?.index && c == color }
+    if (row == null || color !in row.colors || isTakenByAnother) return this
+    val entries = roster.entries.mapIndexed { i, entry -> if (i == row.index) entry.copy(color = color) else entry }
+    return edited(copy(roster = Roster(entries), openSwatches = null))
+}

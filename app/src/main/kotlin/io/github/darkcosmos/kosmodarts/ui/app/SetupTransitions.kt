@@ -7,9 +7,11 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
+import io.github.darkcosmos.kosmodarts.ui.setup.withColorPicked
 import io.github.darkcosmos.kosmodarts.ui.setup.withFocusLostBy
 import io.github.darkcosmos.kosmodarts.ui.setup.withFocusOn
 import io.github.darkcosmos.kosmodarts.ui.setup.withProfiles
+import io.github.darkcosmos.kosmodarts.ui.setup.withSwatchesToggled
 import io.github.darkcosmos.kosmodarts.ui.setup.withBullInPlay
 import io.github.darkcosmos.kosmodarts.ui.setup.withCricketVariant
 import kotlin.random.Random
@@ -23,9 +25,11 @@ internal fun editSetup(setup: SetupState, event: AppEvent, random: Random): Setu
     is AppEvent.CricketVariantSelected -> setup.withCricketVariant(event.variant)
     is AppEvent.BullInPlayToggled -> setup.withBullInPlay(event.isInPlay)
     is AppEvent.NameChanged -> setup.withName(event.index, event.name)
-    AppEvent.PlayerAdded -> setup.withPlayerAdded()
+    AppEvent.PlayerAdded -> setup.withPlayerAdded(random)
     is AppEvent.PlayerRemoved -> setup.withPlayerRemoved(event.index)
     AppEvent.PlayersShuffled -> setup.shuffled(random)
+    is AppEvent.ColorSwatchTapped -> setup.withSwatchesToggled(event.index, random)
+    is AppEvent.ColorPicked -> setup.withColorPicked(event.color)
     // M13: the steppers, clamped by the setup.
     is AppEvent.LegsPerSetChanged -> setup.withLegsPerSet(setup.legsPerSet + event.delta)
     is AppEvent.SetsChanged -> setup.withSets(setup.sets + event.delta)
