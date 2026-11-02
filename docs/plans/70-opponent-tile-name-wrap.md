@@ -105,8 +105,9 @@ Write `TileNameFitTest` first and show it red on the current code (BOB/DAN at 2.
   `onTextLayout` fallback is removed; run that canary once and note the result in T1's notes.
 - CID unchanged: at every configuration CID is on one line at the full style size (as today).
 - Next player (U4): tile 1's name keeps the content description built by `nextPlayerDescription` with the full
-  name (compared with the string resource, not a literal) when that name ends with "…" (set Ann + (Bartholomew, …):
-  BARTHOLOMEW is next and ends with "…" in landscape at 2.0 in a match).
+  name (compared with the string resource, not a literal) when that name ends with "…" (4-player match set
+  Ann + (Bartholomew, Maxime Dupont, Bartholomew Jonathan): BARTHOLOMEW is next and ends with "…" in landscape at
+  2.0). The 2-player case Ann + Bartholomew does not end with "…" in landscape: the tile is wide and the name fits.
 - Existing tests: U3 (`RedesignScreensTest`, no match, landscape 4 long names, 1.0 and 2.0), T8 (`GameScreenFitTest`,
   portrait 4 players at 2.0) and U3 in `ZoneLayoutTest` (2 and 3 players, match, 1.0) still require 8 characters:
   they must stay green, comments only (assertions unchanged, `ZoneLayoutTest` included); if one goes red, report it to main (never weaken it
