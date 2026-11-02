@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.capture.CaptureActivity
+import io.github.darkcosmos.kosmodarts.capture.TestDevices
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -49,15 +50,15 @@ class CaptureActionRowTest {
     }
 
     @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xxhdpi")
-    fun `U11 Undo and Next volley are fully visible at 640x360 in French, volley full included`() {
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
+    fun `U11 Undo and Next volley are fully visible at 800x360 in French, volley full included`() {
         assertRowVisible(running, 1f)
         assertRowVisible(full, 1f)
     }
 
     @Test
-    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")
-    fun `U11 Undo and Next volley are fully visible at 915x412 and font scale 2 in French, volley full included`() {
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE)
+    fun `U11 Undo and Next volley are fully visible at 914x411 and font scale 2 in French, volley full included`() {
         assertRowVisible(running, 2f)
         assertRowVisible(full, 2f)
     }

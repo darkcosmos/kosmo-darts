@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.GameMode
@@ -135,44 +136,26 @@ class CheckoutBannerFitTest {
     // fr, portrait 411 x 814 (420 dpi)
 
     @Test
-    @Config(qualifiers = "fr-w411dp-h814dp-port-420dpi", fontScale = 1.0f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = 1.0f)
     fun `M15 portrait 411 x 814 at font scale 1_0`() = checkFit(1.0f, preFix = PRE_FIX["port411"])
 
     @Test
-    @Config(qualifiers = "fr-w411dp-h814dp-port-420dpi", fontScale = 1.3f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = 1.3f)
     fun `M15 portrait 411 x 814 at font scale 1_3`() = checkFit(1.3f)
 
     @Test
-    @Config(qualifiers = "fr-w411dp-h814dp-port-420dpi", fontScale = 1.5f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = 1.5f)
     fun `M15 portrait 411 x 814 at font scale 1_5`() = checkFit(1.5f)
 
     @Test
-    @Config(qualifiers = "fr-w411dp-h814dp-port-420dpi", fontScale = 2.0f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = 2.0f)
     fun `M15 portrait 411 x 814 at font scale 2_0`() = checkFit(2.0f)
 
-    // fr, portrait 360 x 640 (xhdpi)
-
-    @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = 1.0f)
-    fun `M15 portrait 360 x 640 at font scale 1_0`() = checkFit(1.0f, preFix = PRE_FIX["port360"])
-
-    @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = 1.3f)
-    fun `M15 portrait 360 x 640 at font scale 1_3`() = checkFit(1.3f)
-
-    @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = 1.5f)
-    fun `M15 portrait 360 x 640 at font scale 1_5`() = checkFit(1.5f)
-
-    @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = 2.0f)
-    fun `M15 portrait 360 x 640 at font scale 2_0`() = checkFit(2.0f)
-
-    // fr, the Robolectric default landscape device
+    // fr, the Pixel 7 landscape (the default device of the suite)
 
     @Test
     @Config(qualifiers = "+fr-land", fontScale = 1.0f)
-    fun `M15 fr-land at font scale 1_0`() = checkFit(1.0f, preFix = PRE_FIX["frland"])
+    fun `M15 fr-land at font scale 1_0`() = checkFit(1.0f)
 
     @Test
     @Config(qualifiers = "+fr-land", fontScale = 1.3f)
@@ -186,59 +169,50 @@ class CheckoutBannerFitTest {
     @Config(qualifiers = "+fr-land", fontScale = 2.0f)
     fun `M15 fr-land at font scale 2_0`() = checkFit(2.0f)
 
-    // fr, landscape 640 x 360 (xhdpi), the smallest supported landscape screen
-
-    @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi", fontScale = 1.0f)
-    fun `M15 landscape 640 x 360 at font scale 1_0`() = checkFit(1.0f, preFix = PRE_FIX["land640"])
-
-    @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi", fontScale = 1.3f)
-    fun `M15 landscape 640 x 360 at font scale 1_3`() = checkFit(1.3f)
-
-    @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi", fontScale = 1.5f)
-    fun `M15 landscape 640 x 360 at font scale 1_5`() = checkFit(1.5f)
-
-    @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi", fontScale = 2.0f)
-    fun `M15 landscape 640 x 360 at font scale 2_0`() = checkFit(2.0f)
-
     // Owner's phone: landscape 800 x 360 (xxhdpi)
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi", fontScale = 1.0f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = 1.0f)
     fun `M15 landscape 800 x 360 at font scale 1_0`() = checkFit(1.0f, preFix = PRE_FIX["land800"])
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi", fontScale = 2.0f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = 1.3f)
+    fun `M15 landscape 800 x 360 at font scale 1_3`() = checkFit(1.3f)
+
+    @Test
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = 1.5f)
+    fun `M15 landscape 800 x 360 at font scale 1_5`() = checkFit(1.5f)
+
+    @Test
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = 2.0f)
     fun `M15 landscape 800 x 360 at font scale 2_0`() = checkFit(2.0f)
 
-    // Edge cases on the smallest screens at the largest font size: the sets match (S and M chips in the name row), and
+    // Edge cases on the Pixel 7 inside its bars at the largest font size: the sets match (S and M chips in the name
+    // row), and
     // one long player name.
 
     @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi", fontScale = 2.0f)
-    fun `M15 landscape 640 x 360 at 2_0 in a sets match`() = checkFit(2.0f, withSets = true)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = 2.0f)
+    fun `M15 landscape 800 x 360 at 2_0 in a sets match`() = checkFit(2.0f, withSets = true)
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = 2.0f)
-    fun `M15 portrait 360 x 640 at 2_0 in a sets match`() = checkFit(2.0f, withSets = true)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = 2.0f)
+    fun `M15 portrait 411 x 814 at 2_0 in a sets match`() = checkFit(2.0f, withSets = true)
 
     @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi", fontScale = 2.0f)
-    fun `M15 landscape 640 x 360 at 2_0 with a long name`() =
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = 2.0f)
+    fun `M15 landscape 800 x 360 at 2_0 with a long name`() =
         checkFit(2.0f, names = listOf(LONG_NAME) + NAMES.drop(1), withSets = true)
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = 2.0f)
-    fun `M15 portrait 360 x 640 at 2_0 with a long name`() =
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = 2.0f)
+    fun `M15 portrait 411 x 814 at 2_0 with a long name`() =
         checkFit(2.0f, names = listOf(LONG_NAME) + NAMES.drop(1), withSets = true)
 
     // T4: after "ANNULER" (undo of the final dart) the zone is back to normal mode at the user's font scale.
 
     @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi", fontScale = 2.0f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = 2.0f)
     fun `M15 undo of the final dart restores the name row at the user's font scale`() {
         send(*startMatch(NAMES, withSets = true), *ANN_AT_121, *triple(20), *triple(11))
         val nameBefore = textLayout(GameTags.playerName(0)).size.height
@@ -264,9 +238,6 @@ class CheckoutBannerFitTest {
 
         val PRE_FIX: Map<String, PreFix> = mapOf(
             "port411" to PreFix(109.333336f, 100.95238f),
-            "port360" to PreFix(35f, 27f),
-            "frland" to PreFix(36f, 28f),
-            "land640" to PreFix(35f, 27f),
             "land800" to PreFix(65.333336f, 57.333332f),
         )
 

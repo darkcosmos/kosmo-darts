@@ -110,7 +110,7 @@ class MatchDetailTextTest {
     }
 
     @Test
-    @Config(qualifiers = "fr")
+    @Config(qualifiers = "+fr")
     fun `HS5 the French texts use the French plurals and wording`() {
         fun String.plain() = replace(' ', ' ')
         assertEquals("Durée : moins d'une minute", durationText(resources, 0).plain())

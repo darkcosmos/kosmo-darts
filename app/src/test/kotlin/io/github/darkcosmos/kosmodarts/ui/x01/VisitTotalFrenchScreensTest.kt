@@ -27,7 +27,7 @@ import org.robolectric.annotation.Config
  * with the non-breaking space (U+00A0) before the colon, so that a wrong translation fails.
  */
 @RunWith(AndroidJUnit4::class)
-@Config(qualifiers = "fr")
+@Config(qualifiers = "+fr")
 class VisitTotalFrenchScreensTest {
 
     @get:Rule

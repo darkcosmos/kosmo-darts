@@ -12,7 +12,7 @@ class GameLayoutPolicyTest {
         GameLayoutPolicy.of(GameSpace(width, height, scale, players, isMatch))
 
     /**
-     * The mockup frame of a Pixel 7 (412 × 915 dp) at font scale 1.0 reaches no step: the mockup values hold, for 2 to
+     * The mockup frame of a Pixel 7 (411 × 914 dp) at font scale 1.0 reaches no step: the mockup values hold, for 2 to
      * 4 players, in a match.
      */
     @Test
@@ -29,7 +29,7 @@ class GameLayoutPolicyTest {
         }
     }
 
-    /** Landscape Pixel 7 (915 × 412 dp) at font scale 1.0: no step, score 160. */
+    /** Landscape Pixel 7 (914 × 411 dp) at font scale 1.0: no step, score 160. */
     @Test
     fun `Pixel 7 landscape at font scale 1 reaches no step`() {
         val layout = portrait(PIXEL7_HEIGHT, PIXEL7_WIDTH)
@@ -53,8 +53,9 @@ class GameLayoutPolicyTest {
 
     /** Steps in order on a short portrait screen: keys and action bar to 48 before the score shrinks. */
     @Test
-    fun `360 x 640 portrait applies the steps in order`() {
-        val layouts = (1..4).map { portrait(360f, 640f, players = it) } + portrait(360f, 640f, 2f, 4)
+    fun `411 x 814 portrait applies the steps in order`() {
+        val layouts = (1..4).map { portrait(INSIDE_BARS_WIDTH, INSIDE_BARS_HEIGHT, players = it) } +
+            portrait(INSIDE_BARS_WIDTH, INSIDE_BARS_HEIGHT, 2f, 4)
         layouts.forEach { layout ->
             if (layout.scoreSizeDp < GameLayoutPolicy.SCORE_PORTRAIT_FOUR_PLAYERS) {
                 // The score only shrinks once keys and action bar are at their minimum (steps 1 and 2 before 3).
@@ -66,7 +67,7 @@ class GameLayoutPolicyTest {
             assertTrue(layout.scoreSizeDp >= GameLayoutPolicy.SCORE_FLOOR_PORTRAIT)
         }
         // At 4 players and the largest font size, below the floor: the screen scrolls.
-        val smallest = portrait(360f, 640f, 2f, 4)
+        val smallest = portrait(INSIDE_BARS_WIDTH, INSIDE_BARS_HEIGHT, 2f, 4)
         assertTrue(smallest.isScrolling)
         assertEquals(4, smallest.step)
         assertEquals(GameLayoutPolicy.SCORE_FLOOR_PORTRAIT, smallest.scoreSizeDp)
@@ -77,8 +78,10 @@ class GameLayoutPolicyTest {
      * minimum (steps 1 and 2 before 3); the left column width never depends on the step.
      */
     @Test
-    fun `640 x 360 landscape applies the steps in order`() {
-        val layouts = (2..4).flatMap { players -> listOf(1f, 1.5f).map { portrait(640f, 360f, it, players) } }
+    fun `800 x 360 landscape applies the steps in order`() {
+        val layouts = (2..4).flatMap { players ->
+            listOf(1f, 1.5f).map { portrait(OWNER_LANDSCAPE_WIDTH, OWNER_LANDSCAPE_HEIGHT, it, players) }
+        }
         layouts.forEach { layout ->
             if (layout.scoreSizeDp < GameLayoutPolicy.SCORE_LANDSCAPE) {
                 assertEquals(GameLayoutPolicy.KEY_HEIGHT_MIN, layout.keyHeightDp)
@@ -88,7 +91,7 @@ class GameLayoutPolicyTest {
                 assertTrue(layout.step >= 3)
             }
             assertTrue(layout.scoreSizeDp >= GameLayoutPolicy.SCORE_FLOOR_LANDSCAPE)
-            assertEquals(640f * 0.55f, layout.leftColumnWidthDp)
+            assertEquals(OWNER_LANDSCAPE_WIDTH * 0.55f, layout.leftColumnWidthDp)
         }
         // At least one of these short screens reaches the score step, so the check above is not empty.
         assertTrue(layouts.any { it.scoreSizeDp < GameLayoutPolicy.SCORE_LANDSCAPE })
@@ -101,7 +104,7 @@ class GameLayoutPolicyTest {
      */
     @Test
     fun `a waiting checkout never raises the zone minimum and changes nothing else`() {
-        listOf(PIXEL7_WIDTH to PIXEL7_HEIGHT, PIXEL7_HEIGHT to PIXEL7_WIDTH, 360f to 640f).forEach { (width, height) ->
+        listOf(PIXEL7_WIDTH to PIXEL7_HEIGHT, PIXEL7_HEIGHT to PIXEL7_WIDTH, 411f to 814f).forEach { (width, height) ->
             listOf(1f, 1.5f).forEach { scale ->
                 val normal = GameLayoutPolicy.of(GameSpace(width, height, scale, 4, isMatch = true))
                 val checkout = GameLayoutPolicy.of(GameSpace(width, height, scale, 4, isMatch = true, true))
@@ -127,7 +130,7 @@ class GameLayoutPolicyTest {
     fun `a waiting checkout zone always has room for the banner at its least height`() {
         val floor = ZONE_FRAME_AT_1 + GameLayoutPolicy.CHECKOUT_BANNER_MIN + ZONE_GAP + CHECKOUT_LINE_AT_1
         listOf(
-            PIXEL7_WIDTH to PIXEL7_HEIGHT, PIXEL7_HEIGHT to PIXEL7_WIDTH, 360f to 640f, 640f to 360f,
+            PIXEL7_WIDTH to PIXEL7_HEIGHT, PIXEL7_HEIGHT to PIXEL7_WIDTH,
             411f to 814f, OWNER_LANDSCAPE_WIDTH to OWNER_LANDSCAPE_HEIGHT,
         ).forEach { (width, height) ->
             listOf(1f, 1.3f, 1.5f, 2f).forEach { scale ->
@@ -174,7 +177,7 @@ class GameLayoutPolicyTest {
     /** The zone never gets less than its fixed parts with the score at its floor. */
     @Test
     fun `zone minimum covers the floor`() {
-        val layout = portrait(360f, 640f, 2f, 4)
+        val layout = portrait(INSIDE_BARS_WIDTH, INSIDE_BARS_HEIGHT, 2f, 4)
 
         assertTrue(layout.zoneMinHeightDp > GameLayoutPolicy.SCORE_FLOOR_PORTRAIT)
     }
@@ -195,7 +198,9 @@ class GameLayoutPolicyTest {
     }
 
     private companion object {
-        const val OWNER_LANDSCAPE_WIDTH = 800f
+        const val INSIDE_BARS_WIDTH = 411f
+        const val INSIDE_BARS_HEIGHT = 814f
+const val OWNER_LANDSCAPE_WIDTH = 800f
         const val OWNER_LANDSCAPE_HEIGHT = 360f
 
         /** Zone frame (120) with its margin (× 1.1), plus the landscape score floor (72), plus rounding. */
@@ -204,7 +209,7 @@ class GameLayoutPolicyTest {
         const val ZONE_FRAME_AT_1 = 120f
         const val ZONE_GAP = 8f
         const val CHECKOUT_LINE_AT_1 = 22f
-        const val PIXEL7_WIDTH = 412f
-        const val PIXEL7_HEIGHT = 915f
+        const val PIXEL7_WIDTH = 411f
+        const val PIXEL7_HEIGHT = 914f
     }
 }

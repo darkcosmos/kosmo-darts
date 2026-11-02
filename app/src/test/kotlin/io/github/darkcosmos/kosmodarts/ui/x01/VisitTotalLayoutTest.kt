@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
@@ -173,8 +174,8 @@ class VisitTotalLayoutTest {
     fun `VT11 landscape at the largest font scale`() = checkLayout()
 
     @Test
-    @Config(qualifiers = "w393dp-h852dp-port-xxhdpi", fontScale = LARGEST_FONT_SCALE)
-    fun `VT11 narrower phone at the largest font scale`() = checkLayout()
+    @Config(qualifiers = TestDevices.PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
+    fun `VT11 Pixel 7 portrait inside its bars at the largest font scale`() = checkLayout()
 
     /**
      * VT8, VT13: TalkBack reads in screen order (no traversal index): in the zone, the name, the score, the BUST

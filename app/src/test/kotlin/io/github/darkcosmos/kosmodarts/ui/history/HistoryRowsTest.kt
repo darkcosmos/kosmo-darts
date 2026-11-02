@@ -105,7 +105,7 @@ class HistoryRowsTest {
     }
 
     @Test
-    @Config(qualifiers = "fr")
+    @Config(qualifiers = "+fr")
     fun `HS2 the texts are French on a French device`() {
         val match = x01HistoryMatch(1, "Ana", "Bob", format = MatchFormat(legsPerSet = 2), legs = listOf(2, 1))
         val row = text(match, Locale.FRANCE)

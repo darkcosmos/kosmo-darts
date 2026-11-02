@@ -17,6 +17,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.audio.VoiceStatus
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.playLegWonBy
@@ -40,7 +41,7 @@ import org.robolectric.annotation.Config
  * decision itself is [SystemBarsPolicy] (`SystemBarsPolicyTest`).
  */
 @RunWith(AndroidJUnit4::class)
-@Config(qualifiers = "fr-w914dp-h411dp-land-420dpi")
+@Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE)
 class CricketSystemBarsTest {
 
     @get:Rule

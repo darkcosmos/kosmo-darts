@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.app.MatchScript
 import org.junit.Assert.assertEquals
@@ -55,17 +56,17 @@ class BetweenLegsLayoutTest {
     }
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun `M16 landscape 800 x 360, scoreboard right of the winner, next leg under it, 2 players`() =
         checkLandscape("Ann", "Bob")
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun `M16 landscape 800 x 360, scoreboard right of the winner, next leg under it, 4 players`() =
         checkLandscape("Ann", "Bob", "Cid", "Dan")
 
     @Test
-    @Config(qualifiers = "fr-w412dp-h915dp-port-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT)
     fun `M16 portrait keeps the scoreboard under the winner`() {
         showBetweenLegs("Ann", "Bob")
         val winner = bounds(BetweenLegsTags.WINNER_ZONE)

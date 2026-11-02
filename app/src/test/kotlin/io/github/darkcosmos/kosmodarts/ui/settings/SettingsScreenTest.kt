@@ -177,7 +177,7 @@ class SettingsScreenTest {
     }
 
     @Test
-    @Config(qualifiers = "en")
+    @Config(qualifiers = "+en")
     fun `AN13 AN25 call each dart is off, under the voice status, and kept after a new process`() {
         ShadowTextToSpeech.addVoice(TtsTestSupport.englishLocal)
         process.launchFresh()
@@ -202,7 +202,7 @@ class SettingsScreenTest {
     }
 
     @Test
-    @Config(qualifiers = "en")
+    @Config(qualifiers = "+en")
     fun `AN25 U10 with the voice off, call each dart is greyed, says why and keeps its value`() {
         ShadowTextToSpeech.addVoice(TtsTestSupport.englishLocal)
         process.launchFresh()
@@ -218,7 +218,7 @@ class SettingsScreenTest {
     }
 
     @Test
-    @Config(qualifiers = "fr")
+    @Config(qualifiers = "+fr")
     fun `AN25 U10 the greyed switch says why in French`() {
         process.app.audioSettings.setVoiceEnabled(false)
         process.launchFresh()
@@ -336,7 +336,7 @@ class SettingsScreenTest {
     }
 
     @Test
-    @Config(qualifiers = "en")
+    @Config(qualifiers = "+en")
     fun `AN13 AN24 the elevenlabs mention is at the bottom, in English`() {
         process.launchFresh()
         openSettings()
@@ -344,7 +344,7 @@ class SettingsScreenTest {
     }
 
     @Test
-    @Config(qualifiers = "fr")
+    @Config(qualifiers = "+fr")
     fun `AN13 AN24 the elevenlabs mention is at the bottom, in French`() {
         process.launchFresh()
         openSettings()

@@ -13,7 +13,7 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 /** The French texts, and both string files kept in sync (CLAUDE.md, "User-facing text"; A3 of issue #49). */
 @RunWith(AndroidJUnit4::class)
-@Config(qualifiers = "fr")
+@Config(qualifiers = "+fr")
 class FrenchStringsTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()

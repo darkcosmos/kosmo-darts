@@ -26,6 +26,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.capture.CaptureActivity
+import io.github.darkcosmos.kosmodarts.capture.TestDevices
 import io.github.darkcosmos.kosmodarts.capture.ui.keypad.breaksOnlyBetweenWords
 import io.github.darkcosmos.kosmodarts.capture.ui.keypad.lineEnds
 import org.junit.Assert.assertEquals
@@ -36,10 +37,10 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-private const val EN_915 = "en-w915dp-h412dp-land-xxhdpi"
-private const val FR_915 = "fr-w915dp-h412dp-land-xxhdpi"
-private const val EN_640 = "en-w640dp-h360dp-land-xxhdpi"
-private const val FR_640 = "fr-w640dp-h360dp-land-xxhdpi"
+private const val EN_914 = TestDevices.EN_PIXEL7_LANDSCAPE
+private const val FR_914 = TestDevices.FR_PIXEL7_LANDSCAPE
+private const val EN_800 = TestDevices.EN_PIXEL7_LANDSCAPE_INSIDE_BARS
+private const val FR_800 = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS
 
 /** The zoom row (rules CP14, CP15): semantics, enabled states, and the width and height budgets of the layout. */
 @RunWith(AndroidJUnit4::class)
@@ -82,12 +83,12 @@ class ZoomRowTest {
     }
 
     @Test
-    @Config(qualifiers = EN_915)
+    @Config(qualifiers = EN_914)
     fun `CP14 english value, spoken state, live region and button descriptions`() =
         assertZoomValueSemantics("2.4×", "2.4 times", "Zoom out", "Zoom in")
 
     @Test
-    @Config(qualifiers = FR_915)
+    @Config(qualifiers = FR_914)
     fun `CP14 french value with decimal comma, spoken state and button descriptions`() {
         composeRule.showState(zoomState(2.4f))
         valueText("2,4×").assertIsDisplayed()
@@ -98,7 +99,7 @@ class ZoomRowTest {
     }
 
     @Test
-    @Config(qualifiers = EN_915)
+    @Config(qualifiers = EN_914)
     fun `CP14 a swipe calls onZoomChanged then onZoomChangeFinished once, the buttons send one step each`() {
         var changed = 0
         var finished = 0
@@ -121,7 +122,7 @@ class ZoomRowTest {
     }
 
     @Test
-    @Config(qualifiers = EN_915)
+    @Config(qualifiers = EN_914)
     fun `CP14 a plus click changes the slider state description to 2_5 times`() {
         composeRule.showZoomHarness(zoomState(2.4f))
         assertEquals("2.4 times", stateDescription())
@@ -131,14 +132,14 @@ class ZoomRowTest {
     }
 
     @Test
-    @Config(qualifiers = EN_915)
+    @Config(qualifiers = EN_914)
     fun `CP15 everything is enabled when idle with a ready camera`() {
         composeRule.showState(zoomState(2.4f))
         listOf(CaptureTags.ZOOM_SLIDER, CaptureTags.ZOOM_OUT, CaptureTags.ZOOM_IN).forEach { tag(it).assertIsEnabled() }
     }
 
     @Test
-    @Config(qualifiers = EN_915)
+    @Config(qualifiers = EN_914)
     fun `CP15 slider and buttons are disabled while running, saving, starting or without permission`() {
         val idle = zoomState(2.4f)
         listOf(
@@ -156,7 +157,7 @@ class ZoomRowTest {
 
     /** Disabled style DZ16: a disabled button has no fill and a dimmed outline (`States.DISABLED_ALPHA`); see captures. */
     @Test
-    @Config(qualifiers = EN_915)
+    @Config(qualifiers = EN_914)
     fun `CP15 minus is disabled at the range minimum and plus at the maximum, the other stays enabled`() {
         composeRule.showState(zoomState(1f))
         tag(CaptureTags.ZOOM_OUT).assertIsNotEnabled()
@@ -167,7 +168,7 @@ class ZoomRowTest {
     }
 
     @Test
-    @Config(qualifiers = EN_915)
+    @Config(qualifiers = EN_914)
     fun `CP15 a range without zoom shows Zoom not available in english and enables nothing`() {
         composeRule.showState(zoomState(1f, min = 1f, max = 1f))
         valueText("Zoom not available").assertIsDisplayed()
@@ -176,7 +177,7 @@ class ZoomRowTest {
     }
 
     @Test
-    @Config(qualifiers = FR_915)
+    @Config(qualifiers = FR_914)
     fun `CP15 a range without zoom shows Zoom non disponible in french and enables nothing`() {
         composeRule.showState(zoomState(1f, min = 1f, max = 1f))
         valueText("Zoom non disponible").assertIsDisplayed()
@@ -197,18 +198,18 @@ class ZoomRowTest {
     }
 
     @Test
-    @Config(qualifiers = EN_915)
-    fun `layout zoom row is 42dp and buttons 48x42 at 915x412, font scales 1 and 2`() {
+    @Config(qualifiers = EN_914)
+    fun `layout zoom row is 42dp and buttons 48x42 at 914x411, font scales 1 and 2`() {
         assertButtonsAndRow(1f)
         assertButtonsAndRow(2f)
     }
 
     @Test
-    @Config(qualifiers = EN_640)
-    fun `layout zoom row is 42dp and buttons 48x42 at 640x360`() = assertButtonsAndRow(1f)
+    @Config(qualifiers = EN_800)
+    fun `layout zoom row is 42dp and buttons 48x42 at 800x360`() = assertButtonsAndRow(1f)
 
     @Test
-    @Config(qualifiers = EN_915)
+    @Config(qualifiers = EN_914)
     fun `layout gaps are 4dp above and 8dp below the zoom row, preview and control row stay inside`() {
         composeRule.showState(zoomState(2.4f))
         val density = composeRule.density
@@ -222,8 +223,8 @@ class ZoomRowTest {
     }
 
     @Test
-    @Config(qualifiers = EN_915)
-    fun `layout the preview is at least 96dp tall at 915x412 and font scale 2`() {
+    @Config(qualifiers = EN_914)
+    fun `layout the preview is at least 96dp tall at 914x411 and font scale 2`() {
         composeRule.showState(zoomState(2.4f), fontScale = 2f)
         tag(CaptureTags.PREVIEW).assertHeightIsAtLeast(96.dp)
         tag(CaptureTags.ZOOM_ROW).assertHeightIsEqualTo(42.dp)
@@ -231,8 +232,8 @@ class ZoomRowTest {
     }
 
     @Test
-    @Config(qualifiers = EN_640)
-    fun `layout the preview is at least 160dp tall at 640x360 and the control row is inside the screen`() {
+    @Config(qualifiers = EN_800)
+    fun `layout the preview is at least 160dp tall at 800x360 and the control row is inside the screen`() {
         composeRule.showState(zoomState(2.4f))
         tag(CaptureTags.PREVIEW).assertHeightIsAtLeast(160.dp)
         listOf(CaptureTags.DELETE_ALL, CaptureTags.QUALITY, CaptureTags.START_STOP).forEach(::assertInsideScreen)
@@ -258,24 +259,24 @@ class ZoomRowTest {
     }
 
     @Test
-    @Config(qualifiers = EN_915)
-    fun `U17 english not available keeps the slider at least 120dp at 915x412 and font scale 2`() {
+    @Config(qualifiers = EN_914)
+    fun `U17 english not available keeps the slider at least 120dp at 914x411 and font scale 2`() {
         assertSliderWidthAndValueText("Zoom not available", 120f, fontScale = 2f)
     }
 
     @Test
-    @Config(qualifiers = FR_915)
-    fun `U17 french not available keeps the slider at least 120dp at 915x412 and font scale 2`() {
+    @Config(qualifiers = FR_914)
+    fun `U17 french not available keeps the slider at least 120dp at 914x411 and font scale 2`() {
         assertSliderWidthAndValueText("Zoom non disponible", 120f, fontScale = 2f)
     }
 
     @Test
-    @Config(qualifiers = EN_640)
-    fun `U17 english not available keeps the slider at least 96dp at 640x360`() =
+    @Config(qualifiers = EN_800)
+    fun `U17 english not available keeps the slider at least 96dp at 800x360`() =
         assertSliderWidthAndValueText("Zoom not available", 96f)
 
     @Test
-    @Config(qualifiers = FR_640)
-    fun `U17 french not available keeps the slider at least 96dp at 640x360`() =
+    @Config(qualifiers = FR_800)
+    fun `U17 french not available keeps the slider at least 96dp at 800x360`() =
         assertSliderWidthAndValueText("Zoom non disponible", 96f)
 }

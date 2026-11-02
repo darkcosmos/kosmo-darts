@@ -13,6 +13,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
@@ -211,7 +212,7 @@ class CricketScreenshotTest {
 
     /** Ann has 1 020 points: the 4-digit totals in four columns (CR22). */
     @Test
-    @Config(qualifiers = "fr-w411dp-h814dp-port-420dpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS)
     fun totals4Digits() = capture(
         "totals_4digits_4p_portrait_fr",
         CricketGameScreenState(CricketSaveFixtures.match("Anna", "Bob", "Cid", "Dan").annScoring(6)),
@@ -227,7 +228,7 @@ class CricketScreenshotTest {
 
     /** The tightest case: 4 players, "VALIDER LA PARTIE", largest font, the Pixel 7 with its bars (411 x 814). */
     @Test
-    @Config(qualifiers = "fr-w411dp-h814dp-port-420dpi", fontScale = 2.0f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = 2.0f)
     fun winPending4PlayersLargestFont() = capture(
         "win_pending_4p_portrait_fr_font200",
         CricketGameScreenState(
@@ -301,8 +302,9 @@ class CricketScreenshotTest {
         between("between_legs_4p_landscape_fr", betweenLegs("Anna", "Bob", "Cid", "Dan"))
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi")
-    fun betweenLegs4PlayersSmall() = between("between_legs_4p_360x640_fr", betweenLegs("Anna", "Bob", "Cid", "Dan"))
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS)
+    fun betweenLegs4PlayersInsideBars() =
+        between("between_legs_4p_411x814_fr", betweenLegs("Anna", "Bob", "Cid", "Dan"))
 
     @Test
     @Config(qualifiers = "+fr-port", fontScale = 2.0f)
@@ -330,8 +332,8 @@ class CricketScreenshotTest {
     fun endEnglish() = end("end_single_2p_portrait_en", finished("Anna", "Bob"))
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi")
-    fun end4PlayersSmall() = end("end_4p_360x640_fr", finished("Anna", "Bob", "Cid", "Dan"))
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS)
+    fun end4PlayersInsideBars() = end("end_4p_411x814_fr", finished("Anna", "Bob", "Cid", "Dan"))
 
     @Test
     @Config(qualifiers = "+fr-port", fontScale = 2.0f)
@@ -359,8 +361,8 @@ class CricketScreenshotTest {
         const val DEFAULT_SCREENSHOT_DIR = "build/outputs/roborazzi"
 
         /** The Pixel 7 in landscape, the system bars hidden (CR22). */
-        const val LANDSCAPE_FR = "fr-w914dp-h411dp-land-420dpi"
-        const val LANDSCAPE_EN = "en-w914dp-h411dp-land-420dpi"
+        const val LANDSCAPE_FR = TestDevices.FR_PIXEL7_LANDSCAPE
+        const val LANDSCAPE_EN = TestDevices.EN_PIXEL7_LANDSCAPE
         const val LUMA_RED = 0.299
         const val LUMA_GREEN = 0.587
         const val LUMA_BLUE = 0.114

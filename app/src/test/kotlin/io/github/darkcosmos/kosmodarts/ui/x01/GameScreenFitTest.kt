@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -103,47 +104,51 @@ class GameScreenFitTest {
     }
 
     @Test
-    @Config(qualifiers = "fr-w412dp-h915dp-port-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT)
     fun `U10 412 x 915 portrait, 2 players, scale 1`() = checkActionBar(2, 1f)
 
     @Test
-    @Config(qualifiers = "fr-w412dp-h915dp-port-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT)
     fun `U10 412 x 915 portrait, 4 players, scale 1`() = checkActionBar(4, 1f)
 
     @Test
-    @Config(qualifiers = "fr-w412dp-h915dp-port-xxhdpi", fontScale = LARGEST_FONT_SCALE)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT, fontScale = LARGEST_FONT_SCALE)
     fun `U10 412 x 915 portrait, 2 players, largest font size`() = checkActionBar(2, LARGEST_EFFECTIVE)
 
     @Test
-    @Config(qualifiers = "fr-w412dp-h915dp-port-xxhdpi", fontScale = LARGEST_FONT_SCALE)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT, fontScale = LARGEST_FONT_SCALE)
     fun `U10 412 x 915 portrait, 4 players, largest font size`() = checkActionBar(4, LARGEST_EFFECTIVE)
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi")
-    fun `U10 360 x 640 portrait, 4 players, scale 1`() = checkActionBar(4, 1f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS)
+    fun `U10 411 x 814 portrait inside its bars, 4 players, scale 1`() = checkActionBar(4, 1f)
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = LARGEST_FONT_SCALE)
-    fun `U10 360 x 640 portrait, 4 players, largest font size`() = checkActionBar(4, LARGEST_EFFECTIVE)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
+    fun `U10 411 x 814 portrait inside its bars, 4 players, largest font size`() = checkActionBar(4, LARGEST_EFFECTIVE)
 
     @Test
-    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE)
     fun `U10 915 x 412 landscape, 4 players, scale 1`() = checkActionBar(4, 1f)
 
     @Test
-    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi", fontScale = LARGEST_FONT_SCALE)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE, fontScale = LARGEST_FONT_SCALE)
     fun `U10 915 x 412 landscape, 4 players, largest font size`() = checkActionBar(4, LARGEST_EFFECTIVE)
 
     @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi", fontScale = LARGEST_FONT_SCALE)
-    fun `U10 640 x 360 landscape, 4 players, largest font size`() = checkActionBar(4, LARGEST_EFFECTIVE)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
+    fun `U10 800 x 360 landscape inside its bars, 4 players, scale 1`() = checkActionBar(4, 1f)
+
+    @Test
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
+    fun `U10 800 x 360 landscape inside its bars, 4 players, largest font`() = checkActionBar(4, LARGEST_EFFECTIVE)
 
     /**
      * U10 (3): with a checkout waiting at the largest font size, 4 players on 412 × 915, the zone is lower than with a
      * score, and the whole keypad and the action bar fit without scrolling; the confirm button is on screen.
      */
     @Test
-    @Config(qualifiers = "fr-w412dp-h915dp-port-xxhdpi", fontScale = LARGEST_FONT_SCALE)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT, fontScale = LARGEST_FONT_SCALE)
     fun `U10 checkout gives the zone height back, 412 x 915, 4 players, largest font size`() {
         send(*start(*LONG_NAMES.toTypedArray()), *ANN_AT_121)
         val zoneWithScore = visibleBounds(GameTags.CURRENT_PLAYER)
@@ -156,26 +161,26 @@ class GameScreenFitTest {
     }
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = LARGEST_FONT_SCALE)
-    fun `U10 checkout confirm on screen, 360 x 640, 4 players, largest font size`() {
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
+    fun `U10 checkout confirm on screen, 411 x 814 inside its bars, 4 players, largest font size`() {
         send(*start(*LONG_NAMES.toTypedArray()), *ANN_AT_121)
         send(*triple(20), *triple(11), AppEvent.MultiplierTapped(Multiplier.DOUBLE), AppEvent.NumberTapped(14))
 
         assertOnScreen(KeypadTags.UNDO, GameTags.CONFIRM)
     }
 
-    /** T9: every key and both action buttons are drawn at least 48 dp high on a small phone. */
+    /** T9: every key and both action buttons are drawn at least 48 dp high on the Pixel 7 inside its bars. */
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi")
-    fun `T9 touch targets at 48 dp, 360 x 640, scale 1`() = checkTouchTargets()
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS)
+    fun `T9 touch targets at 48 dp, 411 x 814 inside its bars, scale 1`() = checkTouchTargets()
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = LARGEST_FONT_SCALE)
-    fun `T9 touch targets at 48 dp, 360 x 640, largest font size`() = checkTouchTargets()
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
+    fun `T9 touch targets at 48 dp, 411 x 814 inside its bars, largest font size`() = checkTouchTargets()
 
     @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi", fontScale = LARGEST_FONT_SCALE)
-    fun `T9 touch targets at 48 dp, 640 x 360, largest font size`() = checkTouchTargets()
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
+    fun `T9 touch targets at 48 dp, 800 x 360 inside its bars, largest font size`() = checkTouchTargets()
 
     private fun checkTouchTargets() {
         send(*start(*LONG_NAMES.toTypedArray()))
@@ -187,12 +192,12 @@ class GameScreenFitTest {
 
     /** U11: action and Double / Triple labels are whole and only wrap at a space, the active "✓ DOUBLE" included. */
     @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi", fontScale = LARGEST_FONT_SCALE)
-    fun `U11 labels never break inside a word, 640 x 360, largest font size`() = checkLabels()
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
+    fun `U11 labels never break inside a word, 800 x 360 inside its bars, largest font size`() = checkLabels()
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = LARGEST_FONT_SCALE)
-    fun `U11 labels never break inside a word, 360 x 640, largest font size`() = checkLabels()
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
+    fun `U11 labels never break inside a word, 411 x 814 inside its bars, largest font size`() = checkLabels()
 
     private fun checkLabels() {
         send(*start(*LONG_NAMES.toTypedArray()))
@@ -210,10 +215,10 @@ class GameScreenFitTest {
         assertTrue("$tag \"$text\" breaks inside a word", breaksOnlyBetweenWords(text, layout.lineEnds()))
     }
 
-    /** U12: in a match on 360 dp at the largest font size, the header takes at most two lines. */
+    /** U12: in a match on 411 dp wide at the largest font size, the header takes at most two lines. */
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = LARGEST_FONT_SCALE)
-    fun `U12 header on two lines at most, 360 x 640, largest font size`() {
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
+    fun `U12 header on two lines at most, 411 x 814 inside its bars, largest font size`() {
         send(
             AppEvent.NewGame(GameMode.X01),
             AppEvent.StartScoreSelected(501),
@@ -233,7 +238,7 @@ class GameScreenFitTest {
      * are also never broken inside a word (#70, TileNameFitTest); this rule gives way only in a match (D3).
      */
     @Test
-    @Config(qualifiers = "fr-w412dp-h915dp-port-xxhdpi", fontScale = LARGEST_FONT_SCALE)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT, fontScale = LARGEST_FONT_SCALE)
     fun `T8 narrow tiles keep 8 name characters at the largest font size`() {
         send(*start(*LONG_NAMES.toTypedArray()))
         (1..3).forEach { player ->

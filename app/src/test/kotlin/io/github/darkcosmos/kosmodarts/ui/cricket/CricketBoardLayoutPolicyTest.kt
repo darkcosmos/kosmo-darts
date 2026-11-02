@@ -159,14 +159,14 @@ class CricketBoardLayoutPolicyTest {
         assertTrue(fallback.isFixed)
     }
 
-    /** CR22 fallback: below the Pixel 7 the rows scroll alone and keep 48 dp in portrait, 42 dp in landscape. */
+    /** CR22 fallback: rows that do not fit scroll alone, 48 dp in portrait, 42 in landscape (800 x 360 reaches it) */
     @Test
     fun `rows scroll and keep their floor when they do not fit`() {
         val header = CricketBoardLayoutPolicy.columnHeaderHeightDp(37.5f, 22.5f)
-        val portrait = CricketBoardLayoutPolicy.portraitSplit(360f, header + 7 * 48f + 10f, header, 28.9f, 4, 7).board
+        val portrait = CricketBoardLayoutPolicy.portraitSplit(411f, header + 7 * 48f + 10f, header, 28.9f, 4, 7).board
         assertTrue(portrait.scrolls)
         assertEquals(48f, portrait.rowHeightDp, 0.001f)
-        val landscape = band(height = 355f).board
+        val landscape = band(width = 800f, height = 360f).board
         assertTrue(landscape.scrolls)
         assertEquals(42f, landscape.rowHeightDp, 0.001f)
     }
@@ -294,7 +294,10 @@ class CricketBoardLayoutPolicyTest {
         assertEquals(63f, s.board.missCellHeightDp, 0.01f)
     }
 
-    /** CR22 (R2.1): a smaller screen keeps 48 dp rows and scrolls only below the two-line zone. */
+    /**
+     * CR22 (R2.1): a smaller screen keeps 48 dp rows and scrolls only below the two-line zone. Kept at 600 dp: no
+     * supported size reaches this branch (P2, P3 of the tests-pixel7-only plan).
+     */
     @Test
     fun `portraitSplit on a small screen keeps 48 dp rows and scrolls under the two-line zone`() {
         val f = splitFixtures[0]
@@ -321,7 +324,8 @@ class CricketBoardLayoutPolicyTest {
         rows: Int = 7,
         header: Float = 58.5f,
         height: Float = 411f,
-    ) = CricketBoardLayoutPolicy.landscapeBand(CricketLandscapeBandSpace(914f, height, cutout, header, players, rows))
+        width: Float = 914f,
+    ) = CricketBoardLayoutPolicy.landscapeBand(CricketLandscapeBandSpace(width, height, cutout, header, players, rows))
 
     /** CR22 (R2.2): band 44, header row 58.5, rows 43.5 dp at 7 and 50.75 dp at 6, 42 dp at least, no scroll. */
     @Test
@@ -350,7 +354,7 @@ class CricketBoardLayoutPolicyTest {
         val taller = band(header = 68.5f)
         assertTrue(taller.board.rowHeightDp >= 42f)
         assertFalse(taller.board.scrolls)
-        val small = band(height = 360f)
+        val small = band(width = 800f, height = 360f)
         assertTrue(small.board.scrolls)
         assertEquals(42f, small.board.rowHeightDp, 0.01f)
         assertEquals(small.rowsViewportHeightDp, small.nextKeyHeightDp, 0.01f)

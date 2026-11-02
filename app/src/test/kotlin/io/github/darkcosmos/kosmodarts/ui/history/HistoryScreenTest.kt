@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMode
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.history.DbResult
@@ -210,7 +211,7 @@ class HistoryScreenTest {
     }
 
     @Test
-    @Config(qualifiers = "fr-w731dp-h411dp-xxhdpi", fontScale = 2f)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = 2f)
     fun `HS2 U3 the last card is reachable in landscape at the largest font`() {
         val many = List(8) { x01HistoryMatch(it + 1L, "Ana", "Bob") }
         showState(HistoryState().loaded(1, okList(many, profiles)))

@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.GameMode
@@ -104,15 +105,15 @@ class ZoneLayoutTest {
     }
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun `M6 landscape 800 x 360, 4 players in a match, tiles whole`() = checkLandscapeFit(4)
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun `M6 landscape 800 x 360, 3 players in a match, tiles whole`() = checkLandscapeFit(3)
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun `M6 landscape 800 x 360, 2 players in a match, tiles whole`() = checkLandscapeFit(2)
 
     // U3: in landscape, at 2 and 3 players too, a long name keeps at least 8 characters before "…", tiles whole.
@@ -129,29 +130,29 @@ class ZoneLayoutTest {
     }
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun `U3 landscape 800 x 360, 2 players, 8 name characters`() = checkLongNames(2)
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun `U3 landscape 800 x 360, 3 players, 8 name characters`() = checkLongNames(3)
 
     @Test
-    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE)
     fun `U3 landscape 915 x 412, 2 players, 8 name characters`() = checkLongNames(2)
 
     @Test
-    @Config(qualifiers = "fr-w915dp-h412dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE)
     fun `U3 landscape 915 x 412, 3 players, 8 name characters`() = checkLongNames(3)
 
     // CS7, CS8: the route on one line in landscape, clear of the score and the dart slots.
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun `CS7 landscape route on one line, clear of the score and the darts`() = checkOneLineRoute(1f)
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi", fontScale = LARGEST_FONT_SCALE)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
     fun `CS7 landscape route on one line at the largest font size`() = checkOneLineRoute(LARGEST_EFFECTIVE)
 
     private fun checkOneLineRoute(expectedScale: Float) {
@@ -172,7 +173,7 @@ class ZoneLayoutTest {
     // VT13: the BUST banner on one line in landscape.
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun `VT13 landscape BUST banner on one line`() {
         send(*startMatch(*NAMES.toTypedArray()), *ANN_AT_121, *triple(20), *triple(20))
         val banner = visible(GameTags.CARD_BUST)
@@ -203,21 +204,21 @@ class ZoneLayoutTest {
     }
 
     @Test
-    @Config(qualifiers = "fr-w412dp-h915dp-port-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT)
     fun `CS7 portrait route label fills the panel with rounded start corners`() = checkRouteLabel()
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun `CS7 landscape route label fills the panel with rounded start corners`() = checkRouteLabel()
 
     // M15, design system 6.3: the CHECKOUT banner centred and as wide as the zone in landscape.
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun `M15 landscape CHECKOUT banner centred and wide, clear of the other parts`() = checkLandscapeBanner(1f)
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi", fontScale = LARGEST_FONT_SCALE)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
     fun `M15 landscape CHECKOUT banner at the largest font size`() = checkLandscapeBanner(LARGEST_EFFECTIVE)
 
     private fun checkLandscapeBanner(expectedScale: Float) {

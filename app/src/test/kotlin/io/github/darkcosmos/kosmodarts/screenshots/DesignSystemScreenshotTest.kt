@@ -10,6 +10,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureScreenRoboImage
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.GameMode
@@ -146,40 +147,40 @@ class DesignSystemScreenshotTest {
         MatchScript().start("Ann", "Bob").then(AppEvent.Back).events,
     )
 
-    // Small screens (U1).
+    // The Pixel 7 inside its bars (U1).
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi")
-    fun smallPortrait() = captureAfter("game_4p_small_360x640_fr", fourLongNames())
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS)
+    fun portraitInsideBars() = captureAfter("game_4p_411x814_fr", fourLongNames())
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = LARGEST)
-    fun smallPortraitLargestFont() = captureAfter("game_4p_small_360x640_fr_font200", fourLongNames())
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = LARGEST)
+    fun portraitInsideBarsLargestFont() = captureAfter("game_4p_411x814_fr_font200", fourLongNames())
 
     @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi")
-    fun smallLandscape() = captureAfter("game_4p_small_640x360_fr", fourLongNames())
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
+    fun landscapeInsideBars() = captureAfter("game_4p_800x360_fr", fourLongNames())
 
     @Test
-    @Config(qualifiers = "fr-w640dp-h360dp-land-xhdpi", fontScale = LARGEST)
-    fun smallLandscapeLargestFont() = captureAfter("game_4p_small_640x360_fr_font200", fourLongNames())
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = LARGEST)
+    fun landscapeInsideBarsLargestFont() = captureAfter("game_4p_800x360_fr_font200", fourLongNames())
 
     // A Pixel 7 in landscape inside its bars and cutout (owner review of PR #57).
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun ownerLandscape4Players() = captureAfter("game_4p_route_800x360_fr", fourPlayersRoute())
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun ownerLandscapeBust() = captureAfter("game_bust_800x360_fr", bustEvents())
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun ownerLandscapeCheckout() = captureAfter("game_checkout_leg_800x360_fr", checkoutLeg3Players())
 
     @Test
-    @Config(qualifiers = "fr-w800dp-h360dp-land-xxhdpi")
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
     fun ownerLandscapeNextLeg() = captureAfter(
         "next_leg_sets_800x360_fr",
         MatchScript().start("Ann", "Bob", "Cid", legsPerSet = 3, sets = 2).legsWonBy(1, 1, 1, 2).playLegWonBy(1)
@@ -201,14 +202,14 @@ class DesignSystemScreenshotTest {
     fun setup4PlayersLargestFont() = captureAfter("setup_4p_portrait_fr_font200", setupEvents())
 
     @Test
-    @Config(qualifiers = "fr-w360dp-h640dp-port-xhdpi", fontScale = LARGEST)
+    @Config(qualifiers = TestDevices.FR_PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = LARGEST)
     fun setupFocusedLastField() {
         process.launchFresh()
         val viewModel = ViewModelProvider(process.activity)[KosmoDartsViewModel::class.java]
         process.activity.runOnUiThread { setupEvents().forEach(viewModel::onEvent) }
         composeRule.waitForIdle()
         composeRule.onNodeWithTag(SetupTags.nameField(3)).performScrollTo().performClick()
-        capture("setup_4p_focused_small_360x640_fr_font200")
+        capture("setup_4p_focused_411x814_fr_font200")
     }
 
     // Between legs (mockup 08) and end (mockup 09).

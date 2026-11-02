@@ -18,6 +18,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTarget
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
@@ -47,7 +48,7 @@ import kotlin.math.roundToInt
  */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(qualifiers = "fr-w914dp-h411dp-land-420dpi")
+@Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE)
 class CricketLandscapeScreenTest {
 
     @get:Rule
@@ -395,6 +396,15 @@ class CricketLandscapeScreenTest {
         assertEveryCase()
 
     @Test
+    @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = 2.0f)
+    fun `CR22 landscape 800 x 360 scale 2 fits, 1 to 4 players, 6 rows, with and without the pending win`() {
+        // With the bull in play (7 rows) the rows scroll at 800 x 360: no 42 dp floor fits (P2, see the T3 notes).
+        listOf(1, 2, 3, 4).forEach { players ->
+            listOf(false, true).forEach { pending -> assertFits(players, isBullInPlay = false, pending = pending) }
+        }
+    }
+
+    @Test
     fun `CR22 U1 landscape with a 48 dp cutout on the left fits, nothing under it, 1 to 4 players`() {
         cutoutSide = CutoutSide.LEFT
         assertEveryCase()
@@ -463,7 +473,7 @@ class CricketLandscapeScreenTest {
         assertVerticalLabels("JOUEUR SUIVANT", "VALIDER LA PARTIE", "VALIDER LA MANCHE", "VALIDER LE SET")
 
     @Test
-    @Config(qualifiers = "en-w914dp-h411dp-land-420dpi", fontScale = 2.0f)
+    @Config(qualifiers = TestDevices.EN_PIXEL7_LANDSCAPE, fontScale = 2.0f)
     fun `CR25 Q17 B the English labels of the tall key are vertical and whole at scale 2`() =
         assertVerticalLabels("NEXT PLAYER", "CONFIRM MATCH", "CONFIRM LEG", "CONFIRM SET")
 

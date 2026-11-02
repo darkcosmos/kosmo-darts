@@ -31,6 +31,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
@@ -208,10 +209,10 @@ class RedesignScreensTest {
         }
     }
 
-    /** T5, CS8: on a 360 × 640 phone, the zone and the dart slots do not move when a route appears. */
+    /** T5, CS8: on the Pixel 7 inside its bars (411 × 814), the zone and the dart slots do not move with a route. */
     @Test
-    @Config(qualifiers = "w360dp-h640dp-port-xhdpi")
-    fun `T5 the zone does not move with a route on a small phone`() {
+    @Config(qualifiers = TestDevices.PIXEL7_PORTRAIT_INSIDE_BARS)
+    fun `T5 the zone does not move with a route on the Pixel 7 inside its bars`() {
         send(*start("Ann"))
         val zone = bounds(GameTags.CURRENT_PLAYER)
         val slot = bounds(GameTags.dartSlot(0))
@@ -245,20 +246,20 @@ class RedesignScreensTest {
 
     /** U1: on short screens every key and action button is on screen or reachable by scrolling. */
     @Test
-    @Config(qualifiers = "w360dp-h640dp-port-xhdpi", fontScale = LARGEST_FONT_SCALE)
-    fun `U1 small portrait at the largest font size`() = checkReachable()
+    @Config(qualifiers = TestDevices.PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
+    fun `U1 Pixel 7 portrait inside its bars at the largest font size`() = checkReachable()
 
     @Test
-    @Config(qualifiers = "w360dp-h640dp-port-xhdpi")
-    fun `U1 small portrait`() = checkReachable()
+    @Config(qualifiers = TestDevices.PIXEL7_PORTRAIT_INSIDE_BARS)
+    fun `U1 Pixel 7 portrait inside its bars`() = checkReachable()
 
     @Test
-    @Config(qualifiers = "w640dp-h360dp-land-xhdpi", fontScale = LARGEST_FONT_SCALE)
-    fun `U1 small landscape at the largest font size`() = checkReachable()
+    @Config(qualifiers = TestDevices.PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
+    fun `U1 Pixel 7 landscape inside its bars at the largest font size`() = checkReachable()
 
     @Test
-    @Config(qualifiers = "w640dp-h360dp-land-xhdpi")
-    fun `U1 small landscape`() = checkReachable()
+    @Config(qualifiers = TestDevices.PIXEL7_LANDSCAPE_INSIDE_BARS)
+    fun `U1 Pixel 7 landscape inside its bars`() = checkReachable()
 
     private fun checkReachable() {
         send(*start("Maximilien-Alexandre", "Bartholomew Jonathan", "Anne-Charlotte Marie", "Jean-Baptiste Pierre"))
@@ -285,7 +286,7 @@ class RedesignScreensTest {
 
     /** U7: the setup content scrolls and "Start" stays pinned at the bottom, with 4 players at the largest size. */
     @Test
-    @Config(qualifiers = "w360dp-h640dp-port-xhdpi", fontScale = LARGEST_FONT_SCALE)
+    @Config(qualifiers = TestDevices.PIXEL7_PORTRAIT_INSIDE_BARS, fontScale = LARGEST_FONT_SCALE)
     fun `U7 start stays visible under the focused field`() {
         send(AppEvent.NewGame(GameMode.X01), AppEvent.PlayerAdded, AppEvent.PlayerAdded)
         val root = composeRule.onRoot().fetchSemanticsNode().boundsInRoot
