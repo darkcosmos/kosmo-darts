@@ -125,18 +125,18 @@ class SaveJournalCodecTest {
         assertRoundTrip(voidedGame.copy(journal = saved.journal.copy(startedAt = 0)))
     }
 
-    /** R30, R9: version 1 is the only version; every other number is unsupported. */
+    /** R30, R31, R9: version 2 is the only version; every other number, version 1 included, is unsupported. */
     @Test
-    fun `R30 only version 1 is supported`() {
-        listOf("0", "2", "3", "4", "5").forEach { version ->
-            val lines = voidedLines.map { if (it == "version=1") "version=$version" else it }
+    fun `R30 only version 2 is supported`() {
+        listOf("0", "1", "3", "4", "5").forEach { version ->
+            val lines = voidedLines.map { if (it == "version=2") "version=$version" else it }
             assertInvalid(InvalidSaveReason.UNSUPPORTED_VERSION, lines)
         }
     }
 
-    /** R30: a version 1 file without the journal lines is malformed. */
+    /** R30: a version 2 file without the journal lines is malformed. */
     @Test
-    fun `R30 a version 1 file without journal lines is malformed`() {
+    fun `R30 a version 2 file without journal lines is malformed`() {
         val withoutJournal = voidedLines.filterNot {
             it.startsWith("match-id=") || it.startsWith("started-at=") || it.startsWith("journals=") ||
                 it.startsWith("journal=")
@@ -162,7 +162,9 @@ class SaveJournalCodecTest {
             "awaiting-next-player=true",
         )
 
-        assertInvalid(InvalidSaveReason.MALFORMED, old)
+        assertInvalid(InvalidSaveReason.UNSUPPORTED_VERSION, old)
+        // R31: the same layout under the current version number is still rejected, for its layout.
+        assertInvalid(InvalidSaveReason.MALFORMED, old.map { if (it == "version=1") "version=2" else it })
     }
 
     /** R27: every dart has an entry time, written as `@` and a number. */

@@ -90,7 +90,7 @@ internal fun writeBody(layout: List<SaveKey>, body: SaveBody): List<Pair<String,
         SaveKey.SETS -> listOf(body.format.sets.toString())
         SaveKey.PLAYERS -> listOf(body.config.players.size.toString())
         SaveKey.PLAYER -> body.config.players.map(SaveFormat::encodeName)
-        SaveKey.COLORS -> listOf(slotColorsValue(body.colors))
+        SaveKey.COLORS -> listOf(colorsValue(body.colors))
         SaveKey.LEGS -> listOf(body.legs.size.toString())
         SaveKey.LEG -> body.legs.map(::legToken)
         SaveKey.DARTS -> listOf(body.darts.joinToString(" ") { DartTokens.tokenOf(it) })
@@ -137,7 +137,7 @@ private class BodyFields {
             SaveKey.SETS -> sets = parseFormatValue(value())
             SaveKey.PLAYERS -> playerCount = parsePlayerCount(value())
             SaveKey.PLAYER -> config = buildConfig(List(playerCount) { SaveFormat.decodeName(value()) })
-            SaveKey.COLORS -> colors = parseSlotColors(value(), playerCount)
+            SaveKey.COLORS -> colors = parseColors(value(), playerCount)
             SaveKey.LEGS -> legCount = parseLegCount(value())
             SaveKey.LEG -> legs = List(legCount) { parseLeg(value()) }
             SaveKey.DARTS -> darts = parseDarts(value())

@@ -14,8 +14,9 @@ import org.junit.Test
 import java.util.zip.CRC32
 
 /**
- * The last setup file, format version 1 (docs/adr/0011-save-format-v1-journal.md; layout of
- * docs/adr/0008-save-format-v4-modes.md; rules R7, R10, R13, R17, R22, R23, R30).
+ * The last setup file, format version 2 (docs/adr/0013-save-format-v2-argb-colors.md; "Clean slate" of
+ * docs/adr/0011-save-format-v1-journal.md; layout of docs/adr/0008-save-format-v4-modes.md; rules R7, R10, R13, R17,
+ * R22, R23, R30, R31).
  */
 class LastSetupCodecTest {
 
@@ -26,7 +27,7 @@ class LastSetupCodecTest {
     /** The covered lines (kind to last body line) of the valid file. */
     private val validBody = valid.lines().dropLast(TRAILER_LINES)
 
-    /** The covered lines of a valid version 1 file with both mode sections (R22). */
+    /** The covered lines of a valid version 2 file with both mode sections (R22). */
     private val bothModesBody = encoded(BOTH_MODES).lines().dropLast(TRAILER_LINES)
 
     @Test
@@ -76,24 +77,24 @@ class LastSetupCodecTest {
     }
 
     /**
-     * ADR 0008, R22, R23: version 1 has one section per mode, each opened by its mode line (X01 first), then the shared
-     * roster. Frozen: any change needs a version 2.
+     * ADR 0008, R22, R23: version 2 has one section per mode, each opened by its mode line (X01 first), then the shared
+     * roster. Frozen: any change needs a version 3.
      */
     @Test
-    fun `R22 R23 version 1 layout with both modes`() {
-        assertEquals(V1_BOTH_LINES, bothModesBody)
-        assertEquals(BOTH_MODES, codec.decode(withChecksum(V1_BOTH_LINES)))
+    fun `R22 R23 version 2 layout with both modes`() {
+        assertEquals(V2_BOTH_LINES, bothModesBody)
+        assertEquals(BOTH_MODES, codec.decode(withChecksum(V2_BOTH_LINES)))
     }
 
     /** R22: a file written after only Cricket games has no X01 section; X01 then uses its defaults with the roster. */
     @Test
     fun `R22 a Cricket only setup has no X01 section and gives the X01 defaults`() {
-        val cricketOnly = V1_BOTH_LINES.take(2) + V1_BOTH_LINES.drop(CRICKET_SECTION_START)
+        val cricketOnly = V2_BOTH_LINES.take(2) + V2_BOTH_LINES.drop(CRICKET_SECTION_START)
 
         val decoded = codec.decode(withChecksum(cricketOnly))
 
         assertEquals(BOTH_MODES.copy(x01 = null), decoded)
-        assertEquals(X01MatchConfig(X01Config(listOf("Ann", "Bob")), colors = SLOTS_4_2), decoded?.x01Setup)
+        assertEquals(X01MatchConfig(X01Config(listOf("Ann", "Bob")), colors = COLORS_4_2), decoded?.x01Setup)
         assertEquals(cricketOnly, encoded(BOTH_MODES.copy(x01 = null)).lines().dropLast(TRAILER_LINES))
     }
 
@@ -118,10 +119,10 @@ class LastSetupCodecTest {
      */
     @Test
     fun `R23 mode line rejections`() {
-        val x01Section = V1_BOTH_LINES.subList(2, CRICKET_SECTION_START)
-        val cricketSection = V1_BOTH_LINES.subList(CRICKET_SECTION_START, ROSTER_START)
-        val roster = V1_BOTH_LINES.drop(ROSTER_START)
-        val header = V1_BOTH_LINES.take(2)
+        val x01Section = V2_BOTH_LINES.subList(2, CRICKET_SECTION_START)
+        val cricketSection = V2_BOTH_LINES.subList(CRICKET_SECTION_START, ROSTER_START)
+        val roster = V2_BOTH_LINES.drop(ROSTER_START)
+        val header = V2_BOTH_LINES.take(2)
         listOf(
             header + roster, // No mode section at all.
             header + x01Section.drop(1) + roster, // X01 section without its mode line.
@@ -168,14 +169,14 @@ class LastSetupCodecTest {
     /** R24: names that break `PlayerListRules` are rejected in a Cricket only file (the exception never escapes). */
     @Test
     fun `R24 invalid names in a Cricket only setup are rejected`() {
-        val cricketOnly = V1_BOTH_LINES.take(2) + V1_BOTH_LINES.drop(CRICKET_SECTION_START)
+        val cricketOnly = V2_BOTH_LINES.take(2) + V2_BOTH_LINES.drop(CRICKET_SECTION_START)
         val ann = "player=${SaveFormat.encodeName("Ann")}"
         val bob = "player=${SaveFormat.encodeName("Bob")}"
         listOf(
             cricketOnly.map { if (it == bob) "player=${SaveFormat.encodeName("ann")}" else it }, // Duplicate.
             cricketOnly.map { if (it == bob) "player=${SaveFormat.encodeName("x".repeat(21))}" else it }, // Too long.
             cricketOnly.map { if (it == ann) "player=" else it }, // Blank.
-            cricketOnly.map { if (it == "players=2") "players=0" else it } - ann - bob - "colors=4 2" + "colors=",
+            cricketOnly.map { if (it == "players=2") "players=0" else it } - ann - bob - COLORS_LINE + "colors=",
         ).forEach { body -> assertNull(body.toString(), codec.decode(withChecksum(body))) }
     }
 
@@ -184,7 +185,7 @@ class LastSetupCodecTest {
         listOf(
             "",
             valid.dropLast(1),
-            valid.replace("version=1", "version=2"),
+            valid.replace("version=2", "version=1"),
             valid.replace("start-score=501", "start-score=401"),
             valid.replace("kosmodarts=last-setup", "kosmodarts=saved-game"),
             valid.replace("players=2", "players=3"),
@@ -202,9 +203,9 @@ class LastSetupCodecTest {
         }
     }
 
-    /** R10, S2: strict keys of version 1: a missing, doubled, reordered or extra key is invalid. */
+    /** R10, S2: strict keys of version 2: a missing, doubled, reordered or extra key is invalid. */
     @Test
-    fun `R10 keys must follow the version 1 layout`() {
+    fun `R10 keys must follow the version 2 layout`() {
         val setsLine = validBody.first { it.startsWith("sets=") }
         val legsLine = validBody.first { it.startsWith("legs-per-set=") }
         listOf(
@@ -216,12 +217,14 @@ class LastSetupCodecTest {
         ).forEach { body -> assertNull(body.toString(), codec.decode(withChecksum(body))) }
     }
 
-    /** R30, R10: only version 1 is read; a version 4 last setup (the earlier layout and number) is invalid. */
+    /** R30, R10: only version 2 is read; a version 4 or version 1 last setup (earlier numbers) is invalid. */
     @Test
-    fun `R30 a version 4 last setup is ignored`() {
-        val version4 = V1_BOTH_LINES.map { if (it == "version=1") "version=4" else it }
+    fun `R30 a version 4 or version 1 last setup is ignored`() {
+        listOf(4, 1).forEach { version ->
+            val lines = V2_BOTH_LINES.map { if (it == "version=2") "version=$version" else it }
 
-        assertNull(codec.decode(withChecksum(version4)))
+            assertNull(version.toString(), codec.decode(withChecksum(lines)))
+        }
     }
 
     /** R30, R10: a file in the layout of the old version 1 (no mode line) is never read as the new version 1. */
@@ -256,19 +259,19 @@ class LastSetupCodecTest {
         /** CRC line, end line and the empty string after the final line feed. */
         const val TRAILER_LINES = 3
 
-        val SLOTS_4_2 = listOf(PlayerColor.LILAC, PlayerColor.ORANGE)
+        val COLORS_4_2 = listOf(PlayerColor.LILAC, PlayerColor.ORANGE)
 
         /** A last setup after games in both modes (R22). */
         val BOTH_MODES = LastSetups(
-            roster = SharedRoster(listOf("Ann", "Bob"), SLOTS_4_2),
+            roster = SharedRoster(listOf("Ann", "Bob"), COLORS_4_2),
             x01 = X01Settings(301, CheckoutRule.SINGLE_OUT, MatchFormat(3, 2)),
             cricket = CricketSettings(CricketVariant.CUT_THROAT, isBullInPlay = false, MatchFormat(2, 1)),
         )
 
-        /** The covered lines of [BOTH_MODES] in version 1 (frozen, ADR 0008 layout, ADR 0011). */
-        val V1_BOTH_LINES = listOf(
+        /** The covered lines of [BOTH_MODES] in version 2 (frozen, ADR 0008 layout, ADR 0011, ADR 0013). */
+        val V2_BOTH_LINES = listOf(
             "kosmodarts=last-setup",
-            "version=1",
+            "version=2",
             "mode=x01",
             "game=x01",
             "start-score=301",
@@ -283,13 +286,16 @@ class LastSetupCodecTest {
             "players=2",
             "player=QW5u",
             "player=Qm9i",
-            "colors=4 2",
+            COLORS_LINE,
         )
 
-        /** Index of `mode=cricket` in [V1_BOTH_LINES]. */
+        /** The ARGB colors line of [COLORS_4_2] (R31). */
+        const val COLORS_LINE = "colors=FFC9A7FF FFE07020"
+
+        /** Index of `mode=cricket` in [V2_BOTH_LINES]. */
         const val CRICKET_SECTION_START = 8
 
-        /** Index of `players=2` in [V1_BOTH_LINES]. */
+        /** Index of `players=2` in [V2_BOTH_LINES]. */
         const val ROSTER_START = 13
     }
 }

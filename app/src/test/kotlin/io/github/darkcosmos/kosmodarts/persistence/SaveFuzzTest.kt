@@ -57,14 +57,14 @@ class SaveFuzzTest {
             cricket.filterNot { it.startsWith("mode=") },
             cricket.map { if (it == "mode=cricket") "mode=x01" else it },
             x01.map { if (it == "mode=x01") "mode=cricket" else it },
-            x01.map { if (it == "version=1") "version=4" else it },
+            x01.map { if (it == "version=2") "version=1" else it },
         ).map(::withChecksum)
         return valid + modeCases
     }
 
     /**
-     * Matches (R11, ADR 0005, ADR 0006) with non-positional color slots: in a leg, between legs and in a pending
-     * checkout, plus the strict key cases of S2 (a missing or swapped key).
+     * Matches (R11, ADR 0005, ADR 0013) with non-positional and generated ARGB colors: in a leg, between legs and in a
+     * pending checkout, plus the strict key cases of S2 (a missing or swapped key).
      */
     private fun matchSeeds(): List<ByteArray> {
         val start = MatchFixtures.match(
@@ -73,7 +73,7 @@ class SaveFuzzTest {
             "Cid",
             legsPerSet = 2,
             sets = 3,
-            colors = listOf(PlayerColor.LILAC, PlayerColor.BLUE, PlayerColor.ORANGE),
+            colors = listOf(PlayerColor.LILAC, GENERATED_COLOR, PlayerColor.ORANGE),
         )
         val valid = listOf(
             savedGame(start.confirmLegsWonBy(0, 1, 1).throwing(Dart.triple(20)), isAwaitingNextPlayer = false),
@@ -90,7 +90,7 @@ class SaveFuzzTest {
     }
 
     /**
-     * Version 1 saves with real journals (R26 to R29): voided darts, several legs, a Cricket match, plus journal cases
+     * Version 2 saves with real journals (R26 to R29): voided darts, several legs, a Cricket match, plus journal cases
      * that must be rejected (a missing journal line, a bad time, an undo with nothing to undo).
      */
     private fun journalSeeds(): List<ByteArray> {
@@ -130,7 +130,11 @@ class SaveFuzzTest {
     }
 
     private val validSetups: List<ByteArray> =
-        (1..4).map { setupCodec.encode(SaveFixtures.setup(players = it).toLastSetups()) }
+        (1..4).map { setupCodec.encode(SaveFixtures.setup(players = it).toLastSetups()) } +
+            // R31: a generated (non-palette) color in the ARGB colors line.
+            setupCodec.encode(
+                SaveFixtures.setup(players = 2).copy(colors = listOf(GENERATED_COLOR, PlayerColor.TEAL)).toLastSetups(),
+            )
 
     @Test
     fun `R11 mutated saved games never crash the decoder`() = fuzz(validGames) { input ->
@@ -183,5 +187,8 @@ class SaveFuzzTest {
         const val MAX_EDITS = 4
         const val EDIT_KINDS = 6
         const val MAX_RANDOM_SIZE = 70_000
+
+        /** A generated color, outside the palette (PC15), stored as ARGB (R31). */
+        val GENERATED_COLOR = PlayerColor(0xFFF2D94E.toInt())
     }
 }

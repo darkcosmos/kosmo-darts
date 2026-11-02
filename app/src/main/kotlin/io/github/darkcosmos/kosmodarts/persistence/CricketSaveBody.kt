@@ -52,7 +52,7 @@ internal fun writeCricketBody(body: CricketSaveBody): List<Pair<String, String>>
     add(SaveKey.SETS.text to body.format.sets.toString())
     add(SaveKey.PLAYERS.text to body.config.players.size.toString())
     body.config.players.forEach { add(SaveKey.PLAYER.text to SaveFormat.encodeName(it)) }
-    add(SaveKey.COLORS.text to slotColorsValue(body.colors))
+    add(SaveKey.COLORS.text to colorsValue(body.colors))
     add(SaveKey.LEGS.text to body.legs.size.toString())
     body.legs.forEach { add(SaveKey.LEG.text to cricketLegToken(it)) }
     add(SaveKey.DARTS.text to body.darts.joinToString(" ") { DartTokens.tokenOf(it) })
@@ -80,7 +80,7 @@ internal fun readCricketBody(reader: BodyReader): CricketSaveBody {
     } catch (e: InvalidCricketConfigException) {
         reject(InvalidSaveReason.INVALID_CONFIG, e)
     }
-    val colors = parseSlotColors(reader.value(SaveKey.COLORS.text), playerCount)
+    val colors = parseColors(reader.value(SaveKey.COLORS.text), playerCount)
     val legCount = parseLegCount(reader.value(SaveKey.LEGS.text), format, playerCount)
     val legs = List(legCount) { parseCricketLeg(reader.value(SaveKey.LEG.text), config) }
     return CricketSaveBody(

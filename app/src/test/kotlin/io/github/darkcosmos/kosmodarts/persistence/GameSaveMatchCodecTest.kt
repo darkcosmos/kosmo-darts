@@ -57,12 +57,12 @@ class GameSaveMatchCodecTest {
         return validBody.toMutableList().apply { set(index, line) }
     }
 
-    /** ADR 0011, R26: the exact bytes of the same match in format version 1: the mode line, the body, the journal. */
+    /** ADR 0011, ADR 0013, R26, R31: exact bytes of the same match in format version 2: mode line, body, journal. */
     @Test
-    fun `format v1 golden file of a match`() {
+    fun `format v2 golden file of a match`() {
         val golden = """
             kosmodarts=saved-game
-            version=1
+            version=2
             mode=x01
             game=x01
             start-score=301
@@ -72,7 +72,7 @@ class GameSaveMatchCodecTest {
             players=2
             player=QW5u
             player=Qm9i
-            colors=1 2
+            colors=FF1F63D6 FFE07020
             legs=2
             leg=0 301/9 120/6
             leg=1 200/9 301/9
@@ -85,7 +85,7 @@ class GameSaveMatchCodecTest {
             journal=T20@0 T20@1 T20@2 0@3 0@4 0@5 T20@6 T19@7 D2@8
             journal=T20@9 T20@10 T20@11 0@12 0@13 0@14 T20@15 T19@16 D2@17
             journal=T20@18 20@19
-            crc32=567c960a
+            crc32=f9b239e1
             end
 
         """.trimIndent().toByteArray(Charsets.UTF_8)

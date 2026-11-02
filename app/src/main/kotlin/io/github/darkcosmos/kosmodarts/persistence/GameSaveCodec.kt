@@ -20,8 +20,9 @@ sealed interface GameDecodeResult {
 }
 
 /**
- * Encodes and decodes the saved game file, format version 1 and no other (docs/adr/0011-save-format-v1-journal.md;
- * rules R9, R11, R12, R13, R20, R21, R23, R24, R26 to R30).
+ * Encodes and decodes the saved game file, format version 2 and no other (docs/adr/0011-save-format-v1-journal.md,
+ * with the ARGB colors of docs/adr/0013-save-format-v2-argb-colors.md; rules R9, R11, R12, R13, R20, R21, R23, R24,
+ * R26 to R31).
  *
  * The body starts with the mode line, then the X01 body or the Cricket body ([CricketSaveBody]), then the match id, the
  * start time and the dart journal of every leg ([readJournal]). No earlier version is read: such a file is rejected by
@@ -149,8 +150,8 @@ class GameSaveCodec(
     }
 
     companion object {
-        /** The only version read or written (ADR 0011, R30). */
-        private const val VERSION = 1
+        /** The only version read or written (ADR 0013, R30, R31): version 1 stored color slots. */
+        private const val VERSION = 2
 
         /** Largest number of darts that is saved, in the current leg and in each confirmed leg (rule R12). */
         const val MAX_DARTS: Int = MAX_SAVED_DARTS
@@ -163,7 +164,7 @@ class GameSaveCodec(
 
         private const val KIND = "saved-game"
 
-        /** The X01 body after `mode=x01` (ADR 0008, with the color slots of ADR 0006), then the journal lines. */
+        /** The X01 body after `mode=x01` (ADR 0008, with the ARGB colors of ADR 0013), then the journal lines. */
         private val X01_LAYOUT = listOf(
             SaveKey.GAME,
             SaveKey.START_SCORE,
