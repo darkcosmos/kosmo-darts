@@ -34,10 +34,10 @@ import io.github.darkcosmos.kosmodarts.ui.components.ZoneStat
 import io.github.darkcosmos.kosmodarts.ui.format.formatMpr
 import io.github.darkcosmos.kosmodarts.ui.format.positionText
 import io.github.darkcosmos.kosmodarts.ui.game.AbandonDialog
-import io.github.darkcosmos.kosmodarts.ui.game.GameTags
+import io.github.darkcosmos.kosmodarts.ui.game.ArchiveFailedMessage
 import io.github.darkcosmos.kosmodarts.ui.game.KeypadTags
 import io.github.darkcosmos.kosmodarts.ui.game.NoVoiceDialog
-import io.github.darkcosmos.kosmodarts.ui.game.confirmLabel
+import io.github.darkcosmos.kosmodarts.ui.game.confirmAction
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.Spacing
 import io.github.darkcosmos.kosmodarts.ui.theme.States
@@ -228,7 +228,10 @@ internal fun Board(
 @Composable
 internal fun Actions(game: CricketGameScreenState, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
     val (undo, primary) = actionsOf(game, onEvent)
-    ActionBar(undo, primary, minHeight = States.minTouchTarget, modifier = modifier.fillMaxWidth())
+    Column(modifier = modifier.fillMaxWidth()) {
+        ArchiveFailedMessage(game.archive)
+        ActionBar(undo, primary, minHeight = States.minTouchTarget, modifier = Modifier.fillMaxWidth())
+    }
 }
 
 /** The two actions, the same in both orientations: "Undo", then "Next player" or the confirm button (CR25). */
@@ -243,7 +246,7 @@ internal fun actionsOf(game: CricketGameScreenState, onEvent: (AppEvent) -> Unit
             onEvent(AppEvent.NextPlayerTapped)
         }
     } else {
-        BarAction(confirmLabel(outcome), GameTags.CONFIRM, isEnabled = true) { onEvent(AppEvent.FinishGameTapped) }
+        confirmAction(outcome, game.archive, onEvent)
     }
     return undo to primary
 }

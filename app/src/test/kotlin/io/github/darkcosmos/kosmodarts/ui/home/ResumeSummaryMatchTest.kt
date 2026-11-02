@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.home
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures.match
@@ -16,7 +17,7 @@ class ResumeSummaryMatchTest {
     /** M18: each player's sets and legs of the current set, as on the cards. */
     @Test
     fun `M18 the summary shows the match score`() {
-        val saved = SavedGame(
+        val saved = savedGame(
             match("Ann", "Bob", legsPerSet = 2, sets = 2).confirmLegsWonBy(0, 0, 1).throwing(Dart.triple(20)),
             isAwaitingNextPlayer = false,
         )
@@ -33,7 +34,7 @@ class ResumeSummaryMatchTest {
     /** M14, M18: with one set, legs only. */
     @Test
     fun `M18 one set shows legs only`() {
-        val saved = SavedGame(match("Ann", "Bob", legsPerSet = 3).confirmLegsWonBy(1), isAwaitingNextPlayer = false)
+        val saved = savedGame(match("Ann", "Bob", legsPerSet = 3).confirmLegsWonBy(1), isAwaitingNextPlayer = false)
 
         assertEquals(listOf(null, null), ResumeSummary.of(saved).players.map { it.setsWon })
         assertEquals(listOf(0, 1), ResumeSummary.of(saved).players.map { it.legsWon })
@@ -44,7 +45,7 @@ class ResumeSummaryMatchTest {
     fun `M18 between legs the starter of the next leg is highlighted`() {
         val next = match("Ann", "Bob", "Cid", legsPerSet = 2).confirmLegsWonBy(0)
 
-        val summary = ResumeSummary.of(SavedGame(next, isAwaitingNextPlayer = false, isBetweenLegs = true))
+        val summary = ResumeSummary.of(savedGame(next, isAwaitingNextPlayer = false, isBetweenLegs = true))
 
         assertEquals("Bob", summary.highlightedPlayer)
     }

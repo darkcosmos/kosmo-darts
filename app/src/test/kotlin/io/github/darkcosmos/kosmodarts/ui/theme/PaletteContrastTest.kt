@@ -41,6 +41,8 @@ class PaletteContrastTest {
             colors.onBackground to colors.surfaceHigh,
             colors.onBackground to colors.danger,
             colors.onBackground to colors.background,
+            // The BUST label of a visit in the match detail, on the visit card (`surface`).
+            colors.dangerText to colors.surface,
             colors.accent to colors.background,
         )
         pairs.forEach { (text, background) ->

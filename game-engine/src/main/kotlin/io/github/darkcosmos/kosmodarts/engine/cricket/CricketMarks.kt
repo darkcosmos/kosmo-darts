@@ -29,11 +29,17 @@ data class CricketMarks(val target: CricketTarget?, val count: Int) {
          * that number; the outer bull (25) gives 1 mark and the bull 2 marks on the Bull when it is in play. Every
          * other dart gives [NONE].
          */
-        fun of(dart: Dart, config: CricketConfig): CricketMarks {
+        fun of(dart: Dart, config: CricketConfig): CricketMarks = of(dart, config.isBullInPlay)
+
+        /**
+         * The marks of [dart] (CR2) when the Bull is in play or not: for a caller that only knows the stored settings
+         * of a match (the History detail, HS5), not a whole [CricketConfig].
+         */
+        fun of(dart: Dart, isBullInPlay: Boolean): CricketMarks {
             val number = CricketTarget.ofNumber(dart.segment)
             return when {
                 number != null -> CricketMarks(number, dart.multiplier.factor)
-                !config.isBullInPlay -> NONE
+                !isBullInPlay -> NONE
                 dart.segment == Dart.OUTER_BULL_SEGMENT -> CricketMarks(CricketTarget.BULL, 1)
                 dart.segment == Dart.BULL_SEGMENT -> CricketMarks(CricketTarget.BULL, BULL_MARKS)
                 else -> NONE

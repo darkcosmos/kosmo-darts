@@ -90,6 +90,19 @@ class SaveLoaderTest {
         assertNotNull(gameStore.content)
     }
 
+    /** R30, R10: a last setup in the old version 1 layout is ignored silently (defaults shown) and deleted. */
+    @Test
+    fun `R30 a last setup in the old version 1 layout is ignored and deleted`() {
+        gameStore.content = validGame
+        setupStore.content = SaveFixtures.OLD_V1_LAST_SETUP
+
+        val result = loader.load()
+
+        assertNull(result.lastSetup)
+        assertNull(setupStore.content)
+        assertEquals(GameLoad.Valid(SaveFixtures.WAITING_CHECKOUT), result.game)
+    }
+
     @Test
     fun `R10 an oversized last setup is ignored and deleted`() {
         setupStore.content = ByteArray(LastSetupCodec.MAX_FILE_BYTES + 1)

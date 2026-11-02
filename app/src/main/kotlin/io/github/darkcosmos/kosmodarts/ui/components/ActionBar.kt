@@ -28,6 +28,7 @@ fun ActionBar(secondary: BarAction, primary: BarAction, minHeight: Dp, modifier:
                 kind = kind,
                 enabled = action.isEnabled,
                 minHeight = minHeight,
+                description = action.description,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()

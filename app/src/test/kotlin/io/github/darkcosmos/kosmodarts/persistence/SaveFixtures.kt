@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
@@ -38,12 +39,12 @@ internal object SaveFixtures {
     fun savedAfter(config: X01Config, darts: List<Dart>): SavedGame {
         val game = X01Game(config, darts)
         val dartsInCompletedTurns = game.state.completedTurns.sumOf { it.darts.size }
-        return SavedGame(game, isAwaitingNextPlayer = darts.isNotEmpty() && dartsInCompletedTurns == darts.size)
+        return savedGame(game, isAwaitingNextPlayer = darts.isNotEmpty() && dartsInCompletedTurns == darts.size)
     }
 
     private val T20 = Dart.triple(20)
 
-    val EMPTY: SavedGame = SavedGame(X01Game(config()), isAwaitingNextPlayer = false)
+    val EMPTY: SavedGame = savedGame(X01Game(config()), isAwaitingNextPlayer = false)
 
     /** Ann has thrown two darts of her first turn. */
     val MID_TURN: SavedGame = savedAfter(config(), listOf(T20, Dart.single(5)))
@@ -74,30 +75,7 @@ internal object SaveFixtures {
         )
 
     /** One player and exactly [GameSaveCodec.MAX_DARTS] misses. */
-    val LONGEST: SavedGame = SavedGame(X01Game(config(players = 1), List(GameSaveCodec.MAX_DARTS) { Dart.MISS }), false)
-}
-
-/** The frozen version 1 files of `src/test/resources/persistence/v1` (see its README), written by the v1 encoders. */
-internal object V1Fixtures {
-
-    /** Every saved game fixture, with the game it holds. */
-    val GAMES: Map<String, SavedGame> = mapOf(
-        "game-golden.save" to SaveFixtures.savedAfter(
-            X01Config(listOf("Ann", "Clément")),
-            listOf(Dart.triple(20), Dart.single(20), Dart.double(5)),
-        ),
-        "game-empty.save" to SaveFixtures.EMPTY,
-        "game-mid-turn.save" to SaveFixtures.MID_TURN,
-        "game-after-next-player.save" to SaveFixtures.AFTER_NEXT_PLAYER,
-        "game-waiting-checkout.save" to SaveFixtures.WAITING_CHECKOUT,
-        "game-four-players-301-single-out.save" to SaveFixtures.savedAfter(
-            SaveFixtures.config(players = 4, startScore = 301, rule = CheckoutRule.SINGLE_OUT),
-            listOf(Dart.triple(20), Dart.BULL, Dart.MISS, Dart.OUTER_BULL),
-        ),
-    )
-
-    fun bytes(name: String): ByteArray =
-        checkNotNull(V1Fixtures::class.java.getResourceAsStream("/persistence/v1/$name")) { name }.readBytes()
+    val LONGEST: SavedGame = savedGame(X01Game(config(players = 1), List(GameSaveCodec.MAX_DARTS) { Dart.MISS }), false)
 }
 
 /** The X01 game of a valid result; fails the test if the file held another mode. */
@@ -113,6 +91,16 @@ internal fun withChecksum(lines: List<String>): ByteArray {
 
 /** The covered lines (kind to last body line) of a save file: without the checksum, end and final empty lines. */
 internal fun coveredLines(bytes: ByteArray): List<String> = String(bytes, Charsets.UTF_8).lines().dropLast(3)
+
+/**
+ * A literal last setup file in the layout of the old version 1 (no mode line, `game=x01` first), with its valid
+ * checksum, as the first builds wrote it. It must never be read as a version 1 of the current format (R30, R10).
+ */
+internal val SaveFixtures.OLD_V1_LAST_SETUP: ByteArray
+    get() = (
+        "kosmodarts=last-setup\nversion=1\ngame=x01\nstart-score=301\ncheckout=single-out\nplayers=3\n" +
+            "player=Q2lk\nplayer=QW5u\nplayer=Wm/DqQ==\ncrc32=481ddc42\nend\n"
+        ).toByteArray(Charsets.UTF_8)
 
 /** A [ByteStore] in memory, with counters and an optional failure on read or write. */
 internal class MemoryStore(var content: ByteArray? = null) : ByteStore {

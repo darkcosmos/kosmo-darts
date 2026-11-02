@@ -49,6 +49,9 @@ object GameTags {
     /** The main button of the action bar while a checkout waits: "Confirm leg", "Confirm set" or "Confirm match". */
     const val CONFIRM: String = "game_confirm"
 
+    /** The message under the zone when the match could not be saved in the history (AR3). */
+    const val ARCHIVE_FAILED: String = "game_archive_failed"
+
     fun dartSlot(index: Int): String = "game_dart_slot_$index"
 
     fun average(playerIndex: Int): String = "game_average_$playerIndex"

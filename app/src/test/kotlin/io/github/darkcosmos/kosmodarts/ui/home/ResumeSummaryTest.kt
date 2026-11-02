@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.home
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures
@@ -77,7 +78,7 @@ class ResumeSummaryTest {
     /** PC9, R17: the summary gives each player his own color slot. */
     @Test
     fun `R17 the summary carries the saved color slots`() {
-        val saved = SavedGame(
+        val saved = savedGame(
             MatchFixtures.match("Ann", "Bob", colorSlots = listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_1)),
             isAwaitingNextPlayer = false,
         )

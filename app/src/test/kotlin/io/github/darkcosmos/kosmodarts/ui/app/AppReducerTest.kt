@@ -1,5 +1,9 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.TEST_STAMP
+import io.github.darkcosmos.kosmodarts.testing.startedJournal
+import io.github.darkcosmos.kosmodarts.testing.reduce
+import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
@@ -38,10 +42,10 @@ class AppReducerTest {
     private val lastWinningEvent = AppEvent.NumberTapped(1)
 
     /** The winning dart, then "Finish game" in the checkout dialog. */
-    private val finishEvents = arrayOf(lastWinningEvent, AppEvent.FinishGameTapped)
+    private val finishEvents = arrayOf(lastWinningEvent, AppEvent.FinishGameTapped, AppEvent.ArchiveSucceeded)
 
     private fun inGame(config: X01Config, darts: List<Dart> = emptyList()) =
-        AppState(screen = Screen.Game(GameScreenState(X01Game(config, darts))))
+        AppState(screen = gameScreen(GameScreenState(X01Game(config, darts))))
 
     @Test
     fun theAppStartsOnHome() {
@@ -105,7 +109,7 @@ class AppReducerTest {
         )
 
         val expected = GameScreenState(X01Game(X01Config(listOf("Ann", "Bob"))))
-        assertEquals(Screen.Game(expected, isNewGame = true), state.screen)
+        assertEquals(gameScreen(expected, startedJournal(), isNewGame = true), state.screen)
         assertEquals(X01MatchConfig(X01Config(listOf("Ann", "Bob"))), state.lastSetup?.x01Setup)
     }
 
@@ -192,9 +196,12 @@ class AppReducerTest {
 
     @Test
     fun undoInTheCheckoutDialogReopensTheTurn() {
-        val state = inGame(singleOut301, winningDarts).after(lastWinningEvent, AppEvent.UndoTapped)
+        val start = inGame(singleOut301, winningDarts)
+        val state = start.after(lastWinningEvent, AppEvent.UndoTapped)
 
-        assertEquals(Screen.Game(GameScreenState(X01Game(singleOut301, winningDarts))), state.screen)
+        // DJ2: the winning dart stays in the journal, followed by the undo.
+        val journal = (start.screen as Screen.Game).journal.enter(Dart.single(1), TEST_STAMP.at).undo()
+        assertEquals(gameScreen(GameScreenState(X01Game(singleOut301, winningDarts)), journal), state.screen)
     }
 
     @Test
@@ -228,7 +235,7 @@ class AppReducerTest {
         // PC7: each player keeps his color slot through the rotation.
         val slots = listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_3, ColorSlot.SLOT_1)
         val expected = GameScreenState(X01Match.start(X01MatchConfig(rotated, MatchFormat(), slots)))
-        assertEquals(Screen.Game(expected, isNewGame = true), state.screen)
+        assertEquals(gameScreen(expected, startedJournal(), isNewGame = true), state.screen)
     }
 
     @Test

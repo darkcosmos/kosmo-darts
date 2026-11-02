@@ -51,8 +51,9 @@ internal data class SaveBody(
 internal const val MAX_SAVED_DARTS: Int = 10_000
 
 /**
- * The mode line of a version 4 file (ADR 0008, R23): `mode=x01` or `mode=cricket`, right after the version line.
- * Versions 1 to 3 have no mode line and are X01 files (R25).
+ * The mode line of a saved game (format version 1 of ADR 0011; ADR 0008, R23): `mode=x01` or `mode=cricket`, right
+ * after the version line.
+ * No earlier version is read (R30).
  */
 internal enum class SaveMode(val token: String) {
     X01("x01"),

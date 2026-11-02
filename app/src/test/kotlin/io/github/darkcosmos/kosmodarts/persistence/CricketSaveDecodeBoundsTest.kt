@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedCricketGame
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketGame
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketLegSummary
@@ -122,7 +123,7 @@ class CricketSaveDecodeBoundsTest {
             listOf(leg),
             CricketGame(config, startingPlayerIndex = 1),
         )
-        return SavedCricketGame(match, isAwaitingNextPlayer = false, isBetweenLegs = true)
+        return savedCricketGame(match, isAwaitingNextPlayer = false, isBetweenLegs = true)
     }
 
     /** M4: the confirmed legs never decide the match; the deciding leg stays current. */
@@ -139,7 +140,7 @@ class CricketSaveDecodeBoundsTest {
             }
         }
 
-        assertInvalid(InvalidSaveReason.REJECTED_BY_ENGINE, twoLegs)
+        assertInvalid(InvalidSaveReason.REJECTED_BY_ENGINE, JournalFixtures.withJournalCount(twoLegs, count = 3))
     }
 
     @Test
@@ -166,12 +167,16 @@ class CricketSaveDecodeBoundsTest {
 
     /**
      * ADR 0008, "Size limit": the largest undecided match (4 players, best of 9 sets of 9 legs: 1,088 confirmed legs)
-     * with the largest figures and 10,000 triples in the current leg is over [GameSaveCodec.MAX_FILE_BYTES], so it is
-     * not written; with misses in the current leg, it fits, and it round trips.
+     * with the largest figures, 10,000 triples in the current leg and long journals is over
+     * [GameSaveCodec.MAX_FILE_BYTES], so it is not written; with misses in the current leg and the plain journal, it
+     * fits, and it round trips.
      */
     @Test
     fun `R12 a Cricket save over the file size limit is not encoded`() {
-        assertNull(codec.encode(largestMatch(Dart.triple(20))))
+        val bloated = largestMatch(Dart.triple(20))
+        // 14,000 voided darts in each of the 4 first legs, 20 bytes each: over 1 MiB together (R28).
+        val padded = JournalFixtures.withVoided(bloated.journal, legs = 4, pairs = 14_000)
+        assertNull(codec.encode(bloated.copy(journal = padded)))
         val fitting = largestMatch(Dart.MISS)
         val bytes = checkNotNull(codec.encode(fitting))
 
@@ -199,6 +204,6 @@ class CricketSaveDecodeBoundsTest {
         val legs = winners.map(::leg)
         val current = CricketGame(config, List(darts) { dart }, startingPlayerIndex = legs.size % 4)
         val match = CricketMatch(CricketMatchConfig(config, MatchFormat(legsPerSet = 9, sets = 9)), legs, current)
-        return SavedCricketGame(match, isAwaitingNextPlayer = false)
+        return savedCricketGame(match, isAwaitingNextPlayer = false)
     }
 }

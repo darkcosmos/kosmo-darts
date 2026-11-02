@@ -28,6 +28,7 @@ Les dimensions sont en dp (les maquettes sont dessinées à 412 × 915 dp, la ta
 | `onAccent` | `#0A0F1E` | Texte sur `accent` (13,2:1) |
 | `accentDim` | `#2A2410` | Fond de la route de sortie quand elle n'est pas sur la zone du joueur |
 | `danger` | `#B3261E` | BUST uniquement |
+| `dangerText` | `#FF8A80` | Texte « BUST » sur carte sombre (`surface`), détail d'un match (≥ 4,5:1) |
 | `onDanger` | `#FFFFFF` | Texte sur `danger` (6,5:1) |
 
 ### Couleurs des joueurs

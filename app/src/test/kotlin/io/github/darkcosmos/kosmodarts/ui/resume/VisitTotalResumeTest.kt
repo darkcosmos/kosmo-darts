@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.resume
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
@@ -80,7 +81,7 @@ class VisitTotalResumeTest {
     private val threePlayers = X01Config(listOf("Ann", "Bob", "Cid"))
 
     /** Ann 50, Bob 30, Cid 3, then Ann's 20 and 15: a turn in progress. */
-    private val midTurn = SavedGame(
+    private val midTurn = savedGame(
         X01Game(threePlayers, darts(20, 15, 15, 10, 10, 10, 1, 1, 1, 20, 15)),
         isAwaitingNextPlayer = false,
     )
@@ -101,7 +102,7 @@ class VisitTotalResumeTest {
         // 301: Ann leaves 121, Bob scores 3, then Ann's T20 T20 leaves 1, a bust in double out.
         val config = X01Config(listOf("Ann", "Bob"), startScore = 301)
         val t20 = Dart.triple(20)
-        resume(SavedGame(X01Game(config, listOf(t20, t20, t20) + darts(1, 1, 1) + listOf(t20, t20)), true))
+        resume(savedGame(X01Game(config, listOf(t20, t20, t20) + darts(1, 1, 1) + listOf(t20, t20)), true))
         val expected = listOf(pendingBust(), lastVisit(3))
         assertBoxes(expected)
         composeRule.onNodeWithTag(GameTags.CARD_BUST).revealIfScrolled().assertIsDisplayed()
@@ -117,7 +118,7 @@ class VisitTotalResumeTest {
     /** VT6 (Q3): Bob is not shown as throwing while Ann's turn waits, also after process death. */
     @Test
     fun `VT7 process death during a waiting turn`() {
-        resume(SavedGame(X01Game(threePlayers, darts(20, 15, 15)), isAwaitingNextPlayer = true))
+        resume(savedGame(X01Game(threePlayers, darts(20, 15, 15)), isAwaitingNextPlayer = true))
         val expected = listOf(lastVisit(50), notPlayed(), notPlayed())
         assertBoxes(expected)
 
@@ -130,7 +131,7 @@ class VisitTotalResumeTest {
     @Test
     fun `VT7 process death during a waiting turn in a later round`() {
         val config = X01Config(listOf("Ann", "Bob"))
-        resume(SavedGame(X01Game(config, darts(20, 15, 15, 20, 20, 5, 1, 1, 1)), isAwaitingNextPlayer = true))
+        resume(savedGame(X01Game(config, darts(20, 15, 15, 20, 20, 5, 1, 1, 1)), isAwaitingNextPlayer = true))
         val expected = listOf(lastVisit(3), lastVisit(45))
         assertBoxes(expected)
 

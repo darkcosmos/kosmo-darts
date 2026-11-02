@@ -25,12 +25,14 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Turn
  * @property multiplier one-shot modifier for the next number: [Multiplier.SINGLE] when no modifier is active.
  * @property isAwaitingConfirmation whether the last dart completed a turn that is not confirmed yet.
  * @property isAbandonDialogShown whether the "Abandon the game?" confirmation is open.
+ * @property archive where the archive of the confirmed match stands (AR3); not saved.
  */
 data class GameScreenState(
     val match: X01Match,
     val multiplier: Multiplier = Multiplier.SINGLE,
     val isAwaitingConfirmation: Boolean = false,
     val isAbandonDialogShown: Boolean = false,
+    val archive: ArchiveStatus = ArchiveStatus.Idle,
 ) {
     /** A single game (docs/rules/match.md, M5): [game] is the only leg of a match in 1 leg and 1 set. */
     constructor(
@@ -165,7 +167,12 @@ data class GameScreenState(
      * turn with its first darts.
      */
     fun undo(): GameScreenState =
-        copy(match = match.undo(), multiplier = Multiplier.SINGLE, isAwaitingConfirmation = false)
+        copy(
+            match = match.undo(),
+            multiplier = Multiplier.SINGLE,
+            isAwaitingConfirmation = false,
+            archive = ArchiveStatus.Idle,
+        )
 
     fun withAbandonDialog(shown: Boolean): GameScreenState = copy(isAbandonDialogShown = shown)
 

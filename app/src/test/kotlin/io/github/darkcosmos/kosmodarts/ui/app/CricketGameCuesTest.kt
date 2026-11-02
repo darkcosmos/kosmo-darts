@@ -1,5 +1,9 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.TEST_STAMP
+import io.github.darkcosmos.kosmodarts.testing.reduce
+import io.github.darkcosmos.kosmodarts.testing.cricketGameScreen
+import io.github.darkcosmos.kosmodarts.testing.cricketBetweenLegs
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketCue
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
@@ -23,7 +27,7 @@ class CricketGameCuesTest {
     private val duel = CricketSaveFixtures.match("Ann", "Bob", legsPerSet = 2)
 
     private fun inGame(match: CricketMatch = duel, isAwaiting: Boolean = false) =
-        AppState(screen = Screen.CricketGame(CricketGameScreenState(match, isAwaitingConfirmation = isAwaiting)))
+        AppState(screen = cricketGameScreen(CricketGameScreenState(match, isAwaitingConfirmation = isAwaiting)))
 
     private fun dartTapped(segment: Int) = AppEvent.CricketDartTapped(Dart.single(segment))
 
@@ -88,7 +92,7 @@ class CricketGameCuesTest {
 
     @Test
     fun `AN31 a new match and a rematch announce who throws first`() {
-        val start = newCricketMatchState(duel.matchConfig, previous = null)
+        val start = newCricketMatchState(duel.matchConfig, previous = null, stamp = TEST_STAMP)
         val cues = cricketGameCues(AppState(screen = Screen.Setup(SetupState())), AppEvent.StartRequested, start)
         val end = AppState(screen = Screen.CricketEnd(duel.confirmLegsWonBy(0).playLegWonBy(0)))
 
@@ -98,7 +102,7 @@ class CricketGameCuesTest {
 
     @Test
     fun `AN28 Next leg announces who throws first in the new leg`() {
-        val between = AppState(screen = Screen.CricketBetweenLegs(duel.confirmLegsWonBy(0)))
+        val between = AppState(screen = cricketBetweenLegs(duel.confirmLegsWonBy(0)))
 
         assertEquals(
             listOf(CricketCue.TurnStart(1, "Bob", isGameStart = true)),
@@ -109,7 +113,7 @@ class CricketGameCuesTest {
     @Test
     fun `AN7 no cue on a finish, an abandon or a resume`() {
         val won = AppState(
-            screen = Screen.CricketGame(CricketGameScreenState(duel.playLegWonBy(0), isAwaitingConfirmation = true)),
+            screen = cricketGameScreen(CricketGameScreenState(duel.playLegWonBy(0), isAwaitingConfirmation = true)),
         )
         val resumed = AppState(screen = CricketSaveFixtures.WAITING.toScreen())
 

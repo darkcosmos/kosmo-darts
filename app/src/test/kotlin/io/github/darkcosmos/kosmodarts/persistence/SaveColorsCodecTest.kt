@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_1
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_2
@@ -23,7 +24,7 @@ class SaveColorsCodecTest {
     private val setupCodec = LastSetupCodec()
 
     /** Three players holding slots 3, 1 and 4, in the middle of the second leg of a match. */
-    private val saved = SavedGame(
+    private val saved = savedGame(
         match("Ann", "Bob", "Cid", legsPerSet = 2, colorSlots = listOf(SLOT_3, SLOT_1, SLOT_4))
             .confirmLegsWonBy(1)
             .throwing(Dart.triple(20)),
@@ -61,25 +62,6 @@ class SaveColorsCodecTest {
 
         assertEquals(setup, decoded?.x01Setup)
         assertEquals(listOf(SLOT_2, SLOT_4, SLOT_1), decoded?.roster?.colorSlots)
-    }
-
-    /** R18: every frozen version 1 game decodes with the slots of the player positions. */
-    @Test
-    fun `R18 version 1 games get slots by position`() {
-        V1Fixtures.GAMES.keys.forEach { name ->
-            val decoded = gameCodec.decode(V1Fixtures.bytes(name)) as GameDecodeResult.Valid
-            val players = decoded.x01.match.config.players.size
-
-            assertEquals(name, ColorSlot.byPosition(players), decoded.x01.match.colorSlots)
-        }
-    }
-
-    /** R18: the frozen version 1 last setup decodes with the slots of the player positions. */
-    @Test
-    fun `R18 a version 1 last setup gets slots by position`() {
-        val bytes = checkNotNull(javaClass.getResourceAsStream("/persistence/v1/last-setup.save")).readBytes()
-
-        assertEquals(ColorSlot.byPosition(3), setupCodec.decode(bytes)?.roster?.colorSlots)
     }
 
     /** S1, R9: one slot per player, separated by single spaces; another count or an empty token is malformed. */

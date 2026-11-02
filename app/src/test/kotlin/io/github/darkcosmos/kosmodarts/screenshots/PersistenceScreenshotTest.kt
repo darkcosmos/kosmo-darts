@@ -1,10 +1,16 @@
 package io.github.darkcosmos.kosmodarts.screenshots
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.ExperimentalRoborazziApi
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -13,11 +19,18 @@ import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
+import io.github.darkcosmos.kosmodarts.history.DbResult
+import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
+import io.github.darkcosmos.kosmodarts.persistence.StoredGame
+import io.github.darkcosmos.kosmodarts.ui.game.GameTags
+import java.util.concurrent.CountDownLatch
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
 import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
 import io.github.darkcosmos.kosmodarts.ui.resume.AppProcess
 import org.junit.After
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -49,7 +62,7 @@ class PersistenceScreenshotTest {
         captureScreenRoboImage("$directory/$name.png")
     }
 
-    private fun launchWith(saved: SavedGame) {
+    private fun launchWith(saved: StoredGame) {
         process.writeGame(saved)
         process.launchFresh()
     }
@@ -150,10 +163,103 @@ class PersistenceScreenshotTest {
     @Config(qualifiers = "+fr-port")
     fun restoreFailedPortraitFrench() = restoreFailed("setup_restore_failed_portrait_fr")
 
+    /** AR3: the failure message is displayed and its text is laid out whole in the node that holds it (no clipping). */
+    private fun assertArchiveMessageNotClipped() {
+        val message = composeRule.onNode(hasTestTag(GameTags.ARCHIVE_FAILED), useUnmergedTree = true)
+        message.assertIsDisplayed()
+        val results = mutableListOf<TextLayoutResult>()
+        message.fetchSemanticsNode().config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(results)
+        val layout = results.single()
+        assertFalse("text overflows its height", layout.didOverflowHeight)
+        assertTrue(
+            "node ${message.fetchSemanticsNode().size.height} px < text ${layout.size.height} px",
+            message.fetchSemanticsNode().size.height >= layout.size.height,
+        )
+    }
+
+    /** AR3: the confirmed win while the archive is held ("Saving…") or after it failed (the message). */
+    private fun confirmWin(saved: StoredGame, name: String, isFailure: Boolean) {
+        val gate = CountDownLatch(1)
+        if (isFailure) process.archive.archiveAnswer = DbResult.Failed else process.archive.gate = gate
+        try {
+            launchWith(saved)
+            composeRule.onNodeWithTag(HomeTags.RESUME).performScrollTo().performClick()
+            composeRule.waitForIdle()
+            val confirm = composeRule.onNode(hasTestTag(GameTags.CONFIRM), useUnmergedTree = true)
+            // The X01 screen scrolls below the score floor; the Cricket screen never does.
+            runCatching { confirm.performScrollTo() }
+            confirm.performClick()
+            if (isFailure) process.settle() else composeRule.waitForIdle()
+            if (isFailure) assertArchiveMessageNotClipped()
+            capture(name)
+        } finally {
+            gate.countDown()
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun x01ArchivingPortraitEnglish() = confirmWin(MATCH_WIN, "archive_x01_saving_portrait_en", isFailure = false)
+
+    @Test
+    @Config(qualifiers = "+fr-land")
+    fun x01ArchivingLandscapeFrench() = confirmWin(MATCH_WIN, "archive_x01_saving_landscape_fr", isFailure = false)
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun x01FailedPortraitEnglish() = confirmWin(MATCH_WIN, "archive_x01_failed_portrait_en", isFailure = true)
+
+    @Test
+    @Config(qualifiers = "+fr-land")
+    fun x01FailedLandscapeFrench() = confirmWin(MATCH_WIN, "archive_x01_failed_landscape_fr", isFailure = true)
+
+    @Test
+    @Config(qualifiers = "+en-port", fontScale = LARGEST_FONT_SCALE)
+    fun x01FailedPortraitEnglishLargestFont() =
+        confirmWin(MATCH_WIN, "archive_x01_failed_portrait_en_font200", isFailure = true)
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun cricketArchivingPortraitEnglish() =
+        confirmWin(CricketSaveFixtures.PENDING_MATCH_WIN, "archive_cricket_saving_portrait_en", isFailure = false)
+
+    @Test
+    @Config(qualifiers = "+en-land")
+    fun cricketArchivingLandscapeEnglish() =
+        confirmWin(CricketSaveFixtures.PENDING_MATCH_WIN, "archive_cricket_saving_landscape_en", isFailure = false)
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun cricketFailedPortraitFrench() =
+        confirmWin(CricketSaveFixtures.PENDING_MATCH_WIN, "archive_cricket_failed_portrait_fr", isFailure = true)
+
+    @Test
+    @Config(qualifiers = "+en-land")
+    fun cricketFailedLandscapeEnglish() =
+        confirmWin(CricketSaveFixtures.PENDING_MATCH_WIN, "archive_cricket_failed_landscape_en", isFailure = true)
+
+    @Test
+    @Config(qualifiers = "+en-port", fontScale = LARGEST_FONT_SCALE)
+    fun cricketFailedPortraitEnglishLargestFont() =
+        confirmWin(CricketSaveFixtures.PENDING_MATCH_WIN, "archive_cricket_failed_portrait_en_font200", true)
+
+    @Test
+    @Config(qualifiers = "+fr-land", fontScale = LARGEST_FONT_SCALE)
+    fun x01FailedLandscapeFrenchLargestFont() =
+        confirmWin(MATCH_WIN, "archive_x01_failed_landscape_fr_font200", isFailure = true)
+
+    @Test
+    @Config(qualifiers = "+fr-land", fontScale = LARGEST_FONT_SCALE)
+    fun cricketFailedLandscapeFrenchLargestFont() =
+        confirmWin(CricketSaveFixtures.PENDING_MATCH_WIN, "archive_cricket_failed_landscape_fr_font200", true)
+
     private companion object {
         const val SCREENSHOT_DIR_PROPERTY = "kosmodarts.screenshot.dir"
         const val DEFAULT_SCREENSHOT_DIR = "build/outputs/roborazzi"
         const val LARGEST_FONT_SCALE = 2.0f
+
+        /** A single game whose winning dart waits for "Confirm match". */
+        val MATCH_WIN: SavedGame = SaveFixtures.WAITING_CHECKOUT
 
         /** 501, three players: Ann and Bob have played a turn, Cid has thrown one dart. */
         val THREE_PLAYERS: SavedGame = SaveFixtures.savedAfter(
@@ -163,7 +269,7 @@ class PersistenceScreenshotTest {
         )
 
         /** Four players, three of them with names of 20 characters. */
-        val FOUR_LONG_NAMES: SavedGame = SavedGame(
+        val FOUR_LONG_NAMES: SavedGame = savedGame(
             X01Game(
                 X01Config(listOf("Maximilien-Alexandre", "Bartholomew Jonathan", "Anne-Charlotte Marie", "Dan")),
                 listOf(Dart.triple(20), Dart.triple(20), Dart.triple(20)),

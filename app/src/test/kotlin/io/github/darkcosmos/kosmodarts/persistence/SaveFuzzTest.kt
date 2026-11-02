@@ -1,10 +1,16 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
+import io.github.darkcosmos.kosmodarts.engine.journal.JournalEvent
+import io.github.darkcosmos.kosmodarts.engine.journal.LegJournal
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
+import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
+import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import org.junit.Assert.assertArrayEquals
-import org.junit.Assert.assertEquals
 import org.junit.Assert.fail
 import org.junit.Test
 import kotlin.random.Random
@@ -26,12 +32,12 @@ class SaveFuzzTest {
         SaveFixtures.WAITING_BUST,
         SaveFixtures.WAITING_CHECKOUT,
     ).map { checkNotNull(gameCodec.encode(it)) } + matchSeeds() + cricketSeeds() +
-        V1Fixtures.GAMES.keys.map(V1Fixtures::bytes) + V3Fixtures.GAMES.keys.map(V3Fixtures::bytes)
+        journalSeeds()
 
     /**
-     * Version 4 Cricket saves (R23, R24): mid-turn, waiting, a match in a leg, between legs, a pending win by a
+     * Version 1 Cricket saves (R23, R24): mid-turn, waiting, a match in a leg, between legs, a pending win by a
      * non-thrower, cut-throat solo and 25-Bull off, plus the mode-line cases of R23 (no mode line, a mode line that
-     * does not match its body, a mode line in a version 3 file).
+     * does not match its body, a file of an earlier version).
      */
     private fun cricketSeeds(): List<ByteArray> {
         val valid = listOf(
@@ -51,15 +57,14 @@ class SaveFuzzTest {
             cricket.filterNot { it.startsWith("mode=") },
             cricket.map { if (it == "mode=cricket") "mode=x01" else it },
             x01.map { if (it == "mode=x01") "mode=cricket" else it },
-            x01.map { if (it == "version=4") "version=3" else it },
+            x01.map { if (it == "version=1") "version=4" else it },
         ).map(::withChecksum)
         return valid + modeCases
     }
 
     /**
-     * Version 3 matches (R11, ADR 0005, ADR 0006) with non-positional color slots: in a leg, between legs and in a
-     * pending checkout, plus the strict key cases of S2 (a version 1 file with a version 2 key, a version 3 file with
-     * a missing or swapped key).
+     * Matches (R11, ADR 0005, ADR 0006) with non-positional color slots: in a leg, between legs and in a pending
+     * checkout, plus the strict key cases of S2 (a missing or swapped key).
      */
     private fun matchSeeds(): List<ByteArray> {
         val start = MatchFixtures.match(
@@ -71,19 +76,57 @@ class SaveFuzzTest {
             colorSlots = listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_1, ColorSlot.SLOT_2),
         )
         val valid = listOf(
-            SavedGame(start.confirmLegsWonBy(0, 1, 1).throwing(Dart.triple(20)), isAwaitingNextPlayer = false),
-            SavedGame(start.confirmLegsWonBy(2, 2), isAwaitingNextPlayer = false, isBetweenLegs = true),
-            SavedGame(start.confirmLegsWonBy(0).playLegWonBy(0), isAwaitingNextPlayer = true),
+            savedGame(start.confirmLegsWonBy(0, 1, 1).throwing(Dart.triple(20)), isAwaitingNextPlayer = false),
+            savedGame(start.confirmLegsWonBy(2, 2), isAwaitingNextPlayer = false, isBetweenLegs = true),
+            savedGame(start.confirmLegsWonBy(0).playLegWonBy(0), isAwaitingNextPlayer = true),
         ).map { checkNotNull(gameCodec.encode(it)) }
         val body = coveredLines(valid.first())
-        val v1 = coveredLines(V1Fixtures.bytes("game-golden.save"))
         val keyCases = listOf(
-            v1.take(5) + "legs-per-set=1" + v1.drop(5),
             body.filterNot { it.startsWith("between-legs=") },
             body.filterNot { it.startsWith("colors=") },
             body.map { if (it.startsWith("legs-per-set=")) "sets=3" else if (it == "sets=3") "legs-per-set=2" else it },
         ).map(::withChecksum)
         return valid + keyCases
+    }
+
+    /**
+     * Version 1 saves with real journals (R26 to R29): voided darts, several legs, a Cricket match, plus journal cases
+     * that must be rejected (a missing journal line, a bad time, an undo with nothing to undo).
+     */
+    private fun journalSeeds(): List<ByteArray> {
+        val config = SaveFixtures.config(players = 2, startScore = 301)
+        val voided = savedGame(
+            X01Match(
+                X01MatchConfig(config),
+                emptyList(),
+                X01Game(config, listOf(Dart.triple(20), Dart.single(20), Dart.double(5))),
+            ),
+            isAwaitingNextPlayer = true,
+            journal = MatchJournal(
+                JournalFixtures.MATCH_ID,
+                JournalFixtures.STARTED_AT,
+                listOf(
+                    LegJournal(
+                        listOf(
+                            JournalFixtures.dart(Dart.triple(20), 1_793_520_001_200),
+                            JournalFixtures.dart(Dart.single(5), 1_793_520_003_400),
+                            JournalEvent.Undone,
+                            JournalFixtures.dart(Dart.single(20), 1_793_520_005_000),
+                            JournalFixtures.dart(Dart.double(5), 1_793_520_006_100),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val valid = listOf(voided).map { checkNotNull(gameCodec.encode(it)) }
+        val body = coveredLines(valid.first())
+        val journalCases = listOf(
+            body.filterNot { it.startsWith("journal=") },
+            body.map { if (it.startsWith("journal=")) "journal=u" else it },
+            body.map { if (it.startsWith("journal=")) it.replace("@1793520003400", "@-") else it },
+            body.map { if (it.startsWith("match-id=")) "match-id=NOT-A-UUID" else it },
+        ).map(::withChecksum)
+        return valid + journalCases
     }
 
     private val validSetups: List<ByteArray> =
@@ -92,12 +135,8 @@ class SaveFuzzTest {
     @Test
     fun `R11 mutated saved games never crash the decoder`() = fuzz(validGames) { input ->
         when (val result = gameCodec.decode(input)) {
-            // A version 4 file is canonical; an older file re-encodes as version 4 and decodes to the same game.
-            is GameDecodeResult.Valid -> if (String(input, Charsets.UTF_8).lines().getOrNull(1) != "version=4") {
-                assertEquals(result, gameCodec.decode(checkNotNull(gameCodec.encode(result.saved))))
-            } else {
-                assertArrayEquals(input, gameCodec.encode(result.saved))
-            }
+            // A version 1 file is canonical (R26): what is accepted re-encodes to the same bytes.
+            is GameDecodeResult.Valid -> assertArrayEquals(input, gameCodec.encode(result.saved))
             is GameDecodeResult.Invalid -> Unit
         }
     }

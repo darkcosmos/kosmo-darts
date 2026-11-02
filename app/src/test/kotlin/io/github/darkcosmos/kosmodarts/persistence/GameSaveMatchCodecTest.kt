@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
@@ -26,7 +27,7 @@ class GameSaveMatchCodecTest {
     private val config = X01Config(listOf("Ann", "Bob"), 301, CheckoutRule.SINGLE_OUT)
 
     /** First to 2 legs, 2 sets: Ann won leg 1, Bob leg 2; Ann has thrown T20 20 in leg 3. */
-    private val midLeg = SavedGame(
+    private val midLeg = savedGame(
         X01Match(
             X01MatchConfig(config, MatchFormat(2, 2)),
             listOf(
@@ -56,75 +57,12 @@ class GameSaveMatchCodecTest {
         return validBody.toMutableList().apply { set(index, line) }
     }
 
-    /**
-     * ADR 0005: the exact bytes of a match in the middle of a leg, as the version 2 encoder wrote them. Frozen since
-     * version 3 (ADR 0006, R18): it keeps decoding the same, with the color slots of the player positions.
-     */
+    /** ADR 0011, R26: the exact bytes of the same match in format version 1: the mode line, the body, the journal. */
     @Test
-    fun `format v2 golden file of a match`() {
+    fun `format v1 golden file of a match`() {
         val golden = """
             kosmodarts=saved-game
-            version=2
-            game=x01
-            start-score=301
-            checkout=single-out
-            legs-per-set=2
-            sets=2
-            players=2
-            player=QW5u
-            player=Qm9i
-            legs=2
-            leg=0 301/9 120/6
-            leg=1 200/9 301/9
-            darts=T20 20
-            awaiting-next-player=false
-            between-legs=false
-            crc32=03fea0a7
-            end
-
-        """.trimIndent().toByteArray(Charsets.UTF_8)
-
-        assertEquals(GameDecodeResult.Valid(midLeg), codec.decode(golden))
-    }
-
-    /**
-     * ADR 0006: the exact bytes of the same match in version 3, the color slots after the player lines. Frozen since
-     * version 4 (ADR 0008, R25): it keeps decoding the same, as X01.
-     */
-    @Test
-    fun `format v3 golden file of a match`() {
-        val golden = """
-            kosmodarts=saved-game
-            version=3
-            game=x01
-            start-score=301
-            checkout=single-out
-            legs-per-set=2
-            sets=2
-            players=2
-            player=QW5u
-            player=Qm9i
-            colors=1 2
-            legs=2
-            leg=0 301/9 120/6
-            leg=1 200/9 301/9
-            darts=T20 20
-            awaiting-next-player=false
-            between-legs=false
-            crc32=551cd129
-            end
-
-        """.trimIndent().toByteArray(Charsets.UTF_8)
-
-        assertEquals(GameDecodeResult.Valid(midLeg), codec.decode(golden))
-    }
-
-    /** ADR 0008, R23: the exact bytes of the same match in version 4: the mode line, then the version 3 body. */
-    @Test
-    fun `format v4 golden file of a match`() {
-        val golden = """
-            kosmodarts=saved-game
-            version=4
+            version=1
             mode=x01
             game=x01
             start-score=301
@@ -141,53 +79,19 @@ class GameSaveMatchCodecTest {
             darts=T20 20
             awaiting-next-player=false
             between-legs=false
-            crc32=cb754633
+            match-id=00000000-0000-0000-0000-000000000000
+            started-at=0
+            journals=3
+            journal=T20@0 T20@1 T20@2 0@3 0@4 0@5 T20@6 T19@7 D2@8
+            journal=T20@9 T20@10 T20@11 0@12 0@13 0@14 T20@15 T19@16 D2@17
+            journal=T20@18 20@19
+            crc32=567c960a
             end
 
         """.trimIndent().toByteArray(Charsets.UTF_8)
 
         assertArrayEquals(golden, codec.encode(midLeg))
         assertEquals(GameDecodeResult.Valid(midLeg), codec.decode(golden))
-    }
-
-    /** R16: every version 1 file decodes as a single game (1 and 1, no confirmed leg, not between legs). */
-    @Test
-    fun `R16 version 1 files decode as single games`() {
-        V1Fixtures.GAMES.forEach { (name, saved) ->
-            val decoded = codec.decode(V1Fixtures.bytes(name))
-
-            assertEquals(name, GameDecodeResult.Valid(saved), decoded)
-            val match = (decoded as GameDecodeResult.Valid).x01.match
-            assertEquals(name, MatchFormat(), match.format)
-            assertTrue(name, match.completedLegs.isEmpty())
-            assertEquals(name, false, decoded.saved.isBetweenLegs)
-        }
-    }
-
-    /**
-     * T4: a single game re-encodes to exactly its version 1 content, with `version=4` and the new keys inserted at
-     * their places (the mode line after the version, legs-per-set and sets after checkout, colors by position and legs
-     * before darts, between-legs after the waiting flag; R18, R23).
-     */
-    @Test
-    fun `R13 a single game is its version 1 content plus the new keys`() {
-        V1Fixtures.GAMES.keys.forEach { name ->
-            val v1 = coveredLines(V1Fixtures.bytes(name))
-            val players = v1.first { it.startsWith("players=") }.substringAfter('=').toInt()
-            val colors = "colors=" + (1..players).joinToString(" ")
-            val expected = v1.flatMap { line ->
-                when {
-                    line == "version=1" -> listOf("version=4", "mode=x01")
-                    line.startsWith("checkout=") -> listOf(line, "legs-per-set=1", "sets=1")
-                    line.startsWith("darts=") -> listOf(colors, "legs=0", line)
-                    line.startsWith("awaiting-next-player=") -> listOf(line, "between-legs=false")
-                    else -> listOf(line)
-                }
-            }
-            val decoded = codec.decode(V1Fixtures.bytes(name)) as GameDecodeResult.Valid
-
-            assertEquals(name, expected, coveredLines(checkNotNull(codec.encode(decoded.saved))))
-        }
     }
 
     /** R14: in the middle of a leg, in the middle of a set, after a set, between legs and in each checkout dialog. */
@@ -197,22 +101,22 @@ class GameSaveMatchCodecTest {
         val afterOneLeg = start.confirmLegsWonBy(1)
         val afterSet = afterOneLeg.confirmLegsWonBy(1)
         listOf(
-            SavedGame(start.throwing(Dart.triple(20)), isAwaitingNextPlayer = false),
-            SavedGame(afterOneLeg.throwing(Dart.single(5), Dart.single(5)), isAwaitingNextPlayer = false),
-            SavedGame(afterOneLeg.throwing(Dart.MISS, Dart.MISS, Dart.MISS), isAwaitingNextPlayer = true),
-            SavedGame(afterSet, isAwaitingNextPlayer = false),
-            SavedGame(afterOneLeg, isAwaitingNextPlayer = false, isBetweenLegs = true),
-            SavedGame(afterSet, isAwaitingNextPlayer = false, isBetweenLegs = true),
-            SavedGame(start.playLegWonBy(0), isAwaitingNextPlayer = true), // LEG pending.
-            SavedGame(afterOneLeg.playLegWonBy(1), isAwaitingNextPlayer = true), // SET pending.
-            SavedGame(afterSet.confirmLegsWonBy(1).playLegWonBy(1), isAwaitingNextPlayer = true), // MATCH pending.
+            savedGame(start.throwing(Dart.triple(20)), isAwaitingNextPlayer = false),
+            savedGame(afterOneLeg.throwing(Dart.single(5), Dart.single(5)), isAwaitingNextPlayer = false),
+            savedGame(afterOneLeg.throwing(Dart.MISS, Dart.MISS, Dart.MISS), isAwaitingNextPlayer = true),
+            savedGame(afterSet, isAwaitingNextPlayer = false),
+            savedGame(afterOneLeg, isAwaitingNextPlayer = false, isBetweenLegs = true),
+            savedGame(afterSet, isAwaitingNextPlayer = false, isBetweenLegs = true),
+            savedGame(start.playLegWonBy(0), isAwaitingNextPlayer = true), // LEG pending.
+            savedGame(afterOneLeg.playLegWonBy(1), isAwaitingNextPlayer = true), // SET pending.
+            savedGame(afterSet.confirmLegsWonBy(1).playLegWonBy(1), isAwaitingNextPlayer = true), // MATCH pending.
         ).forEach(::assertRoundTrip)
     }
 
     /** R14: the starter of the current leg is not stored: it is derived from the number of confirmed legs (M6). */
     @Test
     fun `R14 the current leg is replayed with its starter`() {
-        val saved = SavedGame(match("Ann", "Bob", "Cid", legsPerSet = 3).confirmLegsWonBy(0, 0), false)
+        val saved = savedGame(match("Ann", "Bob", "Cid", legsPerSet = 3).confirmLegsWonBy(0, 0), false)
 
         val decoded = codec.decode(checkNotNull(codec.encode(saved))) as GameDecodeResult.Valid
 
@@ -225,9 +129,9 @@ class GameSaveMatchCodecTest {
     fun `R9 an inconsistent between-legs flag is rejected`() {
         val start = match("Ann", "Bob", legsPerSet = 2)
         listOf(
-            SavedGame(start, isAwaitingNextPlayer = false, isBetweenLegs = true), // No confirmed leg.
-            SavedGame(start.confirmLegsWonBy(0).throwing(Dart.single(1)), false, isBetweenLegs = true), // A dart.
-            SavedGame(start.confirmLegsWonBy(0), isAwaitingNextPlayer = true, isBetweenLegs = true), // Waiting.
+            savedGame(start, isAwaitingNextPlayer = false, isBetweenLegs = true), // No confirmed leg.
+            savedGame(start.confirmLegsWonBy(0).throwing(Dart.single(1)), false, isBetweenLegs = true), // A dart.
+            savedGame(start.confirmLegsWonBy(0), isAwaitingNextPlayer = true, isBetweenLegs = true), // Waiting.
         ).forEach { saved ->
             assertEquals(
                 saved.toString(),
@@ -284,14 +188,9 @@ class GameSaveMatchCodecTest {
     /** S2: the keys of each version, in their order, each exactly once. */
     @Test
     fun `R9 keys must follow the layout of their version`() {
-        val v1Single = coveredLines(V1Fixtures.bytes("game-golden.save"))
-        val checkoutAt = v1Single.indexOfFirst { it.startsWith("checkout=") }
         val awaitingLine = validBody.first { it.startsWith("awaiting-next-player=") }
         val betweenLine = validBody.first { it.startsWith("between-legs=") }
         listOf(
-            // Version 1 with a version 2 key.
-            v1Single.take(checkoutAt + 1) + "legs-per-set=1" + v1Single.drop(checkoutAt + 1),
-            v1Single + "between-legs=false",
             // Version 3 with a missing, duplicated or out-of-order key.
             validBody - betweenLine,
             validBody.filterNot { it.startsWith("sets=") },
@@ -318,17 +217,17 @@ class GameSaveMatchCodecTest {
                     }
                 }
         }
-        assertInvalid(InvalidSaveReason.REJECTED_BY_ENGINE, afterMatch)
+        assertInvalid(InvalidSaveReason.REJECTED_BY_ENGINE, JournalFixtures.withJournalCount(afterMatch, count = 4))
         // The confirmed legs decide the match: the deciding leg is never confirmed.
         val decided = afterMatch.filterNot { it == "leg=1 0/6 301/9" }.map { if (it == "legs=3") "legs=2" else it }
-        assertInvalid(InvalidSaveReason.REJECTED_BY_ENGINE, decided)
+        assertInvalid(InvalidSaveReason.REJECTED_BY_ENGINE, JournalFixtures.withJournalCount(decided, count = 3))
     }
 
     /** R12: a confirmed leg with more darts than saved is not encoded, so the previous file stays. */
     @Test
     fun `R12 a confirmed leg over 10,000 darts is not encoded`() {
         val tooLong = X01LegSummary(config, 0, listOf(301, 0), listOf(GameSaveCodec.MAX_DARTS + 1, 0))
-        val saved = SavedGame(
+        val saved = savedGame(
             X01Match(
                 X01MatchConfig(config, MatchFormat(2, 1)),
                 listOf(tooLong),
@@ -360,7 +259,7 @@ class GameSaveMatchCodecTest {
         }
         assertEquals(format.maxLegs(4) - 1, legs.size)
         val current = X01Game(largest, List(GameSaveCodec.MAX_DARTS) { Dart.triple(20) }, legs.size % 4)
-        val saved = SavedGame(X01Match(X01MatchConfig(largest, format), legs, current), isAwaitingNextPlayer = false)
+        val saved = savedGame(X01Match(X01MatchConfig(largest, format), legs, current), isAwaitingNextPlayer = false)
 
         val bytes = checkNotNull(codec.encode(saved))
 

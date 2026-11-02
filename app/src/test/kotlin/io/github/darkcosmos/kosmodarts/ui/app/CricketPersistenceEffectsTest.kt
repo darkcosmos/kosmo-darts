@@ -1,5 +1,13 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
+import io.github.darkcosmos.kosmodarts.testing.MatchJournals
+import io.github.darkcosmos.kosmodarts.testing.TEST_STAMP
+import io.github.darkcosmos.kosmodarts.testing.startedJournal
+import io.github.darkcosmos.kosmodarts.testing.reduce
+import io.github.darkcosmos.kosmodarts.testing.savedCricketGame
+import io.github.darkcosmos.kosmodarts.testing.cricketGameScreen
+import io.github.darkcosmos.kosmodarts.testing.cricketBetweenLegs
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
@@ -21,20 +29,27 @@ class CricketPersistenceEffectsTest {
     private fun effectsOf(before: AppState, event: AppEvent): List<PersistenceEffect> =
         persistenceEffects(before, reducer.reduce(before, event))
 
-    private fun inGame(match: CricketMatch, isAwaiting: Boolean = false) =
-        AppState(screen = Screen.CricketGame(CricketGameScreenState(match, isAwaitingConfirmation = isAwaiting)))
+    private fun inGame(
+        match: CricketMatch,
+        isAwaiting: Boolean = false,
+        journal: MatchJournal = MatchJournals.of(match),
+    ) = AppState(
+        screen = cricketGameScreen(CricketGameScreenState(match, isAwaitingConfirmation = isAwaiting), journal),
+    )
 
     @Test
     fun `R12 R20 a dart and Undo save the Cricket game`() {
         val afterDart = duel.throwDart(Dart.single(20))
+        val journal = MatchJournals.of(duel)
+        val dartJournal = journal.enter(Dart.single(20), TEST_STAMP.at)
 
         assertEquals(
-            listOf(PersistenceEffect.SaveGame(SavedCricketGame(afterDart, isAwaitingNextPlayer = false))),
+            listOf(PersistenceEffect.SaveGame(savedCricketGame(afterDart, false, journal = dartJournal))),
             effectsOf(inGame(duel), AppEvent.CricketDartTapped(Dart.single(20))),
         )
         assertEquals(
-            listOf(PersistenceEffect.SaveGame(SavedCricketGame(duel, isAwaitingNextPlayer = false))),
-            effectsOf(inGame(afterDart), AppEvent.UndoTapped),
+            listOf(PersistenceEffect.SaveGame(savedCricketGame(duel, false, journal = dartJournal.undo()))),
+            effectsOf(inGame(afterDart, journal = dartJournal), AppEvent.UndoTapped),
         )
     }
 
@@ -43,7 +58,7 @@ class CricketPersistenceEffectsTest {
         val turn = duel.throwDart(Dart.MISS).throwDart(Dart.MISS).throwDart(Dart.MISS)
 
         assertEquals(
-            listOf(PersistenceEffect.SaveGame(SavedCricketGame(turn, isAwaitingNextPlayer = false))),
+            listOf(PersistenceEffect.SaveGame(savedCricketGame(turn, isAwaitingNextPlayer = false))),
             effectsOf(inGame(turn, isAwaiting = true), AppEvent.NextPlayerTapped),
         )
     }
@@ -51,27 +66,37 @@ class CricketPersistenceEffectsTest {
     @Test
     fun `R14 R15 Confirm leg saves the match between legs, Next leg saves the new leg`() {
         val confirmed = duel.confirmLegsWonBy(0)
-        val between = AppState(screen = Screen.CricketBetweenLegs(confirmed))
-        val betweenLegs = SavedCricketGame(confirmed, isAwaitingNextPlayer = false, isBetweenLegs = true)
+        val between = AppState(screen = cricketBetweenLegs(confirmed))
+        val betweenLegs = savedCricketGame(confirmed, isAwaitingNextPlayer = false, isBetweenLegs = true)
 
         assertEquals(
             listOf(PersistenceEffect.SaveGame(betweenLegs)),
             effectsOf(inGame(duel.playLegWonBy(0), isAwaiting = true), AppEvent.FinishGameTapped),
         )
         assertEquals(
-            listOf(PersistenceEffect.SaveGame(SavedCricketGame(confirmed, isAwaitingNextPlayer = false))),
+            listOf(PersistenceEffect.SaveGame(savedCricketGame(confirmed, isAwaitingNextPlayer = false))),
             effectsOf(between, AppEvent.NextLegTapped),
         )
     }
 
     @Test
-    fun `R6 R14 Confirm match and Abandon delete the saved game`() {
+    fun `AR1 AR2 Confirm match asks the archive, and the answer writes nothing else`() {
         val decided = inGame(duel.confirmLegsWonBy(0).playLegWonBy(0), isAwaiting = true)
+        val saving = reducer.reduce(decided, AppEvent.FinishGameTapped)
+
+        assertEquals(
+            listOf(PersistenceEffect.ArchiveMatch::class),
+            persistenceEffects(decided, saving).map { it::class },
+        )
+        assertEquals(emptyList<PersistenceEffect>(), effectsOf(saving, AppEvent.ArchiveSucceeded))
+    }
+
+    @Test
+    fun `R6 R14 Abandon deletes the saved game`() {
         val dialog = reducer.reduce(inGame(duel), AppEvent.Back)
         val betweenDialog =
-            AppState(screen = Screen.CricketBetweenLegs(duel.confirmLegsWonBy(0), isAbandonDialogShown = true))
+            AppState(screen = cricketBetweenLegs(duel.confirmLegsWonBy(0), isAbandonDialogShown = true))
 
-        assertEquals(listOf(PersistenceEffect.DeleteGame), effectsOf(decided, AppEvent.FinishGameTapped))
         assertEquals(listOf(PersistenceEffect.DeleteGame), effectsOf(dialog, AppEvent.AbandonConfirmed))
         assertEquals(listOf(PersistenceEffect.DeleteGame), effectsOf(betweenDialog, AppEvent.AbandonConfirmed))
     }
@@ -95,7 +120,10 @@ class CricketPersistenceEffectsTest {
         assertEquals(
             listOf(
                 PersistenceEffect.SaveLastSetup(checkNotNull(rematch.lastSetup)),
-                PersistenceEffect.SaveGame(SavedCricketGame(CricketMatch.start(rotated), isAwaitingNextPlayer = false)),
+                PersistenceEffect.SaveGame(
+                    savedCricketGame(CricketMatch.start(rotated), false, journal = startedJournal()),
+                ),
+                PersistenceEffect.TouchProfiles(listOf("Bob", "Ann"), startedJournal().startedAt),
             ),
             persistenceEffects(end, rematch),
         )

@@ -1,7 +1,16 @@
 package io.github.darkcosmos.kosmodarts.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -57,12 +66,19 @@ class PlayerNameRowSpec(
     val removeDescription: String?,
     val fieldTag: String,
     val removeTag: String,
+    /** PF3: the profiles suggested under this field, most recent first; empty when the field has no focus. */
+    val suggestions: List<SuggestionSpec> = emptyList(),
 )
+
+/** A suggested profile: the [name] shown and put in the field, and its TalkBack [description] (Use the name Kevin). */
+class SuggestionSpec(val name: String, val description: String, val tag: String)
 
 /**
  * A player of the setup (design system, `PlayerNameRow`; M13, PC9): a strip of his color, his order number, the name
  * field (placeholder "Player n name"), and a remove cross (48 dp) when more than one player is left. The focused row
- * has the 2 dp `accent` border. Errors go under the name.
+ * has the 2 dp `accent` border. Errors go under the name. The suggested profiles (PF3) are listed under the row, so
+ * that nothing above the field moves; a tap on one calls [onSuggestionPicked] and leaves the focus and the keyboard as
+ * they are. [onFocusChange] tells when the field gains or loses the focus.
  */
 @Composable
 fun PlayerNameRow(
@@ -70,6 +86,8 @@ fun PlayerNameRow(
     onChange: (String) -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier,
+    onFocusChange: (Boolean) -> Unit = {},
+    onSuggestionPicked: (String) -> Unit = {},
 ) {
     val colors = KosmoTheme.colors
     var isFocused by remember { mutableStateOf(false) }
@@ -102,7 +120,14 @@ fun PlayerNameRow(
                     .width(ORDER_WIDTH)
                     .clearAndSetSemantics {},
             )
-            NameField(spec, onChange, Modifier.weight(1f).onFocusChanged { isFocused = it.isFocused })
+            NameField(
+                spec,
+                onChange,
+                Modifier.weight(1f).onFocusChanged {
+                    isFocused = it.isFocused
+                    onFocusChange(it.isFocused)
+                },
+            )
             spec.removeDescription?.let { description ->
                 IconButton(
                     onClick = onRemove,
@@ -116,6 +141,48 @@ fun PlayerNameRow(
                         tint = colors.onBackgroundMuted,
                     )
                 }
+            }
+        }
+        Suggestions(spec.suggestions, onSuggestionPicked)
+    }
+}
+
+/**
+ * PF3: up to 5 rows of at least 48 dp under the focused field, brought into view once, when they first show (not on
+ * each key typed, so that nothing moves under the finger).
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun Suggestions(suggestions: List<SuggestionSpec>, onPicked: (String) -> Unit) {
+    if (suggestions.isEmpty()) return
+    val requester = remember { BringIntoViewRequester() }
+    LaunchedEffect(Unit) { requester.bringIntoView() }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = STRIP)
+            .bringIntoViewRequester(requester),
+    ) {
+        suggestions.forEach { suggestion ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = States.minTouchTarget)
+                    .clip(KosmoShapes.control)
+                    .background(KosmoTheme.colors.surface)
+                    .clickable(role = Role.Button) { onPicked(suggestion.name) }
+                    .semantics { contentDescription = suggestion.description }
+                    .testTag(suggestion.tag)
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = suggestion.name,
+                    style = KosmoTheme.typography.bodyLarge,
+                    color = KosmoTheme.colors.onBackground,
+                    modifier = Modifier.clearAndSetSemantics {},
+                )
             }
         }
     }

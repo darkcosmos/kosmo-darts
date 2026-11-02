@@ -1,5 +1,10 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.startedJournal
+import io.github.darkcosmos.kosmodarts.testing.TEST_STAMP
+import io.github.darkcosmos.kosmodarts.testing.reduce
+import io.github.darkcosmos.kosmodarts.testing.cricketGameScreen
+import io.github.darkcosmos.kosmodarts.testing.cricketBetweenLegs
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatchConfig
@@ -36,12 +41,12 @@ class CricketReducerTest {
     private val duel = CricketSaveFixtures.match("Ann", "Bob", legsPerSet = 2)
 
     private fun inGame(match: CricketMatch = duel) =
-        AppState(screen = Screen.CricketGame(CricketGameScreenState(match)))
+        AppState(screen = cricketGameScreen(CricketGameScreenState(match)))
 
     /** Ann wins the current leg of [match]; the win waits for "Finish …". */
     private fun withPendingWin(match: CricketMatch) =
         AppState(
-            screen = Screen.CricketGame(CricketGameScreenState(match.playLegWonBy(0), isAwaitingConfirmation = true)),
+            screen = cricketGameScreen(CricketGameScreenState(match.playLegWonBy(0), isAwaitingConfirmation = true)),
         )
 
     @Test
@@ -69,10 +74,10 @@ class CricketReducerTest {
             MatchFormat(3, 1),
             ColorSlot.byPosition(2),
         )
-        val state = newCricketMatchState(setup, x01Setup.toLastSetups())
+        val state = newCricketMatchState(setup, x01Setup.toLastSetups(), TEST_STAMP)
 
         assertEquals(
-            Screen.CricketGame(CricketGameScreenState(CricketMatch.start(setup)), isNewGame = true),
+            cricketGameScreen(CricketGameScreenState(CricketMatch.start(setup)), startedJournal(), isNewGame = true),
             state.screen,
         )
         assertEquals(setup, state.lastSetup?.cricketSetup)
@@ -126,16 +131,16 @@ class CricketReducerTest {
     fun `M16 Confirm leg opens the between-legs screen, then Next leg the next leg`() {
         val between = withPendingWin(duel).after(AppEvent.FinishGameTapped)
 
-        assertEquals(Screen.CricketBetweenLegs(duel.playLegWonBy(0).confirmLeg()), between.screen)
+        assertEquals(cricketBetweenLegs(duel.playLegWonBy(0).confirmLeg()), between.screen)
         val next = between.after(AppEvent.NextLegTapped)
-        assertEquals(Screen.CricketGame(CricketGameScreenState(duel.confirmLegsWonBy(0))), next.screen)
+        assertEquals(cricketGameScreen(CricketGameScreenState(duel.confirmLegsWonBy(0))), next.screen)
     }
 
     @Test
     fun `M17 Confirm match opens the end screen`() {
         val decided = duel.confirmLegsWonBy(0)
 
-        val ended = withPendingWin(decided).after(AppEvent.FinishGameTapped)
+        val ended = withPendingWin(decided).after(AppEvent.FinishGameTapped, AppEvent.ArchiveSucceeded)
 
         assertEquals(Screen.CricketEnd(decided.playLegWonBy(0)), ended.screen)
     }
@@ -152,10 +157,10 @@ class CricketReducerTest {
 
     @Test
     fun `R6 back between legs asks to abandon the match`() {
-        val between = AppState(screen = Screen.CricketBetweenLegs(duel.confirmLegsWonBy(1)))
+        val between = AppState(screen = cricketBetweenLegs(duel.confirmLegsWonBy(1)))
         val dialog = between.after(AppEvent.Back)
 
-        assertEquals(Screen.CricketBetweenLegs(duel.confirmLegsWonBy(1), isAbandonDialogShown = true), dialog.screen)
+        assertEquals(cricketBetweenLegs(duel.confirmLegsWonBy(1), isAbandonDialogShown = true), dialog.screen)
         assertEquals(between, dialog.after(AppEvent.Back))
         assertEquals(between, dialog.after(AppEvent.AbandonDismissed))
         assertEquals(dialog, dialog.after(AppEvent.NextLegTapped))
@@ -190,7 +195,7 @@ class CricketReducerTest {
 
         assertEquals(rotated, cricketRematchSetup(match))
         assertEquals(
-            Screen.CricketGame(CricketGameScreenState(CricketMatch.start(rotated)), isNewGame = true),
+            cricketGameScreen(CricketGameScreenState(CricketMatch.start(rotated)), startedJournal(), isNewGame = true),
             rematch.screen,
         )
         assertEquals(rotated, rematch.lastSetup?.cricketSetup)

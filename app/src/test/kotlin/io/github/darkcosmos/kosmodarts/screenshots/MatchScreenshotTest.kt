@@ -1,5 +1,7 @@
 package io.github.darkcosmos.kosmodarts.screenshots
 
+import io.github.darkcosmos.kosmodarts.testing.savedGame
+import io.github.darkcosmos.kosmodarts.testing.betweenLegs
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -203,7 +205,7 @@ class MatchScreenshotTest {
         val SETUP_3X2: List<AppEvent> =
             listOf(AppEvent.NewGame(GameMode.X01)) + List(2) { AppEvent.LegsPerSetChanged(1) } + AppEvent.SetsChanged(1)
 
-        val SAVED_MATCH = SavedGame(
+        val SAVED_MATCH = savedGame(
             match("Ann", "Bob", "Clementine Dubois", legsPerSet = 3, sets = 2)
                 .confirmLegsWonBy(0, 0, 0, 2)
                 .throwing(Dart.triple(20)),

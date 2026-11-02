@@ -104,12 +104,12 @@ class CricketSaveCodecTest {
     private val longestSolo: SavedCricketGame =
         saved(match("Ann").throwing(*Array(GameSaveCodec.MAX_DARTS) { Dart.MISS }))
 
-    /** ADR 0008, R23: exact bytes of a Cricket match between legs, after the mode line. */
+    /** ADR 0011, R26: exact bytes of a Cricket match between legs: the mode line, the body, the journal. */
     @Test
-    fun `format v4 golden file of a Cricket match`() {
+    fun `format v1 golden file of a Cricket match`() {
         val golden = """
             kosmodarts=saved-game
-            version=4
+            version=1
             mode=cricket
             variant=standard
             bull=1
@@ -125,7 +125,13 @@ class CricketSaveCodecTest {
             darts=
             awaiting-next-player=false
             between-legs=true
-            crc32=d0694c71
+            match-id=00000000-0000-0000-0000-000000000000
+            started-at=0
+            journals=3
+            journal=T20@0 T19@1 T18@2 0@3 0@4 0@5 T17@6 T16@7 T15@8 0@9 0@10 0@11 50@12 25@13
+            journal=T20@14 T19@15 T18@16 0@17 0@18 0@19 T17@20 T16@21 T15@22 0@23 0@24 0@25 50@26 25@27
+            journal=
+            crc32=7c1aca90
             end
 
         """.trimIndent().toByteArray(Charsets.UTF_8)

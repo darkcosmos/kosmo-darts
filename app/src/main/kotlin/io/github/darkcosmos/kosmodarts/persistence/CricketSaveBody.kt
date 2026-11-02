@@ -9,7 +9,7 @@ import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 
 /**
- * The body of a version 4 Cricket saved game, after its mode line (docs/adr/0008-save-format-v4-modes.md; rules R21,
+ * The body of a Cricket saved game, after its mode line (docs/adr/0008-save-format-v4-modes.md; rules R21,
  * R24). Its lines, in this order, each once:
  *
  * `variant`, `bull`, `legs-per-set`, `sets`, `players`, one `player` per player, `colors`, `legs`, one `leg` per

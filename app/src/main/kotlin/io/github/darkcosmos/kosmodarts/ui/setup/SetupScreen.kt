@@ -45,6 +45,7 @@ import io.github.darkcosmos.kosmodarts.ui.components.PlayerNameRowSpec
 import io.github.darkcosmos.kosmodarts.ui.components.ScreenTopBar
 import io.github.darkcosmos.kosmodarts.ui.components.SectionLabel
 import io.github.darkcosmos.kosmodarts.ui.components.SegmentedChoice
+import io.github.darkcosmos.kosmodarts.ui.components.SuggestionSpec
 import io.github.darkcosmos.kosmodarts.ui.format.ruleText
 import io.github.darkcosmos.kosmodarts.ui.layout.ScreenLayoutPolicy
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
@@ -185,9 +186,20 @@ private fun Players(setup: SetupState, onEvent: (AppEvent) -> Unit) {
                 },
                 fieldTag = SetupTags.nameField(index),
                 removeTag = SetupTags.remove(index),
+                suggestions = setup.suggestionsFor(index).mapIndexed { rank, profile ->
+                    SuggestionSpec(
+                        name = profile.name,
+                        description = stringResource(R.string.setup_use_name, profile.name),
+                        tag = SetupTags.suggestion(index, rank),
+                    )
+                },
             ),
             onChange = { onEvent(AppEvent.NameChanged(index, it)) },
             onRemove = { onEvent(AppEvent.PlayerRemoved(index)) },
+            onFocusChange = { isFocused ->
+                onEvent(if (isFocused) AppEvent.NameFieldFocused(index) else AppEvent.NameFieldFocusLost(index))
+            },
+            onSuggestionPicked = { onEvent(AppEvent.SuggestionPicked(index, it)) },
         )
     }
     if (setup.canAddPlayer) AddPlayerButton(onEvent)

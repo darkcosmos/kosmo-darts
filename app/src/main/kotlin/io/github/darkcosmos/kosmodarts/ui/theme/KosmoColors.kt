@@ -21,6 +21,8 @@ data class KosmoColors(
     val onAccent: Color,
     val accentDim: Color,
     val danger: Color,
+    /** Red for small text over dark cards (visit BUST label): `danger` is too dark there (4,5:1 needed). */
+    val dangerText: Color,
     val onDanger: Color,
     val player1: Color,
     val player2: Color,
@@ -45,6 +47,7 @@ data class KosmoColors(
             onAccent = Color(0xFF0A0F1E),
             accentDim = Color(0xFF2A2410),
             danger = Color(0xFFB3261E),
+            dangerText = Color(0xFFFF8A80),
             onDanger = Color(0xFFFFFFFF),
             player1 = Color(0xFF1F63D6),
             player2 = Color(0xFFE07020),

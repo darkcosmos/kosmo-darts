@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
@@ -17,10 +18,11 @@ data class SavedGame(
     val match: X01Match,
     override val isAwaitingNextPlayer: Boolean,
     override val isBetweenLegs: Boolean = false,
+    override val journal: MatchJournal,
 ) : StoredGame {
     /** A single game (docs/rules/match.md, M5): [game] is the only leg of a match in 1 leg and 1 set. */
-    constructor(game: X01Game, isAwaitingNextPlayer: Boolean) :
-        this(X01Match(X01MatchConfig(game.config), emptyList(), game), isAwaitingNextPlayer)
+    constructor(game: X01Game, isAwaitingNextPlayer: Boolean, journal: MatchJournal) :
+        this(X01Match(X01MatchConfig(game.config), emptyList(), game), isAwaitingNextPlayer, journal = journal)
 
     /** The current leg. */
     val game: X01Game
