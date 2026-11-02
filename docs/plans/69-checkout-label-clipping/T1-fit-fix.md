@@ -15,8 +15,8 @@ The CHECKOUT banner text is always whole (D1 to D5). Order: measure (root plan "
 None. Base: `main` at 7441ae3.
 
 ## Rules
-M15, CS8, design system 6.3, U10. Decisions D1 to D8 (D2 still pending Kosmo: if main reports another answer,
-follow it). No string, no touch target change; tokens only
+M15, CS8, design system 6.3, U10. Decisions D1 to D8 (D2 confirmed; D6 amended and D9 added: non-linear heights, scale found by
+measuring candidates, 1.0 keeps pre-fix sizes). No string, no touch target change; tokens only
 (`KosmoTheme.typography`, `fixedSp`, `CHECKOUT_BANNER_MIN`).
 
 ## Tests
@@ -39,3 +39,21 @@ sonnet. Why: UI fix fully specified by the root plan, with its JVM and Robolectr
 cross-module change.
 
 ## Implementation notes
+
+### Measurements (dp; Robolectric X01 301, 4 players, Ann at 121 then T20 T11 D14; on 7441ae3)
+Causes a, b and c confirmed. Heights are not linear in the font scale (name row x1.33, line x1.67 at 2.0; the line
+wraps to 3 lines at 2.0, width ~235 dp), hence D6 amended.
+
+| Config | Scale | Zone | Chip | Name row | Line |
+|---|---|---|---|---|---|
+| fr-land (default) | 1.0 | 202 | 36 | 44 | 28 |
+| fr-land | 1.3 | 208 | 34 | 46 | 34 |
+| fr-land | 1.5 | 210 | 32 | 46 | 38 |
+| fr-land | 2.0 | 223 | 0 (invisible) | 58 | 79 |
+| 800x360 land xxhdpi | 1.0 | 231.7 | 65.3 | 44 | 28.3 |
+| 800x360 land xxhdpi | 2.0 | 222.7 | 22.7 (text 14.7 = floor 12 sp) | 58.7 | 47.3 |
+| 640x360 land xhdpi | 2.0 | 222.5 | 22.5 | 59 | 47 |
+| 360x640 port xhdpi | 1.0 | 202 | 35 | - | - |
+| 360x640 port xhdpi | 2.0 | 264.5 | 64 | 59 | 47 |
+
+Dart slots: 46 dp.
