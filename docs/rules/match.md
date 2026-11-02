@@ -71,7 +71,9 @@ Rewritten by issue #49 (design system, owner answers Q1 to Q13, O1 and O2, `docs
   "ANNULER" / "VALIDER LA MANCHE" for LEG, "VALIDER LE SET" for SET, "VALIDER LA PARTIE" for MATCH (English
   "UNDO" / "CONFIRM LEG", "CONFIRM SET", "CONFIRM MATCH"; owner Q5). A single game always shows "VALIDER LA PARTIE".
   "ANNULER" undoes the winning dart. System back opens "Abandon the game?" like anywhere else in a game; dismissing it
-  leaves the checkout pending (owner O1).
+  leaves the checkout pending (owner O1). Large font sizes (issue #69, owner Q1 and Q2): the CHECKOUT banner keeps a
+  least height of 40 dp (above font scale 1.0) and is never cut; the name row and the checkout line shrink instead,
+  never below their size at the default font size. Verified at font scales 1.3, 1.5 and 2.0, portrait and landscape.
 - M16. Between legs: after confirming a leg or a set, a screen shows the format line, the winner's zone in his color
   with the chip "SET 2 · MANCHE 3 GAGNÉE" ("MANCHE 3 GAGNÉE" with one set, "SET 2 GAGNÉ" on a set win), his name and
   the winning checkout ("CHECKOUT 141 · T20 T19 D12", not shown after a resume on this screen), the scoreboard (SETS
