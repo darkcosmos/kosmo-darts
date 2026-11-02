@@ -1,8 +1,8 @@
 package io.github.darkcosmos.kosmodarts.ui.end
 
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_1
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_2
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_3
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor.Companion.BLUE
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor.Companion.ORANGE
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor.Companion.TEAL
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
@@ -32,7 +32,7 @@ class EndRowsTest {
                     threeDartAverage = 301 * 3 / 6.0,
                     dartsThrown = 6,
                     isWinner = true,
-                    slot = SLOT_1,
+                    color = BLUE,
                 ),
                 EndRow(
                     rank = 2,
@@ -40,7 +40,7 @@ class EndRowsTest {
                     threeDartAverage = 60.0,
                     dartsThrown = 3,
                     isWinner = false,
-                    slot = SLOT_2,
+                    color = ORANGE,
                 ),
                 EndRow(
                     rank = 2,
@@ -48,7 +48,7 @@ class EndRowsTest {
                     threeDartAverage = 60.0,
                     dartsThrown = 3,
                     isWinner = false,
-                    slot = SLOT_3,
+                    color = TEAL,
                 ),
             ),
             rows,

@@ -5,7 +5,7 @@ import io.github.darkcosmos.kosmodarts.engine.journal.JournalEvent
 import io.github.darkcosmos.kosmodarts.engine.journal.LegJournal
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
@@ -103,7 +103,7 @@ class GameSaveCodecTest {
     private val singleGameWithSlots: SavedGame = run {
         val config = X01Config(listOf("Ann", "Clément"))
         val match = X01Match(
-            X01MatchConfig(config, MatchFormat(), listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_1)),
+            X01MatchConfig(config, MatchFormat(), listOf(PlayerColor.ORANGE, PlayerColor.BLUE)),
             emptyList(),
             X01Game(config, listOf(Dart.triple(20), Dart.single(20), Dart.double(5))),
         )

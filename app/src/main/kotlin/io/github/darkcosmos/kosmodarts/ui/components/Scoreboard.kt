@@ -27,7 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.ui.format.displayName
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
@@ -54,7 +54,7 @@ val NUMBER_WIDTH: Dp = 52.dp
  */
 class ScoreboardRow(
     val name: String,
-    val slot: ColorSlot,
+    val color: PlayerColor,
     val rank: Int?,
     val cells: List<ScoreCell>,
     val description: String,
@@ -112,7 +112,7 @@ private fun ScoreRow(row: ScoreboardRow) {
     ) {
         val rank = row.rank
         if (rank == null) {
-            Box(Modifier.width(STRIP).fillMaxHeight().background(PlayerPalette.colorOf(row.slot, colors)))
+            Box(Modifier.width(STRIP).fillMaxHeight().background(PlayerPalette.colorOf(row.color)))
         } else {
             RankCell(rank)
         }
@@ -124,7 +124,7 @@ private fun ScoreRow(row: ScoreboardRow) {
                 .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
         ) {
             if (rank != null) {
-                Box(Modifier.size(SQUARE).background(PlayerPalette.colorOf(row.slot, colors)))
+                Box(Modifier.size(SQUARE).background(PlayerPalette.colorOf(row.color)))
             }
             Text(
                 text = displayName(row.name),

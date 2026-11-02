@@ -177,7 +177,7 @@ internal fun Zone(
         content = CricketZoneContent(
             index = index,
             name = game.game.config.players[index],
-            slot = game.colorSlots[index],
+            color = game.colors[index],
             stat = ZoneStat(stringResource(R.string.cricket_zone_mpr, mpr)),
             indicator = game.indicators?.get(index),
             isVictory = game.zoneMode == CricketZoneMode.VICTORY,
@@ -205,7 +205,7 @@ internal fun Board(
         content = CricketBoardContent(
             rows = game.boardRows,
             names = game.game.config.players,
-            slots = game.colorSlots,
+            colors = game.colors,
             currentIndex = game.highlightedPlayerIndex ?: 0,
             visits = game.visits,
             totals = game.headerTotals,

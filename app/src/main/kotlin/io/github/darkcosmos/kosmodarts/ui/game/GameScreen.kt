@@ -187,7 +187,7 @@ private fun Zone(game: GameScreenState, layout: GameLayout, isLandscape: Boolean
     val content = ZoneContent(
         index = index,
         name = player.name,
-        slot = game.colorSlotOf(index),
+        color = game.playerColorOf(index),
         average = game.averageOf(index),
         indicator = game.indicators?.get(index),
         mode = game.zoneMode,
@@ -226,7 +226,7 @@ private fun Tiles(game: GameScreenState, layout: GameLayout) {
                         content = TileContent(
                             index = index,
                             name = player.name,
-                            slot = game.colorSlotOf(index),
+                            color = game.playerColorOf(index),
                             remaining = player.remaining,
                             visitBox = boxes[index],
                             indicator = game.indicators?.get(index),

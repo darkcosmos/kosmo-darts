@@ -1,6 +1,5 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
-import androidx.compose.ui.graphics.toArgb
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMatch
 import io.github.darkcosmos.kosmodarts.history.HistoryFilters
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
@@ -12,7 +11,6 @@ import io.github.darkcosmos.kosmodarts.ui.cricket.toSavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.game.toSavedGame
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
-import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 
 /** A change to make on the device after an event (rules R3, R6, R7, R12, R13, R15). */
 sealed interface PersistenceEffect {
@@ -144,7 +142,7 @@ private fun archiveOf(state: AppState): ArchivedMatch? {
 /** AR1: asked once per tap on the confirm button, when [after] starts writing and [before] was not writing. */
 private fun archiveEffect(before: AppState, after: AppState): PersistenceEffect.ArchiveMatch? {
     val archived = archiveOf(after)?.takeIf { archiveOf(before) == null } ?: return null
-    val colors = archived.players.map { PlayerPalette.colorOf(it.colorSlot).toArgb() }
+    val colors = archived.players.map { it.color.argb }
     return PersistenceEffect.ArchiveMatch(archived, colors)
 }
 

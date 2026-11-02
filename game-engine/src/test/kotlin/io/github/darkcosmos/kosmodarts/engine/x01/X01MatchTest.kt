@@ -3,7 +3,7 @@ package io.github.darkcosmos.kosmodarts.engine.x01
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.match.MatchRank
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -202,19 +202,19 @@ class X01MatchTest {
         assertThrows<IllegalArgumentException> { X01LegSummary.of(X01Game(config)) }
     }
 
-    /** PC6 (docs/rules/players.md): the color slots never change when legs and sets are confirmed. */
+    /** PC6 (docs/rules/players.md): the colors never change when legs and sets are confirmed. */
     @Test
-    fun `PC6 color slots are unchanged after legs and sets`() {
-        val slots = listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_1, ColorSlot.SLOT_4)
+    fun `PC6 color colors are unchanged after legs and sets`() {
+        val colors = listOf(PlayerColor.TEAL, PlayerColor.BLUE, PlayerColor.LILAC)
         val config = X01Config(listOf("Ann", "Bob", "Cid"), 301, CheckoutRule.SINGLE_OUT)
-        val start = X01Match.start(X01MatchConfig(config, MatchFormat(2, 2), slots))
+        val start = X01Match.start(X01MatchConfig(config, MatchFormat(2, 2), colors))
 
         // Ann wins a leg, Bob a leg, Ann the set; then Cid wins a leg of set 2.
         val later = start.confirmLegsWonBy(0, 1, 0, 2)
 
-        assertEquals(slots, start.colorSlots)
-        assertEquals(slots, later.colorSlots)
-        assertEquals(slots, later.playLegWonBy(1).undo().colorSlots)
+        assertEquals(colors, start.colors)
+        assertEquals(colors, later.colors)
+        assertEquals(colors, later.playLegWonBy(1).undo().colors)
     }
 
     /** Names of the starters of the first leg and of the leg after each confirmed winner. */

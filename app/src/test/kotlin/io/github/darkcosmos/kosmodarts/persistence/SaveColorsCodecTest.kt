@@ -1,17 +1,18 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
 import io.github.darkcosmos.kosmodarts.testing.savedGame
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_1
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_2
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_3
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_4
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor.Companion.BLUE
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor.Companion.ORANGE
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor.Companion.TEAL
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor.Companion.LILAC
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures.match
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 /**
@@ -25,7 +26,7 @@ class SaveColorsCodecTest {
 
     /** Three players holding slots 3, 1 and 4, in the middle of the second leg of a match. */
     private val saved = savedGame(
-        match("Ann", "Bob", "Cid", legsPerSet = 2, colorSlots = listOf(SLOT_3, SLOT_1, SLOT_4))
+        match("Ann", "Bob", "Cid", legsPerSet = 2, colors = listOf(TEAL, BLUE, LILAC))
             .confirmLegsWonBy(1)
             .throwing(Dart.triple(20)),
         isAwaitingNextPlayer = false,
@@ -34,7 +35,7 @@ class SaveColorsCodecTest {
     private val gameBody: List<String> = coveredLines(checkNotNull(gameCodec.encode(saved)))
 
     private val setup =
-        X01MatchConfig(X01Config(listOf("Ann", "Bob", "Cid")), colorSlots = listOf(SLOT_2, SLOT_4, SLOT_1))
+        X01MatchConfig(X01Config(listOf("Ann", "Bob", "Cid")), colors = listOf(ORANGE, LILAC, BLUE))
 
     private val setupBody: List<String> = coveredLines(setupCodec.encode(setup.toLastSetups()))
 
@@ -47,21 +48,21 @@ class SaveColorsCodecTest {
 
     /** R17, PC6: a match with slots that are not those of the positions comes back with the same slots. */
     @Test
-    fun `R17 a saved game keeps non-positional slots`() {
+    fun `R17 a saved game keeps non-positional colors`() {
         val decoded = gameCodec.decode(checkNotNull(gameCodec.encode(saved)))
 
         assertEquals(GameDecodeResult.Valid(saved), decoded)
-        assertEquals(listOf(SLOT_3, SLOT_1, SLOT_4), (decoded as GameDecodeResult.Valid).x01.match.colorSlots)
+        assertEquals(listOf(TEAL, BLUE, LILAC), (decoded as GameDecodeResult.Valid).x01.match.colors)
         assertEquals("colors=3 1 4", gameBody.single { it.startsWith("colors=") })
     }
 
     /** R17, PC8: the last setup keeps non-positional slots. */
     @Test
-    fun `R17 a last setup keeps non-positional slots`() {
+    fun `R17 a last setup keeps non-positional colors`() {
         val decoded = setupCodec.decode(setupCodec.encode(setup.toLastSetups()))
 
         assertEquals(setup, decoded?.x01Setup)
-        assertEquals(listOf(SLOT_2, SLOT_4, SLOT_1), decoded?.roster?.colorSlots)
+        assertEquals(listOf(ORANGE, LILAC, BLUE), decoded?.roster?.colors)
     }
 
     /** S1, R9: one slot per player, separated by single spaces; another count or an empty token is malformed. */
@@ -84,6 +85,13 @@ class SaveColorsCodecTest {
     @Test
     fun `R9 a repeated slot is out of range`() {
         assertGameInvalid(InvalidSaveReason.OUT_OF_RANGE, gameBody.withColors("3 1 3"))
+    }
+
+    /** R17: slot numbers are the palette positions; a color outside the palette is never written as a slot (T4). */
+    @Test
+    fun `R17 slot values are palette positions, a color outside the palette is refused`() {
+        assertEquals("4 1 2", slotColorsValue(listOf(LILAC, BLUE, ORANGE)))
+        assertThrows(IllegalStateException::class.java) { slotColorsValue(listOf(PlayerColor(0xFFF2D94E.toInt()))) }
     }
 
     /** S1, S2, R9: a version 3 file without its colors line is malformed. */

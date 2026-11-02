@@ -2,7 +2,7 @@ package io.github.darkcosmos.kosmodarts.persistence
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 
 /**
@@ -20,7 +20,7 @@ class LastSetupCodec {
         setups.cricket?.let { addAll(writeCricketSection(it)) }
         add(SaveKey.PLAYERS.text to setups.roster.players.size.toString())
         setups.roster.players.forEach { add(SaveKey.PLAYER.text to SaveFormat.encodeName(it)) }
-        add(SaveKey.COLORS.text to setups.roster.colorSlots.joinToString(" ") { it.number.toString() })
+        add(SaveKey.COLORS.text to slotColorsValue(setups.roster.colors))
     }, VERSION)
 
     /** The last setups, or `null` for any invalid content (rules R10, R23). Never throws. */
@@ -68,8 +68,8 @@ class LastSetupCodec {
         if (mode == SaveMode.CRICKET) cricket = readCricketSection(reader)
         val playerCount = parsePlayerCount(reader.value(SaveKey.PLAYERS.text))
         val names = List(playerCount) { SaveFormat.decodeName(reader.value(SaveKey.PLAYER.text)) }
-        val colorSlots = parseColorSlots(reader.value(SaveKey.COLORS.text), playerCount)
-        return LastSetups(rosterOf(names, colorSlots, x01, cricket), x01, cricket)
+        val colors = parseSlotColors(reader.value(SaveKey.COLORS.text), playerCount)
+        return LastSetups(rosterOf(names, colors, x01, cricket), x01, cricket)
     }
 
     private fun readX01Section(reader: BodyReader): X01Settings {
@@ -97,13 +97,13 @@ class LastSetupCodec {
      */
     private fun rosterOf(
         names: List<String>,
-        colorSlots: List<ColorSlot>,
+        colors: List<PlayerColor>,
         x01: X01Settings?,
         cricket: CricketSettings?,
     ): SharedRoster = try {
         x01?.let { X01Config(names, it.startScore, it.checkoutRule) }
         cricket?.let { CricketConfig(names, it.variant, it.isBullInPlay) }
-        SharedRoster(names, colorSlots)
+        SharedRoster(names, colors)
     } catch (e: IllegalArgumentException) {
         // Both configuration exceptions are IllegalArgumentExceptions, like the SharedRoster checks.
         reject(InvalidSaveReason.INVALID_CONFIG, e)

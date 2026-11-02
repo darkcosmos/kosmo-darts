@@ -5,7 +5,7 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatchConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.cricket.InvalidCricketConfigException
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerListError
 import io.github.darkcosmos.kosmodarts.engine.player.Roster
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
@@ -22,7 +22,7 @@ import kotlin.random.Random
  * Content of the setup screen. Immutable: every change returns a new state, and any change clears the errors of the
  * last [start] attempt, so errors never point at a field that moved.
  *
- * @property roster one entry per name field, in throwing order, each with its color slot (1 to
+ * @property roster one entry per name field, in throwing order, each with its color (1 to
  *   [X01Config.MAX_PLAYERS] fields; docs/rules/players.md, PC1 to PC4).
  * @property nameErrors errors of the last [start] attempt, by field position.
  * @property screenErrors errors of the last [start] attempt that are not about a name.
@@ -49,7 +49,7 @@ data class SetupState(
     val profiles: List<Profile> = emptyList(),
     val focusedIndex: Int? = null,
 ) {
-    /** [names] with the color slots of their positions (PC5), for a setup typed in one go. */
+    /** [names] with the colors of their positions (PC5), for a setup typed in one go. */
     constructor(
         startScore: Int = X01Config.DEFAULT_START_SCORE,
         checkoutRule: CheckoutRule = CheckoutRule.DOUBLE_OUT,
@@ -59,7 +59,7 @@ data class SetupState(
     ) : this(
         startScore = startScore,
         checkoutRule = checkoutRule,
-        roster = Roster.of(names, ColorSlot.byPosition(names.size)),
+        roster = Roster.of(names, PlayerColor.byPosition(names.size)),
         legsPerSet = legsPerSet,
         sets = sets,
     )
@@ -94,7 +94,7 @@ data class SetupState(
     /** M13: [value] clamped to [MatchFormat.MIN] to [MatchFormat.MAX]. */
     fun withSets(value: Int): SetupState = edited(copy(sets = value.coerceIn(FORMAT_RANGE)))
 
-    /** M13: "+ Add a player" is shown while a color slot is free. */
+    /** M13: "+ Add a player" is shown while fewer than four players are set. */
     val canAddPlayer: Boolean
         get() = roster.canAdd
 
@@ -111,10 +111,10 @@ data class SetupState(
 
     fun withName(index: Int, name: String): SetupState = edited(copy(roster = roster.withName(index, name)))
 
-    /** PC2: a new empty row with the first free color slot. */
+    /** PC2: a new empty row with the first free color. */
     fun withPlayerAdded(): SetupState = if (canAddPlayer) edited(copy(roster = roster.withPlayerAdded())) else this
 
-    /** PC3, M13: removes the row at [index] and its typed name at once; its color slot becomes free. */
+    /** PC3, M13: removes the row at [index] and its typed name at once; its color becomes free. */
     fun withPlayerRemoved(index: Int): SetupState =
         if (canRemovePlayer && index in roster.entries.indices) {
             edited(copy(roster = roster.withPlayerRemoved(index), focusedIndex = null))
@@ -126,16 +126,16 @@ data class SetupState(
     fun shuffled(random: Random): SetupState = edited(copy(roster = roster.shuffled(random), focusedIndex = null))
 
     /**
-     * Validates the setup of its [mode] with the engine rules (rules C5, M1, CR1); the slots go with the names (PC5).
+     * Validates the setup of its [mode] with the engine rules (rules C5, M1, CR1); the colors go with the names (PC5).
      */
     fun start(): SetupResult = try {
         val format = MatchFormat(legsPerSet, sets)
         when (mode) {
             GameMode.X01 -> SetupResult.Valid(
-                X01MatchConfig(X01Config(roster.names, startScore, checkoutRule), format, roster.slots),
+                X01MatchConfig(X01Config(roster.names, startScore, checkoutRule), format, roster.colors),
             )
             GameMode.CRICKET -> SetupResult.ValidCricket(
-                CricketMatchConfig(CricketConfig(roster.names, cricketVariant, isBullInPlay), format, roster.slots),
+                CricketMatchConfig(CricketConfig(roster.names, cricketVariant, isBullInPlay), format, roster.colors),
             )
         }
     } catch (e: InvalidX01ConfigException) {
@@ -149,7 +149,7 @@ data class SetupState(
         private val FORMAT_RANGE = MatchFormat.MIN..MatchFormat.MAX
 
         /**
-         * The setup of [lastSetup] (names in order with their color slots, start score, checkout rule, match format),
+         * The setup of [lastSetup] (names in order with their colors, start score, checkout rule, match format),
          * or the default setup (rules R7, R13; PC8).
          */
         fun prefilled(lastSetup: X01MatchConfig?): SetupState = lastSetup
@@ -157,7 +157,7 @@ data class SetupState(
                 SetupState(
                     startScore = it.config.startScore,
                     checkoutRule = it.config.checkoutRule,
-                    roster = Roster.of(it.config.players, it.colorSlots),
+                    roster = Roster.of(it.config.players, it.colors),
                     legsPerSet = it.format.legsPerSet,
                     sets = it.format.sets,
                 )
@@ -174,7 +174,7 @@ data class SetupState(
                 ?.cricketSetup
                 ?.let {
                     SetupState(
-                        roster = Roster.of(it.config.players, it.colorSlots),
+                        roster = Roster.of(it.config.players, it.colors),
                         legsPerSet = it.format.legsPerSet,
                         sets = it.format.sets,
                         mode = mode,

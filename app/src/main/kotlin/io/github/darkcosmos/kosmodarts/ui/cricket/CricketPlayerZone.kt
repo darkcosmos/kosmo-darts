@@ -32,7 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.ui.components.Chips
 import io.github.darkcosmos.kosmodarts.ui.components.DART_SLOT_HEIGHT
@@ -68,7 +68,7 @@ private const val SINGLE_LINE_DART_SP = 20f
 class CricketZoneContent(
     val index: Int,
     val name: String,
-    val slot: ColorSlot,
+    val color: PlayerColor,
     val stat: ZoneStat,
     val indicator: MatchIndicator?,
     val isVictory: Boolean,
@@ -99,12 +99,12 @@ fun CricketPlayerZone(
     val colors = KosmoTheme.colors
     val animate = LocalAnimationSettings.current.areAnimationsEnabled()
     val background by animateColorAsState(
-        PlayerPalette.colorOf(content.slot, colors),
+        PlayerPalette.colorOf(content.color),
         zoneColorAnimationSpec(animate),
         label = "zone color",
     )
     val contentColor by animateColorAsState(
-        PlayerPalette.onColorOf(content.slot, colors),
+        PlayerPalette.onColorOf(content.color),
         zoneColorAnimationSpec(animate),
         label = "zone text color",
     )

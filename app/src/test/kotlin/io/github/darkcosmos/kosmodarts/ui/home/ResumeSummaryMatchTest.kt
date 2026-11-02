@@ -1,7 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.home
 
 import io.github.darkcosmos.kosmodarts.testing.savedGame
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures.match
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
@@ -24,8 +24,8 @@ class ResumeSummaryMatchTest {
 
         assertEquals(
             listOf(
-                ResumeSummary.PlayerScore("Ann", 301, ColorSlot.SLOT_1, setsWon = 1, legsWon = 0),
-                ResumeSummary.PlayerScore("Bob", 241, ColorSlot.SLOT_2, setsWon = 0, legsWon = 1),
+                ResumeSummary.PlayerScore("Ann", 301, PlayerColor.BLUE, setsWon = 1, legsWon = 0),
+                ResumeSummary.PlayerScore("Bob", 241, PlayerColor.ORANGE, setsWon = 0, legsWon = 1),
             ),
             ResumeSummary.of(saved).players,
         )

@@ -73,7 +73,7 @@ class GameSaveCodec(
             darts = match.currentLeg.darts,
             isAwaitingNextPlayer = saved.isAwaitingNextPlayer,
             isBetweenLegs = saved.isBetweenLegs,
-            colorSlots = match.colorSlots,
+            colors = match.colors,
         )
         return listOf(SaveMode.X01.line) + writeBody(X01_LAYOUT, body)
     }
@@ -83,7 +83,7 @@ class GameSaveCodec(
         val body = CricketSaveBody(
             config = match.config,
             format = match.format,
-            colorSlots = match.colorSlots,
+            colors = match.colors,
             legs = match.completedLegs,
             darts = match.currentLeg.darts,
             isAwaitingNextPlayer = saved.isAwaitingNextPlayer,
@@ -117,7 +117,7 @@ class GameSaveCodec(
         val match = try {
             val starter = body.legs.size % body.config.players.size
             val currentLeg = cricketGameFactory(body.config, body.darts, starter)
-            CricketMatch(CricketMatchConfig(body.config, body.format, body.colorSlots), body.legs, currentLeg)
+            CricketMatch(CricketMatchConfig(body.config, body.format, body.colors), body.legs, currentLeg)
         } catch (e: CricketLegFinishedException) {
             // A dart after the winning one (CR9).
             reject(InvalidSaveReason.REJECTED_BY_ENGINE, e)
@@ -136,7 +136,7 @@ class GameSaveCodec(
         reader.finish()
         val match = try {
             val currentLeg = gameFactory(body.config, body.darts, body.legs.size % body.config.players.size)
-            X01Match(X01MatchConfig(body.config, body.format, body.colorSlots), body.legs, currentLeg)
+            X01Match(X01MatchConfig(body.config, body.format, body.colors), body.legs, currentLeg)
         } catch (e: LegFinishedException) {
             reject(InvalidSaveReason.REJECTED_BY_ENGINE, e)
         } catch (e: IllegalArgumentException) {

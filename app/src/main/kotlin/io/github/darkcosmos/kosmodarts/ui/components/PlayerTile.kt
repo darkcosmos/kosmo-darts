@@ -29,7 +29,7 @@ import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.ui.format.displayName
 import io.github.darkcosmos.kosmodarts.ui.format.indicatorDescription
 import io.github.darkcosmos.kosmodarts.ui.format.nextPlayerDescription
@@ -55,7 +55,7 @@ private const val NO_WIDTH = -1
 class TileContent(
     val index: Int,
     val name: String,
-    val slot: ColorSlot,
+    val color: PlayerColor,
     val remaining: Int,
     val visitBox: VisitBoxText,
     val indicator: MatchIndicator?,
@@ -71,7 +71,7 @@ class TileContent(
 @Composable
 fun PlayerTile(content: TileContent, variant: TileVariant, modifier: Modifier = Modifier) {
     val colors = KosmoTheme.colors
-    val strip = PlayerPalette.colorOf(content.slot, colors)
+    val strip = PlayerPalette.colorOf(content.color)
     val isLandscape = variant == TileVariant.COMPACT || variant == TileVariant.COMPACT_TWO_LINES
     val base = modifier
         .clip(KosmoShapes.control)

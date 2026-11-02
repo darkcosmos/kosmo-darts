@@ -5,7 +5,7 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.journal.JournalEvent
 import io.github.darkcosmos.kosmodarts.engine.journal.LegJournal
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
@@ -73,7 +73,7 @@ class SaveFuzzTest {
             "Cid",
             legsPerSet = 2,
             sets = 3,
-            colorSlots = listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_1, ColorSlot.SLOT_2),
+            colors = listOf(PlayerColor.LILAC, PlayerColor.BLUE, PlayerColor.ORANGE),
         )
         val valid = listOf(
             savedGame(start.confirmLegsWonBy(0, 1, 1).throwing(Dart.triple(20)), isAwaitingNextPlayer = false),

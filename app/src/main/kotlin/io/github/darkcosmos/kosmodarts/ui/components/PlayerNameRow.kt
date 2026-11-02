@@ -45,7 +45,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
@@ -58,7 +58,7 @@ private val ORDER_WIDTH = 28.dp
 class PlayerNameRowSpec(
     val order: Int,
     val name: String,
-    val slot: ColorSlot,
+    val color: PlayerColor,
     val placeholder: String,
     val errors: List<String>,
     val isLast: Boolean,
@@ -109,7 +109,7 @@ fun PlayerNameRow(
                 Modifier
                     .width(STRIP)
                     .fillMaxHeight()
-                    .background(PlayerPalette.colorOf(spec.slot, colors)),
+                    .background(PlayerPalette.colorOf(spec.color)),
             )
             Text(
                 text = spec.order.toString(),

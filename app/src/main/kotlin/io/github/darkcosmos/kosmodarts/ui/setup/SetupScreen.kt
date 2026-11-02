@@ -175,7 +175,7 @@ private fun Players(setup: SetupState, onEvent: (AppEvent) -> Unit) {
             spec = PlayerNameRowSpec(
                 order = index + 1,
                 name = entry.name,
-                slot = entry.slot,
+                color = entry.color,
                 placeholder = stringResource(R.string.setup_player_placeholder, index + 1),
                 errors = setup.errorsFor(index).map { errorText(it) },
                 isLast = index == setup.roster.entries.lastIndex,

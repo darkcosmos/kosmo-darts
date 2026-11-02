@@ -15,7 +15,7 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.journal.Clock
 import io.github.darkcosmos.kosmodarts.engine.journal.DartSource
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -105,7 +105,7 @@ fun x01Match(
             ArchivedPlayer(
                 position = position,
                 name = name,
-                colorSlot = ColorSlot.entries[position],
+                color = PlayerColor.PALETTE[position],
                 rank = position + 1,
                 legsWon = if (position == 0) 2 else 0,
                 setsWon = if (position == 0) 1 else 0,
@@ -142,7 +142,7 @@ fun cricketMatch(
             ArchivedPlayer(
                 position = position,
                 name = name,
-                colorSlot = ColorSlot.entries[position],
+                color = PlayerColor.PALETTE[position],
                 rank = if (position == 1) 1 else 2,
                 legsWon = if (position == 1) 1 else 0,
                 setsWon = if (position == 1) 1 else 0,

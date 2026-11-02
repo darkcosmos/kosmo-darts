@@ -16,7 +16,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.ui.format.displayName
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
@@ -31,20 +31,20 @@ import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 fun WinnerZone(
     chip: String,
     name: String,
-    slot: ColorSlot,
+    color: PlayerColor,
     tags: WinnerZoneTags,
     modifier: Modifier = Modifier,
     detail: String? = null,
 ) {
     val colors = KosmoTheme.colors
     val typography = KosmoTheme.typography
-    val onColor = PlayerPalette.onColorOf(slot, colors)
+    val onColor = PlayerPalette.onColorOf(color)
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier
             .clip(KosmoShapes.card)
-            .background(PlayerPalette.colorOf(slot, colors))
+            .background(PlayerPalette.colorOf(color))
             .padding(horizontal = 16.dp, vertical = 20.dp),
     ) {
         Text(

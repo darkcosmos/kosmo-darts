@@ -94,14 +94,14 @@ internal fun newCricketMatchState(
 
 /**
  * The setup of a Cricket rematch (CR28, M17): same players, variant, 25-Bull and format; the first player moves to the
- * end, so the next one starts the first leg (A, B, C -> B, C, A). Each player keeps his color slot (PC7).
+ * end, so the next one starts the first leg (A, B, C -> B, C, A). Each player keeps his color (PC7).
  */
 internal fun cricketRematchSetup(match: CricketMatch): CricketMatchConfig {
     val config = match.config
     val players = config.players
     val rotated = CricketConfig(players.drop(1) + players.first(), config.variant, config.isBullInPlay)
-    val slots = match.colorSlots
-    return CricketMatchConfig(rotated, match.format, slots.drop(1) + slots.first())
+    val colors = match.colors
+    return CricketMatchConfig(rotated, match.format, colors.drop(1) + colors.first())
 }
 
 /** M15, M16, M17: "Confirm match" ends the match; "Confirm leg" and "Confirm set" confirm the leg. */

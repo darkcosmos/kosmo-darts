@@ -3,7 +3,7 @@ package io.github.darkcosmos.kosmodarts.engine.cricket
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.match.MatchRank
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -338,18 +338,18 @@ class CricketMatchTest {
         )
     }
 
-    /** PC6 (docs/rules/players.md): the color slots never change when legs and sets are confirmed. */
+    /** PC6 (docs/rules/players.md): the colors never change when legs and sets are confirmed. */
     @Test
-    fun `PC6 color slots are unchanged after legs and sets`() {
-        val slots = listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_1, ColorSlot.SLOT_4)
+    fun `PC6 color colors are unchanged after legs and sets`() {
+        val colors = listOf(PlayerColor.TEAL, PlayerColor.BLUE, PlayerColor.LILAC)
         val config = CricketConfig(listOf("Ann", "Bob", "Cid"))
-        val start = CricketMatch.start(CricketMatchConfig(config, MatchFormat(2, 2), slots))
+        val start = CricketMatch.start(CricketMatchConfig(config, MatchFormat(2, 2), colors))
 
         val later = start.confirmLegsWonBy(0, 1, 0, 2)
 
-        assertEquals(slots, start.colorSlots)
-        assertEquals(slots, later.colorSlots)
-        assertEquals(slots, later.playLegWonBy(1).undo().colorSlots)
+        assertEquals(colors, start.colors)
+        assertEquals(colors, later.colors)
+        assertEquals(colors, later.playLegWonBy(1).undo().colors)
         assertNotEquals(start, later)
     }
 

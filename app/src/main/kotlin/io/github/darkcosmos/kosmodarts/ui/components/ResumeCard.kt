@@ -93,7 +93,7 @@ private fun MiniTile(player: ResumeSummary.PlayerScore, index: Int, modifier: Mo
             .testTag(HomeTags.player(index))
             .semantics(mergeDescendants = true) {},
     ) {
-        Box(Modifier.fillMaxWidth().height(STRIP).background(PlayerPalette.colorOf(player.slot, colors)))
+        Box(Modifier.fillMaxWidth().height(STRIP).background(PlayerPalette.colorOf(player.color)))
         Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = displayName(player.name),

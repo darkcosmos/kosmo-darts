@@ -4,7 +4,7 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatchConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
@@ -93,7 +93,7 @@ class LastSetupCodecTest {
         val decoded = codec.decode(withChecksum(cricketOnly))
 
         assertEquals(BOTH_MODES.copy(x01 = null), decoded)
-        assertEquals(X01MatchConfig(X01Config(listOf("Ann", "Bob")), colorSlots = SLOTS_4_2), decoded?.x01Setup)
+        assertEquals(X01MatchConfig(X01Config(listOf("Ann", "Bob")), colors = SLOTS_4_2), decoded?.x01Setup)
         assertEquals(cricketOnly, encoded(BOTH_MODES.copy(x01 = null)).lines().dropLast(TRAILER_LINES))
     }
 
@@ -256,7 +256,7 @@ class LastSetupCodecTest {
         /** CRC line, end line and the empty string after the final line feed. */
         const val TRAILER_LINES = 3
 
-        val SLOTS_4_2 = listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_2)
+        val SLOTS_4_2 = listOf(PlayerColor.LILAC, PlayerColor.ORANGE)
 
         /** A last setup after games in both modes (R22). */
         val BOTH_MODES = LastSetups(

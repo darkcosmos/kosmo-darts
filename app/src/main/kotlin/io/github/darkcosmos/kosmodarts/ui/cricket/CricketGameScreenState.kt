@@ -8,7 +8,7 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTurn
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVisit
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVisits
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.ui.game.MatchIndicator
 import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
@@ -105,9 +105,9 @@ data class CricketGameScreenState(
     val headerPosition: MatchPosition
         get() = MatchPosition.current(match.score)
 
-    /** The color slot of each player, in player order (docs/rules/players.md, PC6, PC9). */
-    val colorSlots: List<ColorSlot>
-        get() = match.colorSlots
+    /** The color of each player, in player order (docs/rules/players.md, PC6, PC9). */
+    val colors: List<PlayerColor>
+        get() = match.colors
 
     /** CR13: marks per round of the player at [index] over the whole match, or `null` before his first dart. */
     fun mprOf(index: Int): Double? = match.playerStats[index].marksPerRound

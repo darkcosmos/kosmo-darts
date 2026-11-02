@@ -6,7 +6,7 @@ import io.github.darkcosmos.kosmodarts.testing.reduce
 import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -232,9 +232,9 @@ class AppReducerTest {
         val state = inGame(singleOut301, winningDarts).after(*finishEvents, AppEvent.Rematch)
 
         val rotated = X01Config(listOf("Bob", "Cid", "Ann"), 301, CheckoutRule.SINGLE_OUT)
-        // PC7: each player keeps his color slot through the rotation.
-        val slots = listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_3, ColorSlot.SLOT_1)
-        val expected = GameScreenState(X01Match.start(X01MatchConfig(rotated, MatchFormat(), slots)))
+        // PC7: each player keeps his color through the rotation.
+        val colors = listOf(PlayerColor.ORANGE, PlayerColor.TEAL, PlayerColor.BLUE)
+        val expected = GameScreenState(X01Match.start(X01MatchConfig(rotated, MatchFormat(), colors)))
         assertEquals(gameScreen(expected, startedJournal(), isNewGame = true), state.screen)
     }
 

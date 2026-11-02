@@ -5,7 +5,7 @@ import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.match.MatchRank
 import io.github.darkcosmos.kosmodarts.engine.match.MatchRanking
 import io.github.darkcosmos.kosmodarts.engine.match.MatchScore
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 
 /**
@@ -55,9 +55,9 @@ class CricketMatch(
     val format: MatchFormat
         get() = matchConfig.format
 
-    /** Color slot of each player, in configuration order; the same in every leg (docs/rules/players.md, PC6). */
-    val colorSlots: List<ColorSlot>
-        get() = matchConfig.colorSlots
+    /** Color of each player, in configuration order; the same in every leg (docs/rules/players.md, PC6). */
+    val colors: List<PlayerColor>
+        get() = matchConfig.colors
 
     /** What confirming the current leg decides once it is won (M7), or `null` while it is in progress. */
     val pendingOutcome: LegOutcome? = currentLeg.state.winnerIndex?.let(score::outcomeIfWonBy)
