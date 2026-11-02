@@ -398,7 +398,7 @@ class CricketLandscapeScreenTest {
     @Test
     @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS, fontScale = 2.0f)
     fun `CR22 landscape 800 x 360 scale 2 fits, 1 to 4 players, 6 rows, with and without the pending win`() {
-        // With the bull in play (7 rows) the rows scroll at 800 x 360: they cannot keep 42 dp (P2, reported in T3 notes).
+        // With the bull in play (7 rows) the rows scroll at 800 x 360: no 42 dp floor fits (P2, see the T3 notes).
         listOf(1, 2, 3, 4).forEach { players ->
             listOf(false, true).forEach { pending -> assertFits(players, isBullInPlay = false, pending = pending) }
         }
