@@ -6,6 +6,8 @@ import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.font.createFontFamilyResolver
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -85,17 +87,30 @@ class TileNameFitTest(private val case: NameCase) {
             assertTrue("$label on ${layout.lineCount} lines, at most $maxLines", layout.lineCount <= maxLines)
             assertEquals("$label left aligned", 0f, layout.getLineLeft(0), EPSILON)
 
-            val sizePx = with(layout.layoutInput.density) { layout.layoutInput.style.fontSize.toPx() }
-            assertTrue("$label size $sizePx below its 1.0 size $oneZeroPx", sizePx >= oneZeroPx - EPSILON)
-            assertTrue("$label size $sizePx above the style size $stylePx", sizePx <= stylePx + EPSILON)
+            // The drawn size is read from the height of the first line (the layout input keeps the style's size).
+            val drawn = layout.getLineBottom(0) - layout.getLineTop(0)
+            val smallest = lineHeightAt(layout, oneZeroPx)
+            val largest = lineHeightAt(layout, stylePx)
+            assertTrue("$label line height $drawn below its 1.0 size ($smallest)", drawn >= smallest - HEIGHT_TOLERANCE)
+            assertTrue("$label line height $drawn above the style size ($largest)", drawn <= largest + HEIGHT_TOLERANCE)
             if (layout.isLineEllipsized(layout.lineCount - 1)) {
-                assertEquals("$label ends with \"…\" before shrinking to its 1.0 size", oneZeroPx, sizePx, EPSILON)
+                assertEquals("$label ends with \"…\" only at its 1.0 size", smallest, drawn, HEIGHT_TOLERANCE)
             }
             if (name == "Cid") {
                 assertEquals("$label stays on one line", 1, layout.lineCount)
-                assertEquals("$label stays at the full size", stylePx, sizePx, EPSILON)
+                assertEquals("$label stays at the full size", largest, drawn, HEIGHT_TOLERANCE)
             }
         }
+    }
+
+    /** The height of one line of [layout]'s text and style at a font size of [sizePx]. */
+    private fun lineHeightAt(layout: TextLayoutResult, sizePx: Float): Float {
+        val input = layout.layoutInput
+        val measurer = TextMeasurer(createFontFamilyResolver(composeRule.activity), input.density, input.layoutDirection)
+        val style = input.style.copy(fontSize = with(input.density) { sizePx.toSp() })
+        // Same number of lines: the first line of a text on several lines is trimmed differently from a lone line.
+        val measured = measurer.measure(List(layout.lineCount) { "A" }.joinToString("\n"), style)
+        return measured.getLineBottom(0) - measured.getLineTop(0)
     }
 
     /** U4: the next player's tile keeps its full name for TalkBack, even when the name ends with "…". */
@@ -112,7 +127,7 @@ class TileNameFitTest(private val case: NameCase) {
         check(isLandscape, fontScale)
         checkNextPlayerDescription()
         val ends = nameLayout(1).let { it.isLineEllipsized(it.lineCount - 1) }
-        if (isLandscape && fontScale == LARGEST && case == BARTHOLOMEW_MATCH) {
+        if (isLandscape && fontScale == LARGEST && case == FOUR_BARTHOLOMEW_MATCH) {
             assertTrue("BARTHOLOMEW ends with an ellipsis in landscape at 2.0 in a match", ends)
         }
     }
@@ -162,6 +177,7 @@ class TileNameFitTest(private val case: NameCase) {
         private const val START_SCORE = 301
         private const val SCALE_TOLERANCE = 0.01f
         private const val EPSILON = 0.5f
+        private const val HEIGHT_TOLERANCE = 1.5f
 
         private val FOUR_PLAYERS = listOf(
             "bob_cid_dan" to listOf("Ann", "Bob", "Cid", "Dan"),
@@ -171,6 +187,7 @@ class TileNameFitTest(private val case: NameCase) {
         )
 
         val BARTHOLOMEW_MATCH = NameCase("2p_match_bartholomew", listOf("Ann", "Bartholomew"), isMatch = true)
+        val FOUR_BARTHOLOMEW_MATCH = NameCase("4p_match_bartholomew_two_words", FOUR_PLAYERS.last().second, true)
 
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
