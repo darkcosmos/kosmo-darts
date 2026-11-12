@@ -35,3 +35,30 @@ committed.
 haiku. Why: mechanical, fully specified build configuration, rule text and check loop; no design choice.
 
 ## Implementation notes
+
+- Done as specified: `app/build.gradle.kts` (`buildConfig = true`, inline filter in `defaultConfig`, no
+  `versionName`/`versionCode` change), `BuildNumberTest.kt`, and AV1 to AV3 in `docs/rules/history.md`
+  ("App version (issue #78)", before "Related rules", with the AR5 sentence).
+- Scripted loop (`generateDebugBuildConfig --rerun` per input, `BUILD_NUMBER` read from the generated `BuildConfig.java`);
+  every row matches the expected value:
+
+| `GITHUB_RUN_NUMBER` | `BUILD_NUMBER` | Expected |
+|---|---|---|
+| unset | `dev` | `dev` |
+| `""` | `dev` | `dev` |
+| `123` | `123` | `123` |
+| `0123` | `0123` | `0123` |
+| `12a` | `dev` | `dev` |
+| `1 2` | `dev` | `dev` |
+| `-5` | `dev` | `dev` |
+| `12` + LF | `12` | `12` |
+| `12` + space | `12` | `12` |
+| `1234567890` | `1234567890` | `1234567890` |
+| `12345678901` | `dev` | `dev` |
+
+- Blocked check: `./gradlew build` and `./gradlew :app:testDebugUnitTest` are red in this sandbox, not because of this
+  change. 79 Robolectric class setups in `:app` (and 7 in `:capture` for `build`) fail with
+  `MavenArtifactFetcher` / `NoRouteToHostException`: Robolectric cannot download its Android runtime jars (outbound
+  network is allowlisted). `./gradlew :app:testDebugUnitTest --tests '*HistorySchemaTest*'` fails the same way on the
+  unchanged base (stash), so the failure predates this task. The failures are all class-level setup
+  failures (no test case fails); `BuildNumberTest` passes. `kosmo-detekt` exit 0.

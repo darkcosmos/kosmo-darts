@@ -107,6 +107,17 @@ Vocabulary:
   "Retry" button and the Back action, never a technical text, and is never stuck on loading. While loading, nothing
   is shown for the first 300 ms, then a loading indicator with a TalkBack description.
 
+## App version (issue #78)
+
+- AV1. The home screen footer reads "Version <versionName> (build <buildNumber>)" in English and French (`home_version`,
+  same wording in both languages).
+- AV2. The build part is the CI run number (`GITHUB_RUN_NUMBER`, 1 to 10 digits after trimming), shown as
+  `BuildConfig.BUILD_NUMBER`; `dev` otherwise, including local builds. It is shown in every build type.
+- AV3. The footer is fixed at the bottom of the home screen, outside the scroll, and every home control stays reachable
+  above it.
+
+The archived app version (AR5) is unchanged: it stays `versionName` alone, without the build number.
+
 ## Related rules
 
 - Persistence: R6 (deletion at the confirmed win, now after the archive, AR2), R12 (save size), R26 to R30
