@@ -159,6 +159,10 @@ No `opus` task.
   `PaletteContrastTest`.
 - D9 (Kosmo): French wording identical to English, "Version 0.1.0 (build 123)": `home_version` is
   "Version %1$s (build %2$s)" in both `values/` and `values-fr/` ("build", not "compilation").
+- D10 (design review A1): `HomeScreen` keeps two plain `String` parameters, no holder type.
+- D11 (design review A2): rules AV1 to AV3 go in `docs/rules/history.md` (no home-screen rules file; HS1 and AR5
+  are there).
+- D12: plan approved by all four reviewers at fe7279c.
 
 ## Open questions
 
