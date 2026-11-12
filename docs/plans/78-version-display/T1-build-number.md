@@ -56,9 +56,6 @@ haiku. Why: mechanical, fully specified build configuration, rule text and check
 | `1234567890` | `1234567890` | `1234567890` |
 | `12345678901` | `dev` | `dev` |
 
-- Blocked check: `./gradlew build` and `./gradlew :app:testDebugUnitTest` are red in this sandbox, not because of this
-  change. 79 Robolectric class setups in `:app` (and 7 in `:capture` for `build`) fail with
-  `MavenArtifactFetcher` / `NoRouteToHostException`: Robolectric cannot download its Android runtime jars (outbound
-  network is allowlisted). `./gradlew :app:testDebugUnitTest --tests '*HistorySchemaTest*'` fails the same way on the
-  unchanged base (stash), so the failure predates this task. The failures are all class-level setup
-  failures (no test case fails); `BuildNumberTest` passes. `kosmo-detekt` exit 0.
+- Checks: `./gradlew build`, `./gradlew :app:testDebugUnitTest` and `kosmo-detekt` now pass. The earlier failure (Robolectric
+  could not download its Android runtime jars in the sandbox: `MavenArtifactFetcher` / `NoRouteToHostException`) was a
+  sandbox problem, now fixed; it was never caused by this change.

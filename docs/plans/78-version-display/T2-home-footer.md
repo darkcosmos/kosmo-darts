@@ -44,3 +44,14 @@ committed. Look at the five `home_*` captures and note in the notes that the foo
 sonnet. Why: specified UI change from the plan with its Robolectric fit tests listed; no stored format.
 
 ## Implementation notes
+
+- `HomeScreen`: outer `Column` (safe drawing area, max width) holds the private `HomeContent` (the scrolling column,
+  `weight(1f)`) and the footer `Text` (tag `HomeTags.VERSION`). `KosmoDartsApp` passes the `BuildConfig` values.
+- `HomeScreenScreenshotTest` no longer goes through `MainActivity`'s real content: it sets `HomeScreen` with
+  `"0.1.0"` / `"123"` so captures are stable.
+- `HomeVersionFooterTest`: 8 methods (en/fr x port/land x font 1/2), each checking without then with a saved 4-player
+  X01 match. English and French texts are identical, so the French check is the A3 key comparison in
+  `FrenchStringsTest` plus the `fr` run of the footer test.
+- `PaletteContrastTest` already had a muted-on-background check (CR23); a dedicated AV1 case was added.
+- Captures (`home_portrait_en`, `_fr`, `_landscape_en/_fr`, `_font200`) looked at: the footer is visible at the
+  bottom and covers nothing. In landscape the content scrolls and ends above the footer (History is reached by scroll).

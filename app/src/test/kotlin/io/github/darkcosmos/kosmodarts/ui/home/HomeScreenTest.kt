@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.darkcosmos.kosmodarts.BuildConfig
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
@@ -46,6 +47,20 @@ class HomeScreenTest {
         composeRule.onNodeWithContentDescription(string(R.string.home_title))
             .assertIsDisplayed()
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    /** AV1, AV2: the footer shows the version name and the build number of this build. */
+    @Test
+    fun versionFooterShowsTheVersionAndTheBuildNumber() {
+        composeRule.onNodeWithTag(HomeTags.VERSION)
+            .assertIsDisplayed()
+            .assertTextEquals(
+                composeRule.activity.getString(
+                    R.string.home_version,
+                    BuildConfig.VERSION_NAME,
+                    BuildConfig.BUILD_NUMBER,
+                ),
+            )
     }
 
     /** R2, CR20: "NEW GAME" then the X01 mode card. */

@@ -1,11 +1,15 @@
 package io.github.darkcosmos.kosmodarts.screenshots
 
+import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.ui.app.Screen
+import io.github.darkcosmos.kosmodarts.ui.home.HomeScreen
+import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,7 +30,16 @@ class HomeScreenScreenshotTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
 
+    /** Fixed version values, so the captures do not change from one CI run to the next (AV1). */
     private fun capture(name: String) {
+        composeRule.runOnUiThread {
+            val view = ComposeView(composeRule.activity)
+            view.setContent {
+                KosmoDartsTheme { HomeScreen(Screen.Home(), onEvent = {}, versionName = "0.1.0", buildNumber = "123") }
+            }
+            composeRule.activity.setContentView(view)
+        }
+        composeRule.waitForIdle()
         val directory = System.getProperty(SCREENSHOT_DIR_PROPERTY, DEFAULT_SCREENSHOT_DIR)
         composeRule.onRoot().captureRoboImage("$directory/$name.png")
     }

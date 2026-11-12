@@ -149,7 +149,9 @@ class HistoryScreenshotTest {
     @Test
     @Config(qualifiers = "+fr-port")
     fun homeWithTheHistoryButton() =
-        captureScreen("home_button_portrait_fr") { HomeScreen(Screen.Home(), onEvent = {}) }
+        captureScreen("home_button_portrait_fr") {
+            HomeScreen(Screen.Home(), onEvent = {}, versionName = "0.1.0", buildNumber = "123")
+        }
 
     private companion object {
         const val SCREENSHOT_DIR_PROPERTY = "kosmodarts.screenshot.dir"

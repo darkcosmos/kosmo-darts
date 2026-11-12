@@ -244,6 +244,7 @@
 
     <!-- Historique (docs/rules/history.md, HS1 à HS7) -->
     <string name="home_history">Historique</string>
+    <string name="home_version">Version %1$s (build %2$s)</string>
     <string name="history_title">HISTORIQUE</string>
     <string name="history_filter_mode">MODE</string>
     <string name="history_filter_player">JOUEUR</string>

@@ -61,7 +61,9 @@ class CricketSetupScreenshotTest {
         captureScreen(name) { SetupScreen(state, onEvent = {}) }
 
     private fun home(name: String, saved: StoredGame) =
-        captureScreen(name) { HomeScreen(Screen.Home(resumableGame = saved), onEvent = {}) }
+        captureScreen(name) {
+            HomeScreen(Screen.Home(resumableGame = saved), onEvent = {}, versionName = "0.1.0", buildNumber = "123")
+        }
 
     private val cricketSetup = SetupState(names = listOf("Anna", "Bob")).copy(mode = GameMode.CRICKET)
 
