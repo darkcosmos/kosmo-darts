@@ -46,6 +46,31 @@ To suggest a change here, use the "Proposed owner changes" section of your PR de
 - Kotlin official code style. Small functions, explicit names, immutable data where possible.
 - Do not suppress warnings without a comment explaining why.
 
+## Verification
+
+- Kosmo verifies every PR on his Pixel 7 with the debug APK built by the CI for the latest commit. He uninstalls the
+  previous version first: the debug key changes on every CI build. "How to verify" steps start from that fresh install.
+
+## Review focus
+
+Project-specific points the squad reviewers check in addition to their own checklist.
+
+- Tests: game rules have JVM tests in `:game-engine` that cite the rule identifiers of `docs/rules/` (new identifiers
+  are added there). Edge cases to list for changed behavior: bust, double-out and single-out, checkout dialog, undo
+  at every step, 1 to 4 players, 501 and 301, restart, and process death when state must survive it.
+- Architecture: a game is its configuration plus the ordered list of darts; undo, persistence, statistics and camera
+  input all derive from this single source of truth. Counting or filtering game data in a composable (for example the
+  180s of a player) is a blocking finding; game-rule values (180, 501, double-out) are named in `:game-engine`. Side
+  effects go through explicit hooks such as the "turn completed" hook of the ViewModel. Next milestones: voice
+  announcements, look and feel, then the camera milestone.
+- Security: offline and private (see above); Android backup stays disabled (`allowBackup="false"` and the data
+  extraction rules) until the owner decides otherwise; the camera permission, later, is requested at the point of
+  use. A saved game that breaks the rules (for example a dart after the win) is rejected or migrated, never replayed.
+- UX: a player standing at the dartboard, phone in one hand, in French or English, in portrait or landscape. The
+  current player, remaining score and darts left stay readable at arm's length; clear feedback for bust, checkout,
+  turn end and undo; few taps per dart and per turn; 1 to 4 players and long names fit (known issue: the list can
+  overflow at 3 to 4 players in portrait).
+
 ## Git
 
 - Branch names: `feat/...`, `fix/...`, `chore/...`, `build/...`, `test/...`, `docs/...`.
