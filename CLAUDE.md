@@ -68,8 +68,8 @@ Project-specific points the squad reviewers check in addition to their own check
   use. A saved game that breaks the rules (for example a dart after the win) is rejected or migrated, never replayed.
 - UX: a player standing at the dartboard, phone in one hand, in French or English, in portrait or landscape. The
   current player, remaining score and darts left stay readable at arm's length; clear feedback for bust, checkout,
-  turn end and undo; few taps per dart and per turn; 1 to 4 players and long names fit (known issue: the list can
-  overflow at 3 to 4 players in portrait).
+  turn end and undo; few taps per dart and per turn; undo always reachable during a game; ending or leaving a game is
+  confirmed; 1 to 4 players and long names fit (known issue: the list can overflow at 3 to 4 players in portrait).
 
 ## Git
 
