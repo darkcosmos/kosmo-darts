@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import io.github.darkcosmos.kosmodarts.BuildConfig
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.AppState
 import io.github.darkcosmos.kosmodarts.ui.app.Screen
@@ -32,7 +33,12 @@ fun KosmoDartsApp(
 ) {
     BackHandler(enabled = state.screen !is Screen.Home) { onEvent(AppEvent.Back) }
     when (val screen = state.screen) {
-        is Screen.Home -> HomeScreen(screen, onEvent)
+        is Screen.Home -> HomeScreen(
+            screen,
+            onEvent,
+            versionName = BuildConfig.VERSION_NAME,
+            buildNumber = BuildConfig.BUILD_NUMBER,
+        )
         is Screen.Setup -> SetupScreen(screen.setup, onEvent, isRestoreFailedShown = screen.isRestoreFailedShown)
         is Screen.Game -> GameScreen(screen.game, onEvent, noVoiceNotice = screen.noVoiceNotice)
         is Screen.BetweenLegs ->

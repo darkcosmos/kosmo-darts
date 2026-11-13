@@ -57,6 +57,12 @@ class PaletteContrastTest {
         assertTrue(ratio(colors.onBackgroundMuted, colors.background) >= TEXT_RATIO)
     }
 
+    /** AV1: the home version footer is 16sp regular text in `onBackgroundMuted` on `background`. */
+    @Test
+    fun `AV1 the version footer text stays above 4,5 to 1`() {
+        assertTrue(ratio(colors.onBackgroundMuted, colors.background) >= TEXT_RATIO)
+    }
+
     /**
      * Non-text indicators, at least 3:1 (U8): the active Double/Triple key (accent) against the inactive one and the
      * background, and the color strips and markers against the background they sit on.

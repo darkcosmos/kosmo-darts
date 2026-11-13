@@ -28,6 +28,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -58,7 +60,13 @@ import io.github.darkcosmos.kosmodarts.ui.theme.States
  * saved, then "NEW GAME" with the X01 and Cricket mode cards. Everything scrolls.
  */
 @Composable
-fun HomeScreen(home: Screen.Home, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
+fun HomeScreen(
+    home: Screen.Home,
+    onEvent: (AppEvent) -> Unit,
+    versionName: String,
+    buildNumber: String,
+    modifier: Modifier = Modifier,
+) {
     val colors = KosmoTheme.colors
     Box(
         contentAlignment = Alignment.TopCenter,
@@ -67,57 +75,81 @@ fun HomeScreen(home: Screen.Home, onEvent: (AppEvent) -> Unit, modifier: Modifie
             .background(colors.background),
     ) {
         Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier
                 .safeDrawingPadding()
-                .verticalScroll(rememberScrollState())
                 .widthIn(max = ScreenLayoutPolicy.CONTENT_MAX_WIDTH.dp)
-                .fillMaxWidth()
-                .padding(
-                    horizontal = ScreenLayoutPolicy.HORIZONTAL_MARGIN.dp,
-                    vertical = ScreenLayoutPolicy.VERTICAL_MARGIN.dp,
-                ),
+                .fillMaxSize(),
         ) {
-            TitleRow(onEvent)
-            home.resumableGame?.let { saved ->
-                ResumeCard(
-                    summary = ResumeSummary.of(saved),
-                    onResume = { onEvent(AppEvent.ResumeTapped) },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-            SectionLabel(stringResource(R.string.home_new_game_section), Modifier.padding(top = 8.dp))
-            // CR20: X01, then Cricket (mockup 06).
-            ModeCard(
-                thumbnail = stringResource(R.string.mode_x01_title),
-                title = stringResource(R.string.mode_x01_title),
-                description = stringResource(R.string.mode_x01_description),
-                onClick = { onEvent(AppEvent.NewGame(GameMode.X01)) },
+            HomeContent(home, onEvent, Modifier.weight(1f))
+            // AV1, AV3: fixed footer outside the scroll, so it never hides a control.
+            Text(
+                text = stringResource(R.string.home_version, versionName, buildNumber),
+                style = KosmoTheme.typography.body,
+                color = colors.onBackgroundMuted,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                overflow = TextOverflow.Clip,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag(HomeTags.MODE_X01),
-            )
-            ModeCard(
-                thumbnail = stringResource(R.string.mode_cricket_thumbnail),
-                title = stringResource(R.string.cricket_title),
-                description = stringResource(R.string.mode_cricket_description),
-                onClick = { onEvent(AppEvent.NewGame(GameMode.CRICKET)) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag(HomeTags.MODE_CRICKET),
-            )
-            // HS1: the archive of finished matches, under the game modes.
-            KosmoButton(
-                text = stringResource(R.string.home_history),
-                onClick = { onEvent(AppEvent.HistoryTapped) },
-                kind = ButtonKind.SECONDARY,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag(HomeTags.HISTORY),
+                    .padding(horizontal = ScreenLayoutPolicy.HORIZONTAL_MARGIN.dp, vertical = 8.dp)
+                    .testTag(HomeTags.VERSION),
             )
         }
     }
     if (home.isNewGameDialogShown) NewGameDialog(onEvent)
+}
+
+/** The scrolling part of the home screen: title row, resume card, game modes and history. */
+@Composable
+private fun HomeContent(home: Screen.Home, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = modifier
+            .verticalScroll(rememberScrollState())
+            .fillMaxWidth()
+            .padding(
+                horizontal = ScreenLayoutPolicy.HORIZONTAL_MARGIN.dp,
+                vertical = ScreenLayoutPolicy.VERTICAL_MARGIN.dp,
+            ),
+    ) {
+        TitleRow(onEvent)
+        home.resumableGame?.let { saved ->
+            ResumeCard(
+                summary = ResumeSummary.of(saved),
+                onResume = { onEvent(AppEvent.ResumeTapped) },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        SectionLabel(stringResource(R.string.home_new_game_section), Modifier.padding(top = 8.dp))
+        // CR20: X01, then Cricket (mockup 06).
+        ModeCard(
+            thumbnail = stringResource(R.string.mode_x01_title),
+            title = stringResource(R.string.mode_x01_title),
+            description = stringResource(R.string.mode_x01_description),
+            onClick = { onEvent(AppEvent.NewGame(GameMode.X01)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(HomeTags.MODE_X01),
+        )
+        ModeCard(
+            thumbnail = stringResource(R.string.mode_cricket_thumbnail),
+            title = stringResource(R.string.cricket_title),
+            description = stringResource(R.string.mode_cricket_description),
+            onClick = { onEvent(AppEvent.NewGame(GameMode.CRICKET)) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(HomeTags.MODE_CRICKET),
+        )
+        // HS1: the archive of finished matches, under the game modes.
+        KosmoButton(
+            text = stringResource(R.string.home_history),
+            onClick = { onEvent(AppEvent.HistoryTapped) },
+            kind = ButtonKind.SECONDARY,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(HomeTags.HISTORY),
+        )
+    }
 }
 
 /** "KOSMO DARTS" ("DARTS" in `accent`), read as the app name; the settings button on the right (AN13). */
@@ -178,8 +210,7 @@ private fun NewGameDialog(onEvent: (AppEvent) -> Unit) {
 @Composable
 private fun HomeScreenPreview() {
     KosmoDartsTheme {
-        HomeScreen(
-            home = Screen.Home(), onEvent = {})
+        HomeScreen(home = Screen.Home(), onEvent = {}, versionName = "0.1.0", buildNumber = "123")
     }
 }
 
@@ -194,6 +225,8 @@ private fun HomeScreenWithSavedGamePreview() {
         HomeScreen(
             home = Screen.Home(resumableGame = SavedGame(game, isAwaitingNextPlayer = false, journal = journal)),
             onEvent = {},
+            versionName = "0.1.0",
+            buildNumber = "123",
         )
     }
 }

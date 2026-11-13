@@ -53,7 +53,16 @@ class HomeFitTest {
         )
         composeRule.runOnUiThread {
             val view = ComposeView(composeRule.activity)
-            view.setContent { KosmoDartsTheme { HomeScreen(Screen.Home(resumableGame = saved), onEvent = {}) } }
+            view.setContent {
+                KosmoDartsTheme {
+                    HomeScreen(
+                        Screen.Home(resumableGame = saved),
+                        onEvent = {},
+                        versionName = "0.1.0",
+                        buildNumber = "123",
+                    )
+                }
+            }
             composeRule.activity.setContentView(view)
         }
         composeRule.waitForIdle()

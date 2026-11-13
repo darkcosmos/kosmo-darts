@@ -22,6 +22,9 @@ object HomeTags {
     /** The "History" button (HS1). */
     const val HISTORY = "home_history"
 
+    /** The fixed version footer (AV1, AV3). */
+    const val VERSION = "home_version"
+
     fun player(index: Int): String = "home_summary_player_$index"
 
     fun score(index: Int): String = "home_summary_score_$index"

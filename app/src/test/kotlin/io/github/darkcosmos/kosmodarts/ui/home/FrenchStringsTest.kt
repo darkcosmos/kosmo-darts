@@ -75,6 +75,12 @@ class FrenchStringsTest {
     }
 
     /** U2: counted texts use plurals; French uses "one" for 0 and 1. */
+    /** AV1: the version footer is defined in French (and in the default file: see the key comparison below). */
+    @Test
+    fun `AV1 the version footer is translated`() {
+        assertEquals("Version 0.1.0 (build 12345)", context.getString(R.string.home_version, "0.1.0", "12345"))
+    }
+
     @Test
     fun `U2 counted texts are plurals in French`() {
         val resources = context.resources

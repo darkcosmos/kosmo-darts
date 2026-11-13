@@ -26,6 +26,12 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
+        // CI run number (rule AV2): 1 to 10 digits after trimming, otherwise "dev" (local builds included).
+        val buildNumber = providers.environmentVariable("GITHUB_RUN_NUMBER").orNull
+            ?.trim()
+            ?.takeIf { Regex("[0-9]{1,10}").matches(it) }
+            ?: "dev"
+        buildConfigField("String", "BUILD_NUMBER", "\"$buildNumber\"")
     }
 
     buildTypes {
@@ -42,6 +48,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     testOptions {
