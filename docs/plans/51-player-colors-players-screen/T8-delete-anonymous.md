@@ -44,3 +44,15 @@ PM6, PM7, PF3, PF5, AR8, HS2, HS3, HS5, AR9.
 sonnet. Why: specified rules PM6 and PM7 over T7's DAO, no schema change.
 
 ## Implementation notes
+- Deviation: detekt TooManyFunctions (11) forbade putting the delete queries in `PlayersDao`. They live in a new
+  `ProfileDeletionDao` (`ProfileDeletion.kt`, also holds `SessionParticipant`), and the plan/apply logic in
+  `ProfileDeleter` (same file), used by `RoomPlayersRepository`. `PlayersDao` keeps `moveParticipations`/`deleteProfile`.
+- `PlayersRepository` gained `deletionCount(id): DbResult<Int>` and `delete(id, at): DbResult<Int>` (matches erased,
+  computed in the delete transaction). Unknown or anonymous id: no-op giving 0. The anonymous profile (stored name
+  "Deleted player", key `""`) is created lazily, only when a match is reassigned. `FakePlayersRepository` has
+  `deletionCountResult`, `deleteResult` and a `deletes` call log for T9.
+- History: `MatchPlayerRow.nameKey`, `HistoryPlayer.isDeleted` (default false), color read through
+  `PlayerColor.fromStored`. `HistoryDao.profilesByRecency` excludes the key (also feeds `ProfileRepository.recent`).
+- UI: `HistoryPlayer.shownName(resources)` (HistoryRows.kt) replaces every `.name` display in History rows and the
+  detail; resource `history_deleted_player` in both languages. T9 can reuse it.
+- ADR 0014 lists the queries that must exclude the reserved key.

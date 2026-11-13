@@ -98,6 +98,32 @@ class HistoryRepositoryTest {
     }
 
     @Test
+    fun `D16 a stored color with alpha 00 is shown opaque, in the list and the detail`() {
+        archive(x01Match(matchId = "m1", names = listOf("Ana", "Bob"), clock = clock))
+        db.openHelper.writableDatabase.execSQL("UPDATE match_player SET color_argb = ${0x001F63D6} WHERE position = 0")
+        val opaque = 0xFF1F63D6.toInt()
+
+        val match = read().matches.single()
+        assertEquals(opaque, match.players.first().colorArgb)
+        assertEquals(opaque, detail(match.sessionId).players.first().colorArgb)
+    }
+
+    @Test
+    fun `PM6 PM7 HS3 a deleted player is marked and the anonymous profile is not offered by the filter`() {
+        archive(x01Match(matchId = "m1", names = listOf("Ana", "Bob"), clock = clock))
+        val ana = profileId("Ana")
+        RoomPlayersRepository(db).delete(ana, at = 50L)
+
+        val result = read()
+        assertEquals(listOf(true, false), result.matches.single().players.map { it.isDeleted })
+        assertEquals(
+            listOf(true, false),
+            detail(result.matches.single().sessionId).players.map { it.isDeleted },
+        )
+        assertEquals(listOf("Bob"), result.profiles.map { it.name })
+    }
+
+    @Test
     fun `AR9 HS7 a closed database gives Failed, not an exception`() {
         db.close()
         assertEquals(DbResult.Failed, repository.list(HistoryFilters()))

@@ -5,6 +5,7 @@ import androidx.room.Dao
 import androidx.room.Embedded
 import androidx.room.Query
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMode
+import io.github.darkcosmos.kosmodarts.engine.profile.ProfileRules
 
 /** One archived match as listed by History (HS2), with its session values (AR5). */
 data class MatchSummaryRow(
@@ -25,6 +26,7 @@ data class MatchPlayerRow(
     @ColumnInfo(name = "position") val position: Int,
     @ColumnInfo(name = "profile_id") val profileId: Long,
     @ColumnInfo(name = "name") val name: String,
+    @ColumnInfo(name = "name_key") val nameKey: String,
     @ColumnInfo(name = "color_argb") val colorArgb: Int,
     @ColumnInfo(name = "final_rank") val finalRank: Int,
     @ColumnInfo(name = "legs_won") val legsWon: Int,
@@ -61,7 +63,7 @@ interface HistoryDao {
     /** Every player of the matches [matchSummaries] returns for the same filters, by match then position. */
     @Query(
         """
-        SELECT p.session_id, p.position, p.profile_id, r.name, p.color_argb, p.final_rank, p.legs_won, p.sets_won
+        SELECT p.session_id, p.position, p.profile_id, r.name, r.name_key, p.color_argb, p.final_rank, p.legs_won, p.sets_won
         FROM match_player p
             JOIN profile r ON r.id = p.profile_id
             JOIN match_record m ON m.session_id = p.session_id
@@ -73,8 +75,11 @@ interface HistoryDao {
     )
     fun matchPlayers(mode: ArchivedMode?, profileId: Long?): List<MatchPlayerRow>
 
-    /** Every profile, most recently used first (PF3, HS3). */
-    @Query("SELECT * FROM profile ORDER BY last_used_at DESC, id DESC")
+    /** Every profile but the anonymous one (PM7, ADR 0014), most recently used first (PF3, HS3). */
+    @Query(
+        "SELECT * FROM profile WHERE name_key <> '${ProfileRules.ANONYMOUS_NAME_KEY}' " +
+            "ORDER BY last_used_at DESC, id DESC",
+    )
     fun profilesByRecency(): List<ProfileEntity>
 
     /** The match of session [sessionId], or `null` when there is none (HS5). */
@@ -91,7 +96,7 @@ interface HistoryDao {
     /** The players of session [sessionId], in throwing order. */
     @Query(
         """
-        SELECT p.session_id, p.position, p.profile_id, r.name, p.color_argb, p.final_rank, p.legs_won, p.sets_won
+        SELECT p.session_id, p.position, p.profile_id, r.name, r.name_key, p.color_argb, p.final_rank, p.legs_won, p.sets_won
         FROM match_player p JOIN profile r ON r.id = p.profile_id
         WHERE p.session_id = :sessionId
         ORDER BY p.position

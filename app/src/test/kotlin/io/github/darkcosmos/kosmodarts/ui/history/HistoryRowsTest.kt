@@ -5,6 +5,7 @@ import android.content.res.Resources
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
+import io.github.darkcosmos.kosmodarts.history.HistoryMatch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
@@ -105,6 +106,24 @@ class HistoryRowsTest {
     }
 
     @Test
+    fun `PM6 a deleted player shows the Deleted player text, in the row, the winner and the description`() {
+        val match = x01HistoryMatch(1, "Ana", "Bob")
+        val shown = match.withFirstPlayerDeleted()
+        val row = text(shown)
+        assertEquals(listOf("Deleted player", "Bob"), row.players.map { it.name })
+        assertEquals("Winner: Deleted player", row.winner)
+        assertTrue(row.description, row.description.contains("Deleted player") && !row.description.contains("Ana"))
+    }
+
+    @Test
+    @Config(qualifiers = "+fr")
+    fun `PM6 a deleted player shows Joueur supprime on a French device`() {
+        val match = x01HistoryMatch(1, "Ana", "Bob")
+        val shown = match.withFirstPlayerDeleted()
+        assertEquals("Joueur supprimé", text(shown, Locale.FRANCE).players.first().name)
+    }
+
+    @Test
     @Config(qualifiers = "+fr")
     fun `HS2 the texts are French on a French device`() {
         val match = x01HistoryMatch(1, "Ana", "Bob", format = MatchFormat(legsPerSet = 2), legs = listOf(2, 1))
@@ -114,3 +133,6 @@ class HistoryRowsTest {
         assertTrue(row.description, row.description.contains("Joueurs"))
     }
 }
+
+private fun HistoryMatch.withFirstPlayerDeleted() =
+    copy(players = players.mapIndexed { index, player -> if (index == 0) player.copy(isDeleted = true) else player })

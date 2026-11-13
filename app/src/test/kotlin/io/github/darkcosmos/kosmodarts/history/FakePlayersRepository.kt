@@ -9,7 +9,10 @@ class FakePlayersRepository(
     var renameResult: DbResult<RenameResult> = DbResult.Ok(RenameResult.Unknown),
     var resetResult: DbResult<Unit> = DbResult.Ok(Unit),
     var mergeResult: DbResult<MergeResult> = DbResult.Ok(MergeResult.MERGED),
+    var deletionCountResult: DbResult<Int> = DbResult.Ok(0),
+    var deleteResult: DbResult<Int> = DbResult.Ok(0),
 ) : PlayersRepository {
+    val deletes = mutableListOf<Pair<Long, Long>>()
     val renames = mutableListOf<Pair<Long, String>>()
     val resets = mutableListOf<Pair<Long, Long>>()
     val merges = mutableListOf<Pair<Long, Long>>()
@@ -24,6 +27,13 @@ class FakePlayersRepository(
     override fun reset(id: Long, at: Long): DbResult<Unit> {
         resets += id to at
         return resetResult
+    }
+
+    override fun deletionCount(id: Long): DbResult<Int> = deletionCountResult
+
+    override fun delete(id: Long, at: Long): DbResult<Int> {
+        deletes += id to at
+        return deleteResult
     }
 
     override fun merge(sourceId: Long, targetId: Long): DbResult<MergeResult> {

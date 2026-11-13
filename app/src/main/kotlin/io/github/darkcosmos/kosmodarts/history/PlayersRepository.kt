@@ -58,10 +58,21 @@ interface PlayersRepository {
 
     /** PM4: merges the profile [sourceId] into [targetId]. */
     fun merge(sourceId: Long, targetId: Long): DbResult<MergeResult>
+
+    /** PM6: how many matches deleting the profile [id] erases (0 for an unknown or anonymous profile, PM7). */
+    fun deletionCount(id: Long): DbResult<Int>
+
+    /**
+     * PM6: deletes the profile [id]: its matches shared with a real player go to the anonymous profile (created at
+     * [at] when absent), the others are erased. Returns the number of matches erased, counted inside the same
+     * transaction. An unknown or anonymous profile is a no-op giving 0.
+     */
+    fun delete(id: Long, at: Long): DbResult<Int>
 }
 
 /** The Room implementation: every multi-statement action runs in one transaction (PM10). */
 class RoomPlayersRepository(private val database: HistoryDatabase) : PlayersRepository {
+    private val deleter = ProfileDeleter(database)
 
     override fun list(): DbResult<List<PlayerSummary>> = dbResult {
         database.playersDao().rows(ProfileRules.ANONYMOUS_NAME_KEY).map {
@@ -103,6 +114,22 @@ class RoomPlayersRepository(private val database: HistoryDatabase) : PlayersRepo
         database.runInTransaction {
             val profile = dao.find(id)
             if (profile != null && profile.nameKey != ProfileRules.ANONYMOUS_NAME_KEY) dao.updateResetAt(id, at)
+        }
+    }
+
+    override fun deletionCount(id: Long): DbResult<Int> = dbResult {
+        database.runInTransaction<Int> { deleter.plan(id)?.toDelete?.size ?: 0 }
+    }
+
+    override fun delete(id: Long, at: Long): DbResult<Int> = dbResult {
+        database.runInTransaction<Int> {
+            val plan = deleter.plan(id)
+            if (plan == null) {
+                0
+            } else {
+                deleter.apply(id, plan, at)
+                plan.toDelete.size
+            }
         }
     }
 

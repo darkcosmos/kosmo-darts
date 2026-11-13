@@ -3,6 +3,7 @@ package io.github.darkcosmos.kosmodarts.history
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerListError
+import io.github.darkcosmos.kosmodarts.engine.profile.ProfileRules
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -216,9 +217,157 @@ class PlayersRepositoryTest {
         assertEquals(before, counts())
     }
 
+    private fun anonymousId(): Long? = db.profileDeletionDao().findAnonymous(ProfileRules.ANONYMOUS_NAME_KEY)?.id
+
+    private fun sessionOfPlayers(vararg ids: Long): Long = db.historyDao().matchSummaries(null, null)
+        .first { participants(it.sessionId) == ids.toList() }.sessionId
+
+    @Test
+    fun `PM6 a solo match is erased with its legs, darts and record`() {
+        play("Ana")
+        play("Ana", "Bob")
+        val ana = idOf("Ana")
+
+        assertEquals(DbResult.Ok(1), repository.deletionCount(ana))
+        assertEquals(DbResult.Ok(1), repository.delete(ana, at = 50L))
+
+        // One session left (the shared one) with its record, 2 players, 2 legs, 6 non-voided or voided darts.
+        val rows = counts()
+        assertEquals(listOf(1, 1, 2, 2), rows.take(4))
+        assertEquals(null, db.playersDao().find(ana))
+    }
+
+    @Test
+    fun `PM6 PM7 a shared match goes to the anonymous profile and History shows it deleted`() {
+        play("Ana", "Bob")
+        val ana = idOf("Ana")
+        val bob = idOf("Bob")
+        val before = counts()
+
+        assertEquals(DbResult.Ok(0), repository.deletionCount(ana))
+        assertEquals(DbResult.Ok(0), repository.delete(ana, at = 50L))
+
+        val anonymous = anonymousId()!!
+        assertEquals(listOf(anonymous, bob), participants(sessionOfPlayers(anonymous, bob)))
+        assertEquals(listOf("Bob"), list().map(PlayerSummary::name))
+        val shown = (RoomHistoryRepository(db).list(HistoryFilters()) as DbResult.Ok).value
+        assertEquals(listOf(true, false), shown.matches.single().players.map(HistoryPlayer::isDeleted))
+        assertEquals(listOf("Bob"), shown.profiles.map(HistoryProfile::name))
+        // Nothing erased: the five match tables keep their rows, the profiles are Bob and the anonymous one.
+        assertEquals(before.take(5) + 2, counts())
+    }
+
+    @Test
+    fun `PM6 a second deletion reuses the same anonymous profile`() {
+        play("Ana", "Bob")
+        play("Cleo", "Dan")
+
+        repository.delete(idOf("Ana"), at = 50L)
+        val anonymous = anonymousId()!!
+        repository.delete(idOf("Cleo"), at = 60L)
+
+        assertEquals(anonymous, anonymousId())
+        assertEquals(3, counts()[5])
+        assertEquals(2, counts()[0])
+        assertEquals(listOf("Bob", "Dan"), list().map(PlayerSummary::name).sorted())
+    }
+
+    @Test
+    fun `PM6 a match whose two players are deleted is erased`() {
+        play("Ana", "Bob")
+        val ana = idOf("Ana")
+        val bob = idOf("Bob")
+        repository.delete(ana, at = 50L)
+
+        assertEquals(DbResult.Ok(1), repository.deletionCount(bob))
+        assertEquals(DbResult.Ok(1), repository.delete(bob, at = 60L))
+
+        // Only the anonymous profile is left.
+        assertEquals(listOf(0, 0, 0, 0, 0, 1), counts())
+        assertEquals(emptyList<PlayerSummary>(), list())
+    }
+
+    @Test
+    fun `PM6 deletionCount equals the number of matches actually erased`() {
+        play("Ana")
+        play("Ana")
+        play("Ana", "Bob")
+        val ana = idOf("Ana")
+        val sessionsBefore = counts()[0]
+
+        val expected = (repository.deletionCount(ana) as DbResult.Ok).value
+        val erased = (repository.delete(ana, at = 50L) as DbResult.Ok).value
+
+        assertEquals(2, expected)
+        assertEquals(expected, erased)
+        assertEquals(sessionsBefore - erased, counts()[0])
+    }
+
+    @Test
+    fun `PM6 with foreign keys on, erasing a match with record, legs and darts breaks no constraint`() {
+        val foreignKeys = db.openHelper.writableDatabase.query("PRAGMA foreign_keys").use {
+            it.moveToFirst()
+            it.getInt(0)
+        }
+        assertEquals(1, foreignKeys)
+        play("Ana")
+
+        assertEquals(DbResult.Ok(1), repository.delete(idOf("Ana"), at = 50L))
+        assertEquals(listOf(0, 0, 0, 0, 0), counts().take(5))
+    }
+
+    @Test
+    fun `PM10 a failure after the first delete rolls the whole deletion back`() {
+        play("Ana")
+        play("Ana", "Bob")
+        val ana = idOf("Ana")
+        db.openHelper.writableDatabase.execSQL(
+            "CREATE TRIGGER fail_leg BEFORE DELETE ON leg BEGIN SELECT RAISE(ABORT, 'boom'); END",
+        )
+        val before = counts()
+
+        assertEquals(DbResult.Failed, repository.delete(ana, at = 50L))
+
+        assertEquals(before, counts())
+        assertEquals(null, anonymousId())
+        assertTrue(db.playersDao().find(ana) != null)
+    }
+
+    @Test
+    fun `PM6 PM7 deleting an unknown or the anonymous profile does nothing`() {
+        play("Ana", "Bob")
+        repository.delete(idOf("Ana"), at = 50L)
+        val anonymous = anonymousId()!!
+        val before = counts()
+
+        assertEquals(DbResult.Ok(0), repository.delete(anonymous, at = 60L))
+        assertEquals(DbResult.Ok(0), repository.delete(999L, at = 60L))
+        assertEquals(DbResult.Ok(0), repository.deletionCount(anonymous))
+        assertEquals(DbResult.Ok(0), repository.deletionCount(999L))
+
+        assertEquals(before, counts())
+    }
+
+    @Test
+    fun `PM7 archiving a match never picks the anonymous profile`() {
+        play("Ana", "Bob")
+        repository.delete(idOf("Ana"), at = 50L)
+        val anonymous = anonymousId()!!
+
+        // A real player named like the anonymous profile gets his own profile.
+        play("Deleted player", "Cleo")
+
+        assertEquals(1, db.playersDao().all().count { it.nameKey == ProfileRules.ANONYMOUS_NAME_KEY })
+        val lookalike = db.profileDao().findByNameKey("deleted player")!!
+        assertTrue(lookalike.id != anonymous)
+        assertTrue(list().any { it.id == lookalike.id })
+    }
+
     @Test
     fun `AR9 a closed database gives Failed for every call`() {
         db.close()
+        assertEquals(DbResult.Failed, repository.deletionCount(1L))
+        assertEquals(DbResult.Failed, repository.delete(1L, 1L))
 
         assertEquals(DbResult.Failed, repository.list())
         assertEquals(DbResult.Failed, repository.rename(1L, "Ana"))

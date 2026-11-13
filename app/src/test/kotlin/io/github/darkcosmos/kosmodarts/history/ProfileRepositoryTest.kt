@@ -68,6 +68,14 @@ class ProfileRepositoryTest {
     }
 
     @Test
+    fun `PF3 PM7 the anonymous profile is never suggested`() {
+        repository.touchOrCreate(listOf("Ana"), 100L)
+        db.profileDao().upsertUsed("Deleted player", "", at = 500L)
+
+        assertEquals(listOf("Ana"), recent().map(Profile::name))
+    }
+
+    @Test
     fun `PF1 a name of the maximum length is stored whole`() {
         val name = "é".repeat(PlayerListRules.MAX_NAME_LENGTH)
         repository.touchOrCreate(listOf(name), 100L)

@@ -14,7 +14,7 @@ data class PlayerRow(
 )
 
 /**
- * Reads and writes behind the Players screen (PM2 to PM5). No delete of matches (AR8). The caller,
+ * Reads and writes behind the Players screen (PM2 to PM5); the deletion of PM6 is [ProfileDeletionDao]. The caller,
  * [RoomPlayersRepository], runs the multi-statement actions in one transaction (PM10).
  */
 @Dao
