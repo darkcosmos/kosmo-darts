@@ -105,7 +105,7 @@ class SetupStateTest {
 
     /** PC8: the setup prefilled from the last setup restores each player's color. */
     @Test
-    fun `PC8 prefilled restores the color colors`() {
+    fun `PC8 prefilled restores the player colors`() {
         val lastSetup = X01MatchConfig(
             X01Config(listOf("Cid", "Ann")),
             colors = listOf(PlayerColor.LILAC, PlayerColor.ORANGE),

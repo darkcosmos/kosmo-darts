@@ -91,14 +91,21 @@ class ColorChoicesTest {
     }
 
     @Test
-    fun `PC15 a constant random gives fewer swatches, never a duplicate or a bad one`() {
+    fun `PC15 a constant random gives fewer swatches, only his own color, never a duplicate`() {
+        var draws = 0
         val constant = object : Random() {
-            override fun nextBits(bitCount: Int): Int = 0
+            override fun nextBits(bitCount: Int): Int {
+                draws++
+                return 0
+            }
         }
         val colors = PlayerColor.PALETTE
         val choices = ColorChoices.choicesFor(0, colors, constant)
         assertEquals(choices.size, choices.toSet().size)
-        assertTrue(choices.size < PlayerColorRules.MIN_CHOICES || choices.size == PlayerColorRules.MIN_CHOICES)
+        // Only his own color: the constant candidate is never acceptable, so every attempt fails.
+        assertEquals(1, choices.size)
+        // Three doubles per attempt, two bit draws each, at most the attempts of one generation.
+        assertTrue(draws <= 3 * 2 * PlayerColorRules.MAX_GENERATION_ATTEMPTS)
         choices.drop(1).forEach { assertConforming(it, colors.drop(1)) }
     }
 }

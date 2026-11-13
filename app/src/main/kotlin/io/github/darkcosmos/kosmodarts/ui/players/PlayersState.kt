@@ -73,18 +73,16 @@ sealed interface PlayersRequest {
 
 /** The answer of the database to a [PlayersRequest]; [DbResult.Failed] is a database error (PM10). */
 sealed interface PlayersAnswer {
-    val result: DbResult<Any>
+    data class Renamed(val result: DbResult<RenameResult>) : PlayersAnswer
 
-    data class Renamed(override val result: DbResult<RenameResult>) : PlayersAnswer
+    data class Merged(val result: DbResult<MergeResult>) : PlayersAnswer
 
-    data class Merged(override val result: DbResult<MergeResult>) : PlayersAnswer
+    data class ResetDone(val result: DbResult<Unit>) : PlayersAnswer
 
-    data class ResetDone(override val result: DbResult<Unit>) : PlayersAnswer
-
-    data class Counted(override val result: DbResult<Int>) : PlayersAnswer
+    data class Counted(val result: DbResult<Int>) : PlayersAnswer
 
     /** The result is the number of matches erased, counted in the transaction. */
-    data class Deleted(override val result: DbResult<Int>) : PlayersAnswer
+    data class Deleted(val result: DbResult<Int>) : PlayersAnswer
 }
 
 /**
@@ -109,6 +107,10 @@ data class PlayersState(
     /** The profile whose card is open, or `null`. */
     val expanded: PlayerSummary?
         get() = players.find { it.id == expandedId }
+
+    /** The profiles the expanded profile can be merged into: every other one (PM4). */
+    val mergeTargets: List<PlayerSummary>
+        get() = players.filter { it.id != expandedId }
 
     /** Whether an action waits for the database: every user action is ignored meanwhile. */
     val isBusy: Boolean

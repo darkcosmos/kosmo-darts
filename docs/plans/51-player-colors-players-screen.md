@@ -45,8 +45,8 @@ showing the reset date (Q7), any new dependency, any Room schema change, screens
    deletion plan (which matches become anonymous, which are deleted), in-progress guard, and the last setup roster
    updates (PM9). Pure functions over ids, name keys and match player lists.
 5. **Room without a new schema.** The anonymous profile is a normal `profile` row with the reserved name key `""`
-   (no real name has it: `PlayerListRules` rejects blank names) and the name `""`; the app shows it with a string
-   resource. Merge, reset and delete each run in one `runInTransaction`. Deletion removes rows child first (dart,
+   (no real name has it: `PlayerListRules` rejects blank names) and the stored name "Deleted player", never displayed (the app shows it with a string
+   resource). Merge, reset and delete each run in one `runInTransaction`. Deletion removes rows child first (dart,
    leg, match_player, match_record, session), since every foreign key is NO ACTION.
    - Alternative rejected: a `hidden` column. Needs schema version 2 and a migration for a single flag.
    - ADR 0014 (T8) records the convention, the rejected alternative and the invariant: every query that lists
@@ -67,7 +67,7 @@ showing the reset date (Q7), any new dependency, any Room schema change, screens
 - App history: `ProfileDao.kt`, `HistoryDao.kt`, `HistoryRepository.kt`, `ProfileRepository.kt`,
   `ArchiveRepository.kt`, `PlayersRepository.kt` (new), `PlayersDao.kt` (new).
 - App UI: `ui/theme/PlayerPalette.kt`, every user of `ColorSlot` (components, game, cricket, between, end, home,
-  setup); `ui/setup/SetupState.kt`, `ui/components/PlayerNameRow.kt`, `ui/setup/ColorSwatchRow.kt` (new);
+  setup); `ui/setup/SetupState.kt`, `ui/components/PlayerNameRow.kt`, `ui/components/ColorSwatchRow.kt` (new);
   `ui/players/` (new: `PlayersState.kt`, `PlayersScreen.kt`, `PlayersTags.kt`); `ui/app/AppState.kt`,
   `AppReducer.kt`, `PlayersReducer.kt` (new), `PersistenceEffect.kt`; `ui/home/HomeScreen.kt`, `HomeTags.kt`.
 - Resources: `drawable/ic_history.xml`, `drawable/ic_players.xml` (new vector drawables), `values/strings.xml`,

@@ -11,19 +11,35 @@ import io.github.darkcosmos.kosmodarts.history.RenameResult
 fun PlayersState.answered(done: PlayersRequest, answer: PlayersAnswer): PlayersState {
     if (done != request) return this
     val idle = copy(request = null, message = null)
-    val value = answer.result.let { (it as? DbResult.Ok)?.value }
-    val next = value?.let { idle.afterSuccess(done, it) }
+    val next = when (answer) {
+        is PlayersAnswer.Renamed -> idle.afterRename(done, answer.result)
+        is PlayersAnswer.Merged -> idle.afterMerge(done, answer.result)
+        is PlayersAnswer.ResetDone -> idle.afterReset(done, answer.result)
+        is PlayersAnswer.Counted -> idle.afterCount(done, answer.result)
+        is PlayersAnswer.Deleted -> idle.afterDelete(done, answer.result)
+    }
     return next ?: copy(request = null, message = PlayersMessage.DatabaseError)
 }
 
-private fun PlayersState.afterSuccess(done: PlayersRequest, value: Any): PlayersState? = when {
-    done is PlayersRequest.Rename && value is RenameResult -> renamed(done, value)
-    done is PlayersRequest.Merge && value is MergeResult -> merged(value)
-    done is PlayersRequest.Reset && value == Unit -> copy(panel = null)
-    done is PlayersRequest.CountDeletion && value is Int -> copy(panel = PlayersPanel.DeleteConfirm(value))
-    done is PlayersRequest.Delete && value is Int -> copy(panel = null, expandedId = null).reload()
-    else -> null
-}
+/** Each `after` function gives `null` for a failure, or an answer that does not fit the request. */
+private fun PlayersState.afterRename(done: PlayersRequest, result: DbResult<RenameResult>): PlayersState? =
+    if (done is PlayersRequest.Rename && result is DbResult.Ok) renamed(done, result.value) else null
+
+private fun PlayersState.afterMerge(done: PlayersRequest, result: DbResult<MergeResult>): PlayersState? =
+    if (done is PlayersRequest.Merge && result is DbResult.Ok) merged(result.value) else null
+
+private fun PlayersState.afterReset(done: PlayersRequest, result: DbResult<Unit>): PlayersState? =
+    if (done is PlayersRequest.Reset && result is DbResult.Ok) copy(panel = null) else null
+
+private fun PlayersState.afterCount(done: PlayersRequest, result: DbResult<Int>): PlayersState? =
+    if (done is PlayersRequest.CountDeletion && result is DbResult.Ok) {
+        copy(panel = PlayersPanel.DeleteConfirm(result.value))
+    } else {
+        null
+    }
+
+private fun PlayersState.afterDelete(done: PlayersRequest, result: DbResult<Int>): PlayersState? =
+    if (done is PlayersRequest.Delete && result is DbResult.Ok) copy(panel = null, expandedId = null).reload() else null
 
 private fun PlayersState.renamed(done: PlayersRequest.Rename, result: RenameResult): PlayersState = when (result) {
     is RenameResult.Renamed -> copy(panel = null).reload()

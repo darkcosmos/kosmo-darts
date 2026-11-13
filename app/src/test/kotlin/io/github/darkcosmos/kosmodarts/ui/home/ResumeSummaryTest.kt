@@ -77,7 +77,7 @@ class ResumeSummaryTest {
 
     /** PC9, R17: the summary gives each player his own color. */
     @Test
-    fun `R17 the summary carries the saved color colors`() {
+    fun `R17 the summary carries the saved player colors`() {
         val saved = savedGame(
             MatchFixtures.match("Ann", "Bob", colors = listOf(PlayerColor.TEAL, PlayerColor.BLUE)),
             isAwaitingNextPlayer = false,

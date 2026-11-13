@@ -204,7 +204,7 @@ class X01MatchTest {
 
     /** PC6 (docs/rules/players.md): the colors never change when legs and sets are confirmed. */
     @Test
-    fun `PC6 color colors are unchanged after legs and sets`() {
+    fun `PC6 the player colors are unchanged after legs and sets`() {
         val colors = listOf(PlayerColor.TEAL, PlayerColor.BLUE, PlayerColor.LILAC)
         val config = X01Config(listOf("Ann", "Bob", "Cid"), 301, CheckoutRule.SINGLE_OUT)
         val start = X01Match.start(X01MatchConfig(config, MatchFormat(2, 2), colors))

@@ -72,7 +72,7 @@ class BetweenLegsStateTest {
 
     /** PC6, PC9: the winner's zone and every row take the players' own colors. */
     @Test
-    fun `PC9 rows and winner carry the color colors`() {
+    fun `PC9 rows and winner carry the player colors`() {
         val confirmed = match("Ann", "Bob", "Cid", legsPerSet = 2, colors = listOf(LILAC, BLUE, TEAL))
             .confirmLegsWonBy(1)
 

@@ -58,7 +58,7 @@ internal fun PlayersPanelContent(profile: PlayerSummary, state: PlayersState, on
     when (val panel = state.panel) {
         null -> ActionsGrid(enabled, onEvent)
         is PlayersPanel.Rename -> RenamePanel(panel, enabled, onEvent)
-        PlayersPanel.MergePick -> MergePickPanel(profile, state.players, enabled, onEvent)
+        PlayersPanel.MergePick -> MergePickPanel(profile, state.mergeTargets, enabled, onEvent)
         is PlayersPanel.MergeConfirm -> ConfirmPanel(
             text = stringResource(R.string.players_merge_confirm_text, profile.name, panel.target.name),
             confirmLabel = stringResource(R.string.players_merge),
@@ -87,10 +87,9 @@ internal fun PlayersPanelContent(profile: PlayerSummary, state: PlayersState, on
 /** PM6: the confirmation gives the number of matches erased; "No match will be erased" when there is none. */
 @Composable
 private fun deleteText(name: String, count: Int): String {
-    val erased = if (count == 0) {
-        stringResource(R.string.players_delete_erased_none)
-    } else {
-        pluralStringResource(R.plurals.players_delete_erased, count, count)
+    val erased = when (val text = erasedText(count)) {
+        ErasedText.None -> stringResource(R.string.players_delete_erased_none)
+        is ErasedText.Matches -> pluralStringResource(R.plurals.players_delete_erased, text.count, text.count)
     }
     return stringResource(R.string.players_delete_confirm_text, name, erased)
 }
@@ -234,11 +233,11 @@ private fun renameErrorText(error: RenameError): String = when (error) {
     }
 }
 
-/** PM4: "Merge Kevin into:" and the other profiles as rows; they scroll with the screen. */
+/** PM4: "Merge Kevin into:", Cancel (reachable without scrolling), then the other profiles as rows. */
 @Composable
 private fun MergePickPanel(
     profile: PlayerSummary,
-    players: List<PlayerSummary>,
+    targets: List<PlayerSummary>,
     enabled: Boolean,
     onEvent: (AppEvent) -> Unit,
 ) {
@@ -249,7 +248,16 @@ private fun MergePickPanel(
             color = KosmoTheme.colors.onBackground,
             modifier = Modifier.testTag(PlayersTags.MERGE_PICK),
         )
-        players.filter { it.id != profile.id }.forEach { target ->
+        KosmoButton(
+            text = stringResource(R.string.players_cancel),
+            onClick = { onEvent(PlayersEvent.Cancelled) },
+            kind = ButtonKind.SECONDARY,
+            enabled = enabled,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(PlayersTags.CANCEL),
+        )
+        targets.forEach { target ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -266,15 +274,6 @@ private fun MergePickPanel(
                 Text(target.name, style = KosmoTheme.typography.bodyLarge, color = KosmoTheme.colors.onBackground)
             }
         }
-        KosmoButton(
-            text = stringResource(R.string.players_cancel),
-            onClick = { onEvent(PlayersEvent.Cancelled) },
-            kind = ButtonKind.SECONDARY,
-            enabled = enabled,
-            modifier = Modifier
-                .fillMaxWidth()
-                .testTag(PlayersTags.CANCEL),
-        )
     }
 }
 

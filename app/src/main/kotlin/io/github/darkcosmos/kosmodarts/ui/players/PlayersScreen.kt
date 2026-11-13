@@ -132,18 +132,20 @@ private fun CardHeader(profile: PlayerSummary, onClick: () -> Unit) {
     }
 }
 
-/** PM2: "N matches · Last match: date", or "No match yet". The reset date is not shown (Q7). */
+/** PM2: maps the [PlayerSummaryText] of the profile to its resources. */
 @Composable
 private fun summaryText(profile: PlayerSummary): String {
-    val count = profile.matchCount
-    val lastEnded = profile.lastEndedAt
     val locale = LocalConfiguration.current.locales[0]
-    return when {
-        count == 0 -> stringResource(R.string.players_no_match)
-        lastEnded == null -> pluralStringResource(R.plurals.players_match_count, count, count)
-        else -> pluralStringResource(R.plurals.players_match_count, count, count) +
-            stringResource(R.string.format_separator) +
-            stringResource(R.string.players_last_match, formatEndDate(lastEnded, locale, ZoneId.systemDefault()))
+    return when (val text = profile.summaryText()) {
+        PlayerSummaryText.NoMatch -> stringResource(R.string.players_no_match)
+        is PlayerSummaryText.Matches -> pluralStringResource(R.plurals.players_match_count, text.count, text.count)
+        is PlayerSummaryText.MatchesAndLast ->
+            pluralStringResource(R.plurals.players_match_count, text.count, text.count) +
+                stringResource(R.string.format_separator) +
+                stringResource(
+                    R.string.players_last_match,
+                    formatEndDate(text.lastEndedAt, locale, ZoneId.systemDefault()),
+                )
     }
 }
 

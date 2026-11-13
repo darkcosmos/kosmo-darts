@@ -148,7 +148,7 @@ class GameScreenStateZoneTest {
 
     /** PC6, PC9: each player's color, whatever his position. */
     @Test
-    fun `PC9 color color of each player`() {
+    fun `PC9 each player has his own color`() {
         val colors = listOf(PlayerColor.TEAL, PlayerColor.LILAC, PlayerColor.BLUE)
         val game = GameScreenState(match("Ann", "Bob", "Cid", colors = colors))
 

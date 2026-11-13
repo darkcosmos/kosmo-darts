@@ -340,7 +340,7 @@ class CricketMatchTest {
 
     /** PC6 (docs/rules/players.md): the colors never change when legs and sets are confirmed. */
     @Test
-    fun `PC6 color colors are unchanged after legs and sets`() {
+    fun `PC6 the player colors are unchanged after legs and sets`() {
         val colors = listOf(PlayerColor.TEAL, PlayerColor.BLUE, PlayerColor.LILAC)
         val config = CricketConfig(listOf("Ann", "Bob", "Cid"))
         val start = CricketMatch.start(CricketMatchConfig(config, MatchFormat(2, 2), colors))

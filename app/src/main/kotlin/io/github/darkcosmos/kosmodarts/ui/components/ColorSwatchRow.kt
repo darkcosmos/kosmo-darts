@@ -79,18 +79,17 @@ fun ColorSwatchRow(
 
 @Composable
 private fun swatchDescription(color: PlayerColor, position: Int, count: Int): String {
-    val paletteName = when (color) {
-        PlayerColor.BLUE -> R.string.color_blue
-        PlayerColor.ORANGE -> R.string.color_orange
-        PlayerColor.TEAL -> R.string.color_teal
-        PlayerColor.LILAC -> R.string.color_lilac
-        else -> null
+    return when (val name = swatchName(color, position, count)) {
+        is SwatchName.Generated -> stringResource(R.string.color_generated, name.position, name.count)
+        is SwatchName.Palette -> stringResource(paletteNameRes(name.color))
     }
-    return if (paletteName != null) {
-        stringResource(paletteName)
-    } else {
-        stringResource(R.string.color_generated, position, count)
-    }
+}
+
+private fun paletteNameRes(color: PlayerColor): Int = when (color) {
+    PlayerColor.ORANGE -> R.string.color_orange
+    PlayerColor.TEAL -> R.string.color_teal
+    PlayerColor.LILAC -> R.string.color_lilac
+    else -> R.string.color_blue
 }
 
 @Composable
