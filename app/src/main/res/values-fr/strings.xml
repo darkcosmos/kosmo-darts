@@ -304,4 +304,39 @@
     <string name="detail_dart_miss_spoken">Raté</string>
     <string name="detail_failed">Ce match ne peut pas être lu pour le moment.</string>
     <string name="detail_loading">Chargement du match</string>
+    <string name="home_players">Joueurs</string>
+    <string name="players_title">JOUEURS</string>
+    <string name="players_loading">Chargement des joueurs</string>
+    <string name="players_empty_title">Aucun joueur pour l\'instant</string>
+    <string name="players_empty_hint">Les joueurs apparaissent ici après leur premier match terminé.</string>
+    <string name="players_failed">Les joueurs ne peuvent pas être lus pour le moment.</string>
+    <string name="players_retry">Réessayer</string>
+    <string name="players_no_match">Aucun match pour l\'instant</string>
+    <plurals name="players_match_count">
+        <item quantity="one">%1$d match</item>
+        <item quantity="other">%1$d matchs</item>
+    </plurals>
+    <string name="players_last_match">Dernier match : %1$s</string>
+    <string name="players_rename">Renommer</string>
+    <string name="players_merge">Fusionner</string>
+    <string name="players_reset">Réinitialiser</string>
+    <string name="players_delete">Supprimer</string>
+    <string name="players_cancel">Annuler</string>
+    <string name="players_save">Enregistrer</string>
+    <string name="players_rename_label">Nouveau nom</string>
+    <string name="players_error_name_invalid">Ce nom n\'est pas valide</string>
+    <string name="players_error_name_taken">Le nom %1$s existe déjà</string>
+    <string name="players_merge_into">Fusionner dans %1$s</string>
+    <string name="players_merge_pick">Fusionner %1$s dans :</string>
+    <string name="players_merge_confirm_text">Les matchs de %1$s passent à %2$s ; %1$s disparaît. Cette action est irréversible.</string>
+    <string name="players_reset_confirm_text">Les statistiques de %1$s compteront à partir d\'aujourd\'hui. Aucun match n\'est supprimé.</string>
+    <string name="players_delete_confirm_text">%1$s sera supprimé. Les matchs avec d\'autres joueurs restent, sous « Joueur supprimé ». %2$s Cette action est irréversible.</string>
+    <string name="players_delete_erased_none">Aucun match ne sera supprimé.</string>
+    <plurals name="players_delete_erased">
+        <item quantity="one">%1$d match sera supprimé.</item>
+        <item quantity="other">%1$d matchs seront supprimés.</item>
+    </plurals>
+    <string name="players_in_progress">%1$s est dans la partie en cours. Terminez-la ou abandonnez-la d\'abord.</string>
+    <string name="players_shared_match">Ces deux joueurs ont joué un match ensemble : ils ne peuvent pas être fusionnés.</string>
+    <string name="players_database_error">Erreur de la base de données. Rien n\'a changé ; réessayez.</string>
 </resources>

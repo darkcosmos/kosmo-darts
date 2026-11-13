@@ -1,13 +1,19 @@
 package io.github.darkcosmos.kosmodarts.ui.components
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
@@ -29,12 +35,14 @@ fun KosmoButton(
     enabled: Boolean = true,
     minHeight: Dp = States.minTouchTarget,
     description: String? = null,
+    @DrawableRes iconRes: Int? = null,
 ) {
     val colors = KosmoTheme.colors
     val (container, content) = when (kind) {
         ButtonKind.PRIMARY -> colors.accent to colors.onAccent
         ButtonKind.SECONDARY -> colors.surfaceHigh to colors.onBackground
         ButtonKind.OUTLINED_ACCENT -> Color.Transparent to colors.accent
+        ButtonKind.DESTRUCTIVE -> colors.surfaceHigh to colors.dangerText
     }
     Button(
         onClick = onClick,
@@ -52,6 +60,14 @@ fun KosmoButton(
             .heightIn(min = maxOf(minHeight, States.minTouchTarget))
             .semantics { description?.let { contentDescription = it } },
     ) {
+        if (iconRes != null) {
+            // Decorative (D13): the text is the accessible name, so TalkBack does not read the button twice.
+            Icon(painter = painterResource(iconRes), contentDescription = null, modifier = Modifier.size(ICON_SIZE))
+            Spacer(Modifier.width(ICON_GAP))
+        }
         WordSafeText(text = text, style = KosmoTheme.typography.button)
     }
 }
+
+private val ICON_SIZE = 20.dp
+private val ICON_GAP = 8.dp

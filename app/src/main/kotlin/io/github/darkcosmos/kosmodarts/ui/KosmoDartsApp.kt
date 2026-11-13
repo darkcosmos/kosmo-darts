@@ -15,6 +15,7 @@ import io.github.darkcosmos.kosmodarts.ui.game.GameScreen
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryScreen
 import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailScreen
 import io.github.darkcosmos.kosmodarts.ui.home.HomeScreen
+import io.github.darkcosmos.kosmodarts.ui.players.PlayersScreen
 import io.github.darkcosmos.kosmodarts.ui.settings.SettingsEvent
 import io.github.darkcosmos.kosmodarts.ui.settings.SettingsScreen
 import io.github.darkcosmos.kosmodarts.ui.settings.SettingsUiState
@@ -52,8 +53,7 @@ fun KosmoDartsApp(
         is Screen.Settings -> SettingsScreen(settings, onSettingsEvent, onBack = { onEvent(AppEvent.Back) })
         is Screen.History -> HistoryScreen(screen.history, onEvent)
         is Screen.MatchDetail -> MatchDetailScreen(screen.detail, onEvent)
-        // The Players screen itself comes with T10; no button opens it before.
-        is Screen.Players -> Unit
+        is Screen.Players -> PlayersScreen(screen.players, onEvent)
         is Screen.CricketGame -> CricketGameScreen(screen.game, onEvent, noVoiceNotice = screen.noVoiceNotice)
         is Screen.CricketBetweenLegs ->
             CricketBetweenLegsScreen(screen.match, onEvent, isAbandonDialogShown = screen.isAbandonDialogShown)

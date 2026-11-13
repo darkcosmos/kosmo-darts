@@ -2,8 +2,11 @@ package io.github.darkcosmos.kosmodarts.ui.components
 
 // The small models the components take, apart from their composables.
 
-/** The two button kinds of the design system: principal (`accent`) and secondary (`surfaceHigh`), plus outlined. */
-enum class ButtonKind { PRIMARY, SECONDARY, OUTLINED_ACCENT }
+/**
+ * The button kinds of the design system: principal (`accent`) and secondary (`surfaceHigh`), plus outlined, and the
+ * destructive one (secondary with its label in `dangerText`).
+ */
+enum class ButtonKind { PRIMARY, SECONDARY, OUTLINED_ACCENT, DESTRUCTIVE }
 
 /**
  * One button of an [ActionBar].

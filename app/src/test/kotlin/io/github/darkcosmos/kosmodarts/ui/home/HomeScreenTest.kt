@@ -16,16 +16,21 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.BuildConfig
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.TestDevices
+import io.github.darkcosmos.kosmodarts.ui.history.HistoryTags
+import io.github.darkcosmos.kosmodarts.ui.players.PlayersTags
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupTags
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
 
 /**
  * Behaviour tests of the home screen (mockup 06), launched through [MainActivity] like on a phone.
@@ -113,6 +118,53 @@ class HomeScreenTest {
             .performClick()
 
         composeRule.onNodeWithText(string(R.string.setup_title), substring = true).assertIsDisplayed()
+    }
+
+    /** PM1, HS1: History then Players, same form: 48 dp, the text as accessible name, the icon decorative (D13). */
+    @Test
+    @Config(qualifiers = TestDevices.EN_PIXEL7_PORTRAIT)
+    fun historyAndPlayersButtonsAreStackedAnd48DpWithADecorativeIcon() {
+        val history = composeRule.onNodeWithTag(HomeTags.HISTORY).performScrollTo().assertHasClickAction()
+            .assertTextEquals(string(R.string.home_history))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
+            .getUnclippedBoundsInRoot()
+        val players = composeRule.onNodeWithTag(HomeTags.PLAYERS).performScrollTo().assertIsDisplayed()
+            .assertHasClickAction()
+            .assertTextEquals(string(R.string.home_players))
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
+            .getUnclippedBoundsInRoot()
+
+        assertTrue(players.top >= history.bottom)
+        assertTrue(history.bottom - history.top >= 48.dp)
+        assertTrue(players.bottom - players.top >= 48.dp)
+    }
+
+    /** PM1, D19: in landscape, with the fixed version footer, the Players button scrolls into view above it. */
+    @Test
+    @Config(qualifiers = TestDevices.EN_PIXEL7_LANDSCAPE)
+    fun playersButtonStaysReachableAboveTheVersionFooterInLandscape() {
+        val players = composeRule.onNodeWithTag(HomeTags.PLAYERS).performScrollTo().assertIsDisplayed()
+            .getUnclippedBoundsInRoot()
+        val footer = composeRule.onNodeWithTag(HomeTags.VERSION).getUnclippedBoundsInRoot()
+        assertTrue(players.bottom <= footer.top)
+    }
+
+    /** PM1: the Players button opens the Players screen, and back returns home. */
+    @Test
+    fun playersButtonOpensThePlayersScreenAndBackReturnsHome() {
+        composeRule.onNodeWithTag(HomeTags.PLAYERS).performScrollTo().performClick()
+        composeRule.onNodeWithTag(PlayersTags.BACK).assertIsDisplayed()
+        composeRule.onNodeWithTag(PlayersTags.BACK).performClick()
+        composeRule.onNodeWithTag(HomeTags.PLAYERS).assertExists()
+    }
+
+    /** HS1: the History button opens the History screen, and back returns home. */
+    @Test
+    fun historyButtonOpensTheHistoryScreenAndBackReturnsHome() {
+        composeRule.onNodeWithTag(HomeTags.HISTORY).performScrollTo().performClick()
+        composeRule.onNodeWithTag(HistoryTags.BACK).assertIsDisplayed()
+        composeRule.onNodeWithTag(HistoryTags.BACK).performClick()
+        composeRule.onNodeWithTag(HomeTags.HISTORY).assertExists()
     }
 
     /** Accessibility (design system, section 8): the settings icon is read "Settings" and is at least 48 dp. */

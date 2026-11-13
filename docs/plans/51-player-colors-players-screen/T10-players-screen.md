@@ -41,3 +41,9 @@ PM1, PM2, PM11; HS1.
 sonnet. Why: screen from the plan's description with Compose tests and captures.
 
 ## Implementation notes
+
+- Players screen: `ui/players/PlayersScreen.kt` (frame, list, cards) and `PlayersPanels.kt` (actions, rename, merge, confirmations). It reuses `HistoryScaffold`, `LoadingIndicator` and `formatEndDate` from `ui/history`. `KosmoDartsApp` routes `Screen.Players` to it.
+- `ButtonKind.DESTRUCTIVE` added (danger text on the raised surface), and `KosmoButton` gained an optional decorative `iconRes` (contentDescription null, D13). Home: History gets `ic_history`, the new Players button (`HomeTags.PLAYERS`) sits under it, both reachable by scroll above the version footer (D19, tested in landscape).
+- Deviation: zero forms ("No match yet", "no match will be erased") are separate strings (`players_no_match`, `players_delete_erased_none`), because en/fr plurals never select `zero`; `one`/`other` use plurals.
+- Layout: Rename and Merge share a row, Reset is full width, Delete is full width 16dp below. Everything stacks when `LocalDensity.fontScale >= 1.3` (`STACK_FONT_SCALE`), not by measuring.
+- Test helpers: `AppProcess` takes an optional `players` repository; `PlayersScreenTest` uses an `unmerged()` finder for nodes merged into their parent. Captures: `PlayersScreenshotTest` (20) and 3 new in `HomeScreenScreenshotTest`, Pixel 7 only.
