@@ -6,6 +6,7 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerListRules
+import io.github.darkcosmos.kosmodarts.engine.player.Roster
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
@@ -14,13 +15,19 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
  * The players shared by every mode (rule R22, owner Q9): names in throwing order, already normalized, with their
  * colors (R17).
  *
+ * One entry with an empty name is allowed: it is what PM9 leaves when the only player of the roster was deleted.
+ *
  * @throws IllegalArgumentException if the names break `PlayerListRules` or the colors are not one distinct color per
  *   player.
  */
 data class SharedRoster(val players: List<String>, val colors: List<PlayerColor>) {
+    /** Whether this is the roster PM9 leaves after the deletion of its only player: one color, no name. */
+    val isNameless: Boolean
+        get() = players == listOf("")
+
     init {
         require(PlayerListRules.normalize(players) == players) { "Roster names must be normalized" }
-        require(PlayerListRules.violations(players).isEmpty()) { "Invalid roster names" }
+        require(isNameless || PlayerListRules.violations(players).isEmpty()) { "Invalid roster names" }
         require(colors.size == players.size && colors.toSet().size == colors.size) {
             "One distinct color per player expected"
         }
@@ -65,6 +72,17 @@ data class LastSetups(
             val config = CricketConfig(roster.players, settings.variant, settings.isBullInPlay)
             return CricketMatchConfig(config, settings.format, roster.colors)
         }
+
+    /**
+     * PM9: the same settings with the roster that [update] makes of the current one; the setups are unchanged when the
+     * result is not a valid shared roster.
+     */
+    fun withRosterUpdated(update: (Roster) -> Roster): LastSetups = try {
+        val updated = update(Roster.of(roster.players, roster.colors))
+        copy(roster = SharedRoster(updated.names, updated.colors))
+    } catch (ignored: IllegalArgumentException) {
+        this
+    }
 
     /** After an X01 Start or Rematch: its roster and X01 settings; the Cricket settings are kept (R22). */
     fun withX01(setup: X01MatchConfig): LastSetups = copy(roster = rosterOf(setup), x01 = x01SettingsOf(setup))

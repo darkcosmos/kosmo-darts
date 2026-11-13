@@ -40,3 +40,10 @@ PM2 to PM10.
 sonnet. Why: state holder and effect wiring with JVM tests, rules specified.
 
 ## Implementation notes
+
+- State holder `ui/players/PlayersState.kt` (types, class, helpers), `PlayersActions.kt` (user actions) and `PlayersAnswers.kt` (`answered`), split as extension functions to stay under the detekt function limits. Events are in `ui/app/PlayersEvent.kt`, the reducer in `ui/app/PlayersReducer.kt`, the effect runner and the two effect diffs in `ui/app/PlayersEffects.kt`.
+- Request-in-state: the reducer sets `PlayersState.request`, `persistenceEffects` emits `RunPlayersRequest` when it changes, the answer returns as `PlayersEvent.Answered` and clears it. User actions are ignored while a request is pending. DB access is `Persistence.playersAccess` (`persistence/PlayersPersistence.kt`): reads (list, deletion count) on the read executor, writes on the save queue; `KosmoDartsApplication` passes `RoomPlayersRepository`.
+- PM9 is done in the reducer (`reducePlayersAnswer`): a successful rename, merge or delete rewrites `state.lastSetup` via `RosterProfileUpdates`, even if the user left Players; the existing diff then emits `SaveLastSetup`.
+- Deviation: deleting the only player leaves one nameless roster entry. `SharedRoster`, `LastSetupCodec` and `SetupState.prefilled` now accept a single empty name (`prefilled` builds from `lastSetups.roster` directly). Added `LastSetups.withRosterUpdated`.
+- `Deleted(DbResult<Int>)` carries the erased count but nothing displays it (no message specified).
+- For T10: `KosmoDartsApp.kt` has `is Screen.Players -> Unit` as a placeholder to replace by the screen; add the home button sending `AppEvent.PlayersTapped`; strings (en and fr) for `PlayersMessage.InProgress(playerName)` ("Kevin is in the game in progress. Finish or abandon it first."), `SharedMatch` and `DatabaseError`.

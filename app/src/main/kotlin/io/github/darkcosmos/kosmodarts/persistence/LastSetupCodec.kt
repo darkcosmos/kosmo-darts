@@ -102,9 +102,13 @@ class LastSetupCodec {
         x01: X01Settings?,
         cricket: CricketSettings?,
     ): SharedRoster = try {
-        x01?.let { X01Config(names, it.startScore, it.checkoutRule) }
-        cricket?.let { CricketConfig(names, it.variant, it.isBullInPlay) }
-        SharedRoster(names, colors)
+        val roster = SharedRoster(names, colors)
+        // PM9: the nameless roster (the only player was deleted) is not a game configuration, only a prefill.
+        if (!roster.isNameless) {
+            x01?.let { X01Config(names, it.startScore, it.checkoutRule) }
+            cricket?.let { CricketConfig(names, it.variant, it.isBullInPlay) }
+        }
+        roster
     } catch (e: IllegalArgumentException) {
         // Both configuration exceptions are IllegalArgumentExceptions, like the SharedRoster checks.
         reject(InvalidSaveReason.INVALID_CONFIG, e)

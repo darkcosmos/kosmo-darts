@@ -52,6 +52,8 @@ fun KosmoDartsApp(
         is Screen.Settings -> SettingsScreen(settings, onSettingsEvent, onBack = { onEvent(AppEvent.Back) })
         is Screen.History -> HistoryScreen(screen.history, onEvent)
         is Screen.MatchDetail -> MatchDetailScreen(screen.detail, onEvent)
+        // The Players screen itself comes with T10; no button opens it before.
+        is Screen.Players -> Unit
         is Screen.CricketGame -> CricketGameScreen(screen.game, onEvent, noVoiceNotice = screen.noVoiceNotice)
         is Screen.CricketBetweenLegs ->
             CricketBetweenLegsScreen(screen.match, onEvent, isAbandonDialogShown = screen.isAbandonDialogShown)

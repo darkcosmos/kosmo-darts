@@ -15,7 +15,9 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01ConfigError
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.history.Profile
+import io.github.darkcosmos.kosmodarts.persistence.CricketSettings
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
+import io.github.darkcosmos.kosmodarts.persistence.X01Settings
 import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import kotlin.random.Random
 
@@ -179,22 +181,35 @@ data class SetupState(
          * The setup of [mode] prefilled with [lastSetups]: the shared roster with the last settings of that mode, or
          * the defaults of that mode (rules R7, R13, R22, CR21).
          */
-        fun prefilled(lastSetups: LastSetups?, mode: GameMode): SetupState = when (mode) {
-            GameMode.X01 -> prefilled(lastSetups?.x01Setup).copy(mode = mode)
-            GameMode.CRICKET -> lastSetups
-                ?.cricketSetup
-                ?.let {
-                    SetupState(
-                        roster = Roster.of(it.config.players, it.colors),
-                        legsPerSet = it.format.legsPerSet,
-                        sets = it.format.sets,
-                        mode = mode,
-                        cricketVariant = it.config.variant,
-                        isBullInPlay = it.config.isBullInPlay,
-                    )
-                }
-                ?: SetupState(mode = mode)
+        fun prefilled(lastSetups: LastSetups?, mode: GameMode): SetupState = when {
+            lastSetups == null -> SetupState(mode = mode)
+            mode == GameMode.X01 -> {
+                val settings = lastSetups.x01 ?: X01Settings()
+                SetupState(
+                    startScore = settings.startScore,
+                    checkoutRule = settings.checkoutRule,
+                    roster = rosterOf(lastSetups),
+                    legsPerSet = settings.format.legsPerSet,
+                    sets = settings.format.sets,
+                    mode = mode,
+                )
+            }
+            else -> {
+                val settings = lastSetups.cricket ?: CricketSettings()
+                SetupState(
+                    roster = rosterOf(lastSetups),
+                    legsPerSet = settings.format.legsPerSet,
+                    sets = settings.format.sets,
+                    mode = mode,
+                    cricketVariant = settings.variant,
+                    isBullInPlay = settings.isBullInPlay,
+                )
+            }
         }
+
+        /** The roster of [lastSetups], read without the configuration checks: PM9 may leave one empty name. */
+        private fun rosterOf(lastSetups: LastSetups): Roster =
+            Roster.of(lastSetups.roster.players, lastSetups.roster.colors)
     }
 }
 

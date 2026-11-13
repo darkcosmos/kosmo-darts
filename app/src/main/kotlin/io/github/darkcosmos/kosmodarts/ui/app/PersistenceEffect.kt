@@ -11,6 +11,7 @@ import io.github.darkcosmos.kosmodarts.ui.cricket.toSavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.game.toSavedGame
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
+import io.github.darkcosmos.kosmodarts.ui.players.PlayersRequest
 
 /** A change to make on the device after an event (rules R3, R6, R7, R12, R13, R15). */
 sealed interface PersistenceEffect {
@@ -38,6 +39,15 @@ sealed interface PersistenceEffect {
      */
     data class LoadMatch(val sessionId: Long, val loadId: Int) : PersistenceEffect
 
+    /** PM2, PM10: read the profiles of the Players screen; the answer comes back as [PlayersEvent.Loaded]. */
+    data class LoadPlayers(val loadId: Int) : PersistenceEffect
+
+    /**
+     * PM3 to PM6: run [request] on the database; the answer comes back as [PlayersEvent.Answered], then the last setup
+     * is rewritten by the reducer (PM9), which gives a [SaveLastSetup].
+     */
+    data class RunPlayersRequest(val request: PlayersRequest) : PersistenceEffect
+
     /**
      * AR1, AR2: write [archived] to the history with one ARGB color per player, then delete the saved game, only if the
      * write succeeded. The answer comes back as [AppEvent.ArchiveSucceeded] or [AppEvent.ArchiveFailed].
@@ -63,6 +73,8 @@ fun savedGameOf(state: AppState): StoredGame? = when (val screen = state.screen)
     // The same for History (HS1): it is read-only and leaves the saved game as it is.
     is Screen.History -> screen.home.resumableGame
     is Screen.MatchDetail -> screen.list.home.resumableGame
+    // The same for Players (PM2): it never touches the saved game, it only reads it to lock names (PM8).
+    is Screen.Players -> screen.home.resumableGame
     // R12, R20, R21: a Cricket game is saved like an X01 one, between legs included, and deleted at its end.
     is Screen.CricketGame -> screen.game.toSavedGame(screen.journal)
     is Screen.CricketBetweenLegs ->
@@ -90,6 +102,8 @@ fun persistenceEffects(before: AppState, after: AppState): List<PersistenceEffec
         loadProfilesEffect(before, after),
         loadHistoryEffect(before, after),
         loadMatchEffect(before, after),
+        loadPlayersEffect(before, after),
+        playersRequestEffect(before, after),
     )
 }
 
@@ -178,6 +192,9 @@ fun Persistence.applyEffects(effects: List<PersistenceEffect>, onEvent: (AppEven
                 loadHistory(effect.filters) { onEvent(AppEvent.HistoryLoaded(effect.loadId, it)) }
             is PersistenceEffect.LoadMatch ->
                 loadMatch(effect.sessionId) { onEvent(AppEvent.MatchDetailLoaded(effect.loadId, it)) }
+            is PersistenceEffect.LoadPlayers ->
+                playersAccess.load { onEvent(PlayersEvent.Loaded(effect.loadId, it)) }
+            is PersistenceEffect.RunPlayersRequest -> runPlayersRequest(effect.request, onEvent)
             is PersistenceEffect.ArchiveMatch ->
                 archiveMatch(effect.archived, effect.colorsArgb) { isArchived ->
                     onEvent(if (isArchived) AppEvent.ArchiveSucceeded else AppEvent.ArchiveFailed)
