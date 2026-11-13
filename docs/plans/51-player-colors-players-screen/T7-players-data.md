@@ -34,3 +34,14 @@ PM2, PM3, PM4, PM5, PM10; PF1; AR9.
 sonnet. Why: DAO and repository over the existing schema, rules and tests specified.
 
 ## Implementation notes
+- `PlayersDao` (interface) + `PlayerRow`; `HistoryDatabase.playersDao()`; schema unchanged (version 1).
+- `PlayersRepository` / `RoomPlayersRepository(database)` (no name-key function: `ProfileRules` computes keys). Result
+  types: `PlayerSummary(id, name, nameKey, matchCount, lastEndedAt?)`; `RenameResult` (`Renamed`, `Invalid`,
+  `Clash(targetId)`, `Unknown`); `MergeResult` (`MERGED`, `SHARED_MATCH`, `UNKNOWN`). `reset` on a missing or
+  anonymous id is a silent no-op.
+- `list()` excludes the anonymous key `""` (PM7); order is `last_used_at DESC, id DESC`; the match count is the
+  number of distinct sessions, with no reset-date filter.
+- PM8 (saved game lock), PM9 (last setup) and delete (PM6) are not here: the PM8/PM9 checks belong to the state
+  holder (T9), delete to T8 (it will need `deletionPlan` inputs: add DAO queries then).
+- Tests: `PlayersRepositoryTest` (rollback is proven with a SQLite trigger that aborts the profile delete after the
+  move), `FakePlayersRepository` (configurable results, recorded calls) for T9.
