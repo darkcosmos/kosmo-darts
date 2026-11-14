@@ -339,4 +339,70 @@
     <string name="players_in_progress">%1$s est dans la partie en cours. Terminez-la ou abandonnez-la d\'abord.</string>
     <string name="players_shared_match">Ces deux joueurs ont joué un match ensemble : ils ne peuvent pas être fusionnés.</string>
     <string name="players_database_error">Erreur de la base de données. Rien n\'a changé ; réessayez.</string>
+
+    <!-- Profile screen (docs/rules/statistics.md, PS2 to PS6, ST9, ST10). -->
+    <string name="profile_title">PROFIL</string>
+    <string name="profile_loading">Chargement du profil</string>
+    <string name="profile_failed">Le profil ne peut pas être lu pour le moment.</string>
+    <string name="profile_retry">Réessayer</string>
+    <string name="profile_empty_title">Aucun match pour l\'instant</string>
+    <string name="profile_empty_hint">Les matchs terminés de ce joueur apparaissent ici.</string>
+    <string name="profile_no_match_filters">Aucun match pour ces filtres</string>
+    <string name="profile_since_always">Depuis toujours</string>
+    <string name="profile_since_date">Depuis le %1$s</string>
+    <plurals name="profile_ignored_matches">
+        <item quantity="one">%1$d match ignoré (données illisibles)</item>
+        <item quantity="other">%1$d matchs ignorés (données illisibles)</item>
+    </plurals>
+    <plurals name="profile_match_count">
+        <item quantity="one">%1$d match</item>
+        <item quantity="other">%1$d matchs</item>
+    </plurals>
+    <plurals name="profile_leg_count">
+        <item quantity="one">%1$d manche</item>
+        <item quantity="other">%1$d manches</item>
+    </plurals>
+    <string name="profile_tab_heatmap">HEATMAP</string>
+    <string name="profile_heatmap_placeholder">La heatmap de ce joueur arrive bientôt.</string>
+    <string name="profile_filter_start_score">SCORE DE DÉPART</string>
+    <string name="profile_filter_out_rule">SORTIE</string>
+    <string name="profile_filter_variant">VARIANTE</string>
+    <string name="profile_filter_period">PÉRIODE</string>
+    <string name="profile_period_always">Depuis toujours</string>
+    <string name="profile_period_30_days">30 derniers jours</string>
+    <string name="profile_period_10_matches">10 derniers matchs</string>
+    <string name="profile_block_averages">MOYENNES</string>
+    <string name="profile_block_checkouts">FINITIONS</string>
+    <string name="profile_block_visits">VOLÉES</string>
+    <string name="profile_block_legs">MANCHES</string>
+    <string name="profile_block_results">RÉSULTATS</string>
+    <string name="profile_block_results_variant">RÉSULTATS · %1$s</string>
+    <string name="profile_block_trend">TENDANCE</string>
+    <string name="profile_block_marks">MARQUES UTILES PAR CIBLE</string>
+    <string name="profile_block_points">POINTS</string>
+    <string name="profile_average">Moyenne 3 fléchettes</string>
+    <string name="profile_first_nine_average">Moyenne des 9 premières</string>
+    <string name="profile_checkout_rate">Taux de finition</string>
+    <string name="profile_best_checkout">Meilleure finition</string>
+    <string name="profile_visits_180">180</string>
+    <string name="profile_visits_140">140 à 179</string>
+    <string name="profile_visits_100">100 à 139</string>
+    <string name="profile_visits_60">60 à 99</string>
+    <string name="profile_best_visit">Meilleure volée</string>
+    <string name="profile_busts">Volées bust</string>
+    <string name="profile_darts_per_leg">Fléchettes par manche gagnée</string>
+    <string name="profile_best_leg">Meilleure manche (fléchettes)</string>
+    <string name="profile_matches_won">Matchs gagnés</string>
+    <string name="profile_matches_lost">Matchs perdus</string>
+    <string name="profile_win_rate">Taux de victoire</string>
+    <string name="profile_legs_won">Manches gagnées</string>
+    <string name="profile_sets_won">Sets gagnés</string>
+    <string name="profile_trend_matches">Matchs dans la courbe</string>
+    <string name="profile_mpr">Marques par tour</string>
+    <string name="profile_best_visit_marks">Meilleure volée (marques)</string>
+    <string name="profile_target_bull">Bull</string>
+    <string name="profile_points_scored">Points marqués</string>
+    <string name="profile_points_scored_leg">Points marqués par manche</string>
+    <string name="profile_points_given">Points donnés</string>
+    <string name="profile_points_given_leg">Points donnés par manche</string>
 </resources>

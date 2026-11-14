@@ -16,6 +16,7 @@ import io.github.darkcosmos.kosmodarts.ui.history.HistoryScreen
 import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailScreen
 import io.github.darkcosmos.kosmodarts.ui.home.HomeScreen
 import io.github.darkcosmos.kosmodarts.ui.players.PlayersScreen
+import io.github.darkcosmos.kosmodarts.ui.profile.ProfileScreen
 import io.github.darkcosmos.kosmodarts.ui.settings.SettingsEvent
 import io.github.darkcosmos.kosmodarts.ui.settings.SettingsScreen
 import io.github.darkcosmos.kosmodarts.ui.settings.SettingsUiState
@@ -53,9 +54,21 @@ fun KosmoDartsApp(
         is Screen.Settings -> SettingsScreen(settings, onSettingsEvent, onBack = { onEvent(AppEvent.Back) })
         is Screen.History -> HistoryScreen(screen.history, onEvent)
         is Screen.MatchDetail -> MatchDetailScreen(screen.detail, onEvent)
-        // T13 and T25 add the Profile and head-to-head screens; their stack and Back already work (HS9).
-        is Screen.Profile, is Screen.HeadToHead -> Unit
+        is Screen.Profile -> ProfileScreen(screen.profile, onEvent)
+        // T25 adds the head-to-head screen; its stack and Back already work (HS9).
+        is Screen.HeadToHead -> Unit
         is Screen.Players -> PlayersScreen(screen.players, onEvent)
+        is Screen.CricketGame,
+        is Screen.CricketBetweenLegs,
+        is Screen.CricketEnd,
+        -> CricketScreens(screen, onEvent)
+    }
+}
+
+/** The Cricket screens, apart so that [KosmoDartsApp] stays a flat dispatch. */
+@Composable
+private fun CricketScreens(screen: Screen, onEvent: (AppEvent) -> Unit) {
+    when (screen) {
         is Screen.CricketGame ->
             CricketGameScreen(screen.game, screen.journal, onEvent, noVoiceNotice = screen.noVoiceNotice)
         is Screen.CricketBetweenLegs ->
@@ -66,5 +79,6 @@ fun KosmoDartsApp(
                 isAbandonDialogShown = screen.isAbandonDialogShown,
             )
         is Screen.CricketEnd -> CricketEndScreen(screen.match, screen.journal, onEvent)
+        else -> Unit
     }
 }

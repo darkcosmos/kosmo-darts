@@ -355,4 +355,74 @@
     <string name="players_in_progress">%1$s is in the game in progress. Finish or abandon it first.</string>
     <string name="players_shared_match">These two players played a match together: they cannot be merged.</string>
     <string name="players_database_error">The database failed. Nothing changed; try again.</string>
+
+    <!-- Profile screen (docs/rules/statistics.md, PS2 to PS6, ST9, ST10). -->
+    <string name="profile_title">PROFILE</string>
+    <string name="profile_loading">Loading the profile</string>
+    <string name="profile_failed">The profile cannot be read right now.</string>
+    <string name="profile_retry">Retry</string>
+    <string name="profile_empty_title">No match yet</string>
+    <string name="profile_empty_hint">The finished matches of this player appear here.</string>
+    <string name="profile_no_match_filters">No match for these filters</string>
+    <string name="profile_since_always">Since always</string>
+    <string name="profile_since_date">Since %1$s</string>
+    <plurals name="profile_ignored_matches">
+        <item quantity="one">%1$d match ignored (unreadable data)</item>
+        <item quantity="other">%1$d matches ignored (unreadable data)</item>
+    </plurals>
+    <plurals name="profile_match_count">
+        <item quantity="one">%1$d match</item>
+        <item quantity="other">%1$d matches</item>
+    </plurals>
+    <plurals name="profile_leg_count">
+        <item quantity="one">%1$d leg</item>
+        <item quantity="other">%1$d legs</item>
+    </plurals>
+    <string name="profile_tab_x01" translatable="false">X01</string>
+    <string name="profile_tab_heatmap">HEATMAP</string>
+    <string name="profile_heatmap_placeholder">The heatmap of this player is coming soon.</string>
+    <string name="profile_filter_start_score">START SCORE</string>
+    <string name="profile_filter_out_rule">OUT RULE</string>
+    <string name="profile_filter_variant">VARIANT</string>
+    <string name="profile_filter_period">PERIOD</string>
+    <string name="profile_start_score" translatable="false">%1$d</string>
+    <string name="profile_period_always">Since always</string>
+    <string name="profile_period_30_days">Last 30 days</string>
+    <string name="profile_period_10_matches">Last 10 matches</string>
+    <string name="profile_none" translatable="false">–</string>
+    <string name="profile_checkout_value" translatable="false">%1$s (%2$d/%3$d)</string>
+    <string name="profile_block_averages">AVERAGES</string>
+    <string name="profile_block_checkouts">CHECKOUTS</string>
+    <string name="profile_block_visits">VISITS</string>
+    <string name="profile_block_legs">LEGS</string>
+    <string name="profile_block_results">RESULTS</string>
+    <string name="profile_block_results_variant">RESULTS · %1$s</string>
+    <string name="profile_block_trend">TREND</string>
+    <string name="profile_block_marks">USEFUL MARKS PER TARGET</string>
+    <string name="profile_block_points">POINTS</string>
+    <string name="profile_average">3-dart average</string>
+    <string name="profile_first_nine_average">First 9 average</string>
+    <string name="profile_checkout_rate">Checkout rate</string>
+    <string name="profile_best_checkout">Best checkout</string>
+    <string name="profile_visits_180">180</string>
+    <string name="profile_visits_140">140 to 179</string>
+    <string name="profile_visits_100">100 to 139</string>
+    <string name="profile_visits_60">60 to 99</string>
+    <string name="profile_best_visit">Best visit</string>
+    <string name="profile_busts">Bust visits</string>
+    <string name="profile_darts_per_leg">Darts per leg won</string>
+    <string name="profile_best_leg">Best leg (darts)</string>
+    <string name="profile_matches_won">Matches won</string>
+    <string name="profile_matches_lost">Matches lost</string>
+    <string name="profile_win_rate">Win rate</string>
+    <string name="profile_legs_won">Legs won</string>
+    <string name="profile_sets_won">Sets won</string>
+    <string name="profile_trend_matches">Matches in the curve</string>
+    <string name="profile_mpr">Marks per round</string>
+    <string name="profile_best_visit_marks">Best visit (marks)</string>
+    <string name="profile_target_bull">Bull</string>
+    <string name="profile_points_scored">Points scored</string>
+    <string name="profile_points_scored_leg">Points scored per leg</string>
+    <string name="profile_points_given">Points given</string>
+    <string name="profile_points_given_leg">Points given per leg</string>
 </resources>
