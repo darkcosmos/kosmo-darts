@@ -3,15 +3,19 @@ package io.github.darkcosmos.kosmodarts.ui.players
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
@@ -86,6 +90,25 @@ class PlayersScreenTest {
         assertLiveRegion(PlayersTags.FAILED)
         node(PlayersTags.RETRY).performClick()
         assertEquals(listOf<AppEvent>(PlayersEvent.RetryTapped), events)
+    }
+
+    @Test
+    fun `PM2 PS1 a row is one tappable target of at least 48dp, read as opening the profile`() {
+        showState(loadedPlayers(kevin, lea))
+        node(PlayersTags.card(1)).assertHeightIsAtLeast(48.dp)
+        composeRule.onNode(
+            SemanticsMatcher("Open the profile of Kevin") {
+                it.config.getOrNull(SemanticsActions.OnClick)?.label == "Open the profile of Kevin"
+            },
+        ).assertExists()
+    }
+
+    @Test
+    fun `PM2 the list has no action button, the actions are in the Profile`() {
+        showState(loadedPlayers(kevin, lea))
+        listOf(PlayersTags.RENAME, PlayersTags.MERGE, PlayersTags.RESET, PlayersTags.DELETE).forEach {
+            node(it).assertDoesNotExist()
+        }
     }
 
     @Test

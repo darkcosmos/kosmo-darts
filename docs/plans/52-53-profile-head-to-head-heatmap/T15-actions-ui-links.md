@@ -33,3 +33,16 @@ PM2, PM11, PS2, PS7, PS8, HS8.
 sonnet. Why: move of existing panels with their tests and captures.
 
 ## Implementation notes
+
+- "Manage player" toggle and the inline actions panel live in `ui/profile/ProfileHeader.kt` (`ManageActions`), tags
+  `ProfileTags.MANAGE` and `ACTIONS_PANEL`; shown in every Profile state, including no match (PM11, PS7).
+- The action tags (RENAME, MERGE, RESET, DELETE, CONFIRM...) still live in `PlayersTags`; reused as is.
+- Players screen is a plain list: a row is one 48 dp target opening the Profile (PM2, PS1); no action button.
+- HS8: new `AppEvent.DetailPlayerTapped(profileId)`; `HistoryPlayer` gained `profileId`; `reduceMatchDetail` and
+  `reduceStacked` take the `stamp`. Only the ranking rows of the match detail are links (visit rows and leg lines
+  use clearAndSetSemantics, so they are not). A deleted player is plain text, never a link (PM6).
+- "Compare with..." is not added here: it belongs to T25.
+- `PlayersFlowTest` has no `@Ignore` any more: its flow runs through the Profile; reads are chained, so the tests
+  settle several rounds. Shared `FakeProfileStatsRepository`; `AppProcess` takes a `profileStats` parameter.
+- New tests: `ProfileManageTest`, additions in `PlayersScreenTest`, `MatchDetailScreenTest`, `NavigationStackTest`;
+  13 Roborazzi captures `profile_actions_*` (Pixel 7, portrait/landscape, en/fr, 200% font).

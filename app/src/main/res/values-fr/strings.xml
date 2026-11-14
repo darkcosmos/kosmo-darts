@@ -317,6 +317,8 @@
         <item quantity="other">%1$d matchs</item>
     </plurals>
     <string name="players_last_match">Dernier match : %1$s</string>
+    <string name="profile_open">Ouvrir le profil de %1$s</string>
+    <string name="profile_manage">Gérer le joueur</string>
     <string name="players_rename">Renommer</string>
     <string name="players_merge">Fusionner</string>
     <string name="players_reset">Réinitialiser</string>

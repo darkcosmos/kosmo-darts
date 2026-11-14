@@ -335,6 +335,9 @@ sealed interface AppEvent {
     /** The answer to read [loadId] of History (HS7); an answer to an older read is ignored. */
     data class HistoryLoaded(val loadId: Int, val result: DbResult<HistoryList>) : AppEvent
 
+    /** HS8: a name of the match detail was tapped; the Profile of [profileId] opens (never for a deleted player). */
+    data class DetailPlayerTapped(val profileId: Long) : AppEvent
+
     /** "Retry" after a failed read of the match detail (HS7). */
     data object MatchDetailRetryTapped : AppEvent
 

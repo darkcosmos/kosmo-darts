@@ -38,6 +38,26 @@ class NavigationStackTest {
     }
 
     @Test
+    fun `HS8 a name tapped in a detail opens its Profile over the detail, and Back returns to the detail`() {
+        val list = Screen.History(home)
+        val opened = detail(list)
+        val profile = reducer.reduce(AppState(screen = opened), AppEvent.DetailPlayerTapped(2)).screen
+        assertTrue(profile is Screen.Profile)
+        assertEquals(2L, (profile as Screen.Profile).profileId)
+        assertSame(opened, profile.parent)
+        assertSame(opened, back(profile))
+    }
+
+    @Test
+    fun `HS8 HS9 a name tapped for a Profile already in the stack returns to it, without a copy`() {
+        val players = Screen.Players(home)
+        val profile = players.open(Screen.Profile(players, 2)) as Screen.Profile
+        val opened = profile.open(detail(profile))
+        val result = reducer.reduce(AppState(screen = opened), AppEvent.DetailPlayerTapped(2)).screen
+        assertSame(profile, result)
+    }
+
+    @Test
     fun `HS9 Back from Players or History returns home as before`() {
         assertSame(home, back(Screen.Players(home)))
         assertSame(home, back(Screen.History(home)))

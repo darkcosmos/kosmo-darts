@@ -25,6 +25,7 @@ const val NOON_MILLIS: Long = 1_793_534_400_000L
 fun historyPlayers(vararg names: String, legs: List<Int> = emptyList(), sets: List<Int> = emptyList()) =
     names.mapIndexed { position, name ->
         HistoryPlayer(
+            profileId = position + 1L,
             name = name,
             colorArgb = listOf(BLUE, ORANGE, GREEN, PINK)[position],
             finalRank = position + 1,

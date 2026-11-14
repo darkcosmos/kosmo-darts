@@ -2,7 +2,9 @@ package io.github.darkcosmos.kosmodarts.ui.history
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -19,18 +21,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.history.HistoryPlayer
 import io.github.darkcosmos.kosmodarts.history.MatchDetail
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.components.KosmoButton
 import io.github.darkcosmos.kosmodarts.ui.components.SectionLabel
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
+import io.github.darkcosmos.kosmodarts.ui.theme.States
 import java.time.ZoneId
 
 /**
@@ -50,19 +55,19 @@ fun MatchDetailScreen(state: MatchDetailState, onEvent: (AppEvent) -> Unit, modi
         when (val content = state.content) {
             MatchDetailContent.Loading -> LoadingIndicator(R.string.detail_loading)
             MatchDetailContent.Failed -> DetailFailed(onEvent)
-            is MatchDetailContent.Loaded -> DetailContent(content.detail, Modifier.weight(1f))
+            is MatchDetailContent.Loaded -> DetailContent(content.detail, onEvent, Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun DetailContent(detail: MatchDetail, modifier: Modifier) {
+private fun DetailContent(detail: MatchDetail, onEvent: (AppEvent) -> Unit, modifier: Modifier) {
     val legs = remember(detail) { detail.legs() }
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier.testTag(HistoryTags.DETAIL_LIST),
     ) {
-        item(key = SUMMARY_KEY) { SummaryCard(detail) }
+        item(key = SUMMARY_KEY) { SummaryCard(detail, onEvent) }
         legs.forEachIndexed { ordinal, leg -> legSection(detail, ordinal, leg) }
     }
 }
@@ -75,7 +80,7 @@ private fun LazyListScope.legSection(detail: MatchDetail, ordinal: Int, leg: Det
 }
 
 @Composable
-private fun SummaryCard(detail: MatchDetail) {
+private fun SummaryCard(detail: MatchDetail, onEvent: (AppEvent) -> Unit) {
     val colors = KosmoTheme.colors
     val resources = LocalContext.current.resources
     val locale = LocalConfiguration.current.locales[0]
@@ -95,12 +100,39 @@ private fun SummaryCard(detail: MatchDetail) {
         settings.forEach { Text(it, style = KosmoTheme.typography.bodyLarge, color = colors.onBackground) }
         Text(duration, style = KosmoTheme.typography.body, color = colors.onBackground)
         Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.padding(top = 8.dp)) {
-            detail.ranking().forEach { player ->
-                val rank = rankText(resources, player, detail)
-                Text(rank.rank, style = KosmoTheme.typography.bodyLarge, color = Color(player.colorArgb))
-                rank.score?.let { Text(it, style = KosmoTheme.typography.body, color = colors.onBackgroundMuted) }
-            }
+            detail.ranking().forEachIndexed { index, player -> RankingRow(index, player, detail, onEvent) }
         }
+    }
+}
+
+/**
+ * The ranking line of a player. Tapping it opens his Profile (HS8); "Deleted player" is plain text, not tappable. The
+ * tappable row is at least 48 dp high and TalkBack reads "Open <name>'s profile" with the rank and score.
+ */
+@Composable
+private fun RankingRow(index: Int, player: HistoryPlayer, detail: MatchDetail, onEvent: (AppEvent) -> Unit) {
+    val colors = KosmoTheme.colors
+    val resources = LocalContext.current.resources
+    val rank = rankText(resources, player, detail)
+    val link = if (player.isDeleted) {
+        Modifier
+    } else {
+        val label = stringResource(R.string.profile_open, player.name)
+        Modifier
+            .heightIn(min = States.minTouchTarget)
+            .clickable(onClickLabel = label, role = Role.Button) {
+                onEvent(AppEvent.DetailPlayerTapped(player.profileId))
+            }
+    }
+    Column(
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(link)
+            .testTag(HistoryTags.rankingRow(index)),
+    ) {
+        Text(rank.rank, style = KosmoTheme.typography.bodyLarge, color = Color(player.colorArgb))
+        rank.score?.let { Text(it, style = KosmoTheme.typography.body, color = colors.onBackgroundMuted) }
     }
 }
 

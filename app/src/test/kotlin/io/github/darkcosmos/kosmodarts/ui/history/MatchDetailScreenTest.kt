@@ -3,7 +3,14 @@ package io.github.darkcosmos.kosmodarts.ui.history
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
@@ -140,6 +147,31 @@ class MatchDetailScreenTest {
         composeRule.mainClock.advanceTimeBy(2)
         node(HistoryTags.LOADING).assertIsDisplayed()
         composeRule.onNodeWithContentDescription(string(R.string.detail_loading)).assertIsDisplayed()
+    }
+
+    @Test
+    fun `HS8 tapping a name of the ranking opens his profile, with a TalkBack label and a 48dp target`() {
+        showState(loaded())
+        node(HistoryTags.rankingRow(1)).assertHeightIsAtLeast(48.dp)
+            .assert(hasClickAction())
+            .assert(SemanticsMatcher("Open the profile of Bob") {
+                it.config.getOrNull(SemanticsActions.OnClick)?.label == "Open the profile of Bob"
+            })
+            .performClick()
+        // historyPlayers gives profile id position + 1: Bob is the second.
+        assertEquals(listOf<AppEvent>(AppEvent.DetailPlayerTapped(2)), events)
+    }
+
+    @Test
+    fun `HS8 PM6 Deleted player is plain text, not tappable`() {
+        val detail = x01Detail()
+        val deleted = detail.copy(
+            players = detail.players.map { if (it.name == "Bob") it.copy(isDeleted = true) else it },
+        )
+        showState(loaded(deleted))
+        composeRule.onNode(hasText("2. Deleted player")).assertIsDisplayed()
+        node(HistoryTags.rankingRow(1)).assertHasNoClickAction()
+        node(HistoryTags.rankingRow(0)).assertHasClickAction()
     }
 
     @Test

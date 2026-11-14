@@ -98,7 +98,11 @@ private fun CardHeader(profile: PlayerSummary, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = States.minTouchTarget)
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(
+                onClickLabel = stringResource(R.string.profile_open, profile.name),
+                role = Role.Button,
+                onClick = onClick,
+            )
             .padding(horizontal = 12.dp, vertical = 8.dp),
     ) {
         Text(

@@ -48,7 +48,7 @@ internal fun MessageScreen(state: ProfileState, onEvent: (AppEvent) -> Unit, mod
             ProfileView.LOADING -> LoadingIndicator(R.string.profile_loading)
             ProfileView.FAILED -> FailedMessage(onEvent)
             ProfileView.NO_MATCH -> {
-                ProfileHeader(state)
+                ProfileHeader(state, onEvent)
                 EmptyMessage()
             }
             ProfileView.CONTENT -> Unit

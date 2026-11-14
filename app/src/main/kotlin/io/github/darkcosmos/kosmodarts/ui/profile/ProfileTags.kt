@@ -12,6 +12,10 @@ object ProfileTags {
     const val SINCE = "profile_since"
     const val IGNORED = "profile_ignored"
     const val CONTENT = "profile_content"
+
+    /** The "Manage player" button, and the panel it unfolds (the action tags are those of `PlayersTags`). */
+    const val MANAGE = "profile_manage"
+    const val ACTIONS_PANEL = "profile_actions_panel"
     const val HEATMAP_PLACEHOLDER = "profile_heatmap_placeholder"
     const val TREND_CURVE = "profile_trend_curve"
     const val TREND_TOO_FEW = "profile_trend_too_few"

@@ -35,7 +35,7 @@ class AppReducer(private val random: Random) {
         // AN13: back returns to the home screen it came from.
         is Screen.Settings -> if (event == AppEvent.Back) state.copy(screen = screen.home) else state
         is Screen.History -> reduceHistory(state, screen, event)
-        is Screen.Stacked -> reduceStacked(state, screen, event)
+        is Screen.Stacked -> reduceStacked(state, screen, event, stamp)
         is Screen.CricketGame -> onCricketGame(state, screen, event, stamp.at)
         is Screen.CricketBetweenLegs -> onCricketBetweenLegs(state, screen, event)
         is Screen.CricketEnd -> onCricketEnd(state, screen, event, stamp)

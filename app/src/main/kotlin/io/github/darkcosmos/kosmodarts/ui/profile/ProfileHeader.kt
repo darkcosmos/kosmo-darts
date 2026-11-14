@@ -24,6 +24,10 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.ProfileEvent
+import io.github.darkcosmos.kosmodarts.ui.components.ButtonKind
+import io.github.darkcosmos.kosmodarts.ui.components.KosmoButton
 import io.github.darkcosmos.kosmodarts.ui.components.WordSafeText
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.States
@@ -31,11 +35,11 @@ import io.github.darkcosmos.kosmodarts.ui.theme.States
 private val TAB_UNDERLINE = 3.dp
 
 /**
- * PS2: the name, "Since always" or "Since <date>" (ST9), and the notice of the ignored matches (ST10) when there is
- * one. The buttons "Manage player" and "Compare with..." come with T15 and T25.
+ * PS2: the name, "Since always" or "Since <date>" (ST9), the notice of the ignored matches (ST10) when there is one,
+ * and the "Manage player" button with its actions (PS7). "Compare with..." comes with T25.
  */
 @Composable
-internal fun ProfileHeader(state: ProfileState, modifier: Modifier = Modifier) {
+internal fun ProfileHeader(state: ProfileState, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
     val colors = KosmoTheme.colors
     val resources = profileResources()
     val locale = profileLocale()
@@ -65,6 +69,33 @@ internal fun ProfileHeader(state: ProfileState, modifier: Modifier = Modifier) {
                 color = colors.onBackgroundMuted,
                 modifier = Modifier.testTag(ProfileTags.IGNORED),
             )
+        }
+        ManageActions(state, onEvent)
+    }
+}
+
+/**
+ * P1 A, PM11: the "Manage player" button under the name unfolds the four actions inside the screen, never a pop-up.
+ * Available once the profile is known (the roster read with it). A refusal or an error is told under the button.
+ */
+@Composable
+private fun ManageActions(state: ProfileState, onEvent: (AppEvent) -> Unit) {
+    val profile = (state.roster as? ProfileRoster.Loaded)?.self ?: return
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+        KosmoButton(
+            text = stringResource(R.string.profile_manage),
+            onClick = { onEvent(ProfileEvent.ManageToggled) },
+            kind = if (state.isManageOpen) ButtonKind.OUTLINED_ACCENT else ButtonKind.SECONDARY,
+            enabled = !state.isBusy,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(ProfileTags.MANAGE),
+        )
+        state.message?.let { ProfileMessageText(it) }
+        if (state.isManageOpen) {
+            Column(modifier = Modifier.testTag(ProfileTags.ACTIONS_PANEL)) {
+                ProfileActionsPanelContent(profile, state, onEvent)
+            }
         }
     }
 }

@@ -333,6 +333,8 @@
         <item quantity="other">%1$d matches</item>
     </plurals>
     <string name="players_last_match">Last match: %1$s</string>
+    <string name="profile_open">Open the profile of %1$s</string>
+    <string name="profile_manage">Manage player</string>
     <string name="players_rename">Rename</string>
     <string name="players_merge">Merge</string>
     <string name="players_reset">Reset</string>

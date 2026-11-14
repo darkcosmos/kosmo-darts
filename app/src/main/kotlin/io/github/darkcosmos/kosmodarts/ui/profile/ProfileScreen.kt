@@ -115,7 +115,7 @@ private fun PortraitContent(state: ProfileState, onEvent: (AppEvent) -> Unit, mo
         verticalArrangement = Arrangement.spacedBy(12.dp),
         modifier = modifier.testTag(ProfileTags.CONTENT),
     ) {
-        item(key = "header") { ProfileHeader(state) }
+        item(key = "header") { ProfileHeader(state, onEvent) }
         stickyHeader(key = "tabs") {
             ProfileTabs(state.section, { onEvent(ProfileEvent.SectionSelected(it)) })
         }
@@ -137,7 +137,7 @@ private fun LandscapeContent(state: ProfileState, onEvent: (AppEvent) -> Unit, m
                 .weight(LEFT_WEIGHT)
                 .verticalScroll(rememberScrollState()),
         ) {
-            ProfileHeader(state)
+            ProfileHeader(state, onEvent)
             ProfileTabs(state.section, { onEvent(ProfileEvent.SectionSelected(it)) })
             ProfileFilters(state, onEvent)
         }

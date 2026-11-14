@@ -16,6 +16,10 @@ object HistoryTags {
     const val DETAIL_BACK = "detail_back"
     const val DETAIL_SUMMARY = "detail_summary"
     const val DETAIL_LIST = "detail_list"
+
+    /** The [index]th line (0 is the winner) of the ranking of the summary card (HS8). */
+    fun rankingRow(index: Int): String = "detail_ranking_$index"
+
     const val DETAIL_FAILED = "detail_failed"
     const val DETAIL_RETRY = "detail_retry"
 
