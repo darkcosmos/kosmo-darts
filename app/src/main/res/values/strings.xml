@@ -402,6 +402,8 @@
     <string name="heatmap_empty">No dart in this selection yet.</string>
     <string name="heatmap_board_description">Dartboard heatmap. The details of each zone are in the list of the most hit zones.</string>
     <string name="heatmap_top_title">5 MOST HIT ZONES</string>
+    <string name="end_tab_result">RESULT</string>
+    <string name="end_tab_heatmap">LEG HEATMAP</string>
     <plurals name="heatmap_darts">
         <item quantity="one">%1$d dart</item>
         <item quantity="other">%1$d darts</item>

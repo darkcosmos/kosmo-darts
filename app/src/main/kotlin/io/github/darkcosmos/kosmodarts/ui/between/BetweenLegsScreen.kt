@@ -3,10 +3,8 @@ package io.github.darkcosmos.kosmodarts.ui.between
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -29,12 +27,14 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.EndHeatmapScreen
+import io.github.darkcosmos.kosmodarts.ui.board.END_SCREEN_ZONE_TAP_ENABLED
+import io.github.darkcosmos.kosmodarts.ui.board.EndTabsFrame
+import io.github.darkcosmos.kosmodarts.ui.board.TwoColumnParts
 import io.github.darkcosmos.kosmodarts.ui.components.KosmoButton
 import io.github.darkcosmos.kosmodarts.ui.components.ScoreCell
 import io.github.darkcosmos.kosmodarts.ui.components.Scoreboard
 import io.github.darkcosmos.kosmodarts.ui.components.ScoreboardRow
-import io.github.darkcosmos.kosmodarts.ui.components.ScrollingScreen
-import io.github.darkcosmos.kosmodarts.ui.components.TwoColumnScreen
 import io.github.darkcosmos.kosmodarts.ui.components.WinnerZone
 import io.github.darkcosmos.kosmodarts.ui.components.WinnerZoneTags
 import io.github.darkcosmos.kosmodarts.ui.format.dartsText
@@ -46,7 +46,6 @@ import io.github.darkcosmos.kosmodarts.ui.format.statisticHeader
 import io.github.darkcosmos.kosmodarts.ui.format.statisticText
 import io.github.darkcosmos.kosmodarts.ui.game.AbandonDialog
 import io.github.darkcosmos.kosmodarts.ui.game.CheckoutSummary
-import io.github.darkcosmos.kosmodarts.ui.layout.ScreenLayoutPolicy
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
@@ -69,6 +68,8 @@ fun BetweenLegsScreen(
     modifier: Modifier = Modifier,
     isAbandonDialogShown: Boolean = false,
     checkout: CheckoutSummary? = null,
+    heatmapScreen: EndHeatmapScreen? = null,
+    isZoneTapEnabled: Boolean = END_SCREEN_ZONE_TAP_ENABLED,
 ) {
     BetweenLegsContent(
         state = BetweenLegsState.of(match, checkout),
@@ -76,6 +77,8 @@ fun BetweenLegsScreen(
         onEvent = onEvent,
         modifier = modifier,
         isAbandonDialogShown = isAbandonDialogShown,
+        heatmapScreen = heatmapScreen,
+        isZoneTapEnabled = isZoneTapEnabled,
     )
 }
 
@@ -90,6 +93,8 @@ fun BetweenLegsContent(
     onEvent: (AppEvent) -> Unit,
     modifier: Modifier = Modifier,
     isAbandonDialogShown: Boolean = false,
+    heatmapScreen: EndHeatmapScreen? = null,
+    isZoneTapEnabled: Boolean = END_SCREEN_ZONE_TAP_ENABLED,
 ) {
     val format: @Composable ColumnScope.() -> Unit = {
         Text(
@@ -120,33 +125,33 @@ fun BetweenLegsContent(
                 .testTag(BetweenLegsTags.NEXT_LEG),
         )
     }
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        if (ScreenLayoutPolicy.hasTwoColumns(maxWidth.value, maxHeight.value)) {
-            // Owner review of PR #57: the scoreboard right of the winner, "Next leg" right under the scoreboard.
-            TwoColumnScreen(
-                top = format,
-                start = {
-                    winner()
-                    NextStarterBar(state)
-                },
-                end = {
-                    MatchScoreboard(state)
-                    nextLeg()
-                },
-            )
-        } else {
-            ScrollingScreen(
-                buttonCount = 1,
-                content = {
-                    format()
-                    winner()
-                    MatchScoreboard(state)
-                    NextStarterBar(state)
-                },
-                buttons = { nextLeg() },
-            )
-        }
-    }
+    EndTabsFrame(
+        heatmapScreen = heatmapScreen,
+        onEvent = onEvent,
+        buttonCount = 1,
+        modifier = modifier,
+        isZoneTapEnabled = isZoneTapEnabled,
+        content = {
+            format()
+            winner()
+            MatchScoreboard(state)
+            NextStarterBar(state)
+        },
+        buttons = { nextLeg() },
+        // Owner review of PR #57: the scoreboard right of the winner, "Next leg" right under the scoreboard (Result
+        // tab); in the Leg heatmap tab it is pinned at the bottom of the right column (D10).
+        twoColumns = TwoColumnParts(
+            top = format,
+            start = {
+                winner()
+                NextStarterBar(state)
+            },
+            end = {
+                MatchScoreboard(state)
+                nextLeg()
+            },
+        ),
+    )
     if (isAbandonDialogShown) AbandonDialog(onEvent)
 }
 

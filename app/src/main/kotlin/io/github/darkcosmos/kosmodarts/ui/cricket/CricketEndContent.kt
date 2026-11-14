@@ -6,7 +6,9 @@ import androidx.compose.ui.platform.LocalResources
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.EndHeatmapScreen
 import io.github.darkcosmos.kosmodarts.ui.app.GameMode
+import io.github.darkcosmos.kosmodarts.ui.board.END_SCREEN_ZONE_TAP_ENABLED
 import io.github.darkcosmos.kosmodarts.ui.end.EndContent
 import io.github.darkcosmos.kosmodarts.ui.end.endRows
 
@@ -20,6 +22,8 @@ fun CricketEndScreen(
     journal: MatchJournal,
     onEvent: (AppEvent) -> Unit,
     modifier: Modifier = Modifier,
+    heatmapScreen: EndHeatmapScreen? = null,
+    isZoneTapEnabled: Boolean = END_SCREEN_ZONE_TAP_ENABLED,
 ) {
     EndContent(
         rows = endRows(match, journal),
@@ -27,5 +31,7 @@ fun CricketEndScreen(
         mode = GameMode.CRICKET,
         onEvent = onEvent,
         modifier = modifier,
+        heatmapScreen = heatmapScreen,
+        isZoneTapEnabled = isZoneTapEnabled,
     )
 }

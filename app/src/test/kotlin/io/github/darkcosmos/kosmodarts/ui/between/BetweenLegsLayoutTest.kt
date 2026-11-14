@@ -10,6 +10,7 @@ import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.app.MatchScript
+import io.github.darkcosmos.kosmodarts.ui.board.reach
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -43,6 +44,8 @@ class BetweenLegsLayoutTest {
 
     private fun checkLandscape(vararg names: String) {
         showBetweenLegs(*names)
+        // The tab row takes 53 dp of the 360: with 4 players "NEXT LEG" is reached by scrolling the screen.
+        composeRule.onNodeWithTag(BetweenLegsTags.NEXT_LEG, useUnmergedTree = true).reach()
         val winner = bounds(BetweenLegsTags.WINNER_ZONE)
         val board = bounds(BetweenLegsTags.SCOREBOARD)
         val next = bounds(BetweenLegsTags.NEXT_LEG)

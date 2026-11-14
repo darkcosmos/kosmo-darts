@@ -50,8 +50,9 @@ fun KosmoDartsApp(
                 onEvent,
                 isAbandonDialogShown = screen.isAbandonDialogShown,
                 checkout = screen.checkout,
+                heatmapScreen = screen,
             )
-        is Screen.End -> EndScreen(screen.match, onEvent)
+        is Screen.End -> EndScreen(screen.match, onEvent, heatmapScreen = screen)
         is Screen.Settings -> SettingsScreen(settings, onSettingsEvent, onBack = { onEvent(AppEvent.Back) })
         is Screen.History -> HistoryScreen(screen.history, onEvent)
         is Screen.MatchDetail -> MatchDetailScreen(screen.detail, onEvent)
@@ -77,8 +78,9 @@ private fun CricketScreens(screen: Screen, onEvent: (AppEvent) -> Unit) {
                 screen.journal,
                 onEvent,
                 isAbandonDialogShown = screen.isAbandonDialogShown,
+                heatmapScreen = screen,
             )
-        is Screen.CricketEnd -> CricketEndScreen(screen.match, screen.journal, onEvent)
+        is Screen.CricketEnd -> CricketEndScreen(screen.match, screen.journal, onEvent, heatmapScreen = screen)
         else -> Unit
     }
 }

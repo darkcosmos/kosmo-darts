@@ -17,13 +17,15 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.EndHeatmapScreen
 import io.github.darkcosmos.kosmodarts.ui.app.GameMode
+import io.github.darkcosmos.kosmodarts.ui.board.END_SCREEN_ZONE_TAP_ENABLED
+import io.github.darkcosmos.kosmodarts.ui.board.EndTabsFrame
 import io.github.darkcosmos.kosmodarts.ui.components.ButtonKind
 import io.github.darkcosmos.kosmodarts.ui.components.KosmoButton
 import io.github.darkcosmos.kosmodarts.ui.components.ScoreCell
 import io.github.darkcosmos.kosmodarts.ui.components.Scoreboard
 import io.github.darkcosmos.kosmodarts.ui.components.ScoreboardRow
-import io.github.darkcosmos.kosmodarts.ui.components.ScrollingScreen
 import io.github.darkcosmos.kosmodarts.ui.components.WinnerZone
 import io.github.darkcosmos.kosmodarts.ui.components.WinnerZoneTags
 import io.github.darkcosmos.kosmodarts.ui.format.displayName
@@ -46,13 +48,21 @@ private val BUTTON_MIN_HEIGHT = 58.dp
  * "REMATCH" then "NEW GAME".
  */
 @Composable
-fun EndScreen(match: X01Match, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
+fun EndScreen(
+    match: X01Match,
+    onEvent: (AppEvent) -> Unit,
+    modifier: Modifier = Modifier,
+    heatmapScreen: EndHeatmapScreen? = null,
+    isZoneTapEnabled: Boolean = END_SCREEN_ZONE_TAP_ENABLED,
+) {
     EndContent(
         rows = endRows(match),
         formatLine = formatText(match.config.startScore, match.config.checkoutRule, match.format),
         mode = GameMode.X01,
         onEvent = onEvent,
         modifier = modifier,
+        heatmapScreen = heatmapScreen,
+        isZoneTapEnabled = isZoneTapEnabled,
     )
 }
 
@@ -67,10 +77,15 @@ fun EndContent(
     mode: GameMode,
     onEvent: (AppEvent) -> Unit,
     modifier: Modifier = Modifier,
+    heatmapScreen: EndHeatmapScreen? = null,
+    isZoneTapEnabled: Boolean = END_SCREEN_ZONE_TAP_ENABLED,
 ) {
-    ScrollingScreen(
+    EndTabsFrame(
+        heatmapScreen = heatmapScreen,
+        onEvent = onEvent,
         buttonCount = 2,
         modifier = modifier,
+        isZoneTapEnabled = isZoneTapEnabled,
         content = {
             Text(
                 text = formatLine,

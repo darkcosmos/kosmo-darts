@@ -103,26 +103,22 @@ internal fun HeatmapSection(state: HeatmapSectionState, onEvent: (AppEvent) -> U
     val resources = profileResources()
     val locale = profileLocale()
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = modifier.fillMaxWidth()) {
-        HeatmapBoard(state, onEvent, resources, locale)
+        HeatmapBoard(state, { onEvent(ProfileEvent.HeatmapZoneTapped(it)) }, resources, locale)
         HeatmapBand(state, resources, locale)
-        FigureRowView(
-            FigureRow(
-                "heatmap_misses",
-                stringResource(state.missLabelRes),
-                missesText(state, resources, locale),
-            ),
-        )
+        HeatmapMisses(state, resources, locale)
         HeatmapLegend(maxShare = HeatmapScale.maxShare(state.zoneShares))
         TopZones(state, resources, locale)
     }
 }
 
+/** The board coloured by the relative scale (HM5, HM8); a tap on a zone goes to [onZoneTapped]. */
 @Composable
-private fun HeatmapBoard(
+internal fun HeatmapBoard(
     state: HeatmapSectionState,
-    onEvent: (AppEvent) -> Unit,
+    onZoneTapped: (BoardZone) -> Unit,
     resources: Resources,
     locale: Locale,
+    modifier: Modifier = Modifier.fillMaxWidth(),
 ) {
     val colors = remember(state.zoneShares) { HeatmapScale.colors(state.zoneShares) }
     val zoneDescription = remember(state, resources, locale) {
@@ -134,20 +130,28 @@ private fun HeatmapBoard(
         colors = colors,
         neutral = HeatmapScale.NEUTRAL,
         selected = state.selections.selectedZone,
-        onZoneTapped = { onEvent(ProfileEvent.HeatmapZoneTapped(it)) },
+        onZoneTapped = onZoneTapped,
         contentDescription = stringResource(R.string.heatmap_board_description),
         zoneDescription = zoneDescription,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
     )
 }
 
 /** HM6: the band shows the selected zone, or "Touchez une zone" when none is. */
 @Composable
-private fun HeatmapBand(state: HeatmapSectionState, resources: Resources, locale: Locale) {
+internal fun HeatmapBand(state: HeatmapSectionState, resources: Resources, locale: Locale) {
     val selected = state.selected
     ZoneBand(
         title = selected?.name?.text(resources) ?: stringResource(HeatmapSectionState.BAND_NONE_RES),
         detail = selected?.detail(resources, locale),
+    )
+}
+
+/** HM2, HM4: the misses line, with the label of HM4. */
+@Composable
+internal fun HeatmapMisses(state: HeatmapSectionState, resources: Resources, locale: Locale) {
+    FigureRowView(
+        FigureRow("heatmap_misses", stringResource(state.missLabelRes), missesText(state, resources, locale)),
     )
 }
 
@@ -163,7 +167,7 @@ private fun missesText(state: HeatmapSectionState, resources: Resources, locale:
 
 /** HM6: the 5 most hit zones as text, one line each: "Triple 20" and "12 darts · 4.7 %". */
 @Composable
-private fun TopZones(state: HeatmapSectionState, resources: Resources, locale: Locale) {
+internal fun TopZones(state: HeatmapSectionState, resources: Resources, locale: Locale) {
     val colors = KosmoTheme.colors
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.testTag(HeatmapTags.TOP_LIST)) {
         SectionLabel(stringResource(R.string.heatmap_top_title))

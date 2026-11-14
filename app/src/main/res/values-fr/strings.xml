@@ -385,6 +385,8 @@
     <string name="heatmap_empty">Aucune fléchette dans cette sélection pour l\'instant.</string>
     <string name="heatmap_board_description">Heatmap de la cible. Le détail de chaque zone est dans la liste des zones les plus touchées.</string>
     <string name="heatmap_top_title">5 ZONES LES PLUS TOUCHÉES</string>
+    <string name="end_tab_result">RÉSULTAT</string>
+    <string name="end_tab_heatmap">MANCHE HEATMAP</string>
     <plurals name="heatmap_darts">
         <item quantity="one">%1$d fléchette</item>
         <item quantity="many">%1$d fléchettes</item>

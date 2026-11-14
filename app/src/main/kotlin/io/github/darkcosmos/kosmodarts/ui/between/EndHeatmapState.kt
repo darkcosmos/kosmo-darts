@@ -6,6 +6,8 @@ import io.github.darkcosmos.kosmodarts.engine.stats.lastLegHeatmap
 import io.github.darkcosmos.kosmodarts.ui.app.EndHeatmapScreen
 import io.github.darkcosmos.kosmodarts.ui.app.EndScreenKind
 import io.github.darkcosmos.kosmodarts.ui.app.EndTab
+import io.github.darkcosmos.kosmodarts.ui.app.Screen
+import io.github.darkcosmos.kosmodarts.ui.game.MatchPosition
 import io.github.darkcosmos.kosmodarts.ui.profile.HeatmapFigures
 import io.github.darkcosmos.kosmodarts.ui.profile.HeatmapSectionState
 import io.github.darkcosmos.kosmodarts.ui.profile.HeatmapSelections
@@ -22,6 +24,17 @@ data class HeatmapPlayerChip(val index: Int, val name: String, val color: Player
  *   figures as the Profile section, so the screens share the zone texts.
  */
 data class EndHeatmapState(val tab: EndTab, val players: List<HeatmapPlayerChip>, val section: HeatmapSectionState)
+
+/**
+ * M19, HM9: the position of the leg the heatmap shows, for the "LEG n" title: the last completed leg between legs, the
+ * finished current leg at the end (D6). No numbers in a single game.
+ */
+fun EndHeatmapScreen.legPosition(): MatchPosition = when (this) {
+    is Screen.BetweenLegs -> MatchPosition.lastLeg(match)
+    is Screen.CricketBetweenLegs -> MatchPosition.lastLeg(match.score)
+    is Screen.End -> MatchPosition.current(match)
+    is Screen.CricketEnd -> MatchPosition.current(match.score)
+} ?: MatchPosition(null, null)
 
 /**
  * HM9, D6: the heatmap of the last leg played, derived from the match journal (DJ2, DJ4): between legs the last

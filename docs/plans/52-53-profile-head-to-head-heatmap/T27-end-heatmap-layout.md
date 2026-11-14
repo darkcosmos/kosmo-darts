@@ -50,3 +50,18 @@ HM4 to HM10, M16, M17, M19, CR26, CR27, PS8; touch targets (42 dp tall allowed i
 sonnet. Why: layout from the plan with captures.
 
 ## Implementation notes
+
+- Frame: `ui/board/ResultHeatmapTabs.kt` (`EndTabsFrame`, `EndTabRow`, `EndTabTags`); heatmap tab: `ui/board/LegHeatmapTab.kt`
+  (`LegHeatmapPortrait`, `LegHeatmapLandscape`, `END_SCREEN_ZONE_TAP_ENABLED`, `LegHeatmapTags`). The four screens keep their
+  signatures and gain optional `heatmapScreen` and `isZoneTapEnabled`; without `heatmapScreen` there is no tab row (legacy
+  tests unchanged). `KosmoDartsApp` passes `screen`. `EndHeatmapScreen.legPosition()` gives the "LEG n" title.
+- T22 pieces `HeatmapBoard`, `HeatmapBand`, `TopZones` are now `internal`, plus the new `HeatmapMisses`.
+- Deviation: tab labels use 14 sp (not the 20 sp button style): at font scale 2 RÉSULTAT does not fit half a Pixel 7 otherwise.
+- Deviation: the tab row is at most 560 dp wide while a landscape body may be 960 dp.
+- Deviation: Result between legs in landscape still scrolls as a whole (`TwoColumnScreen`); with 4 players on 800x360 the tab row
+  pushes "NEXT LEG" below the fold, reached by scrolling (`BetweenLegsLayoutTest` uses `reach()`). Landscape end screens use the
+  same slot as portrait, pinned only when `ScreenLayoutPolicy` pins (tab row counted as 50 dp).
+- Existing test updated: `X01ScreensTest.theEndScreenHasNoUndoAction` counts 4 click actions (2 tabs).
+- Test helpers: `ui/board/EndScreensHost.kt` (`showEndScreen`, fixtures, `reach()`). Captures: `EndHeatmapScreenshotTest`
+  (13 images, `build/outputs/roborazzi/end_tabs_*`, record only).
+- Tests: `ResultHeatmapTabsTest`, `LegHeatmapTabTest` (HM4, HM6, HM9, HM10, D10, D11).
