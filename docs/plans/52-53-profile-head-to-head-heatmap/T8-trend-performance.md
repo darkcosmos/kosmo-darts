@@ -36,3 +36,12 @@ PS5, ST7, ST10.
 sonnet. Why: small pure function plus a benchmark test.
 
 ## Implementation notes
+- `TrendSeries.kt`: `trendSeries(matches, profileId)` -> `List<TrendPoint(sessionId, endedAt, value)>`, sorted by end
+  then start; the value per match reuses `x01Figures(listOf(match)).average` or `cricketFigures(listOf(match)).mpr`
+  by the match mode (no replay, only `StatsMatch` facts). `summarize(points)` -> `TrendSummary(count, first, last,
+  lowest, highest, firstDate, lastDate)`; dates are the `endedAt` of the first and last point, not of the min/max.
+  A selection is expected to hold one mode (the app filters by mode); mixed modes would mix averages and MPR.
+- `StatsPerformanceTest`: 1,000 seeded matches (X01 501/301, both rules, Cricket both variants, 1 to 4 players, 1 to 3
+  legs), a deterministic test (no ignored match, trend size, order, results counts) and a timed test: 2 warm-ups, median
+  of 5 runs of validate + select + X01 + Cricket + trend, budget 1 s. Local timing: median about 107 ms (runs 99 to
+  110 ms).
