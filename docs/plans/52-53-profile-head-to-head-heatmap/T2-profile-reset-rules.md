@@ -32,3 +32,7 @@ PM4, ST9.
 sonnet. Why: small specified engine rule with its tests.
 
 ## Implementation notes
+- No deviation. `ProfileRules.mergedDates` now keeps the latest real reset (reset > creation) else the merged creation
+  date; `ProfileRules.isReallyReset(dates)` is ST9, for the Profile header "Since always" / "Since <date>".
+- The repository merge needed no code change (it already calls `mergedDates`); its tests now assert PM4, including a
+  never-reset merge.
