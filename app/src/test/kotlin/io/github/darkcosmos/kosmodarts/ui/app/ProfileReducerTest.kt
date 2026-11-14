@@ -6,6 +6,8 @@ import io.github.darkcosmos.kosmodarts.engine.stats.CricketFilter
 import io.github.darkcosmos.kosmodarts.engine.stats.Period
 import io.github.darkcosmos.kosmodarts.engine.stats.X01Filter
 import io.github.darkcosmos.kosmodarts.history.DbResult
+import io.github.darkcosmos.kosmodarts.history.HeadToHeadData
+import io.github.darkcosmos.kosmodarts.history.HeadToHeadPicker
 import io.github.darkcosmos.kosmodarts.history.ProfileStatsData
 import io.github.darkcosmos.kosmodarts.history.ProfileStatsRepository
 import io.github.darkcosmos.kosmodarts.persistence.MemoryStore
@@ -226,4 +228,8 @@ private class FakeProfileStatsRepository(private val result: DbResult<ProfileSta
         loads += profileId
         return result
     }
+
+    override fun loadPicker(profileId: Long): DbResult<HeadToHeadPicker> = DbResult.Failed
+
+    override fun loadPair(a: Long, b: Long): DbResult<HeadToHeadData> = DbResult.Failed
 }

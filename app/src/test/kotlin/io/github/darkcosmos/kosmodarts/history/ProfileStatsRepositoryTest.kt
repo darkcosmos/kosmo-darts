@@ -266,4 +266,113 @@ class ProfileStatsRepositoryTest {
         assertEquals(1_000, data.matches.size)
         assertTrue("took $millis ms", millis < 1_000)
     }
+
+    private fun picker(name: String = "Ana"): HeadToHeadPicker =
+        (repository.loadPicker(idOf(name)) as DbResult.Ok).value
+
+    private fun pair(a: String = "Ana", b: String = "Bob"): HeadToHeadData =
+        (repository.loadPair(idOf(a), idOf(b)) as DbResult.Ok).value
+
+    @Test
+    fun `HH1 the picker lists others but self and anonymous, by common matches then name, zero included`() {
+        store(x01(listOf("Ana", "Bob"), endedAt = 1_000L))
+        store(cricket(listOf("Ana", "Bob", "Cleo"), endedAt = 2_000L))
+        store(x01(listOf("Ana", "Bob"), endedAt = 3_000L))
+        store(x01(listOf("Ana", "Zoe"), endedAt = 4_000L))
+        store(x01(listOf("Bob", "Cleo"), endedAt = 5_000L))
+        db.profileDao().upsertUsed("Dan", "dan", at = 1L)
+        db.profileDao().upsertUsed("Abe", "abe", at = 1L)
+        db.profileDao().upsertUsed("Deleted", ProfileRules.ANONYMOUS_NAME_KEY, at = 1L)
+
+        val picker = picker()
+
+        assertEquals("Ana", picker.name)
+        assertEquals(
+            listOf("Bob" to 3, "Cleo" to 1, "Zoe" to 1, "Abe" to 0, "Dan" to 0),
+            picker.others.map { it.name to it.commonCount },
+        )
+    }
+
+    @Test
+    fun `HH1 HH2 a profile really reset after the common matches counts none`() {
+        store(x01(listOf("Ana", "Bob"), endedAt = 1_000L))
+        store(x01(listOf("Ana", "Bob"), endedAt = 9_000L))
+        sql("UPDATE profile SET reset_at = 5000 WHERE id = ${idOf("Bob")}")
+
+        assertEquals(1, picker().others.single().commonCount)
+    }
+
+    @Test
+    fun `HH1 AR9 HS7 the picker of an unknown or anonymous profile, or after a read failure, is Failed`() {
+        store(x01(listOf("Ana", "Bob")))
+        val anonymous = db.profileDao().upsertUsed("Deleted", ProfileRules.ANONYMOUS_NAME_KEY, at = 1L)
+        val id = idOf("Ana")
+
+        assertEquals(DbResult.Failed, repository.loadPicker(404L))
+        assertEquals(DbResult.Failed, repository.loadPicker(anonymous))
+        db.close()
+        assertEquals(DbResult.Failed, repository.loadPicker(id))
+    }
+
+    @Test
+    fun `HH2 the pair gets the matches both played with every player's darts, oldest end first`() {
+        store(x01(listOf("Ana", "Bob"), endedAt = 3_000L))
+        store(x01(listOf("Ana"), endedAt = 1_000L))
+        store(cricket(listOf("Ana", "Bob", "Cleo"), endedAt = 2_000L))
+        store(x01(listOf("Ana", "Cleo"), endedAt = 4_000L))
+        store(x01(listOf("Bob", "Cleo"), endedAt = 5_000L))
+
+        val data = pair()
+
+        assertEquals(0, data.skippedMatches)
+        assertEquals(listOf(2_000L, 3_000L), data.matches.map { it.endedAt })
+        assertEquals(listOf("Ana", "Bob"), listOf(data.a.name, data.b.name))
+        assertEquals(listOf(idOf("Ana"), idOf("Bob")), listOf(data.a.id, data.b.id))
+        assertEquals(listOf(3, 2), data.matches.map { it.players.size })
+        assertTrue(data.matches.all { it.legs.single().darts.isNotEmpty() })
+    }
+
+    @Test
+    fun `HH9 ST10 a corrupt common match is skipped and counted, the others load intact`() {
+        store(x01(listOf("Ana", "Bob"), endedAt = 1_000L))
+        val baseline = pair().matches.map(::figures)
+        val rankOutOfRange = x01(listOf("Ana", "Bob"), endedAt = 2_000L).let { m ->
+            m.copy(players = m.players.map { if (it.position == 1) it.copy(rank = 9) else it })
+        }
+        store(rankOutOfRange)
+        // A corrupt match Bob did not play is not theirs to count.
+        store(
+            x01(listOf("Ana", "Cleo"), endedAt = 3_000L).let { m ->
+                m.copy(players = m.players.map { if (it.position == 1) it.copy(rank = 9) else it })
+            },
+        )
+
+        val data = pair()
+
+        assertEquals(1, data.skippedMatches)
+        assertEquals(baseline, data.matches.map(::figures))
+    }
+
+    @Test
+    fun `HH2 AR5 more than 100 common sessions load in two batches, each match once and in order`() {
+        repeat(130) { store(x01(listOf("Ana", "Bob"), endedAt = 1_000L + it)) }
+
+        val data = pair()
+
+        assertEquals((0 until 130).map { 1_000L + it }, data.matches.map { it.endedAt })
+    }
+
+    @Test
+    fun `HH9 AR9 a pair with itself, an unknown or anonymous profile, or after a read failure, is Failed`() {
+        store(x01(listOf("Ana", "Bob")))
+        val ana = idOf("Ana")
+        val bob = idOf("Bob")
+        val anonymous = db.profileDao().upsertUsed("Deleted", ProfileRules.ANONYMOUS_NAME_KEY, at = 1L)
+
+        assertEquals(DbResult.Failed, repository.loadPair(ana, ana))
+        assertEquals(DbResult.Failed, repository.loadPair(ana, 404L))
+        assertEquals(DbResult.Failed, repository.loadPair(anonymous, bob))
+        db.close()
+        assertEquals(DbResult.Failed, repository.loadPair(ana, bob))
+    }
 }

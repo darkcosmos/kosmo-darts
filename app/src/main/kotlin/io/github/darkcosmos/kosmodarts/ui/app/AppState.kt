@@ -23,6 +23,7 @@ import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
 import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailState
 import io.github.darkcosmos.kosmodarts.ui.players.PlayersState
+import io.github.darkcosmos.kosmodarts.ui.headtohead.HeadToHeadState
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 
@@ -92,10 +93,16 @@ sealed interface Screen {
     }
 
     /**
-     * The head-to-head of the ordered pair [a], [b] (HS9: (B, A) is another screen than (A, B)). [state] is a
-     * placeholder until its screen exists.
+     * The head-to-head of the ordered pair [a], [b] (HS9: (B, A) is another screen than (A, B)); [b] is `null` while
+     * the picker of the partner shows (HH1). [state] holds the reads, the selections and the result (HH9); a caller
+     * opens it with a [HeadToHeadState] whose `now` is the event's clock reading.
      */
-    data class HeadToHead(override val parent: Screen, val a: Long, val b: Long, val state: Unit = Unit) : Stacked {
+    data class HeadToHead(
+        override val parent: Screen,
+        val a: Long,
+        val b: Long? = null,
+        val state: HeadToHeadState = HeadToHeadState(),
+    ) : Stacked {
         override fun reparented(parent: Screen): Stacked = copy(parent = parent)
 
         override fun isSameAs(other: Screen): Boolean = other is HeadToHead && other.a == a && other.b == b

@@ -38,6 +38,23 @@ interface StatsDao {
     @Query("SELECT * FROM profile WHERE id = :id")
     fun profile(id: Long): ProfileEntity?
 
+    /** Every profile, the anonymous one included (the caller leaves it out, PM7). */
+    @Query("SELECT * FROM profile")
+    fun profiles(): List<ProfileEntity>
+
+    /** The ids of the archived matches both [a] and [b] played, oldest end first (ties by id). */
+    @Query(
+        """
+        SELECT DISTINCT s.id FROM session s
+        JOIN match_record m ON m.session_id = s.id
+        JOIN match_player pa ON pa.session_id = s.id
+        JOIN match_player pb ON pb.session_id = s.id
+        WHERE pa.profile_id = :a AND pb.profile_id = :b
+        ORDER BY s.ended_at, s.id
+        """,
+    )
+    fun commonSessionIds(a: Long, b: Long): List<Long>
+
     /** The ids of the archived matches [profileId] played, oldest end first (ties by id). */
     @Query(
         """

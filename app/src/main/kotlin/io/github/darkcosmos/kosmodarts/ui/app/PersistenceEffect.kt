@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMatch
+import io.github.darkcosmos.kosmodarts.history.HeadToHeadData
 import io.github.darkcosmos.kosmodarts.history.HistoryFilters
 import io.github.darkcosmos.kosmodarts.history.ProfileStatsData
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
@@ -11,6 +12,7 @@ import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.ui.cricket.toSavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.game.toSavedGame
+import io.github.darkcosmos.kosmodarts.ui.headtohead.HeadToHeadSelections
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileQuery
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileRequest
@@ -74,6 +76,30 @@ sealed interface PersistenceEffect {
     ) : ProfileEffect
 
     /**
+     * HH1: read the picker of the head-to-head of profile [a]; the answer comes back as
+     * [HeadToHeadEvent.PickerLoaded] with the same [loadId].
+     */
+    data class LoadHeadToHeadPicker(val a: Long, val loadId: Int) : HeadToHeadEffect
+
+    /**
+     * HH2, ST10: read the common matches of [a] and [b]; the answer comes back as [HeadToHeadEvent.PairLoaded] with
+     * the same [loadId].
+     */
+    data class LoadHeadToHeadPair(val a: Long, val b: Long, val loadId: Int) : HeadToHeadEffect
+
+    /**
+     * ST7: compute the result of [data] for [selections] off the main thread; the answer comes back as
+     * [HeadToHeadEvent.ResultComputed] with the same [figuresId].
+     */
+    data class ComputeHeadToHead(
+        val a: Long,
+        val figuresId: Int,
+        val data: HeadToHeadData,
+        val selections: HeadToHeadSelections,
+        val now: Long,
+    ) : HeadToHeadEffect
+
+    /**
      * AR1, AR2: write [archived] to the history with one ARGB color per player, then delete the saved game, only if the
      * write succeeded. The answer comes back as [AppEvent.ArchiveSucceeded] or [AppEvent.ArchiveFailed].
      */
@@ -128,7 +154,7 @@ fun persistenceEffects(before: AppState, after: AppState): List<PersistenceEffec
         loadHistoryEffect(before, after),
         loadMatchEffect(before, after),
         loadPlayersEffect(before, after),
-    ) + profileEffects(before, after)
+    ) + profileEffects(before, after) + headToHeadEffects(before, after)
 }
 
 /** The History list a screen shows or hides behind the detail (HS6), or `null`. */
@@ -219,6 +245,7 @@ fun Persistence.applyEffects(effects: List<PersistenceEffect>, onEvent: (AppEven
             is PersistenceEffect.LoadPlayers ->
                 playersAccess.load { onEvent(PlayersEvent.Loaded(effect.loadId, it)) }
             is ProfileEffect -> runProfileEffect(effect, onEvent)
+            is HeadToHeadEffect -> runHeadToHeadEffect(effect, onEvent)
             is PersistenceEffect.ArchiveMatch ->
                 archiveMatch(effect.archived, effect.colorsArgb) { isArchived ->
                     onEvent(if (isArchived) AppEvent.ArchiveSucceeded else AppEvent.ArchiveFailed)

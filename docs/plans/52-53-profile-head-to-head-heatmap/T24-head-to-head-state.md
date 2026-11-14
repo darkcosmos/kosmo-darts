@@ -38,3 +38,19 @@ HH1 to HH9, HS9, AR9, ST10.
 sonnet. Why: loader and state holder with JVM tests, behavior specified.
 
 ## Implementation notes
+
+- Data: `StatsDao.profiles()` and `commonSessionIds(a, b)`; `ProfileStatsRepository.loadPicker(profileId)` gives
+  `HeadToHeadPicker(others: List<PickerProfile(id, name, commonCount)>)` (self and anonymous excluded, count desc then
+  name, zero included) and `loadPair(a, b)` gives `HeadToHeadData(a, b: PairProfile, matches, skippedMatches)`.
+  Both are `DbResult` (failure on DB error, unknown or anonymous profile, a == b). Batches of 100, no new log line.
+- State: `ui/headtohead/HeadToHeadState.kt` (`HeadToHeadState`, `HeadToHeadSelections`, `HeadToHeadResult`,
+  `CommonMatchRow` newest first, `HeadToHeadView`, `PickerContent`, `PairContent`). `view(partner)` picks the view.
+  Session ids must be numeric text (rows with a non numeric id are dropped).
+- `Screen.HeadToHead` gained `b: Long? = null` (null = picker shows) and `state: HeadToHeadState`; both live in
+  AppState, so rotation and a return from a common match detail keep them (HS9).
+- Events `HeadToHeadEvent` (PartnerPicked, ChangePartnerTapped, RetryTapped, ModeSelected, X01FilterSelected,
+  CricketFilterSelected, PeriodSelected, MatchTapped, and the answers PickerLoaded, PairLoaded, ResultComputed);
+  reducer `HeadToHeadReducer.kt`; effects `HeadToHeadEffect.kt` (LoadHeadToHeadPicker, LoadHeadToHeadPair,
+  ComputeHeadToHead) wired in `PersistenceEffect.kt`.
+- HH8 deviation: "Since <date>" uses the latest reset date among the really-reset profiles of the pair only.
+- T25 must replace the `is Screen.HeadToHead -> Unit` placeholder in KosmoDartsApp and the "Compare with..." button.
