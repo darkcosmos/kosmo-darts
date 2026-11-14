@@ -34,3 +34,13 @@ HH1 (counts), HH2 to HH6, ST1, ST3, ST4.
 sonnet. Why: rules specified, tests listed.
 
 ## Implementation notes
+- `engine/stats/HeadToHead.kt`: `commonMatches(matches, a, resetA, b, resetB)` (both play, started >= max reset,
+  a == b gives empty), `commonCounts(matches, a, resetA, resets: Map<Long, Long>): Map<Long, Int>` (HH1; every key
+  present, 0 included; sorting by count then name is left to T24), `selectCommon(..., filter, period, now)` (common
+  matches, then `select` with the latest reset so the filter and "Last 10" apply to common matches only) and
+  `headToHead(matches, a, resetA, b, resetB, filter, period, now): HeadToHeadFigures`.
+- `HeadToHeadFigures(commonCount, winsA, winsB, draws, legsWonA, legsWonB, x01A, x01B, cricketA, cricketB)`; X01 and
+  Cricket blocks are always present (empty figures, null averages, when the selection holds no match of that mode);
+  a `CricketFilter` variant is passed to `cricketFigures`. Dates: the date line (HH8) is not here; T24 uses
+  `ProfileRules.isReallyReset` and the max of the two reset dates.
+- No deviation. Ranks are compared directly (lower is better); equal ranks are a draw.
