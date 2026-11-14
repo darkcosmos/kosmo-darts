@@ -276,8 +276,8 @@ Heatmap:
   Same zones, values, scale, misses line, legend and HM4 label; tapping a zone shows the HM6 band (owner N3 A); the
   top 5 list of HM6 is shown too. Derived from the match journal: between legs, the last completed leg (the current
   leg journal is the empty next leg); at the end of a match, the current (finished) leg.
-- HM10. On those screens the main actions ("Next leg"; "Rematch" and "New game") are reachable from both tabs, at the
-  same place in both. The selected tab, player and zone survive a rotation; after a process death the screen reopens
+- HM10. On those screens the main actions ("Next leg"; "Rematch" and "New game") are reachable in both tabs (always in
+  the right column in landscape between legs, see "Screens and states"). The selected tab, player and zone survive a rotation; after a process death the screen reopens
   on "Result" with the default player (nothing new is saved). A new between-legs screen, a rematch or a new game opens
   on "Result".
 
@@ -311,21 +311,24 @@ Head-to-head:
 - **Head-to-head**: picker (list, empty if no other profile); loaded (names, date line, counters, side-by-side
   figures, list of common matches); empty (no common match); loading; failure.
 - **Between legs and end screens** (HM9, HM10, owner N1): a tab row fixed at the top, under the safe area, in both
-  orientations and both tabs: "RÉSULTAT" and "LEG HEATMAP" (EN "RESULT" and "LEG HEATMAP"), equal widths, 48 dp tall
-  (42 dp allowed in landscape), selected tab underlined in the accent colour, labels wrap on two lines at 200 % font
-  and are never cut; TalkBack reads each tab with its selected state. Under it, the selected tab:
-  - "Résultat": today's screen, unchanged (portrait `ScrollingScreen`, landscape two columns between legs).
+  orientations and both tabs: "RÉSULTAT" and "LEG HEATMAP" (EN "RESULT" and "LEG HEATMAP"), equal widths, a minimum
+  height of 48 dp (42 dp allowed in landscape) that grows with the text, selected tab underlined in the accent
+  colour; labels wrap on two lines at 200 % font and are never cut (review U10); TalkBack reads each tab with its
+  selected state. Under it, the selected tab:
+  - "Résultat": today's screen content, unchanged (portrait `ScrollingScreen`, landscape two columns between legs).
+    The tab row takes some height: where the content no longer fits (landscape, 3 to 4 players, 200 % font), each
+    column scrolls on its own and nothing is clipped (review U9).
   - "Leg heatmap": a "LEG n" title (set and leg as in M19), the player selector (chips with the colour strip and the
     name, horizontal scroll, 48 dp, absent in solo), the board, the misses line with the HM4 label, the legend, the
     tap band (D11) and the top 5 list. Portrait: one scrolling column, board full width. Landscape: the board at the
     left, as large as the height allows and never under 200 dp; at the right a column that scrolls on its own with
     the selector, misses line, legend, band and top 5 (at 200 % font they scroll, the board stays). This replaces
     the third column of the first plan (review U1 intent kept).
-  - Main actions (D10): one shared action area, outside the tab content, so a tab switch never moves or hides it.
-    Portrait: the `ScrollingScreen` button slot in both tabs (pinned at the bottom whenever the existing policy pins
+  - Main actions (D10): reachable in both tabs, never hidden by a tab switch (review U8: "reachable", not "same
+    place", in landscape between legs). Portrait: the `ScrollingScreen` button slot in both tabs (pinned at the bottom whenever the existing policy pins
     it, which is the case on a Pixel 7 at default font; otherwise after the content, as today). Landscape: between
-    legs, "MANCHE SUIVANTE" stays under the scoreboard in "Résultat" and is pinned at the bottom of the right column
-    in "Leg heatmap"; end screens, "REVANCHE" / "NOUVELLE PARTIE" follow the same `ScrollingScreen` slot as in
+    legs, "MANCHE SUIVANTE" is in the right column in both tabs: under the scoreboard in "Résultat" (as today) and
+    pinned at the bottom of the right column in "Leg heatmap"; end screens, "REVANCHE" / "NOUVELLE PARTIE" follow the same `ScrollingScreen` slot as in
     portrait. A UI test proves the action is displayed and clickable in each tab and orientation.
 - **Texts**: every count (matches, common matches, legs, darts, ignored matches) is a plural resource in English and
   French; dates use the device locale format.
@@ -361,7 +364,8 @@ Head-to-head:
 - Captures (Roborazzi, Pixel 7 only, portrait, landscape, 200 % font): Profile empty and filled (X01, Cricket),
   actions panel, Players list; trend curve; Heatmap section empty, spread, concentrated; head-to-head picker, filled,
   empty; between-legs and end screens on the "Leg heatmap" tab, X01 and Cricket, 1 and 4 players (long names), and
-  4 players in landscape at 200 % font; the "Résultat" tab with the tab row in portrait and landscape.
+  4 players in landscape at 200 % font; the "Résultat" tab with the tab row in portrait and landscape, and
+  at 4 players in landscape at 200 % font (review U9).
 - Every edge case of the project review focus that this mission touches: bust, double-out and single-out, undo at
   every step (CR13, HM9), 1 to 4 players, 501 and 301, rematch (end-screen heatmap uses the finished match), process
   death on the between-legs screen (journal restored, screen back on "Résultat", the "Leg heatmap" tab shows the
@@ -470,8 +474,10 @@ Design decisions (developer, to be confirmed in design review):
   and zone: it survives a rotation; it is not saved, so after a process death the screen reopens on "Résultat" with
   the default player (no saved game format change). Every new between-legs or end screen opens on "Résultat". System
   Back keeps today's behavior on both tabs (no tab history).
-- D10 (N1): the main actions sit in one shared action area outside the tab content, at the same place in both tabs
-  ("Screens and states"); the "Résultat" tab content is today's screen unchanged.
+- D10 (N1, review U8): the main actions are reachable in both tabs: same slot in portrait and on the end screens;
+  in landscape between legs, in the right column of both tabs (under the scoreboard in "Résultat", pinned at the
+  bottom in "Leg heatmap"). The "Résultat" tab content is today's screen unchanged; it scrolls where the tab row
+  makes it no longer fit (review U9). The tab height is a minimum and grows with the text (review U10).
 - D11 (N3): the tap band is one composable `ZoneBand`, shown on the end screens only when the constant
   `END_SCREEN_ZONE_TAP_ENABLED` (in `LegHeatmapTab.kt`) is true; when false, zone taps are ignored and the band is
   hidden, the top 5 list stays. Switching to N3 B changes that one line and its UI test.
