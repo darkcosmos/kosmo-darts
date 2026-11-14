@@ -138,8 +138,9 @@ fun BetweenLegsContent(
             NextStarterBar(state)
         },
         buttons = { nextLeg() },
-        // Owner review of PR #57: the scoreboard right of the winner, "Next leg" right under the scoreboard (Result
-        // tab); in the Leg heatmap tab it is pinned at the bottom of the right column (D10).
+        // Owner review of PR #57: the scoreboard right of the winner (Result tab,
+        // "Next leg" pinned at the bottom of the screen, the content scrolling above it: owner decision U3);
+        // in the Leg heatmap tab it is pinned at the bottom of the right column (D10).
         twoColumns = TwoColumnParts(
             top = format,
             start = {
@@ -148,7 +149,6 @@ fun BetweenLegsContent(
             },
             end = {
                 MatchScoreboard(state)
-                nextLeg()
             },
         ),
     )

@@ -44,8 +44,11 @@ private val TAB_UNDERLINE = 3.dp
 private val TAB_MIN_HEIGHT_LANDSCAPE = 42.dp
 private val TAB_ROW_TOP = 8.dp
 
-/** The height in dp that the tab row and its margin take off the pinning decision of the landscape heatmap tab. */
-private const val TABS_ALLOWANCE = 50f
+/** In landscape the 360 dp of height are scarce: the tab row has no top margin, so it takes its planned 42 dp. */
+private val TAB_ROW_TOP_LANDSCAPE = 0.dp
+
+/** The height in dp that the landscape tab row takes off the pinning decision of the landscape heatmap tab. */
+private val TABS_ALLOWANCE = TAB_MIN_HEIGHT_LANDSCAPE.value + TAB_ROW_TOP_LANDSCAPE.value
 
 /** The three parts of the landscape Result tab of the between-legs screens: [top] over [start] and [end]. */
 class TwoColumnParts(
@@ -85,7 +88,7 @@ fun EndTabsFrame(
                         modifier = Modifier
                             .widthIn(max = ScreenLayoutPolicy.CONTENT_MAX_WIDTH.dp)
                             .padding(horizontal = ScreenLayoutPolicy.HORIZONTAL_MARGIN.dp)
-                            .padding(top = TAB_ROW_TOP),
+                            .padding(top = if (isWide) TAB_ROW_TOP_LANDSCAPE else TAB_ROW_TOP),
                     )
                 }
             }
@@ -115,6 +118,7 @@ fun EndTabsFrame(
                         top = twoColumns.top,
                         start = twoColumns.start,
                         end = twoColumns.end,
+                        bottom = buttons,
                     )
                     else -> ScrollingScreen(buttonCount = buttonCount, content = content, buttons = buttons)
                 }

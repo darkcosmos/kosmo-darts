@@ -59,16 +59,18 @@ Maquette : `docs/design/mockups/heatmap/heatmap-relative.svg`. Code : `HeatmapSc
 | Jeton | Valeur | Luminance | Usage |
 |---|---|---|---|
 | `heatmapNeutral` | `#252B3F` | 0,025 | Zone sans fléchette (cadre `#5C6580` dans la légende) |
-| `heatmapRamp0` | `#414487` | 0,070 | 0 % de l'échelle (plus bas), contraste 2,2:1 sur `background` |
-| `heatmapRamp25` | `#2A788E` | 0,159 | 25 % |
+| `heatmapRamp0` | `#6259BC` | 0,134 | 0 % de l'échelle (plus bas), contraste 3,3:1 sur `background` |
+| `heatmapRamp25` | `#2F85A0` | 0,199 | 25 % (contraste 4,5:1) |
 | `heatmapRamp50` | `#22A884` | 0,300 | 50 % |
 | `heatmapRamp75` | `#7AD151` | 0,503 | 75 % |
 | `heatmapRamp100` | `#FDE725` | 0,782 | 100 % (zone la plus touchée) |
 
 Les couleurs intermédiaires sont interpolées linéairement entre deux étapes voisines. La luminance croît strictement
-(lisible en niveaux de gris). Le contraste sur `background` est d'au moins 3:1 pour les étapes de 25 % à 100 % ; le
-bleu profond du bas de l'échelle fait 2,2:1, compensé par le liseré `background` des zones et par les nombres écrits
-(bande de la zone touchée, top 5, légende). Légende : pastille neutre « 0 fléchette », barre en dégradé de « > 0 % » à
+(lisible en niveaux de gris). Décision U1 (Kosmo, 2026-11) : le contraste sur `background` est d'au moins 3:1 pour
+toutes les étapes, la plus basse comprise (3,3:1 ; 4,5:1 ; 6,4:1 ; 10,1:1 ; 15,1:1), et la pastille neutre se distingue de
+la plus basse étape (2,4:1). Cette rampe remplace celle des maquettes, qui ne servaient qu'à choisir l'échelle relative
+(les SVG de `docs/design/mockups/heatmap/` ne sont pas régénérés : le tableau ci-dessus fait foi).
+Légende : pastille neutre « 0 fléchette », barre en dégradé de « > 0 % » à
 « max = x % » (le max du plateau), note « Valeur d'une zone = ses fléchettes / toutes les fléchettes, ratés inclus ».
 
 ## 3. Typographie

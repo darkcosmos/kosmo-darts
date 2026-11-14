@@ -10,7 +10,6 @@ import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.ui.app.KosmoDartsViewModel
 import io.github.darkcosmos.kosmodarts.ui.app.MatchScript
-import io.github.darkcosmos.kosmodarts.ui.board.reach
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -44,28 +43,25 @@ class BetweenLegsLayoutTest {
 
     private fun checkLandscape(vararg names: String) {
         showBetweenLegs(*names)
-        // The tab row takes 53 dp of the 360: with 4 players "NEXT LEG" is reached by scrolling the screen.
-        composeRule.onNodeWithTag(BetweenLegsTags.NEXT_LEG, useUnmergedTree = true).reach()
+        // Owner decision U3: "NEXT LEG" is pinned at the bottom, displayed without scrolling, even with 4 players.
         val winner = bounds(BetweenLegsTags.WINNER_ZONE)
         val board = bounds(BetweenLegsTags.SCOREBOARD)
         val next = bounds(BetweenLegsTags.NEXT_LEG)
 
         assertTrue("scoreboard $board not right of the winner $winner", board.left >= winner.right)
         assertEquals("scoreboard and winner tops", winner.top, board.top, EPSILON)
-        assertTrue("next leg $next not under the scoreboard $board", next.top >= board.bottom)
-        assertEquals("next leg start", board.left, next.left, EPSILON)
-        assertEquals("next leg end", board.right, next.right, EPSILON)
+        assertTrue("next leg $next not under the winner top ${winner.top}", next.top > winner.top)
         assertTrue("next leg $next off screen", next.bottom <= screen().bottom + EPSILON && next.height > 0f)
     }
 
     @Test
     @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
-    fun `M16 landscape 800 x 360, scoreboard right of the winner, next leg under it, 2 players`() =
+    fun `M16 landscape 800 x 360, scoreboard right of the winner, next leg pinned at the bottom, 2 players`() =
         checkLandscape("Ann", "Bob")
 
     @Test
     @Config(qualifiers = TestDevices.FR_PIXEL7_LANDSCAPE_INSIDE_BARS)
-    fun `M16 landscape 800 x 360, scoreboard right of the winner, next leg under it, 4 players`() =
+    fun `M16 landscape 800 x 360, scoreboard right of the winner, next leg pinned at the bottom, 4 players`() =
         checkLandscape("Ann", "Bob", "Cid", "Dan")
 
     @Test

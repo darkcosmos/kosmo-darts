@@ -8,7 +8,8 @@ import io.github.darkcosmos.kosmodarts.engine.board.BoardZone
  * HM5, gate G1 (owner Kosmo, 2026-11): the heatmap colour scale is RELATIVE to the most hit zone of the board.
  * The value of a zone is its share of all the darts (HM2); its colour is given by `share / maxShare`, so the most
  * hit zone of each board gets the lightest colour. A zone with no dart gets [NEUTRAL], distinct from every step of
- * the ramp. The ramp has a strictly increasing luminance (readable in greyscale); the tokens are in
+ * the ramp. The ramp has a strictly increasing luminance (readable in greyscale) and every step, the lowest included,
+ * has at least 3:1 contrast on the background (owner decision U1); the tokens are in
  * `docs/design/design-system.md` section 2. The result feeds `Dartboard(colors, neutral, ...)`.
  */
 object HeatmapScale {
@@ -18,8 +19,8 @@ object HeatmapScale {
 
     /** The ramp, from the lowest positive value (0 of the scale) to the most hit zone (1), at even positions. */
     val STOPS: List<Color> = listOf(
-        Color(0xFF414487),
-        Color(0xFF2A788E),
+        Color(0xFF6259BC),
+        Color(0xFF2F85A0),
         Color(0xFF22A884),
         Color(0xFF7AD151),
         Color(0xFFFDE725),

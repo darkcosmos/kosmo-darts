@@ -25,8 +25,9 @@ import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 
 /**
  * The landscape frame of a screen with two columns (owner review of PR #57): inside the system bars and the cutout,
- * [top] across the width, then [start] and [end] side by side, tops aligned. Nothing is pinned: the whole screen
- * scrolls if it does not fit ([ScreenLayoutPolicy.hasTwoColumns] decides when this frame is used).
+ * [top] across the width, then [start] and [end] side by side, tops aligned. The content scrolls if it does not fit
+ * ([ScreenLayoutPolicy.hasTwoColumns] decides when this frame is used); [bottom], when given, is the main action,
+ * pinned under the scrolling content (HM10).
  */
 @Composable
 fun TwoColumnScreen(
@@ -34,8 +35,11 @@ fun TwoColumnScreen(
     top: @Composable ColumnScope.() -> Unit,
     start: @Composable ColumnScope.() -> Unit,
     end: @Composable ColumnScope.() -> Unit,
+    bottom: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     val gap = Arrangement.spacedBy(COLUMN_GAP)
+    val horizontal = ScreenLayoutPolicy.HORIZONTAL_MARGIN.dp
+    val vertical = ScreenLayoutPolicy.VERTICAL_MARGIN.dp
     Box(
         contentAlignment = Alignment.TopCenter,
         modifier = modifier
@@ -43,21 +47,33 @@ fun TwoColumnScreen(
             .background(KosmoTheme.colors.background),
     ) {
         Column(
-            verticalArrangement = gap,
             modifier = Modifier
                 .safeDrawingPadding()
                 .widthIn(max = ScreenLayoutPolicy.TWO_COLUMNS_MAX_WIDTH.dp)
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(
-                    horizontal = ScreenLayoutPolicy.HORIZONTAL_MARGIN.dp,
-                    vertical = ScreenLayoutPolicy.VERTICAL_MARGIN.dp,
-                ),
+                .fillMaxSize(),
         ) {
-            top()
-            Row(horizontalArrangement = gap, modifier = Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = gap, modifier = Modifier.weight(1f), content = start)
-                Column(verticalArrangement = gap, modifier = Modifier.weight(1f), content = end)
+            Column(
+                verticalArrangement = gap,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = horizontal, vertical = vertical),
+            ) {
+                top()
+                Row(horizontalArrangement = gap, modifier = Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = gap, modifier = Modifier.weight(1f), content = start)
+                    Column(verticalArrangement = gap, modifier = Modifier.weight(1f), content = end)
+                }
+            }
+            if (bottom != null) {
+                Column(
+                    verticalArrangement = gap,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = horizontal, end = horizontal, bottom = vertical),
+                    content = bottom,
+                )
             }
         }
     }

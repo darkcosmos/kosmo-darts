@@ -27,7 +27,7 @@ class HeatmapScaleTest {
 
     @Test
     fun endsOfTheScaleAreTheFirstAndTheLastStop() {
-        assertEquals(Color(0xFF414487), HeatmapScale.colorAt(0f))
+        assertEquals(Color(0xFF6259BC), HeatmapScale.colorAt(0f))
         assertEquals(Color(0xFFFDE725), HeatmapScale.colorAt(1f))
         assertEquals(Color(0xFF22A884), HeatmapScale.colorAt(0.5f))
     }
@@ -78,10 +78,12 @@ class HeatmapScaleTest {
 
     @Test
     fun everyStopIsReadableOnTheBackground() {
-        // The four upper stops reach 3.0; the first, a deep blue, stays above 2.0 (the zones keep their wire outline
-        // in `background`, and the numbers in the band and the top 5 never rely on colour).
-        HeatmapScale.STOPS.drop(1).forEach { assertTrue(contrast(it, background) >= MIN_CONTRAST) }
-        assertTrue(contrast(HeatmapScale.STOPS.first(), background) >= MIN_FIRST_STOP_CONTRAST)
+        // Owner decision U1: every stop, the lowest one included, has at least 3:1 on the background, and so has every
+        // colour of the interpolated scale (the luminance is increasing).
+        HeatmapScale.STOPS.forEach { assertTrue(contrast(it, background) >= MIN_CONTRAST) }
+        (0..STEPS).forEach {
+            assertTrue(contrast(HeatmapScale.colorAt(it / STEPS.toFloat()), background) >= MIN_CONTRAST)
+        }
     }
 
     @Test
@@ -104,8 +106,7 @@ class HeatmapScaleTest {
     private companion object {
         const val STEPS = 100
         const val MIN_CONTRAST = 3.0
-        const val MIN_FIRST_STOP_CONTRAST = 2.0
-        const val MIN_DISTINCT_CONTRAST = 1.2
+        const val MIN_DISTINCT_CONTRAST = 2.0
         const val LINEAR_THRESHOLD = 0.03928f
         const val LINEAR_DIVISOR = 12.92
         const val OFFSET = 0.055f

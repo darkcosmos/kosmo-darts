@@ -450,6 +450,13 @@ Owner answers to the intake follow-up:
   STX7). P6: total plus average per leg (STC4). P7: CR14 stays all marks. P8: date line rule (HH8). P9 C: static SVG
   mockups of both scales before any heatmap code, gate G1 before T20.
 - New request: heatmap of the last leg on the end-of-leg and end-of-match screens, with a player switch (HM9).
+Owner decisions on the review (2026-11):
+- U1 decided by Kosmo: the mockup is not followed to the letter (it only served to choose the relative scale); the ramp is
+  redesigned so that every step has at least 3:1 on `background`, with strictly increasing luminance and a neutral
+  clearly distinct from the lowest step (HM5). Final stops: #6259BC, #2F85A0, #22A884, #7AD151, #FDE725.
+- U3 decided by Kosmo, option B: in the Result tab in landscape the main action (NEXT LEG) is pinned at the bottom of
+  the screen and the content scrolls above it (HM10); the landscape tab row takes its planned 42 dp, without top margin.
+
 Owner answers to the plan (2026-11):
 - N1 "other": tabs at the top of the between-legs and end screens, "Résultat" = the current screen, "Leg heatmap" =
   the heatmap of the last leg (HM9, HM10, "Screens and states"). Replaces the third landscape column of the first plan.

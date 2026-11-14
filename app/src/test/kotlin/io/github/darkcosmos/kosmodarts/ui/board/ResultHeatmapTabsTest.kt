@@ -120,6 +120,30 @@ class ResultHeatmapTabsTest {
     @Config(qualifiers = TestDevices.EN_PIXEL7_LANDSCAPE)
     fun `HM10 the main actions are displayed and clickable in both tabs in landscape`() = checkActionsInBothTabs()
 
+    /** HM10, owner decision U3: NEXT LEG is pinned, displayed and clickable without scrolling, 4 players, 800x360. */
+    @Test
+    @Config(qualifiers = TestDevices.EN_PIXEL7_LANDSCAPE_INSIDE_BARS)
+    fun `HM10 the Result tab in landscape with four players shows its main action without scrolling`() {
+        events.clear()
+        show(x01BetweenLegs(FOUR_NAMES))
+
+        node(BetweenLegsTags.NEXT_LEG).assertIsDisplayed()
+        assertInsideScreen(BetweenLegsTags.NEXT_LEG)
+        node(BetweenLegsTags.NEXT_LEG).performClick()
+        assertTrue(AppEvent.NextLegTapped in events)
+    }
+
+    /** HM9: in landscape the tab row has its planned height of 42 dp, with no top margin. */
+    @Test
+    @Config(qualifiers = TestDevices.EN_PIXEL7_LANDSCAPE_INSIDE_BARS)
+    fun `HM9 the tab row takes 42 dp in landscape`() {
+        show(x01BetweenLegs(FOUR_NAMES))
+
+        val bounds = node(EndTabTags.ROW).fetchSemanticsNode().boundsInRoot
+        val density = composeRule.activity.resources.displayMetrics.density
+        assertEquals(42f, bounds.height / density, 1f)
+    }
+
     @Test
     @Config(qualifiers = TestDevices.EN_PIXEL7_PORTRAIT, fontScale = 2.0f)
     fun `HM10 the main actions are reachable in both tabs at font scale 2 in portrait`() {
