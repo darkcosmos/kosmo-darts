@@ -94,7 +94,9 @@ PF, DJ, BC, AR, HS, PM, AV or the X01 rules (`docs/rules/x01.md`).
 - HM4. Miss label: "Miss" / « Raté » when only X01 darts are counted; "Miss or outside Cricket numbers" / « Raté ou
   hors numéros Cricket » as soon as Cricket darts are counted (Cricket, All modes, a Cricket leg) (owner #53 Q4 C).
   One resource key per label and language; the misses line fits at 200 % font (it wraps, never cut).
-- HM5. Colour scale: decided at gate G1 (relative to the most hit zone, or absolute 0 to 100 %); a zone with 0 dart
+- HM5. Colour scale: relative to the most hit zone (gate G1 resolved by Kosmo, 2026-11: a zone's colour is its value
+  divided by the board's max value, 0 is neutral, the legend runs from 0 to the max zone value; mockup
+  `docs/design/mockups/heatmap/heatmap-relative.svg`); a zone with 0 dart
   has a distinct neutral colour; a legend shows the scale with its numeric end values. The ramp has a monotonic
   luminance (readable in greyscale) and the meaning never relies on colour alone (the band and the top 5 list give
   the numbers). Tokens in `docs/design/design-system.md` section 2.

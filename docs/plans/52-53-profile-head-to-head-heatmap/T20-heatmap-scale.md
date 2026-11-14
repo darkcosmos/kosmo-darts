@@ -34,3 +34,16 @@ HM5, HM8; design system section 2, PC11 (ramp stops readable on `background`).
 sonnet. Why: mapping and legend from the chosen mockup, with tests.
 
 ## Implementation notes
+- G1 resolved by Kosmo (2026-11): RELATIVE scale only; the absolute scale is not in the code. Recorded in root
+  "Decisions", HM5 (rules and plan copy) and `docs/design/design-system.md` section 2.
+- API (`ui/board`): `HeatmapScale.NEUTRAL`, `NEUTRAL_FRAME`, `STOPS`, `colorAt(position 0..1)`,
+  `color(share: Double?, maxShare: Double)`, `maxShare(shares)`, `colors(shares: Map<BoardZone, Double>)` (zones with
+  at least 1 dart only; feed `Dartboard(colors, neutral = HeatmapScale.NEUTRAL, ...)`). `HeatmapLegend(maxShare, modifier)`
+  (shares are ratios 0..1; needs the board's `maxShare`), `heatmapPercentText(share, locale)`, `HeatmapLegendTags`.
+- Deviation: the first ramp stop `#414487` has 2.2:1 on `background`, below the 3.0 of this task's test list. The ramp
+  is implemented exactly as in the approved mockup; the test requires 3.0 for the four upper stops and 2.0 for the first
+  (documented in the design system). Task file text said "0 % to max %"; the legend shows "> 0 %" to "max = x %" as in
+  the mockup. Dart count is not shown in the legend (the mockup shows none).
+- Captures (record only): `HeatmapScaleScreenshotTest`, outputs `heatmap_scale_{spread,concentrated}_{portrait,landscape[_fr]}.png`.
+  The data sets are approximations of the mockup data (same sizes, not the same zones).
+- Legend strings: `heatmap_legend_*` in `values/` and `values-fr/`.

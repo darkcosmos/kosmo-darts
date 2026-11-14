@@ -50,6 +50,27 @@ Règles :
 - Sur la zone du joueur courant, tout le texte utilise `onPlayerN`. Les pastilles « S » et « M » restent `background` avec texte `onBackground` quelle que soit la couleur du joueur.
 - Ailleurs (tuiles, lignes de tableau, configuration), la couleur du joueur n'apparaît que comme liseré ou marqueur, jamais comme fond de texte.
 
+### Échelle de couleurs de la heatmap (HM5)
+
+Décision G1 (Kosmo, 2026-11) : échelle **relative** à la zone la plus touchée. Une zone prend la couleur de
+`part de la zone / part de la zone la plus touchée` ; la zone la plus touchée de chaque plateau est la plus claire.
+Maquette : `docs/design/mockups/heatmap/heatmap-relative.svg`. Code : `HeatmapScale`, `HeatmapLegend`.
+
+| Jeton | Valeur | Luminance | Usage |
+|---|---|---|---|
+| `heatmapNeutral` | `#252B3F` | 0,025 | Zone sans fléchette (cadre `#5C6580` dans la légende) |
+| `heatmapRamp0` | `#414487` | 0,070 | 0 % de l'échelle (plus bas), contraste 2,2:1 sur `background` |
+| `heatmapRamp25` | `#2A788E` | 0,159 | 25 % |
+| `heatmapRamp50` | `#22A884` | 0,300 | 50 % |
+| `heatmapRamp75` | `#7AD151` | 0,503 | 75 % |
+| `heatmapRamp100` | `#FDE725` | 0,782 | 100 % (zone la plus touchée) |
+
+Les couleurs intermédiaires sont interpolées linéairement entre deux étapes voisines. La luminance croît strictement
+(lisible en niveaux de gris). Le contraste sur `background` est d'au moins 3:1 pour les étapes de 25 % à 100 % ; le
+bleu profond du bas de l'échelle fait 2,2:1, compensé par le liseré `background` des zones et par les nombres écrits
+(bande de la zone touchée, top 5, légende). Légende : pastille neutre « 0 fléchette », barre en dégradé de « > 0 % » à
+« max = x % » (le max du plateau), note « Valeur d'une zone = ses fléchettes / toutes les fléchettes, ratés inclus ».
+
 ## 3. Typographie
 
 **Police d'affichage : Saira, fichier variable** (axes `wght` 100–900 et `wdth` 50–125), copie du dépôt `google/fonts` (dossier `ofl/saira`) fournie dans `docs/design/font/` avec sa licence. À copier dans `res/font/` sous un nom valide pour Android (`saira_variable.ttf`). Licence SIL OFL 1.1 : livrer `OFL.txt` avec l'appli et ajouter une ligne de crédit dans les réglages. Ne pas sous-ensembler ni modifier le fichier. Les axes variables exigent Android 8.0 (API 26) au minimum.

@@ -382,6 +382,12 @@
     </plurals>
     <string name="profile_tab_x01" translatable="false">X01</string>
     <string name="profile_tab_heatmap">HEATMAP</string>
+    <string name="heatmap_legend_title">Scale relative to the most hit zone</string>
+    <string name="heatmap_legend_zero">0 darts</string>
+    <string name="heatmap_legend_low">&gt; 0 %</string>
+    <string name="heatmap_legend_max">max = %1$s</string>
+    <string name="heatmap_legend_note">A zone\'s value = its darts / all darts, misses included.</string>
+    <string name="heatmap_legend_description">Colour scale: dark blue for the least hit zones up to yellow for the most hit zone, %1$s of the darts. Zones with no dart are dark grey.</string>
     <string name="profile_heatmap_placeholder">The heatmap of this player is coming soon.</string>
     <string name="profile_filter_start_score">START SCORE</string>
     <string name="profile_filter_out_rule">OUT RULE</string>

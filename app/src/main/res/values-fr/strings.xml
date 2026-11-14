@@ -365,6 +365,12 @@
         <item quantity="other">%1$d manches</item>
     </plurals>
     <string name="profile_tab_heatmap">HEATMAP</string>
+    <string name="heatmap_legend_title">Échelle relative à la zone la plus touchée</string>
+    <string name="heatmap_legend_zero">0 fléchette</string>
+    <string name="heatmap_legend_low">&gt; 0 %</string>
+    <string name="heatmap_legend_max">max = %1$s</string>
+    <string name="heatmap_legend_note">Valeur d\'une zone = ses fléchettes / toutes les fléchettes, ratés inclus.</string>
+    <string name="heatmap_legend_description">Échelle de couleurs : du bleu foncé pour les zones les moins touchées au jaune pour la zone la plus touchée, %1$s des fléchettes. Les zones sans fléchette sont gris foncé.</string>
     <string name="profile_heatmap_placeholder">La heatmap de ce joueur arrive bientôt.</string>
     <string name="profile_filter_start_score">SCORE DE DÉPART</string>
     <string name="profile_filter_out_rule">SORTIE</string>
