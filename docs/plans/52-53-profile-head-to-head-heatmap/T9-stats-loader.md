@@ -41,3 +41,15 @@ AR5, AR6, AR9, ST7, ST10, PM7, HS7.
 sonnet. Why: DAO and mapper over the existing schema.
 
 ## Implementation notes
+- `StatsDao` (interface DAO, no schema change, `HistoryDatabase.statsDao()`): `profile`, `sessionIds` (matches the
+  profile played, `ORDER BY ended_at, id`), then per batch `sessions` (dates, mode, settings text), `players`, `legs`,
+  `darts` (own `StatsDartRow`, no x/y columns; ordered leg, visit, rank, `id` so a voided dart precedes its retake).
+- `RoomProfileStatsRepository.load(profileId): DbResult<ProfileStatsData>` (`profileId`, `name`, `createdAt`,
+  `resetAt`, `matches`, `skippedMatches`); the interface is `ProfileStatsRepository`. Batches of 100 sessions; rows are
+  mapped to `RawStatsMatch`, `StatsMatchValidator.validateAll`, then dropped. Unknown or anonymous profile -> `Failed`.
+  `RawStatsMatch.sessionId` is the session row id as text.
+- Mapping: settings via `SettingsText.decode`, `IllegalStateException` -> `null`; stored bull (25, x2) -> segment 50
+  `SINGLE`; unknown factor or a stored segment 50 -> multiplier `null`; other values pass through for the validator.
+- Deviation: the task's "reuses `ArchiveMapper`" was not used: its dart decoding throws, ST10 needs `null` instead.
+- 1,000 matches load in well under 1 s on Robolectric (the whole test, with inserts, ran in 0.7 s): no index needed.
+- For T24: `loadPair`/`loadPicker` go in the same `StatsDao` and repository interface.

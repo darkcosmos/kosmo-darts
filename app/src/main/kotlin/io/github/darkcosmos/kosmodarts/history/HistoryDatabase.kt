@@ -35,6 +35,8 @@ abstract class HistoryDatabase : RoomDatabase() {
 
     abstract fun profileDeletionDao(): ProfileDeletionDao
 
+    abstract fun statsDao(): StatsDao
+
     companion object {
         const val FILE_NAME = "kosmo-history.db"
         const val VERSION = 1
