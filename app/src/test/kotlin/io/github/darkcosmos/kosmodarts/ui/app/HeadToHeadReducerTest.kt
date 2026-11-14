@@ -264,4 +264,16 @@ class HeadToHeadReducerTest {
             events,
         )
     }
+
+    @Test
+    fun `HH1 HS9 Compare with opens the picker over the Profile, never a copy, and Back returns to it`() {
+        val compared = send(AppState(screen = profile), ProfileEvent.CompareTapped)
+        val screen = top(compared)
+        assertEquals(a, screen.a)
+        assertNull(screen.b)
+        assertSame(profile, screen.parent)
+        assertEquals(HeadToHeadView.PICKER_LOADING, screen.state.view(screen.b))
+        assertEquals(1, compared.screen.headToHeadsOfStack().size)
+        assertSame(profile, send(compared, AppEvent.Back).screen)
+    }
 }

@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.ui.headtohead.HeadToHeadState
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileState
 import io.github.darkcosmos.kosmodarts.ui.profile.cancelled
 import io.github.darkcosmos.kosmodarts.ui.profile.confirmed
@@ -30,6 +31,9 @@ internal fun reduceProfileEvent(state: AppState, event: ProfileEvent, stamp: Eve
         is ProfileEvent.FiguresComputed ->
             screen.withProfile(event.profileId) { it.computed(event.figuresId, event.figures) }
         is ProfileEvent.Answered -> return reduceProfileAnswer(state, event, stamp)
+        ProfileEvent.CompareTapped -> (screen as? Screen.Profile)?.let {
+            screen.open(Screen.HeadToHead(it, it.profileId, state = HeadToHeadState(now = stamp.at)))
+        } ?: screen
         else -> (screen as? Screen.Profile)?.let {
             val savedNames = screen.homeOfStack()?.resumableGame?.playerNames().orEmpty()
             it.copy(profile = it.profile.after(event, savedNames, stamp.at))

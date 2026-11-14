@@ -442,4 +442,30 @@
     <string name="profile_points_scored_leg">Points marqués par manche</string>
     <string name="profile_points_given">Points donnés</string>
     <string name="profile_points_given_leg">Points donnés par manche</string>
+
+    <!-- Écran Face à face (docs/rules/statistics.md, HH1 à HH9). -->
+    <string name="profile_compare">Comparer avec…</string>
+    <string name="h2h_title">FACE À FACE</string>
+    <string name="h2h_loading">Chargement de la comparaison</string>
+    <string name="h2h_failed">La comparaison ne peut pas être lue pour le moment.</string>
+    <string name="h2h_picker_title">Comparer %1$s avec :</string>
+    <string name="h2h_picker_empty_title">Aucun autre joueur</string>
+    <string name="h2h_picker_empty_hint">Ajoutez un autre joueur pour comparer vos résultats.</string>
+    <plurals name="h2h_common_count">
+        <item quantity="one">%1$d match en commun</item>
+        <item quantity="other">%1$d matchs en commun</item>
+    </plurals>
+    <string name="h2h_versus">%1$s contre %2$s</string>
+    <string name="h2h_change">Changer de joueur</string>
+    <string name="h2h_no_common_title">Aucun match en commun</string>
+    <string name="h2h_no_common_hint">Les matchs terminés ensemble par ces deux joueurs apparaissent ici.</string>
+    <string name="h2h_block_results">RÉSULTATS</string>
+    <string name="h2h_common_matches">Matchs en commun</string>
+    <string name="h2h_wins">Victoires</string>
+    <string name="h2h_draws">Égalités</string>
+    <string name="h2h_legs_won">Manches gagnées</string>
+    <string name="h2h_row_description">%1$s : %2$s %3$s, %4$s %5$s</string>
+    <string name="h2h_matches_title">MATCHS EN COMMUN</string>
+    <string name="h2h_outcome_won">%1$s a gagné</string>
+    <string name="h2h_outcome_draw">Égalité</string>
 </resources>

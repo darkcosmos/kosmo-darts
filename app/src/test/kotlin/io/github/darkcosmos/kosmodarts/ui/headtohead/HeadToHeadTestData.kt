@@ -3,7 +3,10 @@ package io.github.darkcosmos.kosmodarts.ui.headtohead
 import io.github.darkcosmos.kosmodarts.engine.stats.RawStatsMatch
 import io.github.darkcosmos.kosmodarts.engine.stats.RawStatsPlayer
 import io.github.darkcosmos.kosmodarts.engine.stats.StatsMatchValidator
+import io.github.darkcosmos.kosmodarts.history.DbResult
 import io.github.darkcosmos.kosmodarts.history.HeadToHeadData
+import io.github.darkcosmos.kosmodarts.history.HeadToHeadPicker
+import io.github.darkcosmos.kosmodarts.history.PickerProfile
 import io.github.darkcosmos.kosmodarts.history.PairProfile
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileTestData
 
@@ -36,13 +39,28 @@ internal object HeadToHeadTestData {
         raws: List<RawStatsMatch>,
         resetA: Long = CREATED_AT,
         resetB: Long = CREATED_AT,
+        nameA: String = "Kevin",
+        nameB: String = "Zoe",
     ): HeadToHeadData {
         val validated = StatsMatchValidator.validateAll(raws)
         return HeadToHeadData(
-            PairProfile(A, "Kevin", CREATED_AT, resetA),
-            PairProfile(B, "Zoe", CREATED_AT, resetB),
+            PairProfile(A, nameA, CREATED_AT, resetA),
+            PairProfile(B, nameB, CREATED_AT, resetB),
             validated.matches,
             validated.ignoredCount,
         )
+    }
+
+    const val NOW = 10_000L
+
+    /** The picker as read for A (HH1). */
+    fun pickerState(others: List<PickerProfile>): HeadToHeadState =
+        HeadToHeadState().pickerLoaded(1, DbResult.Ok(HeadToHeadPicker(A, "Kevin", others)))
+
+    /** The comparison shown for [data] with [selections], the result computed as the app does (HH9). */
+    fun shown(data: HeadToHeadData, selections: HeadToHeadSelections = HeadToHeadSelections()): HeadToHeadState {
+        val picked = HeadToHeadState().partnerPicked(NOW)
+        val loaded = picked.pairLoaded(picked.pairLoadId, DbResult.Ok(data)).selected(selections, NOW)
+        return loaded.computed(loaded.figuresId, data.result(loaded.selections, NOW))
     }
 }

@@ -15,6 +15,9 @@ object ProfileTags {
 
     /** The "Manage player" button, and the panel it unfolds (the action tags are those of `PlayersTags`). */
     const val MANAGE = "profile_manage"
+
+    /** The "Compare with..." button, which opens the Head-to-head (HH1). */
+    const val COMPARE = "profile_compare"
     const val ACTIONS_PANEL = "profile_actions_panel"
     const val TREND_CURVE = "profile_trend_curve"
     const val TREND_TOO_FEW = "profile_trend_too_few"

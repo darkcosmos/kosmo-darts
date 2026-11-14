@@ -31,6 +31,9 @@ sealed interface ProfileEvent : AppEvent {
     data class RosterLoaded(val profileId: Long, val loadId: Int, val result: DbResult<List<PlayerSummary>>) :
         ProfileEvent
 
+    /** "Compare with..." (PS2, HH1): the Head-to-head of this profile opens over it, with its picker (HS9). */
+    data object CompareTapped : ProfileEvent
+
     /** "Manage player" (PS2): unfolds or folds the four actions. */
     data object ManageToggled : ProfileEvent
 

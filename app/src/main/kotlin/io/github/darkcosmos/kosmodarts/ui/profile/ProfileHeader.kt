@@ -36,7 +36,7 @@ private val TAB_UNDERLINE = 3.dp
 
 /**
  * PS2: the name, "Since always" or "Since <date>" (ST9), the notice of the ignored matches (ST10) when there is one,
- * and the "Manage player" button with its actions (PS7). "Compare with..." comes with T25.
+ * the "Compare with..." button (HH1) and the "Manage player" button with its actions (PS7).
  */
 @Composable
 internal fun ProfileHeader(state: ProfileState, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
@@ -70,8 +70,24 @@ internal fun ProfileHeader(state: ProfileState, onEvent: (AppEvent) -> Unit, mod
                 modifier = Modifier.testTag(ProfileTags.IGNORED),
             )
         }
+        if (state.name != null) CompareButton(state, onEvent)
         ManageActions(state, onEvent)
     }
+}
+
+/** PS2, HH1: "Compare with..." opens the Head-to-head of this profile, with its picker. */
+@Composable
+private fun CompareButton(state: ProfileState, onEvent: (AppEvent) -> Unit) {
+    KosmoButton(
+        text = stringResource(R.string.profile_compare),
+        onClick = { onEvent(ProfileEvent.CompareTapped) },
+        kind = ButtonKind.SECONDARY,
+        enabled = !state.isBusy,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .testTag(ProfileTags.COMPARE),
+    )
 }
 
 /**
