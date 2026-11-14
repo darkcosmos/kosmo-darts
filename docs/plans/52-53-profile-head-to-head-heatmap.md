@@ -459,7 +459,7 @@ Owner answers to the plan (2026-11):
 - D4 confirmed (option A): an unreadable archived match stays in the database, untouched and never deleted; it is
   skipped in every statistic and counted, with the notice "n matchs ignorés (données illisibles)" (ST10).
 - G1 unchanged: Kosmo picks the colour scale after T16, before T20.
-Design decisions (developer, to be confirmed in design review):
+Design decisions (developer, approved in design review):
 - D1: CR13 derives useful marks from the journal replay, no save format change (Approach 2).
 - D2: Profile figures computed without cache; a cache only if the performance tests fail (Approach 3).
 - D3: the Profile opens on the X01 tab, period "Since always", filters "All".
@@ -483,6 +483,8 @@ Design decisions (developer, to be confirmed in design review):
   hidden, the top 5 list stays. Switching to N3 B changes that one line and its UI test.
 - Review findings A4, A5, A6, S2, S3, T1 to T6, U1 to U7: all accepted and written into the rules, "Approach" and the
   task files; none rejected.
+- Second design review (plan with the owner answers, commit 8629d3e): approved by the four reviewers; minors U8, U9,
+  U10 accepted (D10, "Screens and states", T27) and the test-reviewer note on the single D11 constant written in T27.
 
 ## Open questions
 
