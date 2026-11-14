@@ -33,3 +33,12 @@ STC2 to STC5, ST1, ST5, ST6, ST8.
 sonnet. Why: formulas specified, tests listed.
 
 ## Implementation notes
+- `cricketFigures(matches, profileId, variant: CricketVariant? = null): CricketFigures` in `engine/stats/CricketStats.kt`
+  (style of `x01Figures`). `variant` is the selection's filter and only decides the result blocks (STC5): both
+  variants for `null`, one otherwise, always present even without a match (win ratio `null`).
+- Deviation: the per-target marks use `CricketMarks.of(dart, settings.isBullInPlay).target` on the stored dart, since
+  `DartYield` holds no target. `marksPerTarget` has every target (0 by default), Bull covering 25 and Bull.
+- Points per leg = per leg of the matches of the variant where the profile plays (all legs of the match); `pointsScored`
+  / `pointsGiven` are `null` without such a leg, 0 when legs exist but nothing scored.
+- Solo matches count in MPR, visits, marks and points, never in `results` (ST5). Profile not in a match: ignored.
+- Constant `MAX_USEFUL_MARKS_PER_VISIT = 9` (used by the tests as the STC3 bound, not clamped in code).
