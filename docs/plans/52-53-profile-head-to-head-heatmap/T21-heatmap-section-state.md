@@ -37,3 +37,21 @@ HM2, HM3, HM4, HM6, HM7, ST2, ST4.
 sonnet. Why: state holder with JVM tests, behavior specified.
 
 ## Implementation notes
+- `ui/profile/HeatmapSectionState.kt`: `HeatmapMode` (ALL, X01, CRICKET), `HeatmapSelections(mode, x01Filter,
+  cricketFilter, period, selectedZone)` with `statsFilter` and `showsModeFilters` (filters kept per mode, one period
+  shared), `HeatmapFigures(matchCount, heatmap)` (T18 `Heatmap`), `ZoneName(resId, number?)` + `BoardZone.displayName()`,
+  `ZoneFigure(zone, name, count, percent 0..100 unrounded)`, `HeatmapSectionState(selections, figures)` with `isEmpty`
+  (HM7), `missLabelRes` (HM4), `missPercent`, `topZones` (HM6), `selected` (null: show `BAND_NONE_RES`), `figureOf(zone)`
+  (TalkBack text of any zone). The screen (T22) formats the texts with the resource ids and `heatmapPercentText`.
+- `ProfileState`: `heatmapSelections`, `heatmap: HeatmapSectionState?`; `ProfileQuery` gained `heatmapFilter` and
+  `heatmapPeriod`, `ProfileFigures` gained `heatmap` (computed in the same second effect, ST2 applies through `select`,
+  ST10 by the validated data). Top-level `heatmapSelected(selections, at)` (recomputes only when the engine filter or
+  the period changes; a filter of the mode not in play, or a zone, never recomputes) and `heatmapZoneTapped(zone)`;
+  top-level because `ProfileState` is at the detekt function limit. Events: `HeatmapModeSelected`,
+  `HeatmapX01FilterSelected`, `HeatmapCricketFilterSelected`, `HeatmapPeriodSelected`, `HeatmapZoneTapped`.
+- Decisions: a tap always selects the zone, even with 0 darts (band shows 0 darts, 0 %); a new computation drops a
+  selected zone that has 0 darts (back to "Touchez une zone"); an empty selection (no dart) shows nothing selected.
+  `isSelectionEmpty` for HEATMAP is "no match for the filters" (PS6 notice); `HeatmapSectionState.isEmpty` is HM7 "no
+  dart". Strings added (en, fr): `heatmap_zone_*`, `heatmap_miss`, `heatmap_miss_cricket`, `heatmap_band_none`; the mode
+  labels (All modes, X01, Cricket) are left to T22.
+- Tests: `HeatmapSectionStateTest` (HM3, HM4, HM6, HM7, ST10), three cases in `ProfileReducerTest`.

@@ -1,11 +1,13 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.engine.board.BoardZone
 import io.github.darkcosmos.kosmodarts.engine.stats.CricketFilter
 import io.github.darkcosmos.kosmodarts.engine.stats.Period
 import io.github.darkcosmos.kosmodarts.engine.stats.X01Filter
 import io.github.darkcosmos.kosmodarts.history.DbResult
 import io.github.darkcosmos.kosmodarts.history.PlayerSummary
 import io.github.darkcosmos.kosmodarts.history.ProfileStatsData
+import io.github.darkcosmos.kosmodarts.ui.profile.HeatmapMode
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileAnswer
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileFigures
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileRequest
@@ -69,4 +71,16 @@ sealed interface ProfileEvent : AppEvent {
     data class X01PeriodSelected(val period: Period) : ProfileEvent
 
     data class CricketPeriodSelected(val period: Period) : ProfileEvent
+
+    /** HM3: the mode of the Heatmap section (All modes, X01, Cricket). */
+    data class HeatmapModeSelected(val mode: HeatmapMode) : ProfileEvent
+
+    data class HeatmapX01FilterSelected(val filter: X01Filter) : ProfileEvent
+
+    data class HeatmapCricketFilterSelected(val filter: CricketFilter) : ProfileEvent
+
+    data class HeatmapPeriodSelected(val period: Period) : ProfileEvent
+
+    /** HM6: a tap on a zone of the board. */
+    data class HeatmapZoneTapped(val zone: BoardZone) : ProfileEvent
 }

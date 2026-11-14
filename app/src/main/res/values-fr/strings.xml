@@ -372,6 +372,14 @@
     <string name="heatmap_legend_note">Valeur d\'une zone = ses fléchettes / toutes les fléchettes, ratés inclus.</string>
     <string name="heatmap_legend_description">Échelle de couleurs : du bleu foncé pour les zones les moins touchées au jaune pour la zone la plus touchée, %1$s des fléchettes. Les zones sans fléchette sont gris foncé.</string>
     <string name="profile_heatmap_placeholder">La heatmap de ce joueur arrive bientôt.</string>
+    <string name="heatmap_zone_single">Simple %1$d</string>
+    <string name="heatmap_zone_double">Double %1$d</string>
+    <string name="heatmap_zone_triple">Triple %1$d</string>
+    <string name="heatmap_zone_outer_bull">Bull extérieur (25)</string>
+    <string name="heatmap_zone_bull">Bull</string>
+    <string name="heatmap_miss">Raté</string>
+    <string name="heatmap_miss_cricket">Raté ou hors numéros Cricket</string>
+    <string name="heatmap_band_none">Touchez une zone</string>
     <string name="profile_filter_start_score">SCORE DE DÉPART</string>
     <string name="profile_filter_out_rule">SORTIE</string>
     <string name="profile_filter_variant">VARIANTE</string>

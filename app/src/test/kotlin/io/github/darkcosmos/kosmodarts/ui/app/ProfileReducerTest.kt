@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.engine.board.BoardZone
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.stats.CricketFilter
 import io.github.darkcosmos.kosmodarts.engine.stats.Period
@@ -12,6 +13,7 @@ import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.testing.TEST_STAMP
 import io.github.darkcosmos.kosmodarts.testing.reduce
 import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailState
+import io.github.darkcosmos.kosmodarts.ui.profile.HeatmapMode
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileContent
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileQuery
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileSection
@@ -67,6 +69,46 @@ class ProfileReducerTest {
         val done = shown(opened)
         assertEquals(ProfileView.CONTENT, profile(done).profile.view)
         assertTrue(persistenceEffects(after, done).isEmpty())
+    }
+
+    @Test
+    fun `HM3 a Heatmap mode, filter or period change computes again, a zone tap does not`() {
+        val start = shown(opened)
+        listOf(
+            ProfileEvent.HeatmapModeSelected(HeatmapMode.X01),
+            ProfileEvent.HeatmapPeriodSelected(Period.LAST_30_DAYS),
+        ).forEach { event ->
+            val after = send(start, event)
+            val effects = persistenceEffects(start, after)
+            assertEquals(event.toString(), 1, effects.size)
+            assertTrue(effects.single() is PersistenceEffect.ComputeProfileFigures)
+        }
+        val x01 = send(start, ProfileEvent.HeatmapModeSelected(HeatmapMode.X01))
+        val x01Filter = send(x01, ProfileEvent.HeatmapX01FilterSelected(X01Filter(startScore = 501)))
+        assertTrue(persistenceEffects(x01, x01Filter).single() is PersistenceEffect.ComputeProfileFigures)
+        // The Cricket filter is not the one in play: it is only kept for when the mode changes.
+        val cutThroat = CricketFilter(CricketVariant.CUT_THROAT)
+        val cricketFilter = send(x01, ProfileEvent.HeatmapCricketFilterSelected(cutThroat))
+        assertTrue(persistenceEffects(x01, cricketFilter).isEmpty())
+        assertEquals(
+            CricketFilter(CricketVariant.CUT_THROAT),
+            profile(cricketFilter).profile.heatmapSelections.cricketFilter,
+        )
+        val zone = BoardZone(20, BoardZone.Ring.TRIPLE)
+        val tapped = send(start, ProfileEvent.HeatmapZoneTapped(zone))
+        assertEquals(zone, profile(tapped).profile.heatmapSelections.selectedZone)
+        assertTrue(persistenceEffects(start, tapped).isEmpty())
+    }
+
+    @Test
+    fun `HM3 the figures carry the heatmap of the chosen mode and the answer keeps the tapped zone`() {
+        val start = send(shown(opened), ProfileEvent.HeatmapZoneTapped(BoardZone(20, BoardZone.Ring.TRIPLE)))
+        val x01 = send(start, ProfileEvent.HeatmapModeSelected(HeatmapMode.X01))
+        val id = profile(x01).profile.figuresId
+        val answered = send(x01, ProfileEvent.FiguresComputed(1, id, data.figures(profile(x01).profile.query)))
+        val section = checkNotNull(profile(answered).profile.heatmap)
+        assertEquals(6, section.heatmap.total)
+        assertEquals(4, section.selected?.count)
     }
 
     @Test

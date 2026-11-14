@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.profile
 
+import io.github.darkcosmos.kosmodarts.engine.board.BoardZone
 import io.github.darkcosmos.kosmodarts.engine.stats.CricketFigures
 import io.github.darkcosmos.kosmodarts.engine.stats.CricketFilter
 import io.github.darkcosmos.kosmodarts.engine.stats.Period
@@ -9,6 +10,7 @@ import io.github.darkcosmos.kosmodarts.engine.stats.TrendSummary
 import io.github.darkcosmos.kosmodarts.engine.stats.X01Figures
 import io.github.darkcosmos.kosmodarts.engine.stats.X01Filter
 import io.github.darkcosmos.kosmodarts.engine.stats.cricketFigures
+import io.github.darkcosmos.kosmodarts.engine.stats.heatmapOf
 import io.github.darkcosmos.kosmodarts.engine.stats.select
 import io.github.darkcosmos.kosmodarts.engine.stats.summarize
 import io.github.darkcosmos.kosmodarts.engine.stats.trendSeries
@@ -35,6 +37,8 @@ data class ProfileQuery(
     val cricketFilter: CricketFilter = CricketFilter(),
     val cricketPeriod: Period = Period.SINCE_ALWAYS,
     val now: Long = 0,
+    val heatmapFilter: StatsFilter = StatsFilter.AllModes,
+    val heatmapPeriod: Period = Period.SINCE_ALWAYS,
 )
 
 /** The X01 section for one selection (PS4, PS5): the figures, the trend and its text summary, from the engine. */
@@ -54,7 +58,12 @@ data class CricketSelection(
 )
 
 /** Everything the Profile shows, computed once per selection. [eligibleCount] is every match that counts (ST2). */
-data class ProfileFigures(val eligibleCount: Int, val x01: X01Selection, val cricket: CricketSelection)
+data class ProfileFigures(
+    val eligibleCount: Int,
+    val x01: X01Selection,
+    val cricket: CricketSelection,
+    val heatmap: HeatmapFigures = HeatmapFigures.EMPTY,
+)
 
 /** The figures of [this] profile for [query]: ST2 to ST8, ST10 (invalid matches are already out). Pure, blocking. */
 fun ProfileStatsData.figures(query: ProfileQuery): ProfileFigures {
@@ -63,6 +72,7 @@ fun ProfileStatsData.figures(query: ProfileQuery): ProfileFigures {
     val cricket = select(matches, profileId, resetAt, query.cricketFilter, query.cricketPeriod, query.now)
     val x01Trend = trendSeries(x01, profileId)
     val cricketTrend = trendSeries(cricket, profileId)
+    val heatmapMatches = select(matches, profileId, resetAt, query.heatmapFilter, query.heatmapPeriod, query.now)
     return ProfileFigures(
         eligibleCount = eligible.size,
         x01 = X01Selection(x01.size, x01Figures(x01, profileId), x01Trend, summarize(x01Trend)),
@@ -72,6 +82,7 @@ fun ProfileStatsData.figures(query: ProfileQuery): ProfileFigures {
             cricketTrend,
             summarize(cricketTrend),
         ),
+        heatmap = HeatmapFigures(heatmapMatches.size, heatmapOf(heatmapMatches, profileId, query.heatmapFilter)),
     )
 }
 
@@ -106,6 +117,7 @@ data class ProfileState(
     val x01Period: Period = Period.SINCE_ALWAYS,
     val cricketFilter: CricketFilter = CricketFilter(),
     val cricketPeriod: Period = Period.SINCE_ALWAYS,
+    val heatmapSelections: HeatmapSelections = HeatmapSelections(),
     val now: Long = 0,
     val roster: ProfileRoster = ProfileRoster.Loading,
     val isManageOpen: Boolean = false,
@@ -121,7 +133,19 @@ data class ProfileState(
 
     /** The selections as the engine takes them. */
     val query: ProfileQuery
-        get() = ProfileQuery(x01Filter, x01Period, cricketFilter, cricketPeriod, now)
+        get() = ProfileQuery(
+            x01Filter,
+            x01Period,
+            cricketFilter,
+            cricketPeriod,
+            now,
+            heatmapSelections.statsFilter,
+            heatmapSelections.period,
+        )
+
+    /** HM2 to HM7: the Heatmap section, once the figures are computed. */
+    val heatmap: HeatmapSectionState?
+        get() = figures?.let { HeatmapSectionState(heatmapSelections, it.heatmap) }
 
     val view: ProfileView
         get() = when {
@@ -136,7 +160,7 @@ data class ProfileState(
         get() = when (section) {
             ProfileSection.X01 -> figures?.x01?.matchCount == 0
             ProfileSection.CRICKET -> figures?.cricket?.matchCount == 0
-            ProfileSection.HEATMAP -> false
+            ProfileSection.HEATMAP -> figures?.heatmap?.matchCount == 0
         }
 
     /** PS2: the name of the header. */
@@ -200,7 +224,12 @@ data class ProfileState(
     /** The answer to computation [id]; an older answer changes nothing. */
     fun computed(id: Int, result: ProfileFigures): ProfileState {
         val loaded = content as? ProfileContent.Loaded
-        return if (id == figuresId && loaded != null) copy(content = loaded.copy(figures = result)) else this
+        if (id != figuresId || loaded == null) return this
+        // HM6: a selected zone that has no dart left in the new selection is dropped (the band asks to touch a zone).
+        val zone = heatmapSelections.selectedZone
+        val isGone = zone != null && (result.heatmap.heatmap.counts[zone] ?: 0) == 0
+        val selections = if (isGone) heatmapSelections.copy(selectedZone = null) else heatmapSelections
+        return copy(content = loaded.copy(figures = result), heatmapSelections = selections)
     }
 
     fun sectionSelected(selected: ProfileSection): ProfileState = copy(section = selected)
@@ -226,3 +255,23 @@ data class ProfileState(
         const val FIRST_LOAD = 1
     }
 }
+
+/**
+ * HM3, ST3, ST4: the mode, a mode filter or the period of the Heatmap section changes (the zone is kept); the figures
+ * are computed again when the engine filter or the period changes, the data is never read again.
+ */
+fun ProfileState.heatmapSelected(selections: HeatmapSelections, at: Long): ProfileState {
+    val current = heatmapSelections
+    return when {
+        selections == current -> this
+        selections.statsFilter == current.statsFilter && selections.period == current.period ->
+            copy(heatmapSelections = selections)
+        content is ProfileContent.Loaded ->
+            copy(heatmapSelections = selections, now = at, figuresId = figuresId + 1)
+        else -> copy(heatmapSelections = selections, now = at)
+    }
+}
+
+/** HM6: a tap on [zone] replaces the zone of the band; the figures do not change. */
+fun ProfileState.heatmapZoneTapped(zone: BoardZone): ProfileState =
+    copy(heatmapSelections = heatmapSelections.copy(selectedZone = zone))

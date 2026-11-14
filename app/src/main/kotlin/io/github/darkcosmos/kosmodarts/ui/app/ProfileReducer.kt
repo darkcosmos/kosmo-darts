@@ -4,6 +4,8 @@ import io.github.darkcosmos.kosmodarts.ui.profile.ProfileState
 import io.github.darkcosmos.kosmodarts.ui.profile.cancelled
 import io.github.darkcosmos.kosmodarts.ui.profile.confirmed
 import io.github.darkcosmos.kosmodarts.ui.profile.deleteStarted
+import io.github.darkcosmos.kosmodarts.ui.profile.heatmapSelected
+import io.github.darkcosmos.kosmodarts.ui.profile.heatmapZoneTapped
 import io.github.darkcosmos.kosmodarts.ui.profile.manageToggled
 import io.github.darkcosmos.kosmodarts.ui.profile.mergeIntoTakenTapped
 import io.github.darkcosmos.kosmodarts.ui.profile.mergeStarted
@@ -43,7 +45,21 @@ private fun ProfileState.after(event: ProfileEvent, savedNames: List<String>, at
     is ProfileEvent.CricketFilterSelected -> cricketFilterSelected(event.filter, at)
     is ProfileEvent.X01PeriodSelected -> x01PeriodSelected(event.period, at)
     is ProfileEvent.CricketPeriodSelected -> cricketPeriodSelected(event.period, at)
-    else -> afterAction(event, savedNames, at)
+    else -> afterHeatmap(event, savedNames, at)
+}
+
+/** HM3, HM6: the events of the Heatmap section. */
+private fun ProfileState.afterHeatmap(event: ProfileEvent, savedNames: List<String>, at: Long): ProfileState {
+    val selections = heatmapSelections
+    return when (event) {
+        is ProfileEvent.HeatmapModeSelected -> heatmapSelected(selections.copy(mode = event.mode), at)
+        is ProfileEvent.HeatmapX01FilterSelected -> heatmapSelected(selections.copy(x01Filter = event.filter), at)
+        is ProfileEvent.HeatmapCricketFilterSelected ->
+            heatmapSelected(selections.copy(cricketFilter = event.filter), at)
+        is ProfileEvent.HeatmapPeriodSelected -> heatmapSelected(selections.copy(period = event.period), at)
+        is ProfileEvent.HeatmapZoneTapped -> heatmapZoneTapped(event.zone)
+        else -> afterAction(event, savedNames, at)
+    }
 }
 
 /** The part of [after] for the actions of the Profile (PS7); answers are not applied here. */
