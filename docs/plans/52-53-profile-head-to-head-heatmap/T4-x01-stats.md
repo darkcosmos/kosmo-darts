@@ -38,3 +38,11 @@ STX1 to STX8, ST1, ST5, ST6, ST8; X01 out rules of `docs/rules/x01.md`.
 sonnet. Why: formulas fully specified, tests listed.
 
 ## Implementation notes
+- `X01Stats.kt`: `x01Figures(matches, profileId): X01Figures` and public `isCheckoutAttempt(remaining, rule)`. Input is
+  `List<StatsMatch>` already validated and selected; Cricket matches and matches without the profile are skipped.
+- Counts (won, lost, legs, sets, busts, bands, checkout successes and attempts) are `Int` and 0 when empty; ratios,
+  averages, best visit, best checkout and best leg are `null` when not computable (ST6). Solo matches add 0 to results.
+- A visit is the player's darts sharing a `visit` number in a leg; a bust visit scores 0, its darts count (also in the
+  first 9). A leg win is the stored winner's last dart (success); best checkout is the total of that winning visit.
+- No deviation from the task file. Tests build solo matches through the real validator (`solo` helper in
+  `X01StatsTest`) because `StatsMatchFixtures` has fixed visits.
