@@ -127,8 +127,11 @@ sealed interface Screen {
         val isAbandonDialogShown: Boolean = false,
     ) : Screen
 
-    /** End of a finished Cricket match (M17, CR27); a single game is a match of one leg. [match] is not confirmed. */
-    data class CricketEnd(val match: CricketMatch) : Screen
+    /**
+     * End of a finished Cricket match (M17, CR27); a single game is a match of one leg. [match] is not confirmed;
+     * [journal] is the match journal, which the MPR needs (CR13).
+     */
+    data class CricketEnd(val match: CricketMatch, val journal: MatchJournal) : Screen
 }
 
 /** Whether [this] is a game screen of any mode, the between-legs screens included (R1, R14; ADR 0002). */

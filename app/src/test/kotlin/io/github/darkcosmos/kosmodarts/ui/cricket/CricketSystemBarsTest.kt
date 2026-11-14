@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.cricket
 
+import io.github.darkcosmos.kosmodarts.testing.MatchJournals
 import io.github.darkcosmos.kosmodarts.testing.cricketGameScreen
 import io.github.darkcosmos.kosmodarts.testing.cricketBetweenLegs
 import android.view.View
@@ -150,7 +151,8 @@ class CricketSystemBarsTest {
     fun `CR22 the end of the match shows the bars again`() {
         showHiddenGame()
 
-        leaveTo(Screen.CricketEnd(CricketSaveFixtures.match("Ann", "Bob").playLegWonByScoring20(0)))
+        val finished = CricketSaveFixtures.match("Ann", "Bob").playLegWonByScoring20(0)
+        leaveTo(Screen.CricketEnd(finished, MatchJournals.of(finished)))
 
         assertFalse(bars.isHidden)
     }

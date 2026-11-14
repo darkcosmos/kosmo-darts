@@ -21,7 +21,7 @@ internal fun onCricketGame(state: AppState, screen: Screen.CricketGame, event: A
     return when {
         // AR3: while the archive is written, only its answer counts; a second tap does nothing.
         game.archive is ArchiveStatus.Saving -> when (event) {
-            AppEvent.ArchiveSucceeded -> state.copy(screen = Screen.CricketEnd(game.match))
+            AppEvent.ArchiveSucceeded -> state.copy(screen = Screen.CricketEnd(game.match, screen.journal))
             AppEvent.ArchiveFailed ->
                 state.copy(screen = screen.copy(game = game.copy(archive = ArchiveStatus.Failed)))
             else -> state

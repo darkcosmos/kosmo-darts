@@ -7,6 +7,7 @@ import androidx.compose.ui.platform.LocalResources
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
@@ -21,12 +22,13 @@ import io.github.darkcosmos.kosmodarts.ui.between.BetweenLegsState
 @Composable
 fun CricketBetweenLegsScreen(
     match: CricketMatch,
+    journal: MatchJournal,
     onEvent: (AppEvent) -> Unit,
     modifier: Modifier = Modifier,
     isAbandonDialogShown: Boolean = false,
 ) {
     BetweenLegsContent(
-        state = BetweenLegsState.of(match),
+        state = BetweenLegsState.of(match, journal),
         formatLine = cricketFormatText(LocalResources.current, match.config, match.format),
         onEvent = onEvent,
         modifier = modifier,

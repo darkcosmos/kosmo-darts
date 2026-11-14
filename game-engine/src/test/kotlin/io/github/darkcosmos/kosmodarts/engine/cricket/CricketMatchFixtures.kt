@@ -1,5 +1,8 @@
 package io.github.darkcosmos.kosmodarts.engine.cricket
 
+import io.github.darkcosmos.kosmodarts.engine.journal.JournalEvent
+import io.github.darkcosmos.kosmodarts.engine.journal.LegJournal
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.dart
@@ -42,6 +45,13 @@ internal fun CricketMatch.playLegWonBy(winner: Int): CricketMatch {
 /** Plays and confirms one leg per winner, in order. */
 internal fun CricketMatch.confirmLegsWonBy(vararg winners: Int): CricketMatch =
     winners.fold(this) { match, winner -> match.playLegWonBy(winner).confirmLeg() }
+
+/** The journal of a match whose legs were played with these darts, one list per leg, nothing undone (DJ1). */
+internal fun journalOf(vararg legs: List<Dart>): MatchJournal = MatchJournal(
+    matchId = "match",
+    startedAt = 0L,
+    legs = legs.map { darts -> LegJournal(darts.mapIndexed { i, dart -> JournalEvent.DartEntered(dart, i.toLong()) }) },
+)
 
 /** Name of the player who starts the current leg. */
 internal val CricketMatch.starterName: String

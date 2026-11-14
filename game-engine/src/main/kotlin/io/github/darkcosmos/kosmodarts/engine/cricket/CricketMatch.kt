@@ -9,13 +9,12 @@ import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 
 /**
- * Figures of a player over a whole Cricket match (docs/rules/cricket.md, CR13; docs/rules/match.md, M9).
+ * Figures of a player over a whole Cricket match (docs/rules/match.md, M9). The MPR is not here: it counts useful marks
+ * (CR13) and needs the darts of every leg, so it comes from the match journal (`CricketMatchMpr`).
  *
- * @property marksPerRound marks hit in every leg / darts thrown in every leg x 3 (MPR), exact, or `null` if no dart
- *   was thrown.
  * @property dartsThrown darts thrown in every leg, misses included.
  */
-data class CricketMatchPlayerStats(val marksPerRound: Double?, val dartsThrown: Int)
+data class CricketMatchPlayerStats(val dartsThrown: Int)
 
 /**
  * A Cricket match (docs/rules/match.md, M1 to M12, M19, with the Cricket leg of M2): the confirmed legs, kept as
@@ -71,15 +70,10 @@ class CricketMatch(
         currentLeg.state.winnerIndex?.takeIf { isFinished }?.let(score::withLegWonBy)
     }
 
-    /** Per player figures over the whole match, completed legs and current leg, in configuration order (CR13). */
+    /** Per player figures over the whole match, completed legs and current leg, in configuration order (M9). */
     val playerStats: List<CricketMatchPlayerStats> by lazy {
         currentLeg.state.players.mapIndexed { player, current ->
-            val marks = completedLegs.sumOf { it.marksHit[player] } + current.marksHit
-            val darts = completedLegs.sumOf { it.dartsThrown[player] } + current.dartsThrown
-            CricketMatchPlayerStats(
-                marksPerRound = if (darts == 0) null else marks * DARTS_PER_ROUND.toDouble() / darts,
-                dartsThrown = darts,
-            )
+            CricketMatchPlayerStats(completedLegs.sumOf { it.dartsThrown[player] } + current.dartsThrown)
         }
     }
 
@@ -143,9 +137,6 @@ class CricketMatch(
 
     companion object {
         private const val HASH_PRIME = 31
-
-        /** Darts of a full round, the unit of the MPR (CR13). */
-        private const val DARTS_PER_ROUND = 3
 
         /** A new match: no confirmed leg, the first leg started by the first player (M6). */
         fun start(matchConfig: CricketMatchConfig): CricketMatch =

@@ -23,6 +23,15 @@ object MatchJournals {
     private val BY_VALUE_DESCENDING = Dart.SCORING.sortedByDescending { it.value }
     private val CRICKET_NUMBERS = listOf(20, 19, 18, 17, 16, 15).map(Dart::triple)
 
+    /** The journal of a match whose legs were played with exactly these darts, one list per leg, nothing undone. */
+    fun fromDarts(vararg legs: List<Dart>): MatchJournal = MatchJournal(
+        MATCH_ID,
+        startedAt = 0,
+        legs = legs.map { darts ->
+            LegJournal(darts.mapIndexed { i, dart -> JournalEvent.DartEntered(dart, i.toLong()) })
+        },
+    )
+
     fun of(match: X01Match): MatchJournal = build(
         winners = match.completedLegs.map { it.winnerIndex },
         playerCount = match.config.players.size,

@@ -54,9 +54,15 @@ fun KosmoDartsApp(
         is Screen.History -> HistoryScreen(screen.history, onEvent)
         is Screen.MatchDetail -> MatchDetailScreen(screen.detail, onEvent)
         is Screen.Players -> PlayersScreen(screen.players, onEvent)
-        is Screen.CricketGame -> CricketGameScreen(screen.game, onEvent, noVoiceNotice = screen.noVoiceNotice)
+        is Screen.CricketGame ->
+            CricketGameScreen(screen.game, screen.journal, onEvent, noVoiceNotice = screen.noVoiceNotice)
         is Screen.CricketBetweenLegs ->
-            CricketBetweenLegsScreen(screen.match, onEvent, isAbandonDialogShown = screen.isAbandonDialogShown)
-        is Screen.CricketEnd -> CricketEndScreen(screen.match, onEvent)
+            CricketBetweenLegsScreen(
+                screen.match,
+                screen.journal,
+                onEvent,
+                isAbandonDialogShown = screen.isAbandonDialogShown,
+            )
+        is Screen.CricketEnd -> CricketEndScreen(screen.match, screen.journal, onEvent)
     }
 }

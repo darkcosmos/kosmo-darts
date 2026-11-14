@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.MatchJournals
 import io.github.darkcosmos.kosmodarts.testing.startedJournal
 import io.github.darkcosmos.kosmodarts.testing.TEST_STAMP
 import io.github.darkcosmos.kosmodarts.testing.reduce
@@ -142,7 +143,8 @@ class CricketReducerTest {
 
         val ended = withPendingWin(decided).after(AppEvent.FinishGameTapped, AppEvent.ArchiveSucceeded)
 
-        assertEquals(Screen.CricketEnd(decided.playLegWonBy(0)), ended.screen)
+        val won = decided.playLegWonBy(0)
+        assertEquals(Screen.CricketEnd(won, MatchJournals.of(won)), ended.screen)
     }
 
     @Test
@@ -169,7 +171,8 @@ class CricketReducerTest {
 
     @Test
     fun `M17 back from the end goes home, New game opens the setup of its mode`() {
-        val end = AppState(screen = Screen.CricketEnd(duel.confirmLegsWonBy(0).playLegWonBy(0)))
+        val finished = duel.confirmLegsWonBy(0).playLegWonBy(0)
+        val end = AppState(screen = Screen.CricketEnd(finished, MatchJournals.of(finished)))
 
         assertEquals(Screen.Home(), end.after(AppEvent.Back).screen)
         val cricketSetup = end.after(AppEvent.NewGame(GameMode.CRICKET)).screen as Screen.Setup
@@ -184,7 +187,10 @@ class CricketReducerTest {
             "Ann", "Bob", "Cid",
             variant = CricketVariant.CUT_THROAT, isBullInPlay = false, legsPerSet = 2, sets = 3, colors = colors,
         )
-        val end = AppState(screen = Screen.CricketEnd(match), lastSetup = x01Setup.toLastSetups())
+        val end = AppState(
+            screen = Screen.CricketEnd(match, MatchJournals.of(match)),
+            lastSetup = x01Setup.toLastSetups(),
+        )
         val rotated = CricketMatchConfig(
             CricketConfig(listOf("Bob", "Cid", "Ann"), CricketVariant.CUT_THROAT, isBullInPlay = false),
             MatchFormat(2, 3),

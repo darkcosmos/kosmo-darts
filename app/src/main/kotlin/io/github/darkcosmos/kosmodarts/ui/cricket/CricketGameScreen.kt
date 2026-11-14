@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.keepScreenOn
 import androidx.compose.ui.platform.LocalConfiguration
@@ -25,6 +26,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.NoVoiceNotice
 import io.github.darkcosmos.kosmodarts.ui.components.ActionBar
@@ -52,10 +54,12 @@ import io.github.darkcosmos.kosmodarts.ui.theme.States
 @Composable
 fun CricketGameScreen(
     game: CricketGameScreenState,
+    journal: MatchJournal,
     onEvent: (AppEvent) -> Unit,
     modifier: Modifier = Modifier,
     noVoiceNotice: NoVoiceNotice? = null,
 ) {
+    val mprs = remember(game.match, journal) { game.mprs(journal) }
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -71,9 +75,9 @@ fun CricketGameScreen(
             }
             BoxWithConstraints(modifier = Modifier.fillMaxSize().windowInsetsPadding(insets)) {
                 if (bars.isHidden) {
-                    LandscapeGame(game, onEvent, maxWidth.value, maxHeight.value, horizontalDp(insets))
+                    LandscapeGame(game, mprs, onEvent, maxWidth.value, maxHeight.value, horizontalDp(insets))
                 } else {
-                    PortraitGame(game, onEvent, maxWidth.value)
+                    PortraitGame(game, mprs, onEvent, maxWidth.value)
                 }
             }
         }
@@ -91,7 +95,12 @@ private fun horizontalDp(insets: WindowInsets): Float {
 }
 
 @Composable
-private fun PortraitGame(game: CricketGameScreenState, onEvent: (AppEvent) -> Unit, screenWidthDp: Float) {
+private fun PortraitGame(
+    game: CricketGameScreenState,
+    mprs: List<Double?>,
+    onEvent: (AppEvent) -> Unit,
+    screenWidthDp: Float,
+) {
     Column(
         verticalArrangement = Arrangement.spacedBy(CricketBoardLayoutPolicy.GAP.dp),
         modifier = Modifier
@@ -125,7 +134,7 @@ private fun PortraitGame(game: CricketGameScreenState, onEvent: (AppEvent) -> Un
                 game.game.config.targets.size,
             )
             Column(verticalArrangement = Arrangement.spacedBy(CricketBoardLayoutPolicy.GAP.dp)) {
-                Zone(game, Modifier.height(split.zoneHeightDp.dp).fillMaxWidth(), showsTotal = split.showsTotal)
+                Zone(game, mprs, Modifier.height(split.zoneHeightDp.dp).fillMaxWidth(), showsTotal = split.showsTotal)
                 Board(game, split.board, header, onEvent)
             }
         }
@@ -166,13 +175,14 @@ internal fun headerMode(game: CricketGameScreenState): String {
 @Composable
 internal fun Zone(
     game: CricketGameScreenState,
+    mprs: List<Double?>,
     modifier: Modifier,
     isSingleLine: Boolean = false,
     showsTotal: Boolean = false,
 ) {
     val index = game.highlightedPlayerIndex ?: 0
     val locale = LocalConfiguration.current.locales[0]
-    val mpr = formatMpr(game.mprOf(index), locale, stringResource(R.string.game_average_none))
+    val mpr = formatMpr(mprs[index], locale, stringResource(R.string.game_average_none))
     CricketPlayerZone(
         content = CricketZoneContent(
             index = index,

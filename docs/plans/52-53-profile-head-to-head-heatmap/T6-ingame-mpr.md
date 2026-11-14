@@ -37,3 +37,17 @@ CR13 (rewritten), CR14 (unchanged), CR11 undo, DJ2.
 sonnet. Why: wiring of an engine function into existing state holders, tests specified.
 
 ## Implementation notes
+- Deviation from "Files": `CricketMatch` cannot compute the MPR alone (leg summaries keep no darts, and the saved
+  format is unchanged), so `CricketMatchPlayerStats` lost `marksPerRound` (now `dartsThrown` only) and the MPR lives in
+  `engine/stats/CricketMatchMpr.of(match, journal)`. Completed legs are replayed from the journal (`LegReplay`, voided
+  darts excluded, exact starter per leg from `MatchScore`), the current leg from `match.currentLeg.darts`, with
+  T5 `usefulMarks`. A journal out of step with the summaries (DJ4) falls back to the summaries' all-marks MPR.
+- UI: `CricketGameScreenState.mprs(journal)` (replaces `mprOf`), computed once in `CricketGameScreen` and passed to
+  `Zone`/`CricketTopBand`/`LandscapeGame`; `CricketGameScreen`, `CricketBetweenLegsScreen`, `CricketEndScreen`,
+  `BetweenLegsState.of(CricketMatch, journal)` and `endRows(CricketMatch, journal)` take the `MatchJournal`;
+  `Screen.CricketEnd(match, journal)` carries it (T26 can use it). `marksHit` kept for the summaries (R24) and CR14.
+- Tests: `CricketStatisticsTest` (useful MPR, dead target, solo, 3 players, undo, reload, fallback),
+  `CricketGameScreenStateTest` (2 to 4 players, undo, solo), `EndContentTest`, `BetweenLegsContentTest`;
+  `CricketClosingTest` marks-hit test renamed CR2. Test helpers: `journalOf` (engine), `MatchJournals.fromDarts` (app).
+  X01 code and tests untouched. Visible effect: Cricket MPR drops when marks land on dead targets, and solo MPR counts
+  closing marks only (max 3.0 per 3 darts of closing, no surplus).

@@ -92,7 +92,7 @@ class CricketClosingTest {
     }
 
     @Test
-    fun `CR13 marks hit count every CR2 mark, surplus marks included, and darts thrown count misses`() {
+    fun `CR2 marks hit count every mark, surplus included, and darts thrown count misses`() {
         val game = cricketGame("Anna", "Bob").throwing("T20", "T20", "MISS")
 
         assertEquals(6, game.player(0).marksHit)

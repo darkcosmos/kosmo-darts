@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalResources
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import io.github.darkcosmos.kosmodarts.ui.end.EndContent
@@ -14,9 +15,14 @@ import io.github.darkcosmos.kosmodarts.ui.end.endRows
  * points of the last leg, none in a solo game), "MPR MATCH" in place of the average, and the darts thrown.
  */
 @Composable
-fun CricketEndScreen(match: CricketMatch, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
+fun CricketEndScreen(
+    match: CricketMatch,
+    journal: MatchJournal,
+    onEvent: (AppEvent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     EndContent(
-        rows = endRows(match),
+        rows = endRows(match, journal),
         formatLine = cricketFormatText(LocalResources.current, match.config, match.format),
         mode = GameMode.CRICKET,
         onEvent = onEvent,

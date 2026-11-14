@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.darkcosmos.kosmodarts.testing.MatchJournals
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
@@ -51,7 +52,8 @@ class CricketScreenshotTest {
     private fun show(state: CricketGameScreenState) {
         composeRule.runOnUiThread {
             val view = ComposeView(composeRule.activity)
-            view.setContent { KosmoDartsTheme { CricketGameScreen(state, onEvent = {}) } }
+            val journal = MatchJournals.of(state.match)
+            view.setContent { KosmoDartsTheme { CricketGameScreen(state, journal, onEvent = {}) } }
             composeRule.activity.setContentView(view)
         }
         composeRule.waitForIdle()
@@ -275,9 +277,10 @@ class CricketScreenshotTest {
         CricketSaveFixtures.match(*names, legsPerSet = legsPerSet, sets = sets).playLegWonByScoring20(0)
 
     private fun between(name: String, match: CricketMatch) =
-        captureScreen(name) { CricketBetweenLegsScreen(match, onEvent = {}) }
+        captureScreen(name) { CricketBetweenLegsScreen(match, MatchJournals.of(match), onEvent = {}) }
 
-    private fun end(name: String, match: CricketMatch) = captureScreen(name) { CricketEndScreen(match, onEvent = {}) }
+    private fun end(name: String, match: CricketMatch) =
+        captureScreen(name) { CricketEndScreen(match, MatchJournals.of(match), onEvent = {}) }
 
     @Test
     @Config(qualifiers = "+fr-port")

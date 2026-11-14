@@ -25,6 +25,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.darkcosmos.kosmodarts.testing.MatchJournals
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.TestDevices
@@ -66,7 +67,8 @@ class CricketScreenTest {
     private fun show(state: CricketGameScreenState) {
         composeRule.runOnUiThread {
             val view = ComposeView(composeRule.activity)
-            view.setContent { KosmoDartsTheme { CricketGameScreen(state, onEvent = { events += it }) } }
+            val journal = MatchJournals.of(state.match)
+            view.setContent { KosmoDartsTheme { CricketGameScreen(state, journal, onEvent = { events += it }) } }
             composeRule.activity.setContentView(view)
         }
         composeRule.waitForIdle()

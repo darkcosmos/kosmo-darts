@@ -7,8 +7,10 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTarget
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTurn
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVisit
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVisits
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
+import io.github.darkcosmos.kosmodarts.engine.stats.CricketMatchMpr
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.ui.game.MatchIndicator
 import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
@@ -109,8 +111,11 @@ data class CricketGameScreenState(
     val colors: List<PlayerColor>
         get() = match.colors
 
-    /** CR13: marks per round of the player at [index] over the whole match, or `null` before his first dart. */
-    fun mprOf(index: Int): Double? = match.playerStats[index].marksPerRound
+    /**
+     * CR13: marks per round of each player over the whole match, on useful marks (STC1), in configuration order; `null`
+     * before a player's first dart. The darts of the confirmed legs come from the match [journal].
+     */
+    fun mprs(journal: MatchJournal): List<Double?> = CricketMatchMpr.of(match, journal)
 
     /**
      * CR14, CR23: one visit per player, in configuration order. While a turn waits, the engine current player has not

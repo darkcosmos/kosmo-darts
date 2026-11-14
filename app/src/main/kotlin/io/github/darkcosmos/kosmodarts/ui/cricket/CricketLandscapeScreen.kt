@@ -30,6 +30,7 @@ import io.github.darkcosmos.kosmodarts.ui.theme.Spacing
 @Composable
 internal fun LandscapeGame(
     game: CricketGameScreenState,
+    mprs: List<Double?>,
     onEvent: (AppEvent) -> Unit,
     screenWidthDp: Float,
     screenHeightDp: Float,
@@ -70,7 +71,7 @@ internal fun LandscapeGame(
                     bottom = CricketBoardLayoutPolicy.LANDSCAPE_BOTTOM_MARGIN.dp,
                 ),
         ) {
-            CricketTopBand(game)
+            CricketTopBand(game, mprs)
             ArchiveFailedMessage(game.archive)
             Board(
                 game,

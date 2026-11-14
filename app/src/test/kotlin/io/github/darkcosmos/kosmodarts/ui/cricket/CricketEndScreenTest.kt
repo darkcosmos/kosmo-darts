@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.darkcosmos.kosmodarts.testing.MatchJournals
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
@@ -81,7 +82,7 @@ class CricketEndScreenTest {
     }
 
     private fun checkEnd() {
-        show { CricketEndScreen(finished(), onEvent = { events += it }) }
+        show { CricketEndScreen(finished(), MatchJournals.of(finished()), onEvent = { events += it }) }
         names.indices.forEach { position ->
             assertReachable(EndTags.row(position))
             assertReachable(EndTags.points(position))
@@ -94,7 +95,7 @@ class CricketEndScreenTest {
     }
 
     private fun checkBetweenLegs() {
-        show { CricketBetweenLegsScreen(betweenLegs(), onEvent = { events += it }) }
+        show { CricketBetweenLegsScreen(betweenLegs(), MatchJournals.of(betweenLegs()), onEvent = { events += it }) }
         assertReachable(BetweenLegsTags.WINNER_ZONE)
         assertReachable(BetweenLegsTags.CHECKOUT)
         names.indices.forEach {
@@ -121,7 +122,7 @@ class CricketEndScreenTest {
 
     @Test
     fun `CR28 new game from a Cricket end screen asks for Cricket`() {
-        show { CricketEndScreen(finished(), onEvent = { events += it }) }
+        show { CricketEndScreen(finished(), MatchJournals.of(finished()), onEvent = { events += it }) }
         node(EndTags.NEW_GAME).performClick()
         node(EndTags.REMATCH).performClick()
 
@@ -130,7 +131,7 @@ class CricketEndScreenTest {
 
     @Test
     fun `CR26 next leg sends the event`() {
-        show { CricketBetweenLegsScreen(betweenLegs(), onEvent = { events += it }) }
+        show { CricketBetweenLegsScreen(betweenLegs(), MatchJournals.of(betweenLegs()), onEvent = { events += it }) }
         node(BetweenLegsTags.NEXT_LEG).performClick()
 
         assertEquals(listOf<AppEvent>(AppEvent.NextLegTapped), events)
