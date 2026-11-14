@@ -108,7 +108,7 @@ PF, DJ, BC, AR, HS, PM, AV or the X01 rules (`docs/rules/x01.md`).
 - HM8. The dartboard component draws values per zone with the BC4 geometry and has no rule logic; taps resolve with
   BC5.
 - HM9. End of a leg (between-legs screens M16, CR26) and end of a match (M17, CR27): two tabs at the top of the
-  screen (owner N1), "Result" / « Résultat » (the screen as before, unchanged) and "Leg heatmap" / « Leg heatmap »
+  screen (owner N1), "Result" / « Résultat » (the screen as before, unchanged) and "Leg heatmap" / « Manche Heatmap »
   (the term "heatmap" is kept in French). The screen opens on "Result". The "Leg heatmap" tab shows the heatmap of the
   last leg played, for one player at a time, with a player selector (one chip per player, name and colour; none in a
   solo game); the player shown first is the leg winner between legs and the match winner at the end (owner N2 A).

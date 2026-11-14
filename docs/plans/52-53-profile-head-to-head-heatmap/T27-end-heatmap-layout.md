@@ -1,8 +1,8 @@
 # T27: End-screen tabs and leg heatmap layout
 
 ## Goal
-Add the tabs "Résultat" / "Leg heatmap" (owner N1) to the between-legs and end screens, X01 and Cricket, in portrait
-and landscape on a Pixel 7. Root "Screens and states", between legs and end screens; HM9, HM10, D10, D11.
+Add the tabs « Résultat » / « Manche Heatmap » (EN "Result" / "Leg heatmap", owner N1) to the between-legs and end
+screens, X01 and Cricket, in portrait and landscape on a Pixel 7. Root "Screens and states", between legs and end screens; HM9, HM10, D10, D11.
 
 ## Files
 - `app/.../ui/board/ResultHeatmapTabs.kt` (new): tab row fixed at the top (minimum height 48 dp, 42 dp allowed in
@@ -19,7 +19,7 @@ and landscape on a Pixel 7. Root "Screens and states", between legs and end scre
   `app/.../ui/cricket/CricketBetweenLegsContent.kt`, `CricketEndContent.kt`: today's content becomes the "Résultat"
   tab unchanged, scrolling where the tab row makes it no longer fit (review U9); the main actions go where root
   "Screens and states" lists (landscape between legs: right column in both tabs).
-- Strings en and fr: tabs "Result" / « Résultat », "Leg heatmap" / « Leg heatmap », title; no new text in code.
+- Strings en and fr: tabs "Result" / « Résultat », "Leg heatmap" / « Manche Heatmap », title; no new text in code.
 - Tests: `ResultHeatmapTabsTest.kt`, `LegHeatmapTabTest.kt`; captures added to `X01ScreensScreenshotTest.kt` and
   `CricketScreenshotTest.kt`.
 

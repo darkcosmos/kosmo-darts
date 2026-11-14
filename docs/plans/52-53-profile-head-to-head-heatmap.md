@@ -269,7 +269,7 @@ Heatmap:
 - HM8. The dartboard component draws values per zone with the BC4 geometry and has no rule logic; taps resolve with
   BC5.
 - HM9. End of a leg (between-legs screens M16, CR26) and end of a match (M17, CR27): two tabs at the top of the
-  screen (owner N1), "Result" / « Résultat » (the screen as before, unchanged) and "Leg heatmap" / « Leg heatmap »
+  screen (owner N1), "Result" / « Résultat » (the screen as before, unchanged) and "Leg heatmap" / « Manche Heatmap »
   (the term "heatmap" is kept in French). The screen opens on "Result". The "Leg heatmap" tab shows the heatmap of the
   last leg played, for one player at a time, with a player selector (one chip per player, name and colour; none in a
   solo game); the player shown first is the leg winner between legs and the match winner at the end (owner N2 A).
@@ -311,7 +311,7 @@ Head-to-head:
 - **Head-to-head**: picker (list, empty if no other profile); loaded (names, date line, counters, side-by-side
   figures, list of common matches); empty (no common match); loading; failure.
 - **Between legs and end screens** (HM9, HM10, owner N1): a tab row fixed at the top, under the safe area, in both
-  orientations and both tabs: "RÉSULTAT" and "LEG HEATMAP" (EN "RESULT" and "LEG HEATMAP"), equal widths, a minimum
+  orientations and both tabs: "RÉSULTAT" and "MANCHE HEATMAP" (EN "RESULT" and "LEG HEATMAP"), equal widths, a minimum
   height of 48 dp (42 dp allowed in landscape) that grows with the text, selected tab underlined in the accent
   colour; labels wrap on two lines at 200 % font and are never cut (review U10); TalkBack reads each tab with its
   selected state. Under it, the selected tab:
@@ -368,19 +368,19 @@ Head-to-head:
   at 4 players in landscape at 200 % font (review U9).
 - Every edge case of the project review focus that this mission touches: bust, double-out and single-out, undo at
   every step (CR13, HM9), 1 to 4 players, 501 and 301, rematch (end-screen heatmap uses the finished match), process
-  death on the between-legs screen (journal restored, screen back on "Résultat", the "Leg heatmap" tab shows the
+  death on the between-legs screen (journal restored, screen back on "Résultat", the « Manche Heatmap » tab shows the
   heatmap with the default player).
 
 ## How Kosmo verifies
 
 On the Pixel 7, after uninstalling the previous version and installing the CI debug APK of the latest commit:
 1. Play an X01 501 double-out match of 2 legs with 2 players, with a bust and an undo. At the end of the first leg,
-   the between-legs screen opens on the "RÉSULTAT" tab, identical to before. Tap "LEG HEATMAP": the heatmap of that
+   the between-legs screen opens on the "RÉSULTAT" tab, identical to before. Tap "MANCHE HEATMAP": the heatmap of that
    leg for its winner; switch players with the chips; tap a zone (band with zone, darts and %); "MANCHE SUIVANTE" is
    visible and works from this tab. Rotate: same tab, same player. Same at the end screen with "REVANCHE" /
    "NOUVELLE PARTIE" (match winner shown first).
 2. Play a Cricket match with 3 players; check the in-game MPR moves only with closing or scoring marks; on the end
-   screen, the "LEG HEATMAP" tab labels misses "Raté ou hors numéros Cricket".
+   screen, the "MANCHE HEATMAP" tab labels misses "Raté ou hors numéros Cricket".
 3. Home, Joueurs: rows open the Profile. X01 and Cricket figures, filters, periods, trend curve; "–" where nothing is
    computable; "Depuis toujours".
 4. "Gérer le joueur": rename, reset ("Depuis le <date>"), merge (lands on the target's Profile), delete (back to the
@@ -456,6 +456,8 @@ Owner answers to the plan (2026-11):
   isolated so that B is a one-line change (D11).
 - Wording: the term "heatmap" is kept in French everywhere. The Profile section first called « Cible » / "Board" is
   "Heatmap" in both languages (PS3, HM3, T21, T22, state names `HeatmapSection*`, enum value `HEATMAP`).
+- Tab label (2026-11, after plan approval): the second end-screen tab is « Manche Heatmap » in French ("MANCHE
+  HEATMAP" in capitals) and stays "Leg heatmap" in English (HM9, T27). The "LEG n" heatmap title is unchanged.
 - D4 confirmed (option A): an unreadable archived match stays in the database, untouched and never deleted; it is
   skipped in every statistic and counted, with the notice "n matchs ignorés (données illisibles)" (ST10).
 - G1 unchanged: Kosmo picks the colour scale after T16, before T20.
@@ -476,7 +478,7 @@ Design decisions (developer, approved in design review):
   Back keeps today's behavior on both tabs (no tab history).
 - D10 (N1, review U8): the main actions are reachable in both tabs: same slot in portrait and on the end screens;
   in landscape between legs, in the right column of both tabs (under the scoreboard in "Résultat", pinned at the
-  bottom in "Leg heatmap"). The "Résultat" tab content is today's screen unchanged; it scrolls where the tab row
+  bottom in « Manche Heatmap »). The "Résultat" tab content is today's screen unchanged; it scrolls where the tab row
   makes it no longer fit (review U9). The tab height is a minimum and grows with the text (review U10).
 - D11 (N3): the tap band is one composable `ZoneBand`, shown on the end screens only when the constant
   `END_SCREEN_ZONE_TAP_ENABLED` (in `LegHeatmapTab.kt`) is true; when false, zone taps are ignored and the band is
