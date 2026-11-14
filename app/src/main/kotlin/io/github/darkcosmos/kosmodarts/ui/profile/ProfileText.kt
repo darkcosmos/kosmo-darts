@@ -4,11 +4,10 @@ import android.content.res.Resources
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.ui.format.formatAverage
 import io.github.darkcosmos.kosmodarts.ui.format.formatMpr
+import io.github.darkcosmos.kosmodarts.ui.format.formatWholePercent
 import java.text.DateFormat
 import java.util.Date
 import java.util.Locale
-
-private const val PERCENT = 100
 
 /** ST6: the text of a figure that cannot be computed. */
 internal fun noneText(resources: Resources): String = resources.getString(R.string.profile_none)
@@ -26,7 +25,7 @@ internal fun numberText(value: Int?, resources: Resources): String = value?.toSt
 
 /** A ratio from 0 to 1 as a percentage, or the dash (ST6). */
 internal fun percentText(ratio: Double?, locale: Locale, resources: Resources): String =
-    if (ratio == null) noneText(resources) else String.format(locale, "%.0f %%", ratio * PERCENT)
+    if (ratio == null) noneText(resources) else formatWholePercent(ratio, locale)
 
 /** STX3: "45 % (5/11)", or the dash without any attempt. */
 internal fun checkoutText(

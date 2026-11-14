@@ -9,8 +9,6 @@ import io.github.darkcosmos.kosmodarts.engine.stats.Period
 import io.github.darkcosmos.kosmodarts.engine.stats.StatsFilter
 import io.github.darkcosmos.kosmodarts.engine.stats.X01Filter
 
-private const val PERCENT = 100.0
-
 /** The mode filter of the Heatmap section (HM3): every mode, X01 only or Cricket only. */
 enum class HeatmapMode { ALL, X01, CRICKET }
 
@@ -57,8 +55,8 @@ fun BoardZone.displayName(): ZoneName = when (ring) {
     BoardZone.Ring.BULL -> ZoneName(R.string.heatmap_zone_bull)
 }
 
-/** A zone with its darts and its percentage of all darts, misses included (HM2). [percent] is 0 to 100, unrounded. */
-data class ZoneFigure(val zone: BoardZone, val name: ZoneName, val count: Int, val percent: Double)
+/** A zone with its darts and its share of all darts, misses included (HM2). [share] is a ratio 0 to 1, unrounded. */
+data class ZoneFigure(val zone: BoardZone, val name: ZoneName, val count: Int, val share: Double)
 
 /**
  * The Heatmap section as the screen shows it (HM2 to HM7), all computed here. Pure. A selected zone with no dart left
@@ -77,13 +75,13 @@ data class HeatmapSectionState(val selections: HeatmapSelections, val figures: H
     val missLabelRes: Int
         get() = if (heatmap.includesCricket) R.string.heatmap_miss_cricket else R.string.heatmap_miss
 
-    /** HM2: the misses over all darts, 0 to 100, or `null` without a dart. */
-    val missPercent: Double?
+    /** HM2: the misses over all darts, ratio 0 to 1, or `null` without a dart. */
+    val missShare: Double?
         get() = heatmap.missShare
 
     /** HM5: the share (0 to 1) of every zone with at least one dart, which the screen maps to the colour scale. */
     val zoneShares: Map<BoardZone, Double>
-        get() = heatmap.counts.filterValues { it > 0 }.mapValues { (zone, _) -> (heatmap.share(zone) ?: 0.0) / PERCENT }
+        get() = heatmap.counts.filterValues { it > 0 }.mapValues { (zone, _) -> heatmap.share(zone) ?: 0.0 }
 
     /** HM6: the five most hit zones, most first; ties follow the order of the board zones. */
     val topZones: List<ZoneFigure>

@@ -38,7 +38,7 @@ object CricketMatchMpr {
 
     private fun usefulMarksOf(match: CricketMatch, journal: MatchJournal): List<Int>? {
         val legs = playedLegs(match, journal) ?: return null
-        val perLeg = legs.map { usefulPerPlayer(match.config, it) }.filterNotNull()
+        val perLeg = legs.mapNotNull { usefulPerPlayer(match.config, it) }
         return perLeg.takeIf { it.size == legs.size }?.let { all ->
             match.config.players.indices.map { player -> all.sumOf { it[player] } }
         }

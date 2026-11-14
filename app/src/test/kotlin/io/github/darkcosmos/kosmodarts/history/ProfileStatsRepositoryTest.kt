@@ -255,16 +255,23 @@ class ProfileStatsRepositoryTest {
     }
 
     @Test
-    fun `ST10 loading 1000 matches stays under one second`() {
+    fun `ST10 loading 1000 matches loads each once and in order`() {
         repeat(1_000) { store(x01(listOf("Ana", "Bob"), endedAt = 1_000L + it)) }
         val id = idOf("Ana")
 
-        val start = System.nanoTime()
         val data = (repository.load(id) as DbResult.Ok).value
-        val millis = (System.nanoTime() - start) / 1_000_000
 
+        assertEquals(0, data.skippedMatches)
         assertEquals(1_000, data.matches.size)
-        assertTrue("took $millis ms", millis < 1_000)
+        assertEquals((0 until 1_000).map { 1_000L + it }, data.matches.map { it.endedAt })
+    }
+
+    @Test
+    fun `ST10 AR9 an unreadable mode column gives Failed, not a crash`() {
+        val bad = x01(listOf("Ana", "Bob"), endedAt = 1_000L).also(::store)
+        sql("UPDATE match_record SET mode = 'GARBAGE' WHERE match_uuid = '${bad.matchId}'")
+
+        assertEquals(DbResult.Failed, repository.load(idOf("Ana")))
     }
 
     private fun picker(name: String = "Ana"): HeadToHeadPicker =

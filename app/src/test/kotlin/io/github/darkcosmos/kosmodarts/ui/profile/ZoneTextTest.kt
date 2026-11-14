@@ -17,8 +17,8 @@ class ZoneTextTest {
     private val resources get() = RuntimeEnvironment.getApplication().resources
     private val triple20 = BoardZone(20, Ring.TRIPLE)
 
-    private fun figure(zone: BoardZone, count: Int, percent: Double) =
-        ZoneFigure(zone, zone.displayName(), count, percent)
+    private fun figure(zone: BoardZone, count: Int, share: Double) =
+        ZoneFigure(zone, zone.displayName(), count, share)
 
     @Test
     @Config(qualifiers = "en")
@@ -57,7 +57,7 @@ class ZoneTextTest {
     @Test
     @Config(qualifiers = "en")
     fun detailAndDescriptionCarryTheCountAndThePercentage() {
-        val figure = figure(triple20, 12, 4.67)
+        val figure = figure(triple20, 12, 0.0467)
         assertEquals("12 darts · 4.7 %", figure.detail(resources, Locale.ENGLISH))
         assertEquals("Triple 20, 12 darts, 4.7 %", figure.description(resources, Locale.ENGLISH))
     }
@@ -65,7 +65,7 @@ class ZoneTextTest {
     @Test
     @Config(qualifiers = "fr")
     fun frenchPercentageUsesTheDecimalComma() {
-        val figure = figure(triple20, 1, 4.67)
+        val figure = figure(triple20, 1, 0.0467)
         assertEquals("1 fléchette · 4,7 %", figure.detail(resources, Locale.FRENCH))
         assertEquals("Triple 20, 1 fléchette, 4,7 %", figure.description(resources, Locale.FRENCH))
     }

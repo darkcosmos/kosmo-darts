@@ -94,4 +94,15 @@ class TrendSeriesTest {
 
         assertEquals(TrendSummary(2, 30.0, 30.0, 30.0, 30.0, 100, 200), summary)
     }
+
+    @Test
+    fun `PS5 the curve needs 2 points, the figures need 1`() {
+        val none = summarize(emptyList())
+        val one = summarize(listOf(point("a", 100, 30.0)))
+        val two = summarize(listOf(point("a", 100, 30.0), point("b", 200, 40.0)))
+
+        assertEquals(listOf(false, true, true), listOf(none, one, two).map { it.hasPoints })
+        assertEquals(listOf(false, false, true), listOf(none, one, two).map { it.hasCurve })
+        assertEquals(2, MIN_CURVE_POINTS)
+    }
 }

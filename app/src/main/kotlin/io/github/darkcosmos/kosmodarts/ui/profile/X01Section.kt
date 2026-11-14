@@ -163,7 +163,7 @@ internal fun trendBlock(points: List<TrendPoint>, summary: TrendSummary, isCrick
             matchCountText(resources, summary.count),
         ),
     )
-    if (summary.count > 0) {
+    if (summary.hasPoints) {
         rows += FigureRow("trend_lowest", stringResource(R.string.profile_trend_lowest), value(summary.lowest))
         rows += FigureRow("trend_highest", stringResource(R.string.profile_trend_highest), value(summary.highest))
         rows += FigureRow(
@@ -181,7 +181,7 @@ internal fun trendBlock(points: List<TrendPoint>, summary: TrendSummary, isCrick
         "trend",
         stringResource(R.string.profile_block_trend),
         rows,
-        note = if (summary.count < 2) stringResource(R.string.profile_trend_too_few) else null,
+        note = if (!summary.hasCurve) stringResource(R.string.profile_trend_too_few) else null,
         trend = TrendDisplay(points, summary, trendDescription(summary, isCricket, locale, resources)),
     )
 }

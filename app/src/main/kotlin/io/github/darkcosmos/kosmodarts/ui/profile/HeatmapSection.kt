@@ -23,7 +23,7 @@ import io.github.darkcosmos.kosmodarts.ui.board.Dartboard
 import io.github.darkcosmos.kosmodarts.ui.board.HeatmapLegend
 import io.github.darkcosmos.kosmodarts.ui.board.HeatmapScale
 import io.github.darkcosmos.kosmodarts.ui.board.ZoneBand
-import io.github.darkcosmos.kosmodarts.ui.board.heatmapPercentText
+import io.github.darkcosmos.kosmodarts.ui.format.formatPercent
 import io.github.darkcosmos.kosmodarts.ui.components.SectionLabel
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import java.util.Locale
@@ -157,11 +157,11 @@ internal fun HeatmapMisses(state: HeatmapSectionState, resources: Resources, loc
 
 /** HM2, HM4: the misses with their count and percentage of all darts. */
 private fun missesText(state: HeatmapSectionState, resources: Resources, locale: Locale): String {
-    val percent = state.missPercent ?: 0.0
+    val share = state.missShare ?: 0.0
     return resources.getString(
         R.string.heatmap_zone_detail,
         dartsText(resources, state.heatmap.misses),
-        heatmapPercentText(percent / PERCENT, locale),
+        formatPercent(share, locale),
     )
 }
 
@@ -195,4 +195,3 @@ internal fun TopZones(state: HeatmapSectionState, resources: Resources, locale: 
     }
 }
 
-private const val PERCENT = 100.0

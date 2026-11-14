@@ -28,18 +28,18 @@ class HeatmapAggregationTest {
     // ---- profile selection ----
 
     @Test
-    fun `HM1 HM2 counts per zone, misses in the total, percentages sum to 100`() {
+    fun `HM1 HM2 counts per zone, misses in the total, ratios sum to 1`() {
         val heatmap = heatmapOf(listOf(x01Match), 2L, StatsFilter.AllModes) // player 1: 3 misses
         assertEquals(3, heatmap.total)
         assertEquals(3, heatmap.misses)
-        assertEquals(100.0, heatmap.missShare)
+        assertEquals(1.0, heatmap.missShare)
 
         val mixed = heatmapOf(listOf(x01Match), 1L, StatsFilter.AllModes)
         assertEquals(6, mixed.total)
         assertEquals(mapOf(t20 to 4, t19 to 1, d2 to 1), mixed.counts)
         assertEquals(0, mixed.misses)
         val sum = BoardZone.ALL.sumOf { mixed.share(it) ?: 0.0 } + (mixed.missShare ?: 0.0)
-        assertEquals(100.0, sum, 1e-9)
+        assertEquals(1.0, sum, 1e-9)
     }
 
     @Test
@@ -106,7 +106,7 @@ class HeatmapAggregationTest {
         // Ties (2 and 2): BoardZone.ALL order puts the double of 2 before the triple of 19.
         assertEquals(listOf(t20, d2, t19), top.map { it.zone })
         assertEquals(listOf(4, 2, 2), top.map { it.count })
-        assertEquals(listOf(40.0, 20.0, 20.0), top.map { it.percent })
+        assertEquals(listOf(0.4, 0.2, 0.2), top.map { it.ratio })
         assertEquals(4, heatmap.topZones().size)
     }
 

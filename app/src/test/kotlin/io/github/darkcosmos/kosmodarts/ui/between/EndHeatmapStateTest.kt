@@ -129,7 +129,7 @@ class EndHeatmapStateTest {
         val hit = section.heatmap.counts.keys
         assertEquals(8, hit.size)
         assertEquals(BoardZone.ALL.filter { it in hit }.take(5), section.topZones.map { it.zone })
-        assertTrue(section.topZones.all { it.count == 1 && it.percent == 12.5 })
+        assertTrue(section.topZones.all { it.count == 1 && it.share == 0.125 })
     }
 
     /** HM6: most hit first on X01 legs, counts never increasing down the list. */
@@ -140,7 +140,7 @@ class EndHeatmapStateTest {
 
         assertTrue(top.size in 1..5)
         assertTrue(top.zipWithNext().all { (a, b) -> a.count >= b.count })
-        top.forEach { assertEquals(it.count * 100.0 / section.heatmap.total, it.percent, 1e-9) }
+        top.forEach { assertEquals(it.count.toDouble() / section.heatmap.total, it.share, 1e-9) }
     }
 
     /** HM9: one chip per player with name and colour, the selected one flagged; none in a solo game. */

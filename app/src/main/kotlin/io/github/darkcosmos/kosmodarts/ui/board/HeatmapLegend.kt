@@ -25,23 +25,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.ui.format.formatPercent
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
-import java.util.Locale
 
-private const val PERCENT = 100
 private val SWATCH_WIDTH = 28.dp
 private val BAR_HEIGHT = 18.dp
 private val BAR_SHAPE = RoundedCornerShape(3.dp)
-
-/**
- * HM5: a legend value as a percentage with at most one decimal, "4.7 %" or "30 %" ("4,7 %" in French): the upper end of
- * the scale is the share of the most hit zone ([share] from 0 to 1).
- */
-fun heatmapPercentText(share: Double, locale: Locale): String {
-    val tenths = Math.round(share * PERCENT * 10) / 10.0
-    val pattern = if (tenths % 1.0 == 0.0) "%.0f %%" else "%.1f %%"
-    return String.format(locale, pattern, tenths)
-}
 
 /**
  * HM5: the legend of the relative scale ([HeatmapScale]): the neutral swatch "0 dart", the gradient bar from "> 0 %" to
@@ -52,7 +41,7 @@ fun heatmapPercentText(share: Double, locale: Locale): String {
 fun HeatmapLegend(maxShare: Double, modifier: Modifier = Modifier) {
     val colors = KosmoTheme.colors
     val locale = LocalConfiguration.current.locales[0]
-    val maxText = heatmapPercentText(maxShare, locale)
+    val maxText = formatPercent(maxShare, locale)
     val description = stringResource(R.string.heatmap_legend_description, maxText)
     Column(
         modifier = modifier

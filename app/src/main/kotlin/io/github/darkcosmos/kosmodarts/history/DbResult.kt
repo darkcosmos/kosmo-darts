@@ -16,13 +16,16 @@ sealed interface DbResult<out T> {
 
 /**
  * Runs [block] and wraps its value in [DbResult.Ok], or returns [DbResult.Failed] when Room or SQLite throws: an
- * [SQLException] (every `SQLiteException` included) or an [IllegalStateException] (a database that cannot open or is
- * closed). The cause is deliberately dropped: it is never logged, so no data reaches the logs (review S4).
+ * [SQLException] (every `SQLiteException` included), an [IllegalStateException] (a database that cannot open or is
+ * closed) or an [IllegalArgumentException] (a stored enum text Room cannot read, ST10). The cause is deliberately
+ * dropped: it is never logged, so no data reaches the logs (review S4).
  */
 inline fun <T> dbResult(block: () -> T): DbResult<T> = try {
     DbResult.Ok(block())
 } catch (ignored: SQLException) {
     DbResult.Failed
 } catch (ignored: IllegalStateException) {
+    DbResult.Failed
+} catch (ignored: IllegalArgumentException) {
     DbResult.Failed
 }

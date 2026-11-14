@@ -2,6 +2,9 @@ package io.github.darkcosmos.kosmodarts.engine.stats
 
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedSettings
 
+/** The fewest points that draw a trend curve (PS5). */
+const val MIN_CURVE_POINTS: Int = 2
+
 /**
  * One point of the trend curve: the value of one match of the profile.
  *
@@ -25,7 +28,13 @@ data class TrendSummary(
     val highest: Double?,
     val firstDate: Long?,
     val lastDate: Long?,
-)
+) {
+    /** Whether there is at least one point, so the lowest, highest and dates exist (PS5). */
+    val hasPoints: Boolean get() = count > 0
+
+    /** Whether the curve is drawn: with fewer than [MIN_CURVE_POINTS] points a short text replaces it (PS5). */
+    val hasCurve: Boolean get() = count >= MIN_CURVE_POINTS
+}
 
 /**
  * The trend series of [profileId] over the selected [matches] (already validated, ST10): one point per match, in end

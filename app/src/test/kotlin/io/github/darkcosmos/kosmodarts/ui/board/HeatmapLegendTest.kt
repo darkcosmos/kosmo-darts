@@ -8,7 +8,6 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
-import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -31,15 +30,6 @@ class HeatmapLegendTest {
             composeRule.activity.setContentView(view)
         }
         composeRule.waitForIdle()
-    }
-
-    @Test
-    fun percentTextHasOneDecimalAtMostInTheLocale() {
-        assertEquals("4.7 %", heatmapPercentText(0.0467, Locale.ENGLISH))
-        assertEquals("4,7 %", heatmapPercentText(0.0467, Locale.FRENCH))
-        assertEquals("30 %", heatmapPercentText(0.30, Locale.ENGLISH))
-        assertEquals("100 %", heatmapPercentText(1.0, Locale.ENGLISH))
-        assertEquals("0 %", heatmapPercentText(0.0, Locale.ENGLISH))
     }
 
     @Test

@@ -36,7 +36,9 @@ need a Back that returns to the screen the user came from.
 - Statistics are derived only. Nothing is stored and nothing is cached (D2). Every figure is computed by `:game-engine`
   from validated per-dart facts; the loader only reads rows (plan Approach 1 and 3).
 - CR13 (the in-game MPR) and STC2 (the Profile MPR) use the same function, the useful marks of STC1, replayed from the
-  match journal.
+  match journal. If the journal is out of step with the confirmed legs (DJ4), the in-game figure falls back to all the
+  marks of the leg summaries (CR13) rather than failing; the Profile figure never uses that fallback, since a match
+  that does not replay is skipped and counted (ST10).
 - An archived match that breaks the rules is skipped and counted (ST10). Its validation lives in `:game-engine`
   (`StatsMatchValidator`); the validator and the stats functions return values for invalid input and never throw.
 - `BoardGeometry` and `BoardZone` are public in `:game-engine`, with the zones of BC4 and the lookup of BC5.

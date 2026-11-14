@@ -92,7 +92,7 @@ class HeatmapSectionStateTest {
         val shares = section(shown()).zoneShares
         assertTrue(shares.keys.containsAll(setOf(t20, t19)))
         assertTrue(shares.values.all { it > 0.0 && it <= 1.0 })
-        assertEquals(section(shown()).heatmap.share(t20)!! / 100.0, shares.getValue(t20), DELTA)
+        assertEquals(section(shown()).heatmap.share(t20)!!, shares.getValue(t20), DELTA)
         assertTrue(HeatmapSectionState(HeatmapSelections(), HeatmapFigures.EMPTY).zoneShares.isEmpty())
     }
 
@@ -120,7 +120,7 @@ class HeatmapSectionStateTest {
         val selected = checkNotNull(section(x01).selected)
         assertEquals(t20, selected.zone)
         assertEquals(4, selected.count)
-        assertEquals(4 * 100.0 / 6, selected.percent, DELTA)
+        assertEquals(4.0 / 6, selected.share, DELTA)
     }
 
     @Test
@@ -156,10 +156,10 @@ class HeatmapSectionStateTest {
         // Total 11 + 6 misses = 17; D2 comes before T15, T16 on the tie (zone order: number, then ring).
         assertEquals(listOf(t20, t19, d2, BoardZone(15, Ring.TRIPLE), BoardZone(16, Ring.TRIPLE)), top.map { it.zone })
         assertEquals(listOf(5, 2, 1, 1, 1), top.map { it.count })
-        assertEquals(5 * 100.0 / 17, top[0].percent, DELTA)
-        assertEquals(2 * 100.0 / 17, top[1].percent, DELTA)
-        assertEquals(100.0 / 17, top[2].percent, DELTA)
-        assertEquals(6 * 100.0 / 17, HeatmapSectionState(HeatmapSelections(), figuresOf(zones, 6)).missPercent!!, DELTA)
+        assertEquals(5.0 / 17, top[0].share, DELTA)
+        assertEquals(2.0 / 17, top[1].share, DELTA)
+        assertEquals(1.0 / 17, top[2].share, DELTA)
+        assertEquals(6.0 / 17, HeatmapSectionState(HeatmapSelections(), figuresOf(zones, 6)).missShare!!, DELTA)
     }
 
     @Test
@@ -173,11 +173,11 @@ class HeatmapSectionStateTest {
         val figure = section(shown()).figureOf(t20)
         assertEquals(ZoneName(R.string.heatmap_zone_triple, 20), figure.name)
         assertEquals(5, figure.count)
-        assertEquals(5 * 100.0 / 14, figure.percent, DELTA)
+        assertEquals(5.0 / 14, figure.share, DELTA)
         val empty = section(shown()).figureOf(BoardZone(1, Ring.SINGLE))
         assertEquals(ZoneName(R.string.heatmap_zone_single, 1), empty.name)
         assertEquals(0, empty.count)
-        assertEquals(0.0, empty.percent, DELTA)
+        assertEquals(0.0, empty.share, DELTA)
         assertEquals(ZoneName(R.string.heatmap_zone_bull), BoardZone(Dart.BULL_SEGMENT, Ring.BULL).displayName())
         val outer = BoardZone(Dart.OUTER_BULL_SEGMENT, Ring.OUTER_BULL)
         assertEquals(ZoneName(R.string.heatmap_zone_outer_bull), outer.displayName())
@@ -192,7 +192,7 @@ class HeatmapSectionStateTest {
         assertTrue(heatmapShown.isSelectionEmpty)
         assertNull(section(heatmapShown).selected)
         assertTrue(section(heatmapShown).topZones.isEmpty())
-        assertNull(section(heatmapShown).missPercent)
+        assertNull(section(heatmapShown).missShare)
         // A selected zone of an empty selection shows as nothing selected.
         assertNull(section(heatmapShown.heatmapZoneTapped(t20)).selected)
     }

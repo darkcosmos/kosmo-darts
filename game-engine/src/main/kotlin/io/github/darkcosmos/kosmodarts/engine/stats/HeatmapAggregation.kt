@@ -8,13 +8,11 @@ import io.github.darkcosmos.kosmodarts.engine.journal.LegSetup
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 
-private const val PERCENT: Double = 100.0
-
 /** How many zones [Heatmap.topZones] is asked for by the screens (HM6). */
 const val TOP_ZONES: Int = 5
 
-/** A zone with its dart count and its percentage of all darts, misses included (HM2). */
-data class ZoneShare(val zone: BoardZone, val count: Int, val percent: Double)
+/** A zone with its dart count and its share (ratio 0 to 1) of all darts, misses included (HM2). */
+data class ZoneShare(val zone: BoardZone, val count: Int, val ratio: Double)
 
 /**
  * The darts of a selection counted per zone (HM1, HM2).
@@ -32,11 +30,11 @@ data class Heatmap(
     val total: Int,
     val includesCricket: Boolean,
 ) {
-    /** Percentage (0 to 100, unrounded: the screens round) of [zone] over [total], or `null` when [total] is 0. */
-    fun share(zone: BoardZone): Double? = if (total == 0) null else (counts[zone] ?: 0) * PERCENT / total
+    /** Ratio (0 to 1, unrounded: the screens round and show a percentage) of [zone] over [total], `null` if 0. */
+    fun share(zone: BoardZone): Double? = if (total == 0) null else (counts[zone] ?: 0).toDouble() / total
 
-    /** Percentage (0 to 100, unrounded) of the misses over [total], or `null` when [total] is 0 (HM7). */
-    val missShare: Double? get() = if (total == 0) null else misses * PERCENT / total
+    /** Ratio (0 to 1, unrounded) of the misses over [total], or `null` when [total] is 0 (HM7). */
+    val missShare: Double? get() = if (total == 0) null else misses.toDouble() / total
 
     /**
      * The [limit] most hit zones, most first. Ties are broken by the order of [BoardZone.ALL], so the result is
@@ -46,7 +44,7 @@ data class Heatmap(
         .filter { (counts[it] ?: 0) > 0 }
         .sortedByDescending { counts.getValue(it) } // stable sort keeps the BoardZone.ALL order on ties
         .take(limit)
-        .map { ZoneShare(it, counts.getValue(it), counts.getValue(it) * PERCENT / total) }
+        .map { ZoneShare(it, counts.getValue(it), counts.getValue(it).toDouble() / total) }
 
     companion object {
         /** The heatmap of no dart (HM7). */

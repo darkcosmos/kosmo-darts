@@ -46,8 +46,9 @@ Vocabulary:
   (1, 2, 2, 4). The ranking is empty while the leg is in progress.
 - CR13. Statistics: a player's useful marks are the STC1 useful marks of his darts. MPR = useful marks / darts thrown
   x 3, over the whole match (completed legs and the current one, owner Q4 A), computed from the match journal. No dart
-  thrown means no MPR (absent, not zero). The engine returns the exact value. CR14 visit marks stay the CR2 marks of
-  the visit (owner P7).
+  thrown means no MPR (absent, not zero). The engine returns the exact value. If the journal does not describe the
+  confirmed legs of the match (out of step, DJ4), the in-game figure falls back to all the marks of the leg summaries
+  instead of failing. CR14 visit marks stay the CR2 marks of the visit (owner P7).
 - CR14. Visit marks: each player is in exactly one state:
   - *not played*;
   - *visit in progress* (marks of the darts of his current turn; 0 before his first dart);

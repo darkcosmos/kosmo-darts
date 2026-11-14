@@ -2,10 +2,8 @@ package io.github.darkcosmos.kosmodarts.ui.profile
 
 import android.content.res.Resources
 import io.github.darkcosmos.kosmodarts.R
-import io.github.darkcosmos.kosmodarts.ui.board.heatmapPercentText
+import io.github.darkcosmos.kosmodarts.ui.format.formatPercent
 import java.util.Locale
-
-private const val PERCENT = 100.0
 
 /** HM6: the name of a zone in the language of [resources]: "Triple 20", "Simple 5", "Bull extérieur (25)", "Bull". */
 internal fun ZoneName.text(resources: Resources): String =
@@ -20,7 +18,7 @@ internal fun ZoneFigure.detail(resources: Resources, locale: Locale): String =
     resources.getString(
         R.string.heatmap_zone_detail,
         dartsText(resources, count),
-        heatmapPercentText(percent / PERCENT, locale),
+        formatPercent(share, locale),
     )
 
 /** HM6, PS8: the text TalkBack reads for a zone: name, darts and percentage. */
@@ -29,5 +27,5 @@ internal fun ZoneFigure.description(resources: Resources, locale: Locale): Strin
         R.string.heatmap_zone_description,
         name.text(resources),
         dartsText(resources, count),
-        heatmapPercentText(percent / PERCENT, locale),
+        formatPercent(share, locale),
     )
