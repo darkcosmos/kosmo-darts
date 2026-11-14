@@ -46,3 +46,18 @@ ST1, ST2, ST3, ST4, ST10; DJ2 (voided darts).
 sonnet. Why: validation specified by ST10 over the existing engines, filters and periods as pure functions.
 
 ## Implementation notes
+Deviations from the task text:
+- `RawStatsMatch.settings` is the decoded `ArchivedSettings?` (`null` = does not decode), not an encoded string:
+  `SettingsText.decode` lives in `:app`, so the app decodes and maps a failure to `null`. `RawStatsDart.multiplier` is
+  `Multiplier?` (`null` = unknown value). Profile ids are `Long`, positions 0-based, ranks 1-based.
+- T5 has no `PlayedDart`: Cricket yields come from `usefulMarks(config, darts, starter)` (`CricketYields.isValid`).
+- `StatsDart` carries `remainingBefore` (X01, else null), `isBust` (X01, derived from the replay, not the stored flag)
+  and `yield` (Cricket, else null), plus the stored `visit` and `rank`. Voided darts never enter `StatsMatch`.
+- Extra ST10 checks: the stored thrower of each dart must equal the replayed thrower (`DART_THROWER`); duplicated leg
+  ordinals, a dart of an unknown leg, a leg starter or winner out of range, a start score other than 501/301.
+- Where: `StatsMatchValidator` (`validate`, `validateAll` -> `StatsMatches(matches, ignoredCount)`), replay per leg in
+  `LegFacts.kt` and `X01Remaining.kt` (`x01Remaining`), `InvalidReason` enum for rejections.
+- `MatchSelection.kt`: `select(...)` takes a `StatsFilter` (`AllModes`, `X01Filter`, `CricketFilter`; `null` = All),
+  keeps only matches where `profileId` plays, keeps the input order, "Last 10" ties break by `startedAt` desc.
+- Fixtures: `StatsMatchFixtures.x01Raw/cricketRaw` (player 0 wins every leg, profile id = position + 1; each corrupt
+  variant is a `copy`), `x01(...)`/`cricket(...)` give the validated `StatsMatch`.
