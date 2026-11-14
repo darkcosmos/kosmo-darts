@@ -5,7 +5,7 @@ State, events and effects of the Profile screen (no composable yet): loading, se
 Root "Screens and states", Profile, decision D3.
 
 ## Files
-- `app/.../ui/profile/ProfileState.kt` (new): load state (loading, failed, loaded), section (X01, CRICKET, BOARD),
+- `app/.../ui/profile/ProfileState.kt` (new): load state (loading, failed, loaded), section (X01, CRICKET, HEATMAP),
   X01 filter, Cricket filter, period per section, derived figures (`X01Figures`, `CricketFigures`, trend), since label
   data (ST9 date or "since always"), trend summary (`TrendSummary`, T8), number of ignored matches (ST10, from
   `ProfileStatsData.skippedMatches`; notice shown when above 0).

@@ -1,16 +1,16 @@
-# T21: Profile Board section (state)
+# T21: Profile Heatmap section (state)
 
 ## Goal
-State of the Profile "Board" section: mode filter, mode filters, period, heatmap, selected zone. Root "Rules", HM3,
+State of the Profile "Heatmap" section (named "Heatmap" in English and French, owner decision): mode filter, mode filters, period, heatmap, selected zone. Root "Rules", HM3,
 HM6.
 
 ## Files
-- `app/.../ui/profile/BoardSectionState.kt` (new): mode (ALL, X01, CRICKET), X01 and Cricket filters, period,
+- `app/.../ui/profile/HeatmapSectionState.kt` (new): mode (ALL, X01, CRICKET), X01 and Cricket filters, period,
   `Heatmap` (T18), selected zone (or none: band "Touchez une zone"), miss label kind (HM4), top 5 rows (zone, darts,
   percentage) and the TalkBack zone texts with count and %, all computed here, never in a composable (review A6).
-- `app/.../ui/profile/ProfileState.kt`, `app/.../ui/app/ProfileReducer.kt`, `ProfileEvent.kt`: section BOARD events
+- `app/.../ui/profile/ProfileState.kt`, `app/.../ui/app/ProfileReducer.kt`, `ProfileEvent.kt`: section HEATMAP events
   (mode, filters, period, zone tapped).
-- Tests: `BoardSectionStateTest.kt`, cases added to `ProfileReducerTest.kt`.
+- Tests: `HeatmapSectionStateTest.kt`, cases added to `ProfileReducerTest.kt`.
 
 ## Depends on
 T11, T18.

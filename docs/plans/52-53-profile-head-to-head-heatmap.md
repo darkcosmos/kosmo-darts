@@ -1,6 +1,6 @@
 # Plan: player Profile and statistics, heatmap and head-to-head (issues #52 and #53)
 
-Status: draft for design review. One mission, one branch `feat/52-53-profile-head-to-head-heatmap`, one PR (owner P0).
+Status: design review done, updated with Kosmo's answers to the plan (N1 to N3, "heatmap" wording, D4 confirmed). One mission, one branch `feat/52-53-profile-head-to-head-heatmap`, one PR (owner P0).
 
 ## Goal
 
@@ -18,13 +18,13 @@ Issues: https://github.com/darkcosmos/kosmo-darts/issues/52 and https://github.c
 In scope:
 - PM4 merge reset date rule (Q1 B) and the "really reset" test (Q13).
 - CR13 rewritten: the in-game MPR counts useful marks (Q2 B). CR14 visit marks stay all marks (P7).
-- Statistics engine (X01, Cricket, trend), profile data loader, Profile screen with sections X01, Cricket and Cible
-  (P4 A), trend curve, actions moved from the Players screen (Q12 B, P1 A, P2 A), tapping a player in a match detail.
+- Statistics engine (X01, Cricket, trend), profile data loader, Profile screen with sections X01, Cricket and Heatmap
+  (P4 A, named "Heatmap" in both languages), trend curve, actions moved from the Players screen (Q12 B, P1 A, P2 A), tapping a player in a match detail.
 - A real back stack for Players, History, Profile, Head-to-head and Match detail (#53 Q11, P3).
 - Board zone geometry in `:game-engine`, heatmap aggregation, reusable dartboard Canvas component, heatmap colour
-  scale chosen by Kosmo from SVG mockups (P9 C, gate G1), Profile "Cible" section.
+  scale chosen by Kosmo from SVG mockups (P9 C, gate G1), Profile "Heatmap" section.
 - Head-to-head engine, data, state and screen.
-- Heatmap of the last leg on the between-legs and end screens, X01 and Cricket.
+- Heatmap of the last leg in a "Leg heatmap" tab of the between-legs and end screens, X01 and Cricket (owner N1).
 
 Out of scope: heatmap by real position (camera milestone), group ranking (dropped), training statistics, a statistics
 cache (added only if the performance test fails, see "Approach" 3), any schema version change, any new dependency,
@@ -52,8 +52,8 @@ screens smaller than a Pixel 7 (owner decision).
    validator and every stats function catch nothing and throw nothing on such input: invalid input is a value
    (`Invalid(reason)`), out-of-range indexes give empty results. The loader counts the skipped matches; the Profile and
    the Head-to-head show a short notice "n matchs ignorés (données illisibles)" (ST10). A database read failure stays a
-   `DbResult` failure (HS7). Visible product consequence, to be contested by Kosmo at the plan gate if he prefers the
-   whole screen to fail (option 2).
+   `DbResult` failure (HS7). Kosmo confirmed this option (D4) rather than a whole-screen failure: the invalid rows stay
+   in the database untouched; nothing is ever deleted or rewritten by the statistics.
    - Alternative rejected for CR13: store useful marks in the confirmed-leg summaries of the saved game (format v3). It
      duplicates a value derivable from the journal (R26) and needs a stored format change; the journal replay needs
      none.
@@ -91,8 +91,10 @@ screens smaller than a Pixel 7 (owner decision).
    so the last completed leg `journal.legs[legs.size - 2]` is read; on the end screens the finished leg is
    `journal.currentLeg`. The engine function takes the leg explicitly (`LastLeg.COMPLETED` or `LastLeg.CURRENT`). The
    shared aggregation (HM2) gives the values. The selected player is part of the screen state; its default comes from
-   one named function `defaultHeatmapPlayer` (N2 A: the leg or match winner). On the between-legs screen after a
-   process death, the journal comes from the saved game, which already passed R9 and R29 before the screen is built.
+   one named function `defaultHeatmapPlayer` (N2 A: the leg or match winner). The four screens get two tabs at the
+   top (owner N1): "Result" (the current screen, unchanged) and "Leg heatmap"; the selected tab, player and zone are
+   screen state in `AppState` (D9). The tap band is one isolated composable behind one constant (D11), so that N3 B
+   (display only) stays a one-line change. On the between-legs screen after a process death, the journal comes from the saved game, which already passed R9 and R29 before the screen is built.
    No new logging is added anywhere in the mission (no names, no darts in logs) (review S3).
 
 ## Files and types added or changed
@@ -111,11 +113,12 @@ App (`app/.../`):
 - `history/StatsDao.kt`, `history/ProfileStatsRepository.kt` (new): load a profile's matches, map to `StatsMatch`.
 - `ui/app/AppState.kt`, `AppReducer.kt`, `HistoryReducer.kt`, `PlayersReducer.kt`, new `ProfileReducer.kt`,
   `HeadToHeadReducer.kt`: back stack and new screens.
-- `ui/profile/` (new): state, actions (moved from `ui/players`), screen, sections, trend curve, Cible section.
+- `ui/profile/` (new): state, actions (moved from `ui/players`), screen, sections, trend curve, Heatmap section.
 - `ui/players/`: list only.
 - `ui/board/` (new): `Dartboard.kt` (Canvas, values per zone, tap callback), `HeatmapScale.kt`, `HeatmapLegend.kt`.
 - `ui/headtohead/` (new): state, screen.
-- `ui/between/`, `ui/end/`, `ui/cricket/CricketBetweenLegsContent.kt`, `CricketEndContent.kt`: heatmap block.
+- `ui/board/` also: `ResultHeatmapTabs.kt` (tab row and shared action area), `LegHeatmapTab.kt` (tab content).
+- `ui/between/`, `ui/end/`, `ui/cricket/CricketBetweenLegsContent.kt`, `CricketEndContent.kt`: wrapped in the tabs.
 - `ui/history/MatchDetailScreen.kt`: tappable player names (HS8).
 - `res/values/strings.xml`, `res/values-fr/strings.xml`: every new text, both languages in the same task.
 - Docs: `docs/adr/0015-derived-statistics.md` (new), `docs/rules/statistics.md` (new), `docs/rules/history.md`,
@@ -190,7 +193,7 @@ Common:
   replayed leg winner different from the stored one) is ignored by every statistic, heatmap and head-to-head figure,
   and is never replayed past the faulty dart. The other matches are unaffected. When at least one match is ignored,
   the screen shows "n matchs ignorés (données illisibles)" (plural resource). The History list and detail are
-  unchanged.
+  unchanged. The ignored match stays in the database as it is: never deleted, never rewritten (owner D4).
 
 X01:
 - STX1. 3-dart average = points scored / darts thrown x 3. A bust visit scores 0 and its darts count. No padding to
@@ -225,7 +228,7 @@ Profile screen:
 - PS2. Header: the name, "Since always" or "Since <date>" (ST9), the buttons "Manage player" and "Compare with…".
   "Manage player" unfolds inside the screen the four actions Rename, Merge, Reset, Delete (owner P1 A); a second tap
   folds them.
-- PS3. Three sections X01, Cricket, Board (owner P4 A), as tabs at the top; in portrait the tabs stay pinned at the
+- PS3. Three sections X01, Cricket, Heatmap (owner P4 A; "Heatmap" in English and in French), as tabs at the top; in portrait the tabs stay pinned at the
   top while the header and the content scroll. X01 and Cricket each have their filters (ST3) and the period (ST4);
   the selections survive a rotation and a return from a pushed screen.
 - PS4. X01 section: STX1 to STX8 and the trend curve. Cricket section: STC2 to STC5 and the trend curve.
@@ -247,7 +250,7 @@ Heatmap:
 - HM1. Zones: single (inner and outer single rings as one zone, owner Q5 A), double and triple of each number 1 to 20,
   25 and Bull: 62 zones. Misses are shown apart, outside the board.
 - HM2. A zone's value = its darts / all darts (misses included, voided excluded) of the selection (owner Q6 A).
-- HM3. Profile Board section: mode filter All modes / X01 / Cricket, then the filters of the chosen mode (none for
+- HM3. Profile Heatmap section: mode filter All modes / X01 / Cricket, then the filters of the chosen mode (none for
   All modes), then the period (ST4); ST2 applies.
 - HM4. Miss label: "Miss" / « Raté » when only X01 darts are counted; "Miss or outside Cricket numbers" / « Raté ou
   hors numéros Cricket » as soon as Cricket darts are counted (Cricket, All modes, a Cricket leg) (owner #53 Q4 C).
@@ -265,10 +268,18 @@ Heatmap:
 - HM7. No dart in the selection: explicit empty state.
 - HM8. The dartboard component draws values per zone with the BC4 geometry and has no rule logic; taps resolve with
   BC5.
-- HM9. End of a leg (between-legs screens M16, CR26) and end of a match (M17, CR27): the heatmap of the last leg
-  played, for one player at a time, with a player selector (one entry per player, name and colour; none in a solo
-  game). Same zones, values, scale, misses line and HM4 label. Derived from the match journal: between legs, the last
-  completed leg (the current leg journal is the empty next leg); at the end of a match, the current (finished) leg.
+- HM9. End of a leg (between-legs screens M16, CR26) and end of a match (M17, CR27): two tabs at the top of the
+  screen (owner N1), "Result" / « Résultat » (the screen as before, unchanged) and "Leg heatmap" / « Leg heatmap »
+  (the term "heatmap" is kept in French). The screen opens on "Result". The "Leg heatmap" tab shows the heatmap of the
+  last leg played, for one player at a time, with a player selector (one chip per player, name and colour; none in a
+  solo game); the player shown first is the leg winner between legs and the match winner at the end (owner N2 A).
+  Same zones, values, scale, misses line, legend and HM4 label; tapping a zone shows the HM6 band (owner N3 A); the
+  top 5 list of HM6 is shown too. Derived from the match journal: between legs, the last completed leg (the current
+  leg journal is the empty next leg); at the end of a match, the current (finished) leg.
+- HM10. On those screens the main actions ("Next leg"; "Rematch" and "New game") are reachable from both tabs, at the
+  same place in both. The selected tab, player and zone survive a rotation; after a process death the screen reopens
+  on "Result" with the default player (nothing new is saved). A new between-legs screen, a rematch or a new game opens
+  on "Result".
 
 Head-to-head:
 - HH1. "Compare with…" opens a picker inside the screen: every profile except the shown one and the anonymous one,
@@ -294,17 +305,28 @@ Head-to-head:
 
 - **Players**: list rows (name, matches, last match date), tap opens the Profile; empty, loading, failure.
 - **Profile**: header (PS2) with the optional inline actions panel (the existing panels: rename with error, merge
-  pick, merge confirm, reset confirm, delete confirm with count, messages); tabs X01 / Cricket / Board; filter chips;
+  pick, merge confirm, reset confirm, delete confirm with count, messages); tabs X01 / Cricket / Heatmap; filter chips;
   period chips; content, empty-for-filters, empty, loading, failure. Portrait: one column, scrolling, header and tabs
   scroll away. Landscape: tabs and filters at the left, figures in two columns at the right.
 - **Head-to-head**: picker (list, empty if no other profile); loaded (names, date line, counters, side-by-side
   figures, list of common matches); empty (no common match); loading; failure.
-- **Between legs and end screens**: a "BOARD · LEG n" block (title per HM9) with the player selector (chips with the
-  colour strip and the name, horizontal scroll, 48 dp), the board, the misses line, the legend and the tap band.
-  Portrait: the block under the scoreboard in the scrolling content, the main button ("MANCHE SUIVANTE", "REVANCHE" /
-  "NOUVELLE PARTIE") stays pinned at the bottom. Landscape: a third column at the right of the scoreboard column that
-  scrolls on its own, with a minimum board size of 200 dp (at 200 % font the selector, misses line and band scroll
-  under the board). Pending owner answers N1 to N3 ("Open questions").
+- **Between legs and end screens** (HM9, HM10, owner N1): a tab row fixed at the top, under the safe area, in both
+  orientations and both tabs: "RÉSULTAT" and "LEG HEATMAP" (EN "RESULT" and "LEG HEATMAP"), equal widths, 48 dp tall
+  (42 dp allowed in landscape), selected tab underlined in the accent colour, labels wrap on two lines at 200 % font
+  and are never cut; TalkBack reads each tab with its selected state. Under it, the selected tab:
+  - "Résultat": today's screen, unchanged (portrait `ScrollingScreen`, landscape two columns between legs).
+  - "Leg heatmap": a "LEG n" title (set and leg as in M19), the player selector (chips with the colour strip and the
+    name, horizontal scroll, 48 dp, absent in solo), the board, the misses line with the HM4 label, the legend, the
+    tap band (D11) and the top 5 list. Portrait: one scrolling column, board full width. Landscape: the board at the
+    left, as large as the height allows and never under 200 dp; at the right a column that scrolls on its own with
+    the selector, misses line, legend, band and top 5 (at 200 % font they scroll, the board stays). This replaces
+    the third column of the first plan (review U1 intent kept).
+  - Main actions (D10): one shared action area, outside the tab content, so a tab switch never moves or hides it.
+    Portrait: the `ScrollingScreen` button slot in both tabs (pinned at the bottom whenever the existing policy pins
+    it, which is the case on a Pixel 7 at default font; otherwise after the content, as today). Landscape: between
+    legs, "MANCHE SUIVANTE" stays under the scoreboard in "Résultat" and is pinned at the bottom of the right column
+    in "Leg heatmap"; end screens, "REVANCHE" / "NOUVELLE PARTIE" follow the same `ScrollingScreen` slot as in
+    portrait. A UI test proves the action is displayed and clickable in each tab and orientation.
 - **Texts**: every count (matches, common matches, legs, darts, ignored matches) is a plural resource in English and
   French; dates use the device locale format.
 
@@ -328,31 +350,38 @@ Head-to-head:
 - Data (Robolectric): loader returns the profile's matches with all players' darts; anonymous never loaded as a
   profile; merge dates through the repository; a read failure gives `DbResult` failure.
 - State (JVM): top-5 order with ties and percentages (T21, T26); trend summary values (T8, T14); head-to-head
-  filters after rotation and after Back from a detail (T24); plurals and French dates (T13).
+  filters after rotation and after Back from a detail (T24); plurals and French dates (T13); HM10 end-screen tab:
+  opens on Result, tab, player and zone kept across a rotation, back to Result and the default player after a process
+  death, a new between-legs screen, a rematch and a new game open on Result (T26).
 - UI (Compose JVM tests): navigation stack (no copies, Back one level, rotation, process death returns home), Profile
   states, filters, actions
   panels and P2 outcomes, Players row opens the Profile, detail name tap, heatmap tap band and top-5 list, picker,
-  head-to-head states, end-screen selector.
+  head-to-head states, end-screen tabs (switching, TalkBack selected state, the Result tab identical to today's
+  screen), selector and band, the main actions displayed and clickable in both tabs in portrait and landscape (HM10).
 - Captures (Roborazzi, Pixel 7 only, portrait, landscape, 200 % font): Profile empty and filled (X01, Cricket),
-  actions panel, Players list; trend curve; Board section empty, spread, concentrated; head-to-head picker, filled,
-  empty; between-legs and end screens with the heatmap, X01 and Cricket, 1 and 4 players, and 4 players in landscape
-  at 200 % font.
+  actions panel, Players list; trend curve; Heatmap section empty, spread, concentrated; head-to-head picker, filled,
+  empty; between-legs and end screens on the "Leg heatmap" tab, X01 and Cricket, 1 and 4 players (long names), and
+  4 players in landscape at 200 % font; the "Résultat" tab with the tab row in portrait and landscape.
 - Every edge case of the project review focus that this mission touches: bust, double-out and single-out, undo at
   every step (CR13, HM9), 1 to 4 players, 501 and 301, rematch (end-screen heatmap uses the finished match), process
-  death on the between-legs screen (journal restored, heatmap shown, selection back to the default).
+  death on the between-legs screen (journal restored, screen back on "Résultat", the "Leg heatmap" tab shows the
+  heatmap with the default player).
 
 ## How Kosmo verifies
 
 On the Pixel 7, after uninstalling the previous version and installing the CI debug APK of the latest commit:
 1. Play an X01 501 double-out match of 2 legs with 2 players, with a bust and an undo. At the end of the first leg,
-   the between-legs screen shows the leg heatmap; switch players; tap a zone (count and %). Same at the end screen.
-2. Play a Cricket match with 3 players; check the in-game MPR moves only with closing or scoring marks; the end screen
-   heatmap labels misses "Raté ou hors numéros Cricket".
+   the between-legs screen opens on the "RÉSULTAT" tab, identical to before. Tap "LEG HEATMAP": the heatmap of that
+   leg for its winner; switch players with the chips; tap a zone (band with zone, darts and %); "MANCHE SUIVANTE" is
+   visible and works from this tab. Rotate: same tab, same player. Same at the end screen with "REVANCHE" /
+   "NOUVELLE PARTIE" (match winner shown first).
+2. Play a Cricket match with 3 players; check the in-game MPR moves only with closing or scoring marks; on the end
+   screen, the "LEG HEATMAP" tab labels misses "Raté ou hors numéros Cricket".
 3. Home, Joueurs: rows open the Profile. X01 and Cricket figures, filters, periods, trend curve; "–" where nothing is
    computable; "Depuis toujours".
 4. "Gérer le joueur": rename, reset ("Depuis le <date>"), merge (lands on the target's Profile), delete (back to the
    list).
-5. Section Cible: filters, tap a zone, misses line, empty state on a filter without darts.
+5. Section Heatmap: filters, tap a zone, misses line, empty state on a filter without darts.
 6. "Comparer avec…": picker with common match counts, figures side by side, a draw case at 3 players, open a common
    match and come back with Back; tap a name in that detail, Back returns step by step.
 7. Rotate on every new screen; repeat with font size at maximum.
@@ -382,13 +411,13 @@ On the Pixel 7, after uninstalling the previous version and installing the CI de
 | T18 | Heatmap aggregation | `52-53-profile-head-to-head-heatmap/T18-heatmap-aggregation.md` | T3, T17 | sonnet | Specified counting rules HM1, HM2, HM4, HM9 |
 | T19 | Dartboard Canvas component | `52-53-profile-head-to-head-heatmap/T19-dartboard-component.md` | T17 | sonnet | Logic-free drawing with tests and captures |
 | T20 | Heatmap colour scale and legend | `52-53-profile-head-to-head-heatmap/T20-heatmap-scale.md` | T19, G1 | sonnet | Mapping and legend from the chosen mockup |
-| T21 | Profile Board section (state) | `52-53-profile-head-to-head-heatmap/T21-board-section-state.md` | T18, T11 | sonnet | State holder with JVM tests |
-| T22 | Profile Board section (screen) | `52-53-profile-head-to-head-heatmap/T22-board-section-screen.md` | T20, T21, T13 | sonnet | Screen from this plan, tests, captures |
+| T21 | Profile Heatmap section (state) | `52-53-profile-head-to-head-heatmap/T21-heatmap-section-state.md` | T18, T11 | sonnet | State holder with JVM tests |
+| T22 | Profile Heatmap section (screen) | `52-53-profile-head-to-head-heatmap/T22-heatmap-section-screen.md` | T20, T21, T13 | sonnet | Screen from this plan, tests, captures |
 | T23 | Head-to-head engine | `52-53-profile-head-to-head-heatmap/T23-head-to-head-engine.md` | T4, T7 | sonnet | Specified HH rules, tests listed |
 | T24 | Head-to-head data and state | `52-53-profile-head-to-head-heatmap/T24-head-to-head-state.md` | T23, T9, T10 | sonnet | Loader and state holder with JVM tests |
 | T25 | Head-to-head screen | `52-53-profile-head-to-head-heatmap/T25-head-to-head-screen.md` | T24, T13 | sonnet | Screen from this plan, tests, captures |
-| T26 | End-screen heatmap state | `52-53-profile-head-to-head-heatmap/T26-end-heatmap-state.md` | T18, T6 | sonnet | Wiring of the journal and a selection event |
-| T27 | End-screen heatmap layout | `52-53-profile-head-to-head-heatmap/T27-end-heatmap-layout.md` | T26, T20, N1 to N3 | sonnet | Layout from this plan, captures |
+| T26 | End-screen heatmap and tab state | `52-53-profile-head-to-head-heatmap/T26-end-heatmap-state.md` | T18, T6 | sonnet | Wiring of the journal, tab and selection events |
+| T27 | End-screen tabs and leg heatmap layout | `52-53-profile-head-to-head-heatmap/T27-end-heatmap-layout.md` | T26, T22 | sonnet | Layout from this plan, captures |
 
 No `opus` task: no stored format change (the CR13 change derives from the journal), no cross-module refactoring
 (the back stack stays in `:app`), and no rule left ambiguous after the intake answers. T16 can run right after T1 so
@@ -411,34 +440,45 @@ Owner answers to the intake follow-up:
 - P0: one single PR, #52 tasks first then #53, small independently checkable tasks. P1 A: "Gérer le joueur" unfolds
   the actions in the screen. P2 A for the three: merge source lands on the target, delete goes back (History list if
   the detail's match was erased), actions from every entry point (PS7). P3: real back stack without copies (HS9). P4
-  A: Board section (PS3, HM3). P5: solo excluded from all results, counted in darts per leg won and best leg (ST5,
+  A: board section, now named "Heatmap" (PS3, HM3). P5: solo excluded from all results, counted in darts per leg won and best leg (ST5,
   STX7). P6: total plus average per leg (STC4). P7: CR14 stays all marks. P8: date line rule (HH8). P9 C: static SVG
   mockups of both scales before any heatmap code, gate G1 before T20.
 - New request: heatmap of the last leg on the end-of-leg and end-of-match screens, with a player switch (HM9).
+Owner answers to the plan (2026-11):
+- N1 "other": tabs at the top of the between-legs and end screens, "Résultat" = the current screen, "Leg heatmap" =
+  the heatmap of the last leg (HM9, HM10, "Screens and states"). Replaces the third landscape column of the first plan.
+- N2 A: the leg winner is shown first between legs, the match winner on the end screen (HM9, D7).
+- N3 A: tapping a zone shows the band, "but we will see during the test whether we switch to B": the band stays
+  isolated so that B is a one-line change (D11).
+- Wording: the term "heatmap" is kept in French everywhere. The Profile section first called « Cible » / "Board" is
+  "Heatmap" in both languages (PS3, HM3, T21, T22, state names `HeatmapSection*`, enum value `HEATMAP`).
+- D4 confirmed (option A): an unreadable archived match stays in the database, untouched and never deleted; it is
+  skipped in every statistic and counted, with the notice "n matchs ignorés (données illisibles)" (ST10).
+- G1 unchanged: Kosmo picks the colour scale after T16, before T20.
 Design decisions (developer, to be confirmed in design review):
 - D1: CR13 derives useful marks from the journal replay, no save format change (Approach 2).
 - D2: Profile figures computed without cache; a cache only if the performance tests fail (Approach 3).
 - D3: the Profile opens on the X01 tab, period "Since always", filters "All".
-- D4 (review S1): an archived match that breaks the rules is skipped and counted, validated in `:game-engine`; the
-  Profile and the Head-to-head show "n matchs ignorés (données illisibles)" (ST10). Visible product consequence:
-  Kosmo may prefer option 2 (the whole screen shows the read error) at the plan gate.
+- D4 (review S1, confirmed by Kosmo): an archived match that breaks the rules is skipped and counted, validated in
+  `:game-engine`, never deleted; the Profile and the Head-to-head show "n matchs ignorés (données illisibles)" (ST10).
 - D5 (review A3): back stack as a parent chain in each `Screen`, not a `List<Screen>` (Approach 4, ADR 0015).
 - D6 (review A2): between legs the heatmap reads the last completed leg, at the end the current leg (HM9).
 - D7: the end-screen default player is one named function `defaultHeatmapPlayer` implementing N2 A; answer B is a
   one-line change in that function.
 - D8 (review U4): in portrait the Profile tabs stay pinned; the header scrolls away.
+- D9 (N1): the selected end-screen tab is a field of the four screen nodes in `AppState`, next to the selected player
+  and zone: it survives a rotation; it is not saved, so after a process death the screen reopens on "Résultat" with
+  the default player (no saved game format change). Every new between-legs or end screen opens on "Résultat". System
+  Back keeps today's behavior on both tabs (no tab history).
+- D10 (N1): the main actions sit in one shared action area outside the tab content, at the same place in both tabs
+  ("Screens and states"); the "Résultat" tab content is today's screen unchanged.
+- D11 (N3): the tap band is one composable `ZoneBand`, shown on the end screens only when the constant
+  `END_SCREEN_ZONE_TAP_ENABLED` (in `LegHeatmapTab.kt`) is true; when false, zone taps are ignored and the band is
+  hidden, the top 5 list stays. Switching to N3 B changes that one line and its UI test.
 - Review findings A4, A5, A6, S2, S3, T1 to T6, U1 to U7: all accepted and written into the rules, "Approach" and the
   task files; none rejected.
 
 ## Open questions
 
-For Kosmo (needed before T27 only; the other tasks do not depend on them):
-- N1. End-of-leg and end-of-match heatmap placement. A = always visible under the scoreboard (portrait, scrolling;
-  the main button stays pinned at the bottom; landscape third column); B = a folded "Voir la cible" row that unfolds
-  the heatmap in the screen. Recommendation: A.
-- N2. Player shown first on those screens. A = the leg winner (between legs) / the match winner (end); B = the first
-  player of the leg. Recommendation: A.
-- N3. Tapping a zone on those screens. A = same band as the Profile (zone, darts, %); B = display only.
-  Recommendation: A.
-Gate:
+N1 to N3 and D4 are answered ("Decisions"). Remaining gate:
 - G1. Kosmo picks the relative or the absolute scale from `docs/design/mockups/heatmap/` (after T16).

@@ -1,19 +1,20 @@
-# T22: Profile Board section (screen)
+# T22: Profile Heatmap section (screen)
 
 ## Goal
-The "Board" tab of the Profile: filters, board with the chosen scale, legend, misses line, tap band, top 5 list,
+The "Heatmap" tab of the Profile (label "Heatmap" in English and in French, owner decision): filters, board with the chosen scale, legend, misses line, tap band, top 5 list,
 empty state. Root "Screens and states", Profile.
 
 ## Files
-- `app/.../ui/profile/BoardSection.kt` (new): reuses `Dartboard`, `HeatmapScale`, `HeatmapLegend`.
+- `app/.../ui/profile/HeatmapSection.kt` (new): reuses `Dartboard`, `HeatmapScale`, `HeatmapLegend`.
 - `app/.../ui/board/ZoneBand.kt`, `ZoneText.kt` (new): the fixed band (zone name, darts, %) and zone names
-  ("T20", "Simple 5" / "S5", "25", "Bull") in both languages; shared with T27.
+  ("T20", "Simple 5" / "S5", "25", "Bull") in both languages; shared with T27. `ZoneBand` stays a self-contained
+  composable (state in, no logic) so that T27 can switch it off with one constant (decision D11).
 - `app/.../ui/profile/ProfileScreen.kt`: the third tab.
-- Strings en and fr, one key per label: tab, filters, miss labels (EN "Miss" / "Miss or outside Cricket numbers",
+- Strings en and fr, one key per label: tab ("Heatmap" in both languages), filters, miss labels (EN "Miss" / "Miss or outside Cricket numbers",
   FR "Raté" / "Raté ou hors numéros Cricket", HM4), band with its "nothing selected" text ("Touch a zone" /
   "Touchez une zone"), top 5, empty; dart counts as `<plurals>`. No text built in a composable: the band and the top 5
   show the state's values (T21).
-- Tests: `BoardSectionTest.kt`, `ZoneTextTest.kt`; captures in `ProfileScreenshotTest.kt`.
+- Tests: `HeatmapSectionTest.kt`, `ZoneTextTest.kt`; captures in `ProfileScreenshotTest.kt`.
 
 ## Depends on
 T13, T20, T21.
