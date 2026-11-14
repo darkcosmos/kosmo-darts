@@ -45,3 +45,22 @@ HM4, HM6 (band text, top 5), HM9, HM10, DJ2, DJ4, R9, R26, R29.
 sonnet. Why: wiring of the journal and three selection events, tests specified.
 
 ## Implementation notes
+- `ui/app/EndHeatmap.kt`: `EndTab`, `EndScreenKind` (`BETWEEN_LEGS`, `MATCH_END`), the injectable
+  `HeatmapPlayerChoice` and `defaultHeatmapPlayer(kind, lastLegWinner, matchWinner)` (N2 A; B is a change of this one
+  function), and the sealed `EndHeatmapScreen` implemented by the four screens (`journal`, `endTab`, `heatmapPlayer`,
+  `heatmapZone`, `kind`, `legSetup`, `playerNames`, `playerColors`, `withHeatmap`). Deviation: the function takes the
+  winners of the last completed leg and of the match (read from the match by the callers) instead of the journal,
+  which would need a replay.
+- Injection: `AppReducer(random, heatmapPlayer = ::defaultHeatmapPlayer)`, `onCricketGame(..., heatmapPlayer)`,
+  `initialState(..., heatmapPlayer)` and the `toScreen(heatmapPlayer)` functions. The screens' own default constructor
+  parameters use the real function, so `Screen.BetweenLegs(match, journal)` is already on `RESULT`, winner selected.
+- Events `AppEvent.EndTabSelected`, `HeatmapPlayerSelected` (out-of-range index ignored), `HeatmapZoneTapped` (a
+  second tap replaces the zone, a player switch keeps it); handled by `reduceHeatmap` after the screen's own events,
+  so the abandon dialog stays modal. Fresh screens (next leg, rematch, new game, resume) get fresh fields.
+- `Screen.End` now carries the journal; its `End(game)` secondary constructor moved to the test fixture
+  `endScreen(game)` (`testing/ScreenFixtures.kt`), the other tests use `endScreen`.
+- `ui/between/EndHeatmapState.kt`: `EndHeatmapScreen.heatmapState()` gives `EndHeatmapState(tab, players, section)`:
+  `players` are `HeatmapPlayerChip`s (empty when solo) and `section` is the Profile `HeatmapSectionState` (zone shares,
+  `topZones`, `selected`, `figureOf`, `isEmpty`, `missLabelRes`); T27 formats the texts with the `ZoneText.kt`
+  helpers. `LastLeg.COMPLETED` between legs, `CURRENT` at the end.
+- The D11 constant lives in T27 (`LegHeatmapTab.kt`): the reducer accepts every zone tap.

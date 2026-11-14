@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.endScreen
 import io.github.darkcosmos.kosmodarts.testing.reduce
 import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
@@ -33,7 +34,7 @@ class SettingsNavigationTest {
         listOf(
             Screen.Setup(SetupState.prefilled(null)),
             gameScreen(SaveFixtures.MID_TURN.game.let { io.github.darkcosmos.kosmodarts.ui.game.GameScreenState(it) }),
-            Screen.End(SaveFixtures.WAITING_CHECKOUT.game),
+            endScreen(SaveFixtures.WAITING_CHECKOUT.game),
         ).forEach { screen ->
             val state = AppState(screen = screen)
             assertEquals(state, reducer.reduce(state, AppEvent.SettingsTapped))

@@ -16,12 +16,24 @@ import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 // as they are (plan decision D1). Pure.
 
 /** The Cricket game screen after [event]: play, "Finish …", abandon and the no-voice message (CR22 to CR25). */
-internal fun onCricketGame(state: AppState, screen: Screen.CricketGame, event: AppEvent, at: Long): AppState {
+internal fun onCricketGame(
+    state: AppState,
+    screen: Screen.CricketGame,
+    event: AppEvent,
+    at: Long,
+    heatmapPlayer: HeatmapPlayerChoice = ::defaultHeatmapPlayer,
+): AppState {
     val game = screen.game
     return when {
         // AR3: while the archive is written, only its answer counts; a second tap does nothing.
         game.archive is ArchiveStatus.Saving -> when (event) {
-            AppEvent.ArchiveSucceeded -> state.copy(screen = Screen.CricketEnd(game.match, screen.journal))
+            AppEvent.ArchiveSucceeded -> state.copy(
+                screen = Screen.CricketEnd(
+                    game.match,
+                    screen.journal,
+                    heatmapPlayer = game.match.heatmapPlayerOf(EndScreenKind.MATCH_END, heatmapPlayer),
+                ),
+            )
             AppEvent.ArchiveFailed ->
                 state.copy(screen = screen.copy(game = game.copy(archive = ArchiveStatus.Failed)))
             else -> state
@@ -36,7 +48,8 @@ internal fun onCricketGame(state: AppState, screen: Screen.CricketGame, event: A
             state.copy(screen = screen.copy(noVoiceNotice = NoVoiceNotice(event.canInstall)))
         // Rule R6: leaving the game screen this way deletes the saved game.
         event == AppEvent.AbandonConfirmed -> state.copy(screen = Screen.Home())
-        event == AppEvent.FinishGameTapped && game.isWinPending -> state.copy(screen = finishCricket(screen, at))
+        event == AppEvent.FinishGameTapped && game.isWinPending ->
+            state.copy(screen = finishCricket(screen, at, heatmapPlayer))
         // M15, owner O1: system back opens "Abandon the game?" in every zone mode, a pending win included; dismissing
         // it leaves the win pending.
         else -> state.copy(screen = playCricket(screen, event, at))
@@ -55,7 +68,7 @@ internal fun onCricketBetweenLegs(state: AppState, screen: Screen.CricketBetween
         event == AppEvent.NextLegTapped ->
             state.copy(screen = Screen.CricketGame(CricketGameScreenState(screen.match), screen.journal))
         event == AppEvent.Back -> state.copy(screen = screen.copy(isAbandonDialogShown = true))
-        else -> state
+        else -> screen.reduceHeatmap(event)?.let { state.copy(screen = it) } ?: state
     }
 
 /**
@@ -72,7 +85,7 @@ internal fun onCricketEnd(
     is AppEvent.NewGame -> state.toSetup(event.mode)
     // Rule R22: a rematch is a game start, so its roster and settings become the last setup.
     AppEvent.Rematch -> newCricketMatchState(cricketRematchSetup(screen.match), state.lastSetup, stamp)
-    else -> state
+    else -> screen.reduceHeatmap(event)?.let { state.copy(screen = it) } ?: state
 }
 
 /**
@@ -105,12 +118,16 @@ internal fun cricketRematchSetup(match: CricketMatch): CricketMatchConfig {
 }
 
 /** M15, M16, M17: "Confirm match" ends the match; "Confirm leg" and "Confirm set" confirm the leg. */
-private fun finishCricket(screen: Screen.CricketGame, at: Long): Screen {
+private fun finishCricket(screen: Screen.CricketGame, at: Long, heatmapPlayer: HeatmapPlayerChoice): Screen {
     val game = screen.game
     return when (game.winOutcome) {
         LegOutcome.LEG, LegOutcome.SET -> {
             val confirmed = game.match.confirmLeg()
-            Screen.CricketBetweenLegs(confirmed, GameProgress.follow(screen.journal, game.match, confirmed, at))
+            Screen.CricketBetweenLegs(
+                confirmed,
+                GameProgress.follow(screen.journal, game.match, confirmed, at),
+                heatmapPlayer = confirmed.heatmapPlayerOf(EndScreenKind.BETWEEN_LEGS, heatmapPlayer),
+            )
         }
         // AR1, AR3: the End screen waits for the archive; the game stays on the win zone meanwhile.
         LegOutcome.MATCH, null -> screen.copy(game = game.copy(archive = archiveOf(game.match, screen.journal, at)))

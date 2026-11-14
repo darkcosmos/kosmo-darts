@@ -2,6 +2,8 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
+import io.github.darkcosmos.kosmodarts.engine.board.BoardZone
+import io.github.darkcosmos.kosmodarts.engine.journal.LegSetup
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
@@ -9,7 +11,6 @@ import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
-import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMode
 import io.github.darkcosmos.kosmodarts.history.DbResult
 import io.github.darkcosmos.kosmodarts.history.HistoryList
@@ -127,22 +128,51 @@ sealed interface Screen {
      * @property isAbandonDialogShown whether the "Abandon the game?" confirmation is open (owner Q6 i).
      * @property checkout the winning visit of the leg just confirmed, shown in the winner's zone; `null` after a resume
      *   on this screen (not saved).
+     * @property endTab the selected tab (HM9); [endTab], [heatmapPlayer] and [heatmapZone] are not saved (D9, HM10).
+     * @property heatmapPlayer the player whose last leg the heatmap shows; the leg winner by default (N2 A, D7).
+     * @property heatmapZone the zone of the band (HM6), or `null`.
      */
     data class BetweenLegs(
         val match: X01Match,
-        val journal: MatchJournal,
+        override val journal: MatchJournal,
         val isAbandonDialogShown: Boolean = false,
         val checkout: CheckoutSummary? = null,
-    ) : Screen
+        override val endTab: EndTab = EndTab.RESULT,
+        override val heatmapPlayer: Int = match.heatmapPlayerOf(EndScreenKind.BETWEEN_LEGS),
+        override val heatmapZone: BoardZone? = null,
+    ) : EndHeatmapScreen {
+        override val kind: EndScreenKind get() = EndScreenKind.BETWEEN_LEGS
+        override val legSetup: LegSetup get() = LegSetup.X01(match.config)
+        override val playerNames: List<String> get() = match.config.players
+        override val playerColors: List<PlayerColor> get() = match.colors
 
-    /** End of a finished match (M17); a single game is a match of one leg. */
-    data class End(val match: X01Match) : Screen {
-        /** The end of a single game (M5): [game] is its only, finished, leg. */
-        constructor(game: X01Game) : this(X01Match(X01MatchConfig(game.config), emptyList(), game))
+        override fun withHeatmap(tab: EndTab, player: Int, zone: BoardZone?): Screen =
+            copy(endTab = tab, heatmapPlayer = player, heatmapZone = zone)
+    }
 
+    /**
+     * End of a finished match (M17); a single game is a match of one leg. [journal] is the match journal, which the
+     * heatmap of the last leg reads (HM9); the tab, player and zone are like [BetweenLegs]'s, the match winner is the
+     * default player (N2 A).
+     */
+    data class End(
+        val match: X01Match,
+        override val journal: MatchJournal,
+        override val endTab: EndTab = EndTab.RESULT,
+        override val heatmapPlayer: Int = match.heatmapPlayerOf(EndScreenKind.MATCH_END),
+        override val heatmapZone: BoardZone? = null,
+    ) : EndHeatmapScreen {
         /** The last leg, the one that decided the match. */
         val game: X01Game
             get() = match.currentLeg
+
+        override val kind: EndScreenKind get() = EndScreenKind.MATCH_END
+        override val legSetup: LegSetup get() = LegSetup.X01(match.config)
+        override val playerNames: List<String> get() = match.config.players
+        override val playerColors: List<PlayerColor> get() = match.colors
+
+        override fun withHeatmap(tab: EndTab, player: Int, zone: BoardZone?): Screen =
+            copy(endTab = tab, heatmapPlayer = player, heatmapZone = zone)
     }
 
     /**
@@ -168,15 +198,40 @@ sealed interface Screen {
      */
     data class CricketBetweenLegs(
         val match: CricketMatch,
-        val journal: MatchJournal,
+        override val journal: MatchJournal,
         val isAbandonDialogShown: Boolean = false,
-    ) : Screen
+        override val endTab: EndTab = EndTab.RESULT,
+        override val heatmapPlayer: Int = match.heatmapPlayerOf(EndScreenKind.BETWEEN_LEGS),
+        override val heatmapZone: BoardZone? = null,
+    ) : EndHeatmapScreen {
+        override val kind: EndScreenKind get() = EndScreenKind.BETWEEN_LEGS
+        override val legSetup: LegSetup get() = LegSetup.Cricket(match.config)
+        override val playerNames: List<String> get() = match.config.players
+        override val playerColors: List<PlayerColor> get() = match.colors
+
+        override fun withHeatmap(tab: EndTab, player: Int, zone: BoardZone?): Screen =
+            copy(endTab = tab, heatmapPlayer = player, heatmapZone = zone)
+    }
 
     /**
      * End of a finished Cricket match (M17, CR27); a single game is a match of one leg. [match] is not confirmed;
-     * [journal] is the match journal, which the MPR needs (CR13).
+     * [journal] is the match journal, which the MPR needs (CR13) and the heatmap of the last leg reads (HM9).
      */
-    data class CricketEnd(val match: CricketMatch, val journal: MatchJournal) : Screen
+    data class CricketEnd(
+        val match: CricketMatch,
+        override val journal: MatchJournal,
+        override val endTab: EndTab = EndTab.RESULT,
+        override val heatmapPlayer: Int = match.heatmapPlayerOf(EndScreenKind.MATCH_END),
+        override val heatmapZone: BoardZone? = null,
+    ) : EndHeatmapScreen {
+        override val kind: EndScreenKind get() = EndScreenKind.MATCH_END
+        override val legSetup: LegSetup get() = LegSetup.Cricket(match.config)
+        override val playerNames: List<String> get() = match.config.players
+        override val playerColors: List<PlayerColor> get() = match.colors
+
+        override fun withHeatmap(tab: EndTab, player: Int, zone: BoardZone?): Screen =
+            copy(endTab = tab, heatmapPlayer = player, heatmapZone = zone)
+    }
 }
 
 /** Whether [this] is a game screen of any mode, the between-legs screens included (R1, R14; ADR 0002). */
@@ -311,6 +366,15 @@ sealed interface AppEvent {
     data object AbandonDismissed : AppEvent
 
     data object Rematch : AppEvent
+
+    /** HM9: a tab of the between-legs or end screen. */
+    data class EndTabSelected(val tab: EndTab) : AppEvent
+
+    /** HM9: the colour chip of the player at [index] on the "Leg heatmap" tab. */
+    data class HeatmapPlayerSelected(val index: Int) : AppEvent
+
+    /** HM6, HM9: a tap on [zone] of the board of the "Leg heatmap" tab. */
+    data class HeatmapZoneTapped(val zone: BoardZone) : AppEvent
 
     /** The gear on the home screen (AN13). */
     data object SettingsTapped : AppEvent

@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.endScreen
 import io.github.darkcosmos.kosmodarts.testing.reduce
 import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
@@ -90,7 +91,7 @@ class AppReducerResumeTest {
 
         val state = checkout.after(AppEvent.ResumeTapped, AppEvent.FinishGameTapped, AppEvent.ArchiveSucceeded)
 
-        assertEquals(Screen.End(SaveFixtures.WAITING_CHECKOUT.game), state.screen)
+        assertEquals(endScreen(SaveFixtures.WAITING_CHECKOUT.game), state.screen)
     }
 
     @Test

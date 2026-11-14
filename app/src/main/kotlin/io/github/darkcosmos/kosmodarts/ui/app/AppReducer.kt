@@ -16,7 +16,10 @@ import kotlin.random.Random
  * Computes the next [AppState] for an [AppEvent]. Pure, except for the injected [random] used by Shuffle. Storage
  * follows from the states it returns (see [persistenceEffects]).
  */
-class AppReducer(private val random: Random) {
+class AppReducer(
+    private val random: Random,
+    private val heatmapPlayer: HeatmapPlayerChoice = ::defaultHeatmapPlayer,
+) {
 
     fun reduce(state: AppState, event: AppEvent, stamp: EventStamp): AppState = when (event) {
         is ProfileEvent -> reduceProfileEvent(state, event, stamp)
@@ -32,12 +35,12 @@ class AppReducer(private val random: Random) {
         is Screen.Setup -> onSetup(state, screen, event, stamp)
         is Screen.Game -> onGame(state, screen, event, stamp.at)
         is Screen.BetweenLegs -> onBetweenLegs(state, screen, event)
-        is Screen.End -> onEnd(state, screen.match, event, stamp)
+        is Screen.End -> onEnd(state, screen, event, stamp)
         // AN13: back returns to the home screen it came from.
         is Screen.Settings -> if (event == AppEvent.Back) state.copy(screen = screen.home) else state
         is Screen.History -> reduceHistory(state, screen, event)
         is Screen.Stacked -> reduceStacked(state, screen, event, stamp)
-        is Screen.CricketGame -> onCricketGame(state, screen, event, stamp.at)
+        is Screen.CricketGame -> onCricketGame(state, screen, event, stamp.at, heatmapPlayer)
         is Screen.CricketBetweenLegs -> onCricketBetweenLegs(state, screen, event)
         is Screen.CricketEnd -> onCricketEnd(state, screen, event, stamp)
     }
@@ -59,7 +62,7 @@ class AppReducer(private val random: Random) {
             // R3, R20: the confirmation remembers the mode of the "New game" that opened it.
             event is AppEvent.NewGame -> state.copy(screen = home.copy(newGameDialogMode = event.mode))
             // R14: a match saved between legs resumes on the between-legs screen.
-            event == AppEvent.ResumeTapped && saved != null -> state.copy(screen = saved.toScreen())
+            event == AppEvent.ResumeTapped && saved != null -> state.copy(screen = saved.toScreen(heatmapPlayer))
             else -> state
         }
     }
@@ -85,7 +88,13 @@ class AppReducer(private val random: Random) {
         return when {
             // AR3: while the archive is written, only its answer counts; a second tap does nothing.
             game.archive is ArchiveStatus.Saving -> when (event) {
-                AppEvent.ArchiveSucceeded -> state.copy(screen = Screen.End(game.match))
+                AppEvent.ArchiveSucceeded -> state.copy(
+                    screen = Screen.End(
+                        game.match,
+                        screen.journal,
+                        heatmapPlayer = game.match.heatmapPlayerOf(EndScreenKind.MATCH_END, heatmapPlayer),
+                    ),
+                )
                 AppEvent.ArchiveFailed ->
                     state.copy(screen = screen.copy(game = game.copy(archive = ArchiveStatus.Failed)))
                 else -> state
@@ -114,7 +123,12 @@ class AppReducer(private val random: Random) {
             LegOutcome.LEG, LegOutcome.SET -> {
                 val confirmed = game.match.confirmLeg()
                 val journal = GameProgress.follow(screen.journal, game.match, confirmed, at)
-                Screen.BetweenLegs(confirmed, journal, checkout = game.checkoutSummary)
+                Screen.BetweenLegs(
+                    confirmed,
+                    journal,
+                    checkout = game.checkoutSummary,
+                    heatmapPlayer = confirmed.heatmapPlayerOf(EndScreenKind.BETWEEN_LEGS, heatmapPlayer),
+                )
             }
             // AR1, AR3: the End screen waits for the archive; the game stays on the CHECKOUT zone meanwhile.
             LegOutcome.MATCH, null -> screen.copy(game = game.copy(archive = archiveOf(game.match, screen.journal, at)))
@@ -150,7 +164,7 @@ class AppReducer(private val random: Random) {
         event == AppEvent.NextLegTapped ->
             state.copy(screen = Screen.Game(GameScreenState(screen.match), screen.journal))
         event == AppEvent.Back -> state.copy(screen = screen.copy(isAbandonDialogShown = true))
-        else -> state
+        else -> screen.reduceHeatmap(event)?.let { state.copy(screen = it) } ?: state
     }
 
     /** HS1 to HS4, HS6, HS7: back returns home; the other events change the filters, the scroll or the read. */
@@ -167,12 +181,13 @@ class AppReducer(private val random: Random) {
         else -> game
     }
 
-    private fun onEnd(state: AppState, match: X01Match, event: AppEvent, stamp: EventStamp): AppState = when (event) {
-        AppEvent.Back -> state.copy(screen = Screen.Home())
-        is AppEvent.NewGame -> state.toSetup(event.mode)
-        // Rule R7: a rematch is a game start, so its order becomes the last setup (owner decision, issue #30 Q3).
-        // M17: same format (owner Q3).
-        AppEvent.Rematch -> newMatchState(rematchSetup(match), state.lastSetup, stamp)
-        else -> state
-    }
+    private fun onEnd(state: AppState, screen: Screen.End, event: AppEvent, stamp: EventStamp): AppState =
+        when (event) {
+            AppEvent.Back -> state.copy(screen = Screen.Home())
+            is AppEvent.NewGame -> state.toSetup(event.mode)
+            // Rule R7: a rematch is a game start, so its order becomes the last setup (owner decision, issue #30 Q3).
+            // M17: same format (owner Q3).
+            AppEvent.Rematch -> newMatchState(rematchSetup(screen.match), state.lastSetup, stamp)
+            else -> screen.reduceHeatmap(event)?.let { state.copy(screen = it) } ?: state
+        }
 }
