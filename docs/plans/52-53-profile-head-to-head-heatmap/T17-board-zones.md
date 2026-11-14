@@ -36,3 +36,13 @@ BC1, BC2, BC4, BC5, HM1.
 sonnet. Why: geometry from official dimensions with tests, no design choice beyond the API.
 
 ## Implementation notes
+- Public API: `BoardGeometry` (public object: `BULL_RADIUS_MM` 6.35, `OUTER_BULL_RADIUS_MM` 15.9, `TRIPLE_INNER_MM`,
+  `TRIPLE_OUTER_MM`, `DOUBLE_INNER_MM`, `DOUBLE_OUTER_MM`, `SECTOR_ORDER`, `SECTOR_ANGLE_DEGREES`, `meanRadiusMm`,
+  `zoneAt(BoardPoint): BoardZone?`) and `BoardZone(number, ring)` with nested `BoardZone.Ring`
+  (SINGLE, DOUBLE, TRIPLE, OUTER_BULL, BULL), `BoardZone.ALL` (62), `BoardZone.of(Dart): BoardZone?`. `number` is
+  1..20, or 25 / 50 for the bulls (Dart segment constants). Single rings (inner and outer) are one SINGLE zone.
+- Borders: inner limit inclusive (half-open rings and sectors), double outer limit inclusive; sector edges at
+  9 + 18k degrees, lower edge inclusive.
+- Deviation: the nominal point of the 25 is the origin (BC2), which `zoneAt` maps to BULL (centre gives BULL), so the
+  "nominal point inside its zone" test (BC4) excludes the 25. Source of the radii still unconfirmed (existing note kept).
+- Tests: new `BoardGeometryTest.kt` (did not exist) and `BoardZoneTest.kt`.

@@ -2,15 +2,24 @@ package io.github.darkcosmos.kosmodarts.engine.board
 
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
+import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.floor
+import kotlin.math.hypot
 import kotlin.math.sin
 
 /**
- * Ring radii of a standard dartboard, in millimetres, from the centre of the bull: the standard WDF/PDC board values
- * (double ring 162 to 170 mm, treble ring 99 to 107 mm). The exact document and section are to be confirmed before
- * the release; until then these values are not tied to a source that was opened.
+ * Geometry of a standard dartboard (rules BC1, BC2, BC4, BC5), in millimetres from the centre of the bull: the
+ * standard WDF/PDC board values (bull 12.7 mm and outer bull 31.8 mm in diameter, treble ring 99 to 107 mm and double
+ * ring 162 to 170 mm from the centre). The exact document and section are to be confirmed before the release; until
+ * then these values are not tied to a source that was opened.
+ *
+ * Borders (rule BC5): every inner limit belongs to the zone it starts, so a point on a ring radius or a sector edge
+ * is in exactly one zone; the outer limit of the double ring is the only one that is inclusive.
  */
-internal object BoardGeometry {
+object BoardGeometry {
+    const val BULL_RADIUS_MM = 6.35
+    const val OUTER_BULL_RADIUS_MM = 15.9
     const val TRIPLE_INNER_MM = 99.0
     const val TRIPLE_OUTER_MM = 107.0
     const val DOUBLE_INNER_MM = 162.0
@@ -27,6 +36,36 @@ internal object BoardGeometry {
         Multiplier.TRIPLE -> (TRIPLE_INNER_MM + TRIPLE_OUTER_MM) / 2
         Multiplier.DOUBLE -> (DOUBLE_INNER_MM + DOUBLE_OUTER_MM) / 2
     }
+
+    /** Zone under [point] (rule BC5), or `null` outside the double ring. A point on a border is in one zone only. */
+    fun zoneAt(point: BoardPoint): BoardZone? {
+        val radius = hypot(point.xMm, point.yMm)
+        val ring = ringAt(radius)
+        return when (ring) {
+            null -> null
+            BoardZone.Ring.BULL, BoardZone.Ring.OUTER_BULL -> BoardZone.bull(ring)
+            else -> BoardZone(SECTOR_ORDER[sectorIndexAt(point)], ring)
+        }
+    }
+
+    private fun ringAt(radius: Double): BoardZone.Ring? = when {
+        radius < BULL_RADIUS_MM -> BoardZone.Ring.BULL
+        radius < OUTER_BULL_RADIUS_MM -> BoardZone.Ring.OUTER_BULL
+        radius < TRIPLE_INNER_MM -> BoardZone.Ring.SINGLE
+        radius < TRIPLE_OUTER_MM -> BoardZone.Ring.TRIPLE
+        radius < DOUBLE_INNER_MM -> BoardZone.Ring.SINGLE
+        radius <= DOUBLE_OUTER_MM -> BoardZone.Ring.DOUBLE
+        else -> null
+    }
+
+    /** Index in [SECTOR_ORDER]; sector edges are at 9 + 18k degrees clockwise from the top, lower edge inclusive. */
+    private fun sectorIndexAt(point: BoardPoint): Int {
+        val degrees = (Math.toDegrees(atan2(point.xMm, point.yMm)) + FULL_TURN_DEGREES) % FULL_TURN_DEGREES
+        val shifted = degrees + SECTOR_ANGLE_DEGREES / 2
+        return floor(shifted / SECTOR_ANGLE_DEGREES).toInt() % SECTOR_ORDER.size
+    }
+
+    private const val FULL_TURN_DEGREES = 360.0
 }
 
 /**
