@@ -58,6 +58,10 @@ internal fun sinceText(resources: Resources, since: ProfileSince, locale: Locale
     ProfileSince.Always -> resources.getString(R.string.profile_since_always)
     is ProfileSince.Date -> resources.getString(
         R.string.profile_since_date,
-        DateFormat.getDateInstance(DateFormat.MEDIUM, locale).format(Date(since.millis)),
+        dateText(since.millis, locale),
     )
 }
+
+/** A date in the medium format of [locale]. */
+internal fun dateText(millis: Long, locale: Locale): String =
+    DateFormat.getDateInstance(DateFormat.MEDIUM, locale).format(Date(millis))

@@ -418,6 +418,16 @@
     <string name="profile_legs_won">Legs won</string>
     <string name="profile_sets_won">Sets won</string>
     <string name="profile_trend_matches">Matches in the curve</string>
+    <string name="profile_trend_lowest">Lowest</string>
+    <string name="profile_trend_highest">Highest</string>
+    <string name="profile_trend_first_date">First match</string>
+    <string name="profile_trend_last_date">Last match</string>
+    <string name="profile_trend_too_few">A curve needs at least 2 matches.</string>
+    <string name="profile_trend_description_empty">Trend curve: no match.</string>
+    <plurals name="profile_trend_description">
+        <item quantity="one">Trend curve of %1$d match. First %2$s, last %3$s, lowest %4$s, highest %5$s. From %6$s to %7$s.</item>
+        <item quantity="other">Trend curve of %1$d matches. First %2$s, last %3$s, lowest %4$s, highest %5$s. From %6$s to %7$s.</item>
+    </plurals>
     <string name="profile_mpr">Marks per round</string>
     <string name="profile_best_visit_marks">Best visit (marks)</string>
     <string name="profile_target_bull">Bull</string>

@@ -46,7 +46,7 @@ internal fun cricketBlocks(selection: CricketSelection, variant: CricketVariant?
     )
     pointsBlock(figures, variant, locale)?.let { blocks += it }
     figures.results.forEach { blocks += resultsBlock(it) }
-    blocks += trendBlock(selection.matchCount)
+    blocks += trendBlock(selection.trend, selection.trendSummary, isCricket = true)
     return blocks
 }
 

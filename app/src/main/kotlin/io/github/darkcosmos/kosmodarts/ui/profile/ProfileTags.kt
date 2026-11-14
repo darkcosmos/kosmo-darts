@@ -13,6 +13,8 @@ object ProfileTags {
     const val IGNORED = "profile_ignored"
     const val CONTENT = "profile_content"
     const val HEATMAP_PLACEHOLDER = "profile_heatmap_placeholder"
+    const val TREND_CURVE = "profile_trend_curve"
+    const val TREND_TOO_FEW = "profile_trend_too_few"
 
     const val START_SCORE_FILTER = "profile_start_score_filter"
     const val OUT_RULE_FILTER = "profile_out_rule_filter"

@@ -398,6 +398,16 @@
     <string name="profile_legs_won">Manches gagnées</string>
     <string name="profile_sets_won">Sets gagnés</string>
     <string name="profile_trend_matches">Matchs dans la courbe</string>
+    <string name="profile_trend_lowest">Plus bas</string>
+    <string name="profile_trend_highest">Plus haut</string>
+    <string name="profile_trend_first_date">Premier match</string>
+    <string name="profile_trend_last_date">Dernier match</string>
+    <string name="profile_trend_too_few">Il faut au moins 2 matchs pour tracer une courbe.</string>
+    <string name="profile_trend_description_empty">Courbe de tendance : aucun match.</string>
+    <plurals name="profile_trend_description">
+        <item quantity="one">Courbe de tendance de %1$d match. Premier %2$s, dernier %3$s, plus bas %4$s, plus haut %5$s. Du %6$s au %7$s.</item>
+        <item quantity="other">Courbe de tendance de %1$d matchs. Premier %2$s, dernier %3$s, plus bas %4$s, plus haut %5$s. Du %6$s au %7$s.</item>
+    </plurals>
     <string name="profile_mpr">Marques par tour</string>
     <string name="profile_best_visit_marks">Meilleure volée (marques)</string>
     <string name="profile_target_bull">Bull</string>

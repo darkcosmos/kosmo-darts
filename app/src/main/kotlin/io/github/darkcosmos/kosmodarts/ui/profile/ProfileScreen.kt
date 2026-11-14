@@ -3,7 +3,9 @@ package io.github.darkcosmos.kosmodarts.ui.profile
 import android.content.res.Resources
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +22,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.engine.stats.TrendPoint
+import io.github.darkcosmos.kosmodarts.engine.stats.TrendSummary
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
 import io.github.darkcosmos.kosmodarts.ui.app.ProfileEvent
 import io.github.darkcosmos.kosmodarts.ui.components.SectionLabel
@@ -37,6 +41,14 @@ internal data class FigureBlock(
     val title: String,
     val rows: List<FigureRow>,
     val note: String? = null,
+    val trend: TrendDisplay? = null,
+)
+
+/** What the trend block shows (PS5): the points of the curve, their engine [summary] and the TalkBack [description]. */
+internal data class TrendDisplay(
+    val points: List<TrendPoint>,
+    val summary: TrendSummary,
+    val description: String,
 )
 
 @Composable
@@ -167,9 +179,12 @@ private fun FigureBlockView(block: FigureBlock, modifier: Modifier = Modifier) {
                 text = it,
                 style = KosmoTheme.typography.body,
                 color = colors.onBackgroundMuted,
-                modifier = Modifier.testTag(ProfileTags.HEATMAP_PLACEHOLDER),
+                modifier = Modifier.testTag(
+                    if (block.trend == null) ProfileTags.HEATMAP_PLACEHOLDER else ProfileTags.TREND_TOO_FEW,
+                ),
             )
         }
+        block.trend?.let { TrendCurve(it) }
         block.rows.forEach { FigureRowView(it) }
     }
 }
@@ -178,8 +193,9 @@ private fun FigureBlockView(block: FigureBlock, modifier: Modifier = Modifier) {
 @Composable
 private fun FigureRowView(row: FigureRow) {
     val colors = KosmoTheme.colors
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    // A row that does not fit (large font, long date) puts the value on its own line: a word is never cut.
+    FlowRow(
+        horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .fillMaxWidth()
             .semantics(mergeDescendants = true) {}
@@ -189,7 +205,7 @@ private fun FigureRowView(row: FigureRow) {
             text = row.label,
             style = KosmoTheme.typography.body,
             color = colors.onBackgroundMuted,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.padding(end = 12.dp),
         )
         Text(text = row.value, style = KosmoTheme.typography.bodyLarge, color = colors.onBackground)
     }

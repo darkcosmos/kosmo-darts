@@ -3,6 +3,8 @@ package io.github.darkcosmos.kosmodarts.ui.profile
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import io.github.darkcosmos.kosmodarts.R
+import io.github.darkcosmos.kosmodarts.engine.stats.TrendPoint
+import io.github.darkcosmos.kosmodarts.engine.stats.TrendSummary
 import io.github.darkcosmos.kosmodarts.engine.stats.X01Figures
 
 /** The X01 section (PS4, STX1 to STX8): its blocks of figures, "–" for a figure that cannot be computed (ST6). */
@@ -15,7 +17,7 @@ internal fun x01Blocks(selection: X01Selection): List<FigureBlock> {
         visitsBlock(figures),
         legsBlock(figures),
         resultsBlock(figures),
-        trendBlock(selection.matchCount),
+        trendBlock(selection.trend, selection.trendSummary, isCricket = false),
     )
 }
 
@@ -145,16 +147,41 @@ private fun resultsBlock(figures: X01Figures): FigureBlock {
     )
 }
 
-/** PS5: the slot of the trend curve; T14 draws the curve here. Until then it only says how many matches it has. */
+/**
+ * PS5: the trend block: the number of matches, the curve (or a short text under 2 points) and, as text, the lowest and
+ * highest values and the dates of the first and last matches, all read from the engine [summary].
+ */
 @Composable
-internal fun trendBlock(matchCount: Int): FigureBlock = FigureBlock(
-    "trend",
-    stringResource(R.string.profile_block_trend),
-    listOf(
+internal fun trendBlock(points: List<TrendPoint>, summary: TrendSummary, isCricket: Boolean): FigureBlock {
+    val resources = profileResources()
+    val locale = profileLocale()
+    fun value(v: Double?) = trendValueText(v, isCricket, locale, resources)
+    val rows = mutableListOf(
         FigureRow(
             "trend_matches",
             stringResource(R.string.profile_trend_matches),
-            matchCountText(profileResources(), matchCount),
+            matchCountText(resources, summary.count),
         ),
-    ),
-)
+    )
+    if (summary.count > 0) {
+        rows += FigureRow("trend_lowest", stringResource(R.string.profile_trend_lowest), value(summary.lowest))
+        rows += FigureRow("trend_highest", stringResource(R.string.profile_trend_highest), value(summary.highest))
+        rows += FigureRow(
+            "trend_first_date",
+            stringResource(R.string.profile_trend_first_date),
+            trendDateText(summary.firstDate, locale, resources),
+        )
+        rows += FigureRow(
+            "trend_last_date",
+            stringResource(R.string.profile_trend_last_date),
+            trendDateText(summary.lastDate, locale, resources),
+        )
+    }
+    return FigureBlock(
+        "trend",
+        stringResource(R.string.profile_block_trend),
+        rows,
+        note = if (summary.count < 2) stringResource(R.string.profile_trend_too_few) else null,
+        trend = TrendDisplay(points, summary, trendDescription(summary, isCricket, locale, resources)),
+    )
+}
