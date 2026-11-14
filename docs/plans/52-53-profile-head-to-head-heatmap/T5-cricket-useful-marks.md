@@ -36,3 +36,10 @@ STC1, STC4 (points per dart); CR2 to CR6, CR15.
 sonnet. Why: STC1 is fully specified after owner Q9; replay reuses existing engine code.
 
 ## Implementation notes
+- `PlayedDart` does not exist in the engine: the function takes `List<Dart>` plus `startingPlayerIndex` (default 0,
+  CR7/M6), the thrower of each dart comes from the `CricketGame` replay.
+- `engine/stats/CricketUsefulMarks.kt`: `usefulMarks(config, darts, startingPlayerIndex = 0): CricketYields`.
+  `CricketYields(yields: List<DartYield>, isValid: Boolean)`: on a dart after the win or a start index out of range,
+  `isValid = false` and `yields` stops before the faulty dart; never throws. `DartYield.NONE` = all zeros.
+- Cut-throat `pointsGiven` = surplus x target points x open opponents; `pointsScored` is 0 in Cut-throat and
+  `pointsGiven` is 0 in Standard. The replay is rebuilt per dart (quadratic, fine for a leg).
