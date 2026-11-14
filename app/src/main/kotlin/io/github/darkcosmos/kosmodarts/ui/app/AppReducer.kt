@@ -18,13 +18,20 @@ import kotlin.random.Random
  */
 class AppReducer(private val random: Random) {
 
-    fun reduce(state: AppState, event: AppEvent, stamp: EventStamp): AppState = when (val screen = state.screen) {
+    fun reduce(state: AppState, event: AppEvent, stamp: EventStamp): AppState =
+        if (event is PlayersEvent.Answered) reducePlayersAnswer(state, event) else reduceScreen(state, event, stamp)
+
+    private fun reduceScreen(state: AppState, event: AppEvent, stamp: EventStamp): AppState = when (
+        val screen = state.screen
+    ) {
         is Screen.Home -> onHome(state, screen, event)
+        is Screen.Players -> reducePlayers(state, screen, event, stamp)
         is Screen.Setup -> onSetup(state, screen, event, stamp)
         is Screen.Game -> onGame(state, screen, event, stamp.at)
         is Screen.BetweenLegs -> onBetweenLegs(state, screen, event)
         is Screen.End -> onEnd(state, screen.match, event, stamp)
-        is Screen.Settings -> onSettings(state, screen, event)
+        // AN13: back returns to the home screen it came from.
+        is Screen.Settings -> if (event == AppEvent.Back) state.copy(screen = screen.home) else state
         is Screen.History -> reduceHistory(state, screen, event)
         is Screen.MatchDetail -> reduceMatchDetail(state, screen, event)
         is Screen.CricketGame -> onCricketGame(state, screen, event, stamp.at)
@@ -44,6 +51,7 @@ class AppReducer(private val random: Random) {
             }
             event == AppEvent.SettingsTapped -> state.copy(screen = Screen.Settings(home))
             event == AppEvent.HistoryTapped -> state.copy(screen = Screen.History(home))
+            event == AppEvent.PlayersTapped -> state.copy(screen = Screen.Players(home))
             event is AppEvent.NewGame && saved == null -> state.toSetup(event.mode)
             // R3, R20: the confirmation remembers the mode of the "New game" that opened it.
             event is AppEvent.NewGame -> state.copy(screen = home.copy(newGameDialogMode = event.mode))
@@ -141,10 +149,6 @@ class AppReducer(private val random: Random) {
         event == AppEvent.Back -> state.copy(screen = screen.copy(isAbandonDialogShown = true))
         else -> state
     }
-
-    /** AN13: back returns to the home screen it came from. */
-    private fun onSettings(state: AppState, screen: Screen.Settings, event: AppEvent): AppState =
-        if (event == AppEvent.Back) state.copy(screen = screen.home) else state
 
     /** HS1 to HS4, HS6, HS7: back returns home; the other events change the filters, the scroll or the read. */
     private fun playGame(game: GameScreenState, event: AppEvent): GameScreenState = when (event) {

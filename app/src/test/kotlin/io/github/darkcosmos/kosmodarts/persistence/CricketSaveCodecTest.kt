@@ -2,7 +2,7 @@ package io.github.darkcosmos.kosmodarts.persistence
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketGame
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures.match
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures.saved
@@ -85,12 +85,12 @@ class CricketSaveCodecTest {
 
     /** R21, R17: the color slots of the roster are restored as chosen. */
     @Test
-    fun `R21 non positional color slots round trip`() {
-        val slots = listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_2, ColorSlot.SLOT_1)
-        val saved = saved(match("Ann", "Bob", "Cid", colorSlots = slots))
+    fun `R21 non positional colors round trip`() {
+        val colors = listOf(PlayerColor.LILAC, PlayerColor.ORANGE, PlayerColor.BLUE)
+        val saved = saved(match("Ann", "Bob", "Cid", colors = colors))
         val restored = (codec.decode(checkNotNull(codec.encode(saved))) as GameDecodeResult.Valid).cricket
 
-        assertEquals(slots, restored.match.colorSlots)
+        assertEquals(colors, restored.match.colors)
     }
 
     /** R12: the largest current leg is saved; one more dart is not encoded, so the previous file stays. */
@@ -104,12 +104,12 @@ class CricketSaveCodecTest {
     private val longestSolo: SavedCricketGame =
         saved(match("Ann").throwing(*Array(GameSaveCodec.MAX_DARTS) { Dart.MISS }))
 
-    /** ADR 0011, R26: exact bytes of a Cricket match between legs: the mode line, the body, the journal. */
+    /** ADR 0011, 0013, R26, R31: exact bytes of a Cricket match between legs: the mode line, the body, the journal. */
     @Test
-    fun `format v1 golden file of a Cricket match`() {
+    fun `format v2 golden file of a Cricket match`() {
         val golden = """
             kosmodarts=saved-game
-            version=1
+            version=2
             mode=cricket
             variant=standard
             bull=1
@@ -118,7 +118,7 @@ class CricketSaveCodecTest {
             players=2
             player=QW5u
             player=Qm9i
-            colors=1 2
+            colors=FF1F63D6 FFE07020
             legs=2
             leg=0 21/8/0/21 0/6/0/0
             leg=1 0/6/0/0 21/8/0/21
@@ -131,7 +131,7 @@ class CricketSaveCodecTest {
             journal=T20@0 T19@1 T18@2 0@3 0@4 0@5 T17@6 T16@7 T15@8 0@9 0@10 0@11 50@12 25@13
             journal=T20@14 T19@15 T18@16 0@17 0@18 0@19 T17@20 T16@21 T15@22 0@23 0@24 0@25 50@26 25@27
             journal=
-            crc32=7c1aca90
+            crc32=35c1aad4
             end
 
         """.trimIndent().toByteArray(Charsets.UTF_8)

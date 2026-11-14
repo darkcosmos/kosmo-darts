@@ -81,7 +81,7 @@ fun EndContent(
                 WinnerZone(
                     chip = stringResource(R.string.end_match_winner),
                     name = winner.name,
-                    slot = winner.slot,
+                    color = winner.color,
                     tags = WinnerZoneTags(EndTags.TITLE, EndTags.WINNER, EndTags.DETAIL),
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -145,7 +145,7 @@ private fun Ranking(rows: List<EndRow>, mode: GameMode) {
         ).joinToString(separator)
         ScoreboardRow(
             name = row.name,
-            slot = row.slot,
+            color = row.color,
             rank = row.rank,
             cells = listOfNotNull(
                 score?.let { ScoreCell(it.toString(), tag = EndTags.score(position)) },

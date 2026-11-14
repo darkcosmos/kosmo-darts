@@ -7,7 +7,7 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatchConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTarget
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 
 /** Cricket matches used by the persistence tests (docs/rules/cricket.md, docs/rules/match.md). Names are made up. */
@@ -20,12 +20,12 @@ internal object CricketSaveFixtures {
         isBullInPlay: Boolean = true,
         legsPerSet: Int = 1,
         sets: Int = 1,
-        colorSlots: List<ColorSlot> = ColorSlot.byPosition(players.size),
+        colors: List<PlayerColor> = PlayerColor.byPosition(players.size),
     ): CricketMatch = CricketMatch.start(
         CricketMatchConfig(
             CricketConfig(players.toList(), variant, isBullInPlay),
             MatchFormat(legsPerSet, sets),
-            colorSlots,
+            colors,
         ),
     )
 
@@ -56,7 +56,7 @@ internal object CricketSaveFixtures {
             "Cid",
             legsPerSet = 2,
             sets = 2,
-            colorSlots = listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_1, ColorSlot.SLOT_4),
+            colors = listOf(PlayerColor.TEAL, PlayerColor.BLUE, PlayerColor.LILAC),
         ).confirmLegsWonBy(1).throwing(Dart.triple(20)),
     )
 

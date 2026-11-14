@@ -2,7 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.home
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
@@ -42,8 +42,8 @@ class ResumeSummaryCricketTest {
         // The first triple closes 20 and the second scores 60 for Ann, as Bob has not closed it (CR3, CR4).
         assertEquals(
             listOf(
-                ResumeSummary.PlayerScore("Ann", 60, ColorSlot.SLOT_1),
-                ResumeSummary.PlayerScore("Bob", 0, ColorSlot.SLOT_2),
+                ResumeSummary.PlayerScore("Ann", 60, PlayerColor.BLUE),
+                ResumeSummary.PlayerScore("Bob", 0, PlayerColor.ORANGE),
             ),
             summary.players,
         )

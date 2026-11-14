@@ -3,7 +3,7 @@ package io.github.darkcosmos.kosmodarts.engine.archive
 import io.github.darkcosmos.kosmodarts.engine.board.nominalPoint
 import io.github.darkcosmos.kosmodarts.engine.journal.DartSource
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -34,8 +34,8 @@ class X01ArchiveTest {
         assertEquals(ArchivedSettings.X01(301, CheckoutRule.SINGLE_OUT, MatchFormat()), archived.settings)
         assertEquals(
             listOf(
-                ArchivedPlayer(0, "Alice", ColorSlot.SLOT_1, rank = 1, legsWon = 1, setsWon = 1),
-                ArchivedPlayer(1, "Bob", ColorSlot.SLOT_2, rank = 2, legsWon = 0, setsWon = 0),
+                ArchivedPlayer(0, "Alice", PlayerColor.BLUE, rank = 1, legsWon = 1, setsWon = 1),
+                ArchivedPlayer(1, "Bob", PlayerColor.ORANGE, rank = 2, legsWon = 0, setsWon = 0),
             ),
             archived.players,
         )

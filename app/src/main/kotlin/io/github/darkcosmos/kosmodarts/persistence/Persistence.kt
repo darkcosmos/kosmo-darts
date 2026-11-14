@@ -9,6 +9,7 @@ import io.github.darkcosmos.kosmodarts.history.HistoryList
 import io.github.darkcosmos.kosmodarts.history.HistoryRepository
 import io.github.darkcosmos.kosmodarts.history.MatchDetail
 import io.github.darkcosmos.kosmodarts.history.MatchArchiveRequest
+import io.github.darkcosmos.kosmodarts.history.PlayersRepository
 import io.github.darkcosmos.kosmodarts.history.Profile
 import io.github.darkcosmos.kosmodarts.history.ProfileRepository
 import java.util.concurrent.CountDownLatch
@@ -31,7 +32,11 @@ class Persistence(
     private val archiveCheck: ArchiveCheck? = null,
     private val history: HistoryRepository? = null,
     private val readExecutor: Executor = executor,
+    players: PlayersRepository? = null,
 ) {
+    /** The reads and writes of the Players screen (PM2 to PM6). */
+    val playersAccess = PlayersPersistence(players, executor, readExecutor)
+
     private val loader = SaveLoader(gameStore, setupStore, gameCodec, setupCodec)
     private val gameWriter = SaveWriter(gameStore, executor)
     private val setupWriter = SaveWriter(setupStore, executor)

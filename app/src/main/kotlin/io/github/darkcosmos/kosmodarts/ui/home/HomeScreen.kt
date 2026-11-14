@@ -145,9 +145,20 @@ private fun HomeContent(home: Screen.Home, onEvent: (AppEvent) -> Unit, modifier
             text = stringResource(R.string.home_history),
             onClick = { onEvent(AppEvent.HistoryTapped) },
             kind = ButtonKind.SECONDARY,
+            iconRes = R.drawable.ic_history,
             modifier = Modifier
                 .fillMaxWidth()
                 .testTag(HomeTags.HISTORY),
+        )
+        // PM1: the profiles of the players, under History, same form.
+        KosmoButton(
+            text = stringResource(R.string.home_players),
+            onClick = { onEvent(AppEvent.PlayersTapped) },
+            kind = ButtonKind.SECONDARY,
+            iconRes = R.drawable.ic_players,
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(HomeTags.PLAYERS),
         )
     }
 }

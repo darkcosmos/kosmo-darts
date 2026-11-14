@@ -1,7 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.home
 
 import io.github.darkcosmos.kosmodarts.testing.savedGame
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
@@ -33,8 +33,8 @@ class ResumeSummaryTest {
         assertEquals(CheckoutRule.DOUBLE_OUT, summary.checkoutRule)
         // Ann's bust restored her 121; Bob missed everything.
         val expected = listOf(
-            ResumeSummary.PlayerScore("Ann", 121, ColorSlot.SLOT_1),
-            ResumeSummary.PlayerScore("Bob", 301, ColorSlot.SLOT_2),
+            ResumeSummary.PlayerScore("Ann", 121, PlayerColor.BLUE),
+            ResumeSummary.PlayerScore("Bob", 301, PlayerColor.ORANGE),
         )
         assertEquals(expected, summary.players)
     }
@@ -75,15 +75,15 @@ class ResumeSummaryTest {
         assertTrue(SaveFixtures.WAITING_CHECKOUT.toGameScreenState().isCheckoutPending)
     }
 
-    /** PC9, R17: the summary gives each player his own color slot. */
+    /** PC9, R17: the summary gives each player his own color. */
     @Test
-    fun `R17 the summary carries the saved color slots`() {
+    fun `R17 the summary carries the saved player colors`() {
         val saved = savedGame(
-            MatchFixtures.match("Ann", "Bob", colorSlots = listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_1)),
+            MatchFixtures.match("Ann", "Bob", colors = listOf(PlayerColor.TEAL, PlayerColor.BLUE)),
             isAwaitingNextPlayer = false,
         )
 
-        assertEquals(listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_1), ResumeSummary.of(saved).players.map { it.slot })
+        assertEquals(listOf(PlayerColor.TEAL, PlayerColor.BLUE), ResumeSummary.of(saved).players.map { it.color })
         assertFalse(ResumeSummary.of(saved).players.isEmpty())
     }
 }

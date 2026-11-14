@@ -5,7 +5,7 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketLegSummary
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.cricket.InvalidCricketConfigException
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 
 /**
@@ -18,7 +18,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 internal data class CricketSaveBody(
     val config: CricketConfig,
     val format: MatchFormat,
-    val colorSlots: List<ColorSlot>,
+    val colors: List<PlayerColor>,
     val legs: List<CricketLegSummary>,
     val darts: List<Dart>,
     val isAwaitingNextPlayer: Boolean,
@@ -52,7 +52,7 @@ internal fun writeCricketBody(body: CricketSaveBody): List<Pair<String, String>>
     add(SaveKey.SETS.text to body.format.sets.toString())
     add(SaveKey.PLAYERS.text to body.config.players.size.toString())
     body.config.players.forEach { add(SaveKey.PLAYER.text to SaveFormat.encodeName(it)) }
-    add(SaveKey.COLORS.text to body.colorSlots.joinToString(" ") { it.number.toString() })
+    add(SaveKey.COLORS.text to colorsValue(body.colors))
     add(SaveKey.LEGS.text to body.legs.size.toString())
     body.legs.forEach { add(SaveKey.LEG.text to cricketLegToken(it)) }
     add(SaveKey.DARTS.text to body.darts.joinToString(" ") { DartTokens.tokenOf(it) })
@@ -80,13 +80,13 @@ internal fun readCricketBody(reader: BodyReader): CricketSaveBody {
     } catch (e: InvalidCricketConfigException) {
         reject(InvalidSaveReason.INVALID_CONFIG, e)
     }
-    val colorSlots = parseColorSlots(reader.value(SaveKey.COLORS.text), playerCount)
+    val colors = parseColors(reader.value(SaveKey.COLORS.text), playerCount)
     val legCount = parseLegCount(reader.value(SaveKey.LEGS.text), format, playerCount)
     val legs = List(legCount) { parseCricketLeg(reader.value(SaveKey.LEG.text), config) }
     return CricketSaveBody(
         config = config,
         format = format,
-        colorSlots = colorSlots,
+        colors = colors,
         legs = legs,
         darts = parseDarts(reader.value(SaveKey.DARTS.text)),
         isAwaitingNextPlayer = parseBoolean(reader.value(SaveKey.AWAITING.text)),

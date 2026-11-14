@@ -6,7 +6,7 @@ import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
@@ -133,7 +133,7 @@ class PersistenceEffectsTest {
     @Test
     fun `R22 an X01 Start keeps the Cricket settings of the last setup`() {
         val cricket = CricketSettings(CricketVariant.CUT_THROAT, isBullInPlay = false, MatchFormat(3, 1))
-        val previous = LastSetups(SharedRoster(listOf("Cid"), listOf(ColorSlot.SLOT_3)), cricket = cricket)
+        val previous = LastSetups(SharedRoster(listOf("Cid"), listOf(PlayerColor.TEAL)), cricket = cricket)
         val setup = AppState(
             screen = Screen.Setup(SetupState(301, CheckoutRule.SINGLE_OUT, listOf("Ann", "Bob"))),
             lastSetup = previous,
@@ -142,7 +142,7 @@ class PersistenceEffectsTest {
 
         val effect = effectsOf(setup, AppEvent.StartRequested).first() as PersistenceEffect.SaveLastSetup
 
-        assertEquals(SharedRoster(listOf("Ann", "Bob"), ColorSlot.byPosition(2)), effect.setups.roster)
+        assertEquals(SharedRoster(listOf("Ann", "Bob"), PlayerColor.byPosition(2)), effect.setups.roster)
         assertEquals(started, effect.setups.x01Setup)
         assertEquals(cricket, effect.setups.cricket)
     }
@@ -162,8 +162,8 @@ class PersistenceEffectsTest {
             lastSetup = X01MatchConfig(three).toLastSetups(),
         )
         val rotated = X01Config(listOf("Bob", "Cid", "Ann"))
-        // PC7: each player keeps his color slot through the rotation.
-        val setup = X01MatchConfig(rotated, colorSlots = listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_3, ColorSlot.SLOT_1))
+        // PC7: each player keeps his color through the rotation.
+        val setup = X01MatchConfig(rotated, colors = listOf(PlayerColor.ORANGE, PlayerColor.TEAL, PlayerColor.BLUE))
 
         assertEquals(
             listOf(

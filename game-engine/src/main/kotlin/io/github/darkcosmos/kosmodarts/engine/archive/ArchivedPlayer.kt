@@ -1,6 +1,6 @@
 package io.github.darkcosmos.kosmodarts.engine.archive
 
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 
 /**
  * A player of an archived match (AR5).
@@ -11,7 +11,7 @@ import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
 data class ArchivedPlayer(
     val position: Int,
     val name: String,
-    val colorSlot: ColorSlot,
+    val color: PlayerColor,
     val rank: Int,
     val legsWon: Int,
     val setsWon: Int,

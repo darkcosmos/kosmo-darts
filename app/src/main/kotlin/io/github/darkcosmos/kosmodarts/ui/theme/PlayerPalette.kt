@@ -1,27 +1,19 @@
 package io.github.darkcosmos.kosmodarts.ui.theme
 
 import androidx.compose.ui.graphics.Color
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColorRules
 
 /**
- * Colors of the players (docs/rules/players.md, PC9): slot n is drawn with token `playerN`, and text on it with
- * `onPlayerN`. Pure: no composition needed, so it is tested on the JVM.
+ * Colors of the players (docs/rules/players.md, PC9, PC13): a player is drawn with his own [PlayerColor], and text on
+ * it with the text color the engine picks for it. The four palette colors equal the tokens `playerN` and `onPlayerN`.
+ * Pure: no composition needed, so it is tested on the JVM.
  */
 object PlayerPalette {
 
-    /** Token `playerN` of [slot]. */
-    fun colorOf(slot: ColorSlot, colors: KosmoColors = KosmoColors.Default): Color = when (slot) {
-        ColorSlot.SLOT_1 -> colors.player1
-        ColorSlot.SLOT_2 -> colors.player2
-        ColorSlot.SLOT_3 -> colors.player3
-        ColorSlot.SLOT_4 -> colors.player4
-    }
+    /** The Compose color of [color]. */
+    fun colorOf(color: PlayerColor): Color = Color(color.argb)
 
-    /** Token `onPlayerN` of [slot]: text and icons drawn on [colorOf]. */
-    fun onColorOf(slot: ColorSlot, colors: KosmoColors = KosmoColors.Default): Color = when (slot) {
-        ColorSlot.SLOT_1 -> colors.onPlayer1
-        ColorSlot.SLOT_2 -> colors.onPlayer2
-        ColorSlot.SLOT_3 -> colors.onPlayer3
-        ColorSlot.SLOT_4 -> colors.onPlayer4
-    }
+    /** PC13: text and icons drawn on [colorOf], white or dark, whichever contrasts more. */
+    fun onColorOf(color: PlayerColor): Color = Color(PlayerColorRules.textOn(color).argb)
 }

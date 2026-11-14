@@ -102,7 +102,7 @@ fun BetweenLegsContent(
         WinnerZone(
             chip = titleText(state),
             name = state.winnerName,
-            slot = state.winnerSlot,
+            color = state.winnerColor,
             tags = WinnerZoneTags(BetweenLegsTags.TITLE, BetweenLegsTags.WINNER, BetweenLegsTags.CHECKOUT),
             detail = state.checkout?.let {
                 stringResource(R.string.between_checkout, it.points, dartsText(it.darts))
@@ -182,7 +182,7 @@ private fun MatchScoreboard(state: BetweenLegsState) {
         ).joinToString(separator)
         ScoreboardRow(
             name = row.name,
-            slot = row.slot,
+            color = row.color,
             rank = null,
             cells = listOfNotNull(
                 row.setsWon?.let { ScoreCell(it.toString(), row.isLegWinner, BetweenLegsTags.sets(index)) },
@@ -222,7 +222,7 @@ private fun NextStarterBar(state: BetweenLegsState) {
             Modifier
                 .width(NEXT_MARK_WIDTH)
                 .height(NEXT_MARK_HEIGHT)
-                .background(PlayerPalette.colorOf(state.nextStarterSlot, colors)),
+                .background(PlayerPalette.colorOf(state.nextStarterColor)),
         )
         Text(
             text = stringResource(R.string.between_starts, displayName(state.nextStarterName)),

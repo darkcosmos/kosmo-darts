@@ -1,8 +1,8 @@
 package io.github.darkcosmos.kosmodarts.ui.between
 
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_1
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_3
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_4
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor.Companion.BLUE
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor.Companion.TEAL
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor.Companion.LILAC
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures.match
 import io.github.darkcosmos.kosmodarts.persistence.confirmLegsWonBy
@@ -70,16 +70,16 @@ class BetweenLegsStateTest {
         assertEquals(MatchPosition(null, 2), state.nextPosition)
     }
 
-    /** PC6, PC9: the winner's zone and every row take the players' own slots. */
+    /** PC6, PC9: the winner's zone and every row take the players' own colors. */
     @Test
-    fun `PC9 rows and winner carry the color slots`() {
-        val confirmed = match("Ann", "Bob", "Cid", legsPerSet = 2, colorSlots = listOf(SLOT_4, SLOT_1, SLOT_3))
+    fun `PC9 rows and winner carry the player colors`() {
+        val confirmed = match("Ann", "Bob", "Cid", legsPerSet = 2, colors = listOf(LILAC, BLUE, TEAL))
             .confirmLegsWonBy(1)
 
         val state = BetweenLegsState.of(confirmed)
 
-        assertEquals(SLOT_1, state.winnerSlot)
-        assertEquals(listOf(SLOT_4, SLOT_1, SLOT_3), state.rows.map { it.slot })
+        assertEquals(BLUE, state.winnerColor)
+        assertEquals(listOf(LILAC, BLUE, TEAL), state.rows.map { it.color })
     }
 
     /** The winning checkout is shown when known, and absent after a resume on this screen (not saved). */

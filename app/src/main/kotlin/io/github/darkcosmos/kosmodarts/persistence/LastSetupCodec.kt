@@ -2,15 +2,16 @@ package io.github.darkcosmos.kosmodarts.persistence
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 
 /**
- * Encodes and decodes the last setup file, format version 1 (docs/adr/0011-save-format-v1-journal.md, "Clean slate";
- * layout of docs/adr/0008-save-format-v4-modes.md; rules R7, R10, R11, R13, R17, R22, R23, R30). A file of any other
+ * Encodes and decodes the last setup file, format version 2 (docs/adr/0013-save-format-v2-argb-colors.md; "Clean
+ * slate" of docs/adr/0011-save-format-v1-journal.md; layout of docs/adr/0008-save-format-v4-modes.md; rules R7, R10,
+ * R11, R13, R17, R22, R23, R30, R31). A file of any other
  * version, including a file of an earlier build, is invalid (R10) and never converted.
  *
- * Version 1: one section per mode started, each opened by its mode line (`x01` then `cricket`, at least one), then
+ * Version 2: one section per mode started, each opened by its mode line (`x01` then `cricket`, at least one), then
  * the shared roster (`players`, one `player` per player, `colors`).
  */
 class LastSetupCodec {
@@ -20,7 +21,7 @@ class LastSetupCodec {
         setups.cricket?.let { addAll(writeCricketSection(it)) }
         add(SaveKey.PLAYERS.text to setups.roster.players.size.toString())
         setups.roster.players.forEach { add(SaveKey.PLAYER.text to SaveFormat.encodeName(it)) }
-        add(SaveKey.COLORS.text to setups.roster.colorSlots.joinToString(" ") { it.number.toString() })
+        add(SaveKey.COLORS.text to colorsValue(setups.roster.colors))
     }, VERSION)
 
     /** The last setups, or `null` for any invalid content (rules R10, R23). Never throws. */
@@ -68,8 +69,8 @@ class LastSetupCodec {
         if (mode == SaveMode.CRICKET) cricket = readCricketSection(reader)
         val playerCount = parsePlayerCount(reader.value(SaveKey.PLAYERS.text))
         val names = List(playerCount) { SaveFormat.decodeName(reader.value(SaveKey.PLAYER.text)) }
-        val colorSlots = parseColorSlots(reader.value(SaveKey.COLORS.text), playerCount)
-        return LastSetups(rosterOf(names, colorSlots, x01, cricket), x01, cricket)
+        val colors = parseColors(reader.value(SaveKey.COLORS.text), playerCount)
+        return LastSetups(rosterOf(names, colors, x01, cricket), x01, cricket)
     }
 
     private fun readX01Section(reader: BodyReader): X01Settings {
@@ -97,13 +98,17 @@ class LastSetupCodec {
      */
     private fun rosterOf(
         names: List<String>,
-        colorSlots: List<ColorSlot>,
+        colors: List<PlayerColor>,
         x01: X01Settings?,
         cricket: CricketSettings?,
     ): SharedRoster = try {
-        x01?.let { X01Config(names, it.startScore, it.checkoutRule) }
-        cricket?.let { CricketConfig(names, it.variant, it.isBullInPlay) }
-        SharedRoster(names, colorSlots)
+        val roster = SharedRoster(names, colors)
+        // PM9: the nameless roster (the only player was deleted) is not a game configuration, only a prefill.
+        if (!roster.isNameless) {
+            x01?.let { X01Config(names, it.startScore, it.checkoutRule) }
+            cricket?.let { CricketConfig(names, it.variant, it.isBullInPlay) }
+        }
+        roster
     } catch (e: IllegalArgumentException) {
         // Both configuration exceptions are IllegalArgumentExceptions, like the SharedRoster checks.
         reject(InvalidSaveReason.INVALID_CONFIG, e)
@@ -115,7 +120,7 @@ class LastSetupCodec {
 
         private const val KIND = "last-setup"
 
-        /** The only version written and read; the saved game numbers its own versions (ADR 0011, R30). */
-        private const val VERSION = 1
+        /** The only version written and read (ADR 0013, R30, R31); the saved game numbers its own versions. */
+        private const val VERSION = 2
     }
 }

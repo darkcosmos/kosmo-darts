@@ -3,7 +3,7 @@ package io.github.darkcosmos.kosmodarts.ui.game
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.engine.match.MatchScore
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.TurnOutcome
@@ -92,8 +92,8 @@ data class GameScreenState(
             else -> ZoneMode.NORMAL
         }
 
-    /** Color slot of the player at [index] (docs/rules/players.md, PC6, PC9). */
-    fun colorSlotOf(index: Int): ColorSlot = match.colorSlots[index]
+    /** Color of the player at [index] (docs/rules/players.md, PC6, PC9). */
+    fun playerColorOf(index: Int): PlayerColor = match.colors[index]
 
     /**
      * M6: the other players' tiles, in play order starting from the player after the highlighted one. Empty with one

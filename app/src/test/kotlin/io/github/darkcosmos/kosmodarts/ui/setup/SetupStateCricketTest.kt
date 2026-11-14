@@ -4,7 +4,7 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatchConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01ConfigError
@@ -23,7 +23,7 @@ class SetupStateCricketTest {
 
     private val roster = SharedRoster(
         listOf("Cid", "Ann", "Bob"),
-        listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_1, ColorSlot.SLOT_4),
+        listOf(PlayerColor.TEAL, PlayerColor.BLUE, PlayerColor.LILAC),
     )
 
     /** CR21: Standard, 25-Bull on and a single game by default. */
@@ -38,7 +38,7 @@ class SetupStateCricketTest {
         assertEquals(listOf("", ""), setup.names)
     }
 
-    /** CR21, R22: the shared roster with its slots and the last Cricket settings prefill the setup. */
+    /** CR21, R22: the shared roster with its colors and the last Cricket settings prefill the setup. */
     @Test
     fun `R22 prefilled takes the roster and the last Cricket settings`() {
         val last = LastSetups(
@@ -50,7 +50,7 @@ class SetupStateCricketTest {
         val setup = SetupState.prefilled(last, GameMode.CRICKET)
 
         assertEquals(listOf("Cid", "Ann", "Bob"), setup.names)
-        assertEquals(roster.colorSlots, setup.roster.slots)
+        assertEquals(roster.colors, setup.roster.colors)
         assertEquals(CricketVariant.CUT_THROAT, setup.cricketVariant)
         assertEquals(false, setup.isBullInPlay)
         assertEquals(4 to 1, setup.legsPerSet to setup.sets)
@@ -97,7 +97,7 @@ class SetupStateCricketTest {
         assertEquals(false, setup.isBullInPlay)
     }
 
-    /** CR21, CR1: start returns a Cricket match config with the roster, the slots and the format. */
+    /** CR21, CR1: start returns a Cricket match config with the roster, the colors and the format. */
     @Test
     fun `CR21 start returns the Cricket config`() {
         val setup = SetupState.prefilled(LastSetups(roster), GameMode.CRICKET)
@@ -110,7 +110,7 @@ class SetupStateCricketTest {
                 CricketMatchConfig(
                     CricketConfig(listOf("Cid", "Ann", "Bob"), CricketVariant.CUT_THROAT, isBullInPlay = false),
                     MatchFormat(3, 1),
-                    roster.colorSlots,
+                    roster.colors,
                 ),
             ),
             setup.start(),

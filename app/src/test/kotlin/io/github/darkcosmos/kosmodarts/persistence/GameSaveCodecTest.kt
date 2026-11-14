@@ -5,7 +5,7 @@ import io.github.darkcosmos.kosmodarts.engine.journal.JournalEvent
 import io.github.darkcosmos.kosmodarts.engine.journal.LegJournal
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
@@ -103,7 +103,7 @@ class GameSaveCodecTest {
     private val singleGameWithSlots: SavedGame = run {
         val config = X01Config(listOf("Ann", "Clément"))
         val match = X01Match(
-            X01MatchConfig(config, MatchFormat(), listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_1)),
+            X01MatchConfig(config, MatchFormat(), listOf(PlayerColor.ORANGE, PlayerColor.BLUE)),
             emptyList(),
             X01Game(config, listOf(Dart.triple(20), Dart.single(20), Dart.double(5))),
         )
@@ -126,12 +126,12 @@ class GameSaveCodecTest {
         savedGame(match, isAwaitingNextPlayer = true, journal = journal)
     }
 
-    /** ADR 0011, R26: format version 1 of the same game with a voided dart, exact bytes: the body, then the journal. */
+    /** ADR 0011, 0013, R26, R31: format version 2 of the same game with a voided dart, exact bytes and journal. */
     @Test
-    fun `format v1 golden file of a single game`() {
+    fun `format v2 golden file of a single game`() {
         val golden = """
             kosmodarts=saved-game
-            version=1
+            version=2
             mode=x01
             game=x01
             start-score=501
@@ -141,7 +141,7 @@ class GameSaveCodecTest {
             players=2
             player=QW5u
             player=Q2zDqW1lbnQ=
-            colors=2 1
+            colors=FFE07020 FF1F63D6
             legs=0
             darts=T20 20 D5
             awaiting-next-player=true
@@ -150,7 +150,7 @@ class GameSaveCodecTest {
             started-at=1793520000000
             journals=1
             journal=T20@1793520001200 5@1793520003400 u 20@1793520005000 D5@1793520006100
-            crc32=863f6d03
+            crc32=200823f6
             end
 
         """.trimIndent().toByteArray(Charsets.UTF_8)

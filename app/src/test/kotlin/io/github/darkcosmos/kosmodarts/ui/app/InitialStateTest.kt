@@ -2,7 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
@@ -89,12 +89,12 @@ class InitialStateTest {
      */
     @Test
     fun `R22 a last setup without X01 settings prefills the shared roster with the X01 defaults`() {
-        val roster = SharedRoster(listOf("Cid", "Ann"), listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_1))
+        val roster = SharedRoster(listOf("Cid", "Ann"), listOf(PlayerColor.TEAL, PlayerColor.BLUE))
         val cricketOnly = LastSetups(roster, cricket = CricketSettings(CricketVariant.CUT_THROAT))
 
         val state = initialState(LoadResult(GameLoad.Invalid(InvalidSaveReason.MALFORMED), cricketOnly), false)
 
-        val expected = X01MatchConfig(X01Config(listOf("Cid", "Ann")), colorSlots = roster.colorSlots)
+        val expected = X01MatchConfig(X01Config(listOf("Cid", "Ann")), colors = roster.colors)
         assertEquals(Screen.Setup(SetupState.prefilled(expected), isRestoreFailedShown = true), state.screen)
         assertEquals(cricketOnly, state.lastSetup)
     }

@@ -2,7 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.testing.reduce
 import io.github.darkcosmos.kosmodarts.testing.gameScreen
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
@@ -99,10 +99,10 @@ class AppReducerResumeTest {
         val ended = checkout.after(AppEvent.ResumeTapped, AppEvent.FinishGameTapped, AppEvent.ArchiveSucceeded)
         val rematch = ended.after(AppEvent.Rematch)
         val config = SaveFixtures.WAITING_CHECKOUT.game.config
-        // PC7: each player keeps his color slot through the rotation.
+        // PC7: each player keeps his color through the rotation.
         val rotated = X01MatchConfig(
             X01Config(config.players.drop(1) + config.players.first(), config.startScore, config.checkoutRule),
-            colorSlots = listOf(ColorSlot.SLOT_2, ColorSlot.SLOT_1),
+            colors = listOf(PlayerColor.ORANGE, PlayerColor.BLUE),
         )
 
         assertEquals(rotated, rematch.lastSetup?.x01Setup)

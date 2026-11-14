@@ -54,7 +54,7 @@ data class RankText(val rank: String, val score: String?)
 
 /** The ranking line of [player] (rank by text, never by color, PC9). */
 fun rankText(resources: Resources, player: HistoryPlayer, detail: MatchDetail): RankText {
-    val rank = resources.getString(R.string.detail_rank, player.finalRank, player.name)
+    val rank = resources.getString(R.string.detail_rank, player.finalRank, player.shownName(resources))
     val score = if (detail.hasScore) {
         listOfNotNull(
             resources.getQuantityString(R.plurals.match_sets_won, player.setsWon, player.setsWon)
@@ -96,7 +96,7 @@ fun visitDescription(resources: Resources, visit: DetailVisit, settings: Archive
         settings is ArchivedSettings.Cricket -> visitTotalText(resources, visit, settings)
         else -> resources.getString(R.string.detail_visit_total_description, visit.total)
     }
-    return resources.getString(R.string.detail_visit_description, visit.player.name, darts, result)
+    return resources.getString(R.string.detail_visit_description, visit.player.shownName(resources), darts, result)
 }
 
 private const val MINUTES_PER_HOUR = 60

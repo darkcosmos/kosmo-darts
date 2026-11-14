@@ -5,7 +5,8 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatchConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.cricket.InvalidCricketConfigException
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.ColorChoices
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerListError
 import io.github.darkcosmos.kosmodarts.engine.player.Roster
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
@@ -14,7 +15,9 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01ConfigError
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.history.Profile
+import io.github.darkcosmos.kosmodarts.persistence.CricketSettings
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
+import io.github.darkcosmos.kosmodarts.persistence.X01Settings
 import io.github.darkcosmos.kosmodarts.ui.app.GameMode
 import kotlin.random.Random
 
@@ -22,7 +25,7 @@ import kotlin.random.Random
  * Content of the setup screen. Immutable: every change returns a new state, and any change clears the errors of the
  * last [start] attempt, so errors never point at a field that moved.
  *
- * @property roster one entry per name field, in throwing order, each with its color slot (1 to
+ * @property roster one entry per name field, in throwing order, each with its color (1 to
  *   [X01Config.MAX_PLAYERS] fields; docs/rules/players.md, PC1 to PC4).
  * @property nameErrors errors of the last [start] attempt, by field position.
  * @property screenErrors errors of the last [start] attempt that are not about a name.
@@ -34,6 +37,7 @@ import kotlin.random.Random
  * @property isBullInPlay whether the Bull is a target (CR21, "25-Bull"), a Cricket setting.
  * @property profiles the known profiles, most recently used first (PF3); empty until read or when the read failed.
  * @property focusedIndex the position of the name field that has the focus, or `null` (PF3).
+ * @property openSwatches the swatch row open under a player, or `null` (PC14).
  */
 data class SetupState(
     val startScore: Int = X01Config.DEFAULT_START_SCORE,
@@ -48,8 +52,9 @@ data class SetupState(
     val isBullInPlay: Boolean = true,
     val profiles: List<Profile> = emptyList(),
     val focusedIndex: Int? = null,
+    val openSwatches: SwatchRow? = null,
 ) {
-    /** [names] with the color slots of their positions (PC5), for a setup typed in one go. */
+    /** [names] with the colors of their positions (PC5), for a setup typed in one go. */
     constructor(
         startScore: Int = X01Config.DEFAULT_START_SCORE,
         checkoutRule: CheckoutRule = CheckoutRule.DOUBLE_OUT,
@@ -59,7 +64,7 @@ data class SetupState(
     ) : this(
         startScore = startScore,
         checkoutRule = checkoutRule,
-        roster = Roster.of(names, ColorSlot.byPosition(names.size)),
+        roster = Roster.of(names, PlayerColor.byPosition(names.size)),
         legsPerSet = legsPerSet,
         sets = sets,
     )
@@ -94,7 +99,7 @@ data class SetupState(
     /** M13: [value] clamped to [MatchFormat.MIN] to [MatchFormat.MAX]. */
     fun withSets(value: Int): SetupState = edited(copy(sets = value.coerceIn(FORMAT_RANGE)))
 
-    /** M13: "+ Add a player" is shown while a color slot is free. */
+    /** M13: "+ Add a player" is shown while fewer than four players are set. */
     val canAddPlayer: Boolean
         get() = roster.canAdd
 
@@ -111,31 +116,39 @@ data class SetupState(
 
     fun withName(index: Int, name: String): SetupState = edited(copy(roster = roster.withName(index, name)))
 
-    /** PC2: a new empty row with the first free color slot. */
-    fun withPlayerAdded(): SetupState = if (canAddPlayer) edited(copy(roster = roster.withPlayerAdded())) else this
+    /** PC2: a new empty row with the first acceptable color, else one generated with [random]; closes the swatches. */
+    fun withPlayerAdded(random: Random): SetupState =
+        if (canAddPlayer) edited(copy(roster = roster.withPlayerAdded(random), openSwatches = null)) else this
 
-    /** PC3, M13: removes the row at [index] and its typed name at once; its color slot becomes free. */
+    /** PC3, M13: removes the row at [index] and its typed name at once; its color becomes free. */
     fun withPlayerRemoved(index: Int): SetupState =
         if (canRemovePlayer && index in roster.entries.indices) {
-            edited(copy(roster = roster.withPlayerRemoved(index), focusedIndex = null))
+            edited(
+                copy(
+                    roster = roster.withPlayerRemoved(index),
+                    focusedIndex = null,
+                    openSwatches = openSwatches?.afterRemoval(index),
+                ),
+            )
         } else {
             this
         }
 
     /** PC4: shuffles the throwing order with [random], injected so that tests are deterministic. */
-    fun shuffled(random: Random): SetupState = edited(copy(roster = roster.shuffled(random), focusedIndex = null))
+    fun shuffled(random: Random): SetupState =
+        edited(copy(roster = roster.shuffled(random), focusedIndex = null, openSwatches = null))
 
     /**
-     * Validates the setup of its [mode] with the engine rules (rules C5, M1, CR1); the slots go with the names (PC5).
+     * Validates the setup of its [mode] with the engine rules (rules C5, M1, CR1); the colors go with the names (PC5).
      */
     fun start(): SetupResult = try {
         val format = MatchFormat(legsPerSet, sets)
         when (mode) {
             GameMode.X01 -> SetupResult.Valid(
-                X01MatchConfig(X01Config(roster.names, startScore, checkoutRule), format, roster.slots),
+                X01MatchConfig(X01Config(roster.names, startScore, checkoutRule), format, roster.colors),
             )
             GameMode.CRICKET -> SetupResult.ValidCricket(
-                CricketMatchConfig(CricketConfig(roster.names, cricketVariant, isBullInPlay), format, roster.slots),
+                CricketMatchConfig(CricketConfig(roster.names, cricketVariant, isBullInPlay), format, roster.colors),
             )
         }
     } catch (e: InvalidX01ConfigException) {
@@ -149,7 +162,7 @@ data class SetupState(
         private val FORMAT_RANGE = MatchFormat.MIN..MatchFormat.MAX
 
         /**
-         * The setup of [lastSetup] (names in order with their color slots, start score, checkout rule, match format),
+         * The setup of [lastSetup] (names in order with their colors, start score, checkout rule, match format),
          * or the default setup (rules R7, R13; PC8).
          */
         fun prefilled(lastSetup: X01MatchConfig?): SetupState = lastSetup
@@ -157,7 +170,7 @@ data class SetupState(
                 SetupState(
                     startScore = it.config.startScore,
                     checkoutRule = it.config.checkoutRule,
-                    roster = Roster.of(it.config.players, it.colorSlots),
+                    roster = Roster.of(it.config.players, it.colors),
                     legsPerSet = it.format.legsPerSet,
                     sets = it.format.sets,
                 )
@@ -168,22 +181,45 @@ data class SetupState(
          * The setup of [mode] prefilled with [lastSetups]: the shared roster with the last settings of that mode, or
          * the defaults of that mode (rules R7, R13, R22, CR21).
          */
-        fun prefilled(lastSetups: LastSetups?, mode: GameMode): SetupState = when (mode) {
-            GameMode.X01 -> prefilled(lastSetups?.x01Setup).copy(mode = mode)
-            GameMode.CRICKET -> lastSetups
-                ?.cricketSetup
-                ?.let {
-                    SetupState(
-                        roster = Roster.of(it.config.players, it.colorSlots),
-                        legsPerSet = it.format.legsPerSet,
-                        sets = it.format.sets,
-                        mode = mode,
-                        cricketVariant = it.config.variant,
-                        isBullInPlay = it.config.isBullInPlay,
-                    )
-                }
-                ?: SetupState(mode = mode)
+        fun prefilled(lastSetups: LastSetups?, mode: GameMode): SetupState = when {
+            lastSetups == null -> SetupState(mode = mode)
+            mode == GameMode.X01 -> {
+                val settings = lastSetups.x01 ?: X01Settings()
+                SetupState(
+                    startScore = settings.startScore,
+                    checkoutRule = settings.checkoutRule,
+                    roster = rosterOf(lastSetups),
+                    legsPerSet = settings.format.legsPerSet,
+                    sets = settings.format.sets,
+                    mode = mode,
+                )
+            }
+            else -> {
+                val settings = lastSetups.cricket ?: CricketSettings()
+                SetupState(
+                    roster = rosterOf(lastSetups),
+                    legsPerSet = settings.format.legsPerSet,
+                    sets = settings.format.sets,
+                    mode = mode,
+                    cricketVariant = settings.variant,
+                    isBullInPlay = settings.isBullInPlay,
+                )
+            }
         }
+
+        /** The roster of [lastSetups], read without the configuration checks: PM9 may leave one empty name. */
+        private fun rosterOf(lastSetups: LastSetups): Roster =
+            Roster.of(lastSetups.roster.players, lastSetups.roster.colors)
+    }
+}
+
+/** PC14: the swatches [colors] offered to the player at [index]; [colors] start with his own color. */
+data class SwatchRow(val index: Int, val colors: List<PlayerColor>) {
+    /** The row after the player at [removed] left: closed for him, moved up when a player before him left. */
+    fun afterRemoval(removed: Int): SwatchRow? = when {
+        removed == index -> null
+        removed < index -> copy(index = index - 1)
+        else -> this
     }
 }
 
@@ -238,3 +274,22 @@ fun SetupState.withFocusOn(index: Int): SetupState =
 
 /** PF3: the field at [index] lost the focus; another field that already took it keeps it. */
 fun SetupState.withFocusLostBy(index: Int): SetupState = if (focusedIndex == index) copy(focusedIndex = null) else this
+
+/**
+ * PC14: opens the swatch row of the player at [index] (drawn once with [random] and kept until it closes), closes it
+ * when it is already open for him, and moves it when another player's row is open.
+ */
+fun SetupState.withSwatchesToggled(index: Int, random: Random): SetupState = when {
+    index !in roster.entries.indices -> this
+    openSwatches?.index == index -> copy(openSwatches = null)
+    else -> copy(openSwatches = SwatchRow(index, ColorChoices.choicesFor(index, roster.colors, random)))
+}
+
+/** PC14: gives the open player [color] if the row offers it and no other player holds it; closes the row. */
+fun SetupState.withColorPicked(color: PlayerColor): SetupState {
+    val row = openSwatches
+    val isTakenByAnother = roster.colors.withIndex().any { (i, c) -> i != row?.index && c == color }
+    if (row == null || color !in row.colors || isTakenByAnother) return this
+    val entries = roster.entries.mapIndexed { i, entry -> if (i == row.index) entry.copy(color = color) else entry }
+    return edited(copy(roster = Roster(entries), openSwatches = null))
+}

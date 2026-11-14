@@ -3,6 +3,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
@@ -21,6 +22,7 @@ import io.github.darkcosmos.kosmodarts.ui.game.CheckoutSummary
 import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
 import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailState
+import io.github.darkcosmos.kosmodarts.ui.players.PlayersState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 
 /** The screen on display, with its content. There is no navigation library: the screen is plain state. */
@@ -59,6 +61,12 @@ sealed interface Screen {
      * scroll position live in [history] so that Back from the detail can restore them (HS6).
      */
     data class History(val home: Home, val history: HistoryState = HistoryState()) : Screen
+
+    /**
+     * The Players screen (PM2 to PM11); Back returns to [home], with its saved game summary, whose players PM8 locks.
+     * Nothing of it is saved: after a process return the home screen shows.
+     */
+    data class Players(val home: Home, val players: PlayersState = PlayersState()) : Screen
 
     /**
      * The read-only detail of one archived match (HS5, HS6). It keeps the whole [list] screen it came from, so that
@@ -204,6 +212,12 @@ sealed interface AppEvent {
 
     data object PlayersShuffled : AppEvent
 
+    /** The color swatch of the row at [index] opens or closes the swatch row (PC14). */
+    data class ColorSwatchTapped(val index: Int) : AppEvent
+
+    /** A swatch of the open row was tapped (PC14). */
+    data class ColorPicked(val color: PlayerColor) : AppEvent
+
     /** − (delta -1) or + (delta 1) of "Legs per set" (M13). */
     data class LegsPerSetChanged(val delta: Int) : AppEvent
 
@@ -255,6 +269,9 @@ sealed interface AppEvent {
 
     /** The "History" button of the home screen (HS1). */
     data object HistoryTapped : AppEvent
+
+    /** The "Players" button of the home screen (PM1); the other events of that screen are [PlayersEvent]s. */
+    data object PlayersTapped : AppEvent
 
     /** The mode filter of History (HS3); `null` is "All". */
     data class HistoryModeSelected(val mode: ArchivedMode?) : AppEvent

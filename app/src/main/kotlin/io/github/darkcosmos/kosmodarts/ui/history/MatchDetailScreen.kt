@@ -118,12 +118,12 @@ private fun LegHeader(ordinal: Int, leg: DetailLeg) {
     ) {
         SectionLabel(legHeading(resources, leg))
         Text(
-            text = stringResource(R.string.detail_leg_starter, leg.starter.name),
+            text = stringResource(R.string.detail_leg_starter, leg.starter.shownName(resources)),
             style = KosmoTheme.typography.body,
             color = colors.onBackgroundMuted,
         )
         Text(
-            text = stringResource(R.string.detail_leg_winner, leg.winner.name),
+            text = stringResource(R.string.detail_leg_winner, leg.winner.shownName(resources)),
             style = KosmoTheme.typography.body,
             color = colors.onBackgroundMuted,
         )
@@ -153,7 +153,7 @@ private fun VisitRow(ordinal: Int, index: Int, visit: DetailVisit, detail: Match
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                text = visit.player.name,
+                text = visit.player.shownName(resources),
                 style = KosmoTheme.typography.bodyLarge,
                 color = Color(visit.player.colorArgb),
                 modifier = Modifier.weight(1f),

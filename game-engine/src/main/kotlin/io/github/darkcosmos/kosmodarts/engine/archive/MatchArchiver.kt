@@ -8,7 +8,7 @@ import io.github.darkcosmos.kosmodarts.engine.journal.LegSetup
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.match.MatchRank
 import io.github.darkcosmos.kosmodarts.engine.match.MatchScore
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 
@@ -24,7 +24,7 @@ object MatchArchiver {
         val input = Input(
             settings = ArchivedSettings.X01(config.startScore, config.checkoutRule, match.format),
             names = config.players,
-            colorSlots = match.colorSlots,
+            colors = match.colors,
             finalScore = requireNotNull(match.finalScore) { "The match is not won" },
             ranking = match.ranking,
             legSetups = List(match.completedLegs.size + 1) { LegSetup.X01(config, it % config.players.size) },
@@ -39,7 +39,7 @@ object MatchArchiver {
         val input = Input(
             settings = ArchivedSettings.Cricket(config.variant, config.isBullInPlay, match.format),
             names = config.players,
-            colorSlots = match.colorSlots,
+            colors = match.colors,
             finalScore = requireNotNull(match.finalScore) { "The match is not won" },
             ranking = match.ranking,
             legSetups = List(match.completedLegs.size + 1) { LegSetup.Cricket(config, it % config.players.size) },
@@ -51,7 +51,7 @@ object MatchArchiver {
     private class Input(
         val settings: ArchivedSettings,
         val names: List<String>,
-        val colorSlots: List<ColorSlot>,
+        val colors: List<PlayerColor>,
         val finalScore: MatchScore,
         val ranking: List<MatchRank>,
         val legSetups: List<LegSetup>,
@@ -72,7 +72,7 @@ object MatchArchiver {
             ArchivedPlayer(
                 position = it,
                 name = input.names[it],
-                colorSlot = input.colorSlots[it],
+                color = input.colors[it],
                 rank = rankOf.getValue(it),
                 legsWon = score.legsWonTotal[it],
                 setsWon = score.setsWon[it],

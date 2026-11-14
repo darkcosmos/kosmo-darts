@@ -29,6 +29,12 @@ object SetupTags {
 
     fun remove(index: Int): String = "setup_remove_$index"
 
+    /** The color swatch of the row at [index] (PC9). */
+    fun color(index: Int): String = "setup_color_$index"
+
+    /** The open swatch row under the row at [index] (PC14). */
+    fun swatches(index: Int): String = "setup_swatches_$index"
+
     /** Visible label of the stepper [prefix]. */
     fun label(prefix: String): String = "${prefix}_label"
 

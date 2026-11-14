@@ -10,7 +10,7 @@ import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatchConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
@@ -72,7 +72,7 @@ class CricketReducerTest {
         val setup = CricketMatchConfig(
             CricketConfig(listOf("Ann", "Bob"), CricketVariant.CUT_THROAT, isBullInPlay = false),
             MatchFormat(3, 1),
-            ColorSlot.byPosition(2),
+            PlayerColor.byPosition(2),
         )
         val state = newCricketMatchState(setup, x01Setup.toLastSetups(), TEST_STAMP)
 
@@ -178,17 +178,17 @@ class CricketReducerTest {
     }
 
     @Test
-    fun `CR28 PC7 a rematch rotates the players, keeps the slots, settings and format, and becomes the last setup`() {
-        val slots = listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_1, ColorSlot.SLOT_2)
+    fun `CR28 PC7 a rematch rotates the players, keeps the colors, settings and format, and becomes the last setup`() {
+        val colors = listOf(PlayerColor.TEAL, PlayerColor.BLUE, PlayerColor.ORANGE)
         val match = CricketSaveFixtures.match(
             "Ann", "Bob", "Cid",
-            variant = CricketVariant.CUT_THROAT, isBullInPlay = false, legsPerSet = 2, sets = 3, colorSlots = slots,
+            variant = CricketVariant.CUT_THROAT, isBullInPlay = false, legsPerSet = 2, sets = 3, colors = colors,
         )
         val end = AppState(screen = Screen.CricketEnd(match), lastSetup = x01Setup.toLastSetups())
         val rotated = CricketMatchConfig(
             CricketConfig(listOf("Bob", "Cid", "Ann"), CricketVariant.CUT_THROAT, isBullInPlay = false),
             MatchFormat(2, 3),
-            listOf(ColorSlot.SLOT_1, ColorSlot.SLOT_2, ColorSlot.SLOT_3),
+            listOf(PlayerColor.BLUE, PlayerColor.ORANGE, PlayerColor.TEAL),
         )
 
         val rematch = end.after(AppEvent.Rematch)

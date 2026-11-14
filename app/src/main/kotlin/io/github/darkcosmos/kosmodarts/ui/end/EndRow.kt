@@ -1,7 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.end
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
@@ -14,7 +14,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
  * @property setsWon sets won, or `null` in a single game or with one set: the column is then not shown (M17).
  * @property legsWon legs won over the whole match, or `null` in a single game (M17). The end screen shows the sets
  *   column when [setsWon] is known, else the legs column (owner Q8 of issue #49), else no score column.
- * @property slot the player's color slot, drawn as a square before his name (PC9).
+ * @property color the player's color, drawn as a square before his name (PC9).
  * @property points Cricket only: the points of the last leg, shown in the PTS column (CR27); `null` otherwise.
  */
 data class EndRow(
@@ -25,7 +25,7 @@ data class EndRow(
     val isWinner: Boolean,
     val setsWon: Int? = null,
     val legsWon: Int? = null,
-    val slot: ColorSlot,
+    val color: PlayerColor,
     val points: Int? = null,
 )
 
@@ -47,7 +47,7 @@ fun endRows(match: X01Match): List<EndRow> {
             isWinner = player == score.winnerIndex,
             setsWon = score.setsWon[player].takeIf { format.hasSets },
             legsWon = score.legsWonTotal[player].takeUnless { format.isSingleGame },
-            slot = match.colorSlots[player],
+            color = match.colors[player],
         )
     }
 }
@@ -73,7 +73,7 @@ fun endRows(match: CricketMatch): List<EndRow> {
             isWinner = player == score.winnerIndex,
             setsWon = score.setsWon[player].takeIf { format.hasSets },
             legsWon = score.legsWonTotal[player].takeUnless { format.isSingleGame },
-            slot = match.colorSlots[player],
+            color = match.colors[player],
             points = lastLeg[player].points.takeUnless { isSolo },
         )
     }

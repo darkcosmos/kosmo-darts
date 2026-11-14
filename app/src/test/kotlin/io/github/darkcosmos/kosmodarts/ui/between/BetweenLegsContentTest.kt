@@ -1,6 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.between
 
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot.SLOT_2
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor.Companion.ORANGE
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
 import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures
 import io.github.darkcosmos.kosmodarts.persistence.confirmLegsWonBy
@@ -23,7 +23,7 @@ class BetweenLegsContentTest {
         assertNull(state.winnerPoints)
         assertEquals(confirmed.playerStats.map { it.threeDartAverage }, state.rows.map { it.average })
         assertEquals("Bob", state.nextStarterName)
-        assertEquals(confirmed.colorSlots[1], state.nextStarterSlot)
+        assertEquals(confirmed.colors[1], state.nextStarterColor)
     }
 
     /** CR26: the winner's points of the leg that just ended, and the marks per round of the match. */
@@ -40,7 +40,7 @@ class BetweenLegsContentTest {
         assertEquals(listOf(1, 0), state.rows.map { it.legsWon })
         assertEquals(listOf(true, false), state.rows.map { it.isLegWinner })
         assertEquals("Bob", state.nextStarterName)
-        assertEquals(SLOT_2, state.nextStarterSlot)
+        assertEquals(ORANGE, state.nextStarterColor)
     }
 
     /** CR26: nothing under the winner's name in a solo game. */

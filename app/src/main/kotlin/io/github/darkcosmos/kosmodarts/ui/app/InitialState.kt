@@ -27,7 +27,8 @@ fun initialState(load: LoadResult, wasOnGameScreen: Boolean, history: HistorySna
         is GameLoad.Valid -> game.saved.let {
             if (wasOnGameScreen) it.toScreen() else Screen.Home(resumableGame = it).backToHistory(history)
         }
-        is GameLoad.Invalid -> Screen.Setup(SetupState.prefilled(load.lastSetup?.x01Setup), isRestoreFailedShown = true)
+        is GameLoad.Invalid ->
+            Screen.Setup(SetupState.prefilled(load.lastSetup, GameMode.X01), isRestoreFailedShown = true)
     }
     return AppState(screen = screen, lastSetup = load.lastSetup)
 }

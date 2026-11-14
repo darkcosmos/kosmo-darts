@@ -4,6 +4,8 @@ import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedDart
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedLeg
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMode
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedSettings
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
+import io.github.darkcosmos.kosmodarts.engine.profile.ProfileRules
 
 /**
  * The two History filters (HS3): a `null` mode is "All", a `null` [profileId] is "All". They combine.
@@ -19,13 +21,17 @@ data class HistoryFilters(val mode: ArchivedMode? = null, val profileId: Long? =
 /** A profile offered by the player filter (HS3). */
 data class HistoryProfile(val id: Long, val name: String)
 
-/** A player of a listed match, in throwing order, with the values stored at the confirmation (AR6). */
+/**
+ * A player of a listed match, in throwing order, with the values stored at the confirmation (AR6). [isDeleted] is
+ * true for the anonymous profile (PM6, PM7): the screens show the "Deleted player" resource, not [name].
+ */
 data class HistoryPlayer(
     val name: String,
     val colorArgb: Int,
     val finalRank: Int,
     val legsWon: Int,
     val setsWon: Int,
+    val isDeleted: Boolean = false,
 )
 
 /** One archived match as History lists it (HS2). */
@@ -126,5 +132,13 @@ class RoomHistoryRepository(private val database: HistoryDatabase) : HistoryRepo
         }
     }
 
-    private fun MatchPlayerRow.toHistoryPlayer() = HistoryPlayer(name, colorArgb, finalRank, legsWon, setsWon)
+    // The stored alpha is forced to opaque, never an error (D16).
+    private fun MatchPlayerRow.toHistoryPlayer() = HistoryPlayer(
+        name = name,
+        colorArgb = PlayerColor.fromStored(colorArgb).argb,
+        finalRank = finalRank,
+        legsWon = legsWon,
+        setsWon = setsWon,
+        isDeleted = nameKey == ProfileRules.ANONYMOUS_NAME_KEY,
+    )
 }

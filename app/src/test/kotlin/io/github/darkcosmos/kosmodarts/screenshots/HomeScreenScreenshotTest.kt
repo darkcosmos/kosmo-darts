@@ -2,13 +2,16 @@ package io.github.darkcosmos.kosmodarts.screenshots
 
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.ui.app.Screen
 import io.github.darkcosmos.kosmodarts.ui.home.HomeScreen
+import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoDartsTheme
 import org.junit.Rule
 import org.junit.Test
@@ -31,7 +34,7 @@ class HomeScreenScreenshotTest {
     val composeRule = createAndroidComposeRule<MainActivity>()
 
     /** Fixed version values, so the captures do not change from one CI run to the next (AV1). */
-    private fun capture(name: String) {
+    private fun capture(name: String, isScrolledToPlayers: Boolean = false) {
         composeRule.runOnUiThread {
             val view = ComposeView(composeRule.activity)
             view.setContent {
@@ -40,6 +43,8 @@ class HomeScreenScreenshotTest {
             composeRule.activity.setContentView(view)
         }
         composeRule.waitForIdle()
+        // D19: the Players button reached by scrolling, above the fixed version footer.
+        if (isScrolledToPlayers) composeRule.onNodeWithTag(HomeTags.PLAYERS).performScrollTo()
         val directory = System.getProperty(SCREENSHOT_DIR_PROPERTY, DEFAULT_SCREENSHOT_DIR)
         composeRule.onRoot().captureRoboImage("$directory/$name.png")
     }
@@ -64,6 +69,21 @@ class HomeScreenScreenshotTest {
     @Test
     @Config(qualifiers = "+en-port", fontScale = LARGEST_FONT_SCALE)
     fun homePortraitEnglishLargestFont() = capture("home_portrait_en_font200")
+
+    /** D19: the History and Players buttons at the end of the scroll, in landscape, normal and largest font. */
+    @Test
+    @Config(qualifiers = "+en-land")
+    fun homeLandscapePlayersButton() = capture("home_landscape_en_players", isScrolledToPlayers = true)
+
+    @Test
+    @Config(qualifiers = "+fr-land", fontScale = LARGEST_FONT_SCALE)
+    fun homeLandscapePlayersButtonLargestFont() =
+        capture("home_landscape_fr_players_font200", isScrolledToPlayers = true)
+
+    @Test
+    @Config(qualifiers = "+fr-port", fontScale = LARGEST_FONT_SCALE)
+    fun homePortraitPlayersButtonLargestFont() =
+        capture("home_portrait_fr_players_font200", isScrolledToPlayers = true)
 
     private companion object {
         const val SCREENSHOT_DIR_PROPERTY = "kosmodarts.screenshot.dir"

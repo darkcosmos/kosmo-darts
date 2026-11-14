@@ -40,6 +40,10 @@ Les dimensions sont en dp (les maquettes sont dessinées à 412 × 915 dp, la ta
 | `player3` sarcelle | `#0C7C6A` | `#FFFFFF` | 5,1:1 |
 | `player4` lilas | `#C9A7FF` | `#0A0F1E` | 9,5:1 |
 
+Les couleurs des joueurs sont celles de `docs/rules/players.md` (PC11 à PC13) : toute couleur qui respecte ces règles,
+pas seulement les quatre jetons. Les quatre jetons ci-dessus forment la palette (PC2, PC14). `onPlayerN` n'est pas
+choisi à la main : il est calculé par PC13 (blanc ou `background`, selon le contraste le plus élevé).
+
 Règles :
 - La couleur est **attachée au joueur**, pas à sa position : elle le suit quand on mélange l'ordre et pendant tout le match.
 - À l'ajout d'un joueur, il reçoit la première couleur libre dans l'ordre ci-dessus. Retirer un joueur libère sa couleur.
@@ -104,6 +108,8 @@ Règles :
 | `SegmentedChoice` | Choix exclusif (501/301, sortie double/simple) : option active en `accent`. |
 | `Stepper` | Libellé, boutons − et + de 44 sur `surfaceHigher`, valeur au centre. |
 | `PlayerNameRow` | Liseré `playerN`, numéro d'ordre, champ du nom. |
+| `ColorSwatchRow` | Sous la ligne du joueur, ouverte par un tap sur son liseré (48 dp) : une rangée de pastilles rondes de 48 dp (PC14), la couleur du joueur cochée (« sélectionnée » pour TalkBack), puis les couleurs de la palette (décrites par leur nom : bleu, orange, sarcelle, lilas), puis les couleurs générées (« Couleur 5 », « Couleur 6 »…) ; 4 à 7 pastilles, retour à la ligne si besoin. Une seule rangée ouverte à la fois ; un tap sur la couleur choisie ferme la rangée (PC16). |
+| `PlayersScreen` | Écran « Joueurs » (PM1 à PM11) : barre du haut « Joueurs » avec retour ; états chargement, échec (HS7, « Réessayer »), vide (PM2), liste. Une carte de profil à la fois se déplie avec « Renommer », « Fusionner », « Réinitialiser », « Supprimer » ; chaque action affiche son panneau de saisie ou de confirmation dans l'écran, sans popup, et ses erreurs (PM10) sont annoncées par TalkBack. |
 | `SettingsSwitch` | Interrupteur rectangulaire : actif = piste `accent`, curseur `background`. |
 
 ## 6. Écrans et comportements

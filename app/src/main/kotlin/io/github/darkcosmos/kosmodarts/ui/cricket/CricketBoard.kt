@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTarget
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVisit
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.ui.components.BarAction
 import io.github.darkcosmos.kosmodarts.ui.format.displayName
@@ -75,7 +75,7 @@ private val NEXT_LABEL_PADDING_ACROSS = 8.dp
 class CricketBoardContent(
     val rows: List<CricketBoardRow>,
     val names: List<String>,
-    val slots: List<ColorSlot>,
+    val colors: List<PlayerColor>,
     val currentIndex: Int,
     val visits: List<CricketVisit>,
     val totals: List<Int>?,
@@ -268,7 +268,7 @@ private fun HeaderCell(player: Int, content: CricketBoardContent, header: Cricke
             Modifier
                 .fillMaxWidth()
                 .height(CricketBoardLayoutPolicy.STRIP_HEIGHT.dp)
-                .background(PlayerPalette.colorOf(content.slots[player], colors)),
+                .background(PlayerPalette.colorOf(content.colors[player])),
         )
         if (total != null && header.totalSize != null) {
             val style = totalStyle(KosmoTheme.typography.tileScore, header.totalSize, LocalDensity.current)

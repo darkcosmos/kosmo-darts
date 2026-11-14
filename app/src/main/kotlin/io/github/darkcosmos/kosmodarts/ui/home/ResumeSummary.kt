@@ -2,7 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.home
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.persistence.SavedCricketGame
 import io.github.darkcosmos.kosmodarts.persistence.SavedGame
@@ -24,7 +24,7 @@ sealed interface ResumeGame {
  *
  * @property game the mode of the saved game, with the settings its format line shows.
  * @property format the match format, for the format line of the card (M18).
- * @property players every player in throwing order, with his remaining score and color slot.
+ * @property players every player in throwing order, with his remaining score and color.
  * @property highlightedPlayer the player the game screen shows as throwing after resuming: the one whose turn waits,
  *   else the player to throw; with a pending checkout, the winner. The card always reads "Resume · <player> to throw"
  *   (owner Q11 of issue #49).
@@ -46,14 +46,14 @@ data class ResumeSummary(
     /**
      * @property remaining in the current leg for X01; the points scored in Cricket (CR20); `null` in a solo Cricket
      *   game, whose tile shows no score (CR20, Q6 A).
-     * @property slot the player's color slot (PC9).
+     * @property color the player's color (PC9).
      * @property setsWon sets won, or `null` in a single game or with one set (M18).
      * @property legsWon legs won in the current set, or `null` in a single game (M18), as on the tiles (M14).
      */
     data class PlayerScore(
         val name: String,
         val remaining: Int?,
-        val slot: ColorSlot,
+        val color: PlayerColor,
         val setsWon: Int? = null,
         val legsWon: Int? = null,
     )
@@ -83,7 +83,7 @@ data class ResumeSummary(
                     PlayerScore(
                         player.name,
                         player.remaining,
-                        screen.colorSlotOf(index),
+                        screen.playerColorOf(index),
                         indicator?.setsWon,
                         indicator?.legsWon,
                     )
@@ -107,7 +107,7 @@ data class ResumeSummary(
                         name = name,
                         // A solo game shows no score on its tile (CR20, Q6 A).
                         remaining = if (config.players.size == 1) null else screen.game.state.players[index].points,
-                        slot = screen.colorSlots[index],
+                        color = screen.colors[index],
                         setsWon = indicator?.setsWon,
                         legsWon = indicator?.legsWon,
                     )

@@ -3,7 +3,7 @@ package io.github.darkcosmos.kosmodarts.ui.theme
 import androidx.compose.animation.core.SnapSpec
 import androidx.compose.animation.core.TweenSpec
 import androidx.compose.ui.graphics.Color
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -18,23 +18,23 @@ class PaletteContrastTest {
     private val colors = KosmoColors.Default
 
     @Test
-    fun `PC9 slot n is playerN with onPlayerN`() {
-        assertEquals(colors.player1, PlayerPalette.colorOf(ColorSlot.SLOT_1))
-        assertEquals(colors.player2, PlayerPalette.colorOf(ColorSlot.SLOT_2))
-        assertEquals(colors.player3, PlayerPalette.colorOf(ColorSlot.SLOT_3))
-        assertEquals(colors.player4, PlayerPalette.colorOf(ColorSlot.SLOT_4))
-        assertEquals(colors.onPlayer1, PlayerPalette.onColorOf(ColorSlot.SLOT_1))
-        assertEquals(colors.onPlayer2, PlayerPalette.onColorOf(ColorSlot.SLOT_2))
-        assertEquals(colors.onPlayer3, PlayerPalette.onColorOf(ColorSlot.SLOT_3))
-        assertEquals(colors.onPlayer4, PlayerPalette.onColorOf(ColorSlot.SLOT_4))
+    fun `PC9 color n is playerN with onPlayerN`() {
+        assertEquals(colors.player1, PlayerPalette.colorOf(PlayerColor.BLUE))
+        assertEquals(colors.player2, PlayerPalette.colorOf(PlayerColor.ORANGE))
+        assertEquals(colors.player3, PlayerPalette.colorOf(PlayerColor.TEAL))
+        assertEquals(colors.player4, PlayerPalette.colorOf(PlayerColor.LILAC))
+        assertEquals(colors.onPlayer1, PlayerPalette.onColorOf(PlayerColor.BLUE))
+        assertEquals(colors.onPlayer2, PlayerPalette.onColorOf(PlayerColor.ORANGE))
+        assertEquals(colors.onPlayer3, PlayerPalette.onColorOf(PlayerColor.TEAL))
+        assertEquals(colors.onPlayer4, PlayerPalette.onColorOf(PlayerColor.LILAC))
         // Four distinct colors.
-        assertEquals(4, ColorSlot.entries.map { PlayerPalette.colorOf(it) }.toSet().size)
+        assertEquals(4, PlayerColor.PALETTE.map { PlayerPalette.colorOf(it) }.toSet().size)
     }
 
     /** Text pairs: at least 4.5:1 (section 8). */
     @Test
     fun `text pairs reach 4,5 to 1`() {
-        val pairs = ColorSlot.entries.map { PlayerPalette.onColorOf(it) to PlayerPalette.colorOf(it) } + listOf(
+        val pairs = PlayerColor.PALETTE.map { PlayerPalette.onColorOf(it) to PlayerPalette.colorOf(it) } + listOf(
             colors.onAccent to colors.accent,
             colors.onDanger to colors.danger,
             colors.onBackgroundMuted to colors.surface,
@@ -72,8 +72,8 @@ class PaletteContrastTest {
         val pairs = listOf(
             colors.accent to colors.surfaceHigh,
             colors.accent to colors.background,
-        ) + ColorSlot.entries.flatMap { slot ->
-            listOf(PlayerPalette.colorOf(slot) to colors.background)
+        ) + PlayerColor.PALETTE.flatMap { color ->
+            listOf(PlayerPalette.colorOf(color) to colors.background)
         }
         pairs.forEach { (indicator, background) ->
             assertTrue(

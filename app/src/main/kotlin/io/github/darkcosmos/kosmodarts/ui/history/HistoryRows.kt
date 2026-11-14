@@ -6,6 +6,7 @@ import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedSettings
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.history.HistoryMatch
+import io.github.darkcosmos.kosmodarts.history.HistoryPlayer
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -31,6 +32,10 @@ data class HistoryRowText(
     val description: String,
 )
 
+/** The name a screen shows: the "Deleted player" resource for the anonymous profile (PM6, PM7), else the name. */
+fun HistoryPlayer.shownName(resources: Resources): String =
+    if (isDeleted) resources.getString(R.string.history_deleted_player) else name
+
 /** The end date and time of a match in [locale] (HS2). */
 fun formatEndDate(epochMillis: Long, locale: Locale, zone: ZoneId): String =
     DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
@@ -42,8 +47,8 @@ fun formatEndDate(epochMillis: Long, locale: Locale, zone: ZoneId): String =
 fun HistoryMatch.toRowText(resources: Resources, locale: Locale, zone: ZoneId): HistoryRowText {
     val date = formatEndDate(endedAt, locale, zone)
     val mode = modeText(resources, settings)
-    val texts = players.map { HistoryPlayerText(it.name, it.colorArgb) }
-    val winnerNames = winners.joinToString(", ") { it.name }
+    val texts = players.map { HistoryPlayerText(it.shownName(resources), it.colorArgb) }
+    val winnerNames = winners.joinToString(", ") { it.shownName(resources) }
     val winner = resources.getQuantityString(R.plurals.history_winner, winners.size, winners.size, winnerNames)
     val score = scoreText(resources)
     val spokenScore = scoreText(resources, isSpoken = true)
@@ -51,7 +56,7 @@ fun HistoryMatch.toRowText(resources: Resources, locale: Locale, zone: ZoneId): 
         R.plurals.history_players_description,
         players.size,
         players.size,
-        players.joinToString(", ") { it.name },
+        players.joinToString(", ") { it.shownName(resources) },
     )
     val description = listOfNotNull(date, mode, playersLine, winner, spokenScore)
         .joinToString(resources.getString(R.string.history_description_separator))
@@ -94,7 +99,11 @@ private fun HistoryMatch.scoreText(resources: Resources, isSpoken: Boolean = fal
     val separator = if (isSpoken) ", " else resources.getString(R.string.history_score_separator)
     val values = players.joinToString(separator) {
         val won = if (hasSets) it.setsWon else it.legsWon
-        if (isSpoken) resources.getString(R.string.history_score_spoken_player, it.name, won) else won.toString()
+        if (isSpoken) {
+            resources.getString(R.string.history_score_spoken_player, it.shownName(resources), won)
+        } else {
+            won.toString()
+        }
     }
     return resources.getString(if (hasSets) R.string.history_score_sets else R.string.history_score_legs, values)
 }

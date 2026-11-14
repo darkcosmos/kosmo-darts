@@ -1,7 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.game
 
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures.match
@@ -15,7 +15,7 @@ import org.junit.Test
 
 /**
  * The state of the redesigned game screen (issue #49): zone mode, tile order (M6), confirm label (M15), header
- * position (M14, M19), checkout summary (U2), color slots (PC6, PC9) and the Double/Triple toggles (owner X1).
+ * position (M14, M19), checkout summary (U2), colors (PC6, PC9) and the Double/Triple toggles (owner X1).
  */
 class GameScreenStateZoneTest {
 
@@ -146,13 +146,13 @@ class GameScreenStateZoneTest {
         assertNull(annAt121().checkoutSummary)
     }
 
-    /** PC6, PC9: each player's slot, whatever his position. */
+    /** PC6, PC9: each player's color, whatever his position. */
     @Test
-    fun `PC9 color slot of each player`() {
-        val slots = listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_4, ColorSlot.SLOT_1)
-        val game = GameScreenState(match("Ann", "Bob", "Cid", colorSlots = slots))
+    fun `PC9 each player has his own color`() {
+        val colors = listOf(PlayerColor.TEAL, PlayerColor.LILAC, PlayerColor.BLUE)
+        val game = GameScreenState(match("Ann", "Bob", "Cid", colors = colors))
 
-        assertEquals(listOf(ColorSlot.SLOT_3, ColorSlot.SLOT_4, ColorSlot.SLOT_1), (0..2).map(game::colorSlotOf))
+        assertEquals(listOf(PlayerColor.TEAL, PlayerColor.LILAC, PlayerColor.BLUE), (0..2).map(game::playerColorOf))
     }
 
     /** Owner X1: at most one of Double and Triple is active; the same key again turns it off. */

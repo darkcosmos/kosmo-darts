@@ -45,20 +45,20 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.PlayerPalette
 import io.github.darkcosmos.kosmodarts.ui.theme.States
 
-private val STRIP = 6.dp
+private val STRIP = States.minTouchTarget
 private val ORDER_WIDTH = 28.dp
 
 /** What one row of the setup player list shows and does. */
 class PlayerNameRowSpec(
     val order: Int,
     val name: String,
-    val slot: ColorSlot,
+    val color: PlayerColor,
     val placeholder: String,
     val errors: List<String>,
     val isLast: Boolean,
@@ -68,6 +68,12 @@ class PlayerNameRowSpec(
     val removeTag: String,
     /** PF3: the profiles suggested under this field, most recent first; empty when the field has no focus. */
     val suggestions: List<SuggestionSpec> = emptyList(),
+    /** PC9: TalkBack text of the color swatch ("Change the color of Ann"). */
+    val colorDescription: String = "",
+    val colorTag: String = "",
+    /** PC14: the swatches offered under this row, or `null` when the row is closed. */
+    val swatches: List<PlayerColor>? = null,
+    val swatchesTag: String = "",
 )
 
 /** A suggested profile: the [name] shown and put in the field, and its TalkBack [description] (Use the name Kevin). */
@@ -88,6 +94,8 @@ fun PlayerNameRow(
     modifier: Modifier = Modifier,
     onFocusChange: (Boolean) -> Unit = {},
     onSuggestionPicked: (String) -> Unit = {},
+    onColorTap: () -> Unit = {},
+    onColorPicked: (PlayerColor) -> Unit = {},
 ) {
     val colors = KosmoTheme.colors
     var isFocused by remember { mutableStateOf(false) }
@@ -109,7 +117,10 @@ fun PlayerNameRow(
                 Modifier
                     .width(STRIP)
                     .fillMaxHeight()
-                    .background(PlayerPalette.colorOf(spec.slot, colors)),
+                    .background(PlayerPalette.colorOf(spec.color))
+                    .clickable(role = Role.Button, onClick = onColorTap)
+                    .semantics { contentDescription = spec.colorDescription }
+                    .testTag(spec.colorTag),
             )
             Text(
                 text = spec.order.toString(),
@@ -128,20 +139,10 @@ fun PlayerNameRow(
                     onFocusChange(it.isFocused)
                 },
             )
-            spec.removeDescription?.let { description ->
-                IconButton(
-                    onClick = onRemove,
-                    modifier = Modifier
-                        .size(States.minTouchTarget)
-                        .testTag(spec.removeTag),
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_close),
-                        contentDescription = description,
-                        tint = colors.onBackgroundMuted,
-                    )
-                }
-            }
+            RemoveButton(spec, onRemove)
+        }
+        spec.swatches?.let { colors ->
+            ColorSwatchRow(colors, spec.color, spec.swatchesTag, onColorPicked, Modifier.padding(start = STRIP))
         }
         Suggestions(spec.suggestions, onSuggestionPicked)
     }
@@ -224,4 +225,17 @@ private fun NameField(spec: PlayerNameRowSpec, onChange: (String) -> Unit, modif
         ),
         modifier = modifier.testTag(spec.fieldTag),
     )
+}
+
+/** The remove cross (48 dp), hidden when a single player is left. */
+@Composable
+private fun RemoveButton(spec: PlayerNameRowSpec, onRemove: () -> Unit) {
+    val description = spec.removeDescription ?: return
+    IconButton(onClick = onRemove, modifier = Modifier.size(States.minTouchTarget).testTag(spec.removeTag)) {
+        Icon(
+            painter = painterResource(R.drawable.ic_close),
+            contentDescription = description,
+            tint = KosmoTheme.colors.onBackgroundMuted,
+        )
+    }
 }

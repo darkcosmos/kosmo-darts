@@ -1,7 +1,7 @@
 package io.github.darkcosmos.kosmodarts.persistence
 
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.InvalidX01ConfigException
@@ -44,7 +44,7 @@ internal data class SaveBody(
     val darts: List<Dart> = emptyList(),
     val isAwaitingNextPlayer: Boolean = false,
     val isBetweenLegs: Boolean = false,
-    val colorSlots: List<ColorSlot> = ColorSlot.byPosition(config.players.size),
+    val colors: List<PlayerColor> = PlayerColor.byPosition(config.players.size),
 )
 
 /** Largest number of darts that is saved, in the current leg and in each confirmed leg (rule R12). */
@@ -90,7 +90,7 @@ internal fun writeBody(layout: List<SaveKey>, body: SaveBody): List<Pair<String,
         SaveKey.SETS -> listOf(body.format.sets.toString())
         SaveKey.PLAYERS -> listOf(body.config.players.size.toString())
         SaveKey.PLAYER -> body.config.players.map(SaveFormat::encodeName)
-        SaveKey.COLORS -> listOf(body.colorSlots.joinToString(" ") { it.number.toString() })
+        SaveKey.COLORS -> listOf(colorsValue(body.colors))
         SaveKey.LEGS -> listOf(body.legs.size.toString())
         SaveKey.LEG -> body.legs.map(::legToken)
         SaveKey.DARTS -> listOf(body.darts.joinToString(" ") { DartTokens.tokenOf(it) })
@@ -120,7 +120,7 @@ private class BodyFields {
     private var sets = MatchFormat.MIN
     private var playerCount = 0
     private var config: X01Config? = null
-    private var colorSlots: List<ColorSlot>? = null
+    private var colors: List<PlayerColor>? = null
     private var legCount = 0
     private var legs: List<X01LegSummary> = emptyList()
     private var darts: List<Dart> = emptyList()
@@ -137,7 +137,7 @@ private class BodyFields {
             SaveKey.SETS -> sets = parseFormatValue(value())
             SaveKey.PLAYERS -> playerCount = parsePlayerCount(value())
             SaveKey.PLAYER -> config = buildConfig(List(playerCount) { SaveFormat.decodeName(value()) })
-            SaveKey.COLORS -> colorSlots = parseColorSlots(value(), playerCount)
+            SaveKey.COLORS -> colors = parseColors(value(), playerCount)
             SaveKey.LEGS -> legCount = parseLegCount(value())
             SaveKey.LEG -> legs = List(legCount) { parseLeg(value()) }
             SaveKey.DARTS -> darts = parseDarts(value())
@@ -156,7 +156,7 @@ private class BodyFields {
             isAwaitingNextPlayer = isAwaiting,
             isBetweenLegs = isBetweenLegs,
             // R18: a file without a colors line gives each player the slot of his position.
-            colorSlots = colorSlots ?: ColorSlot.byPosition(players.players.size),
+            colors = colors ?: PlayerColor.byPosition(players.players.size),
         )
     }
 
@@ -223,19 +223,6 @@ internal fun parsePlayerCount(value: String): Int {
     val count = SaveFormat.parseInteger(value)
     ensure(count in 1..X01Config.MAX_PLAYERS, InvalidSaveReason.OUT_OF_RANGE)
     return count
-}
-
-/**
- * A `colors` value (R17, ADR 0006): one slot number per player, 1 to 4, separated by single spaces, all distinct
- * (PC1). A wrong count or an empty token is [InvalidSaveReason.MALFORMED]; a value outside 1 to 4 or a repeated slot
- * is [InvalidSaveReason.OUT_OF_RANGE].
- */
-internal fun parseColorSlots(value: String, playerCount: Int): List<ColorSlot> {
-    val tokens = value.split(' ')
-    ensure(tokens.size == playerCount && tokens.none(String::isEmpty), InvalidSaveReason.MALFORMED)
-    val slots = tokens.map { ColorSlot.ofNumber(SaveFormat.parseInteger(it)) ?: reject(InvalidSaveReason.OUT_OF_RANGE) }
-    ensure(slots.toSet().size == slots.size, InvalidSaveReason.OUT_OF_RANGE)
-    return slots
 }
 
 internal fun parseDarts(value: String): List<Dart> {

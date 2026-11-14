@@ -1,6 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.setup
 
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Config
 import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
@@ -55,36 +55,36 @@ class SetupStateTest {
 
     @Test
     fun playersCanBeAddedUpToFour() {
-        val four = SetupState().withPlayerAdded().withPlayerAdded()
+        val four = SetupState().withPlayerAdded(Random(0)).withPlayerAdded(Random(0))
 
         assertEquals(4, four.names.size)
         assertFalse(four.canAddPlayer)
-        assertEquals(four, four.withPlayerAdded())
+        assertEquals(four, four.withPlayerAdded(Random(0)))
     }
 
-    /** M13, PC3: the cross removes any row, down to one player, and frees its color slot. */
+    /** M13, PC3: the cross removes any row, down to one player, and frees its color. */
     @Test
     fun `M13 PC3 removing a player at any position down to one`() {
         val three = SetupState(names = listOf("Ann", "Bob", "Cid"))
 
         val withoutBob = three.withPlayerRemoved(1)
         assertEquals(listOf("Ann", "Cid"), withoutBob.names)
-        assertEquals(listOf(ColorSlot.SLOT_1, ColorSlot.SLOT_3), withoutBob.roster.slots)
+        assertEquals(listOf(PlayerColor.BLUE, PlayerColor.TEAL), withoutBob.roster.colors)
 
         val one = withoutBob.withPlayerRemoved(0)
         assertEquals(listOf("Cid"), one.names)
-        assertEquals(listOf(ColorSlot.SLOT_3), one.roster.slots)
+        assertEquals(listOf(PlayerColor.TEAL), one.roster.colors)
         assertFalse(one.canRemovePlayer)
         assertEquals(one, one.withPlayerRemoved(0))
     }
 
-    /** PC2, PC3: a player added after a removal gets the freed slot, with an empty name. */
+    /** PC2, PC3: a player added after a removal gets the freed color, with an empty name. */
     @Test
-    fun `PC2 a player added after a removal gets the freed slot`() {
-        val readded = SetupState(names = listOf("Ann", "Bob", "Cid")).withPlayerRemoved(1).withPlayerAdded()
+    fun `PC2 a player added after a removal gets the freed color`() {
+        val readded = SetupState(names = listOf("Ann", "Bob", "Cid")).withPlayerRemoved(1).withPlayerAdded(Random(0))
 
         assertEquals(listOf("Ann", "Cid", ""), readded.names)
-        assertEquals(listOf(ColorSlot.SLOT_1, ColorSlot.SLOT_3, ColorSlot.SLOT_2), readded.roster.slots)
+        assertEquals(listOf(PlayerColor.BLUE, PlayerColor.TEAL, PlayerColor.ORANGE), readded.roster.colors)
     }
 
     /** M13: after a removal, the errors of the last start no longer point at moved fields: they are cleared. */
@@ -103,32 +103,32 @@ class SetupStateTest {
         assertEquals(listOf(X01ConfigError.DUPLICATE_NAME), again.setup.errorsFor(1))
     }
 
-    /** PC8: the setup prefilled from the last setup restores each player's slot. */
+    /** PC8: the setup prefilled from the last setup restores each player's color. */
     @Test
-    fun `PC8 prefilled restores the color slots`() {
+    fun `PC8 prefilled restores the player colors`() {
         val lastSetup = X01MatchConfig(
             X01Config(listOf("Cid", "Ann")),
-            colorSlots = listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_2),
+            colors = listOf(PlayerColor.LILAC, PlayerColor.ORANGE),
         )
 
         val setup = SetupState.prefilled(lastSetup)
 
-        assertEquals(listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_2), setup.roster.slots)
-        assertEquals(listOf(ColorSlot.SLOT_4, ColorSlot.SLOT_2), (setup.start() as SetupResult.Valid).config.colorSlots)
+        assertEquals(listOf(PlayerColor.LILAC, PlayerColor.ORANGE), setup.roster.colors)
+        assertEquals(listOf(PlayerColor.LILAC, PlayerColor.ORANGE), (setup.start() as SetupResult.Valid).config.colors)
     }
 
-    /** PC4: shuffle keeps each name with its slot, and Start passes the slots to the match. */
+    /** PC4: shuffle keeps each name with its color, and Start passes the colors to the match. */
     @Test
-    fun `PC4 PC5 shuffled names keep their slots up to the match configuration`() {
+    fun `PC4 PC5 shuffled names keep their colors up to the match configuration`() {
         val setup = SetupState(names = listOf("Ann", "Bob", "Cid", "Dan")).shuffled(Random(SEED))
-        val bySlot = mapOf("Ann" to ColorSlot.SLOT_1, "Bob" to ColorSlot.SLOT_2, "Cid" to ColorSlot.SLOT_3)
+        val byColor = mapOf("Ann" to PlayerColor.BLUE, "Bob" to PlayerColor.ORANGE, "Cid" to PlayerColor.TEAL)
 
         val config = (setup.start() as SetupResult.Valid).config
 
-        config.config.players.zip(config.colorSlots).forEach { (name, slot) ->
-            bySlot[name]?.let { assertEquals(name, it, slot) }
+        config.config.players.zip(config.colors).forEach { (name, color) ->
+            byColor[name]?.let { assertEquals(name, it, color) }
         }
-        assertEquals(setup.roster.slots, config.colorSlots)
+        assertEquals(setup.roster.colors, config.colors)
     }
 
     @Test
@@ -189,7 +189,7 @@ class SetupStateTest {
             { it.withName(0, "Ann") },
             { it.withStartScore(301) },
             { it.withCheckoutRule(CheckoutRule.SINGLE_OUT) },
-            { it.withPlayerAdded() },
+            { it.withPlayerAdded(Random(0)) },
             { it.withPlayerRemoved(0) },
             { it.shuffled(Random(SEED)) },
         )

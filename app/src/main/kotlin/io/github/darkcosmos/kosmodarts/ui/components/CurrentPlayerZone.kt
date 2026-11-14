@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.R
-import io.github.darkcosmos.kosmodarts.engine.player.ColorSlot
+import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.ui.format.averageText
 import io.github.darkcosmos.kosmodarts.ui.format.checkoutAnnouncement
@@ -76,7 +76,7 @@ private const val LANDSCAPE_BANNER_GROWTH = 1.5f
 class ZoneContent(
     val index: Int,
     val name: String,
-    val slot: ColorSlot,
+    val color: PlayerColor,
     val average: Double?,
     val indicator: MatchIndicator?,
     val mode: ZoneMode,
@@ -106,8 +106,8 @@ fun CurrentPlayerZone(
 ) {
     val colors = KosmoTheme.colors
     val isBust = content.mode == ZoneMode.BUST
-    val target = if (isBust) colors.danger else PlayerPalette.colorOf(content.slot, colors)
-    val onTarget = if (isBust) colors.onDanger else PlayerPalette.onColorOf(content.slot, colors)
+    val target = if (isBust) colors.danger else PlayerPalette.colorOf(content.color)
+    val onTarget = if (isBust) colors.onDanger else PlayerPalette.onColorOf(content.color)
     val animate = LocalAnimationSettings.current.areAnimationsEnabled()
     val background by animateColorAsState(target, zoneColorAnimationSpec(animate), label = "zone color")
     val contentColor by animateColorAsState(onTarget, zoneColorAnimationSpec(animate), label = "zone text color")
@@ -195,7 +195,7 @@ private fun NameRow(content: ZoneContent, contentColor: Color) {
                 Modifier
                     .size(BUST_SQUARE)
                     .clip(KosmoShapes.control)
-                    .background(PlayerPalette.colorOf(content.slot, colors))
+                    .background(PlayerPalette.colorOf(content.color))
                     .border(2.dp, colors.onBackground, KosmoShapes.control)
                     .clearAndSetSemantics {},
             )
