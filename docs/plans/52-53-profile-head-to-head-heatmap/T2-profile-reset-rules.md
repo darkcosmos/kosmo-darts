@@ -5,7 +5,8 @@ The merge computes the reset date with the owner rule Q1 B, and the engine says 
 Root "Rules", PM4 and ST9.
 
 ## Files
-- `game-engine/.../engine/profile/ProfileRules.kt`: `merge` (PM4: latest real reset of the two, else the merged
+- `game-engine/.../engine/profile/ProfileRules.kt`: the existing `mergedDates(source, target)` (PM4: latest real reset of the
+  two, else the merged
   creation date; creation earliest; last used latest); `isReallyReset(dates: ProfileDates): Boolean` (ST9).
 - `game-engine/src/test/.../engine/profile/ProfileRulesTest.kt`: update the merge date cases, add ST9 cases.
 - `app/src/test/.../history/PlayersRepositoryTest.kt`: the merge date assertions follow PM4.

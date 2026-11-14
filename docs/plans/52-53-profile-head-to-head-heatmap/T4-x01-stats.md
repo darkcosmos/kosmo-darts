@@ -8,9 +8,9 @@ All X01 figures of the Profile, as pure functions over selected `StatsMatch` for
   attempts with the ratio, best checkout, bands 180 / 140+ / 100+ / 60+, best visit, busts, average darts per leg won,
   best leg, matches won, lost, win ratio, legs won, sets won); each optional value is `null` when not computable
   (ST6). Named constants for 180, 140, 100, 60, 9 darts, the double-out range 2..40 and 50.
-- `game-engine/.../engine/stats/X01Remaining.kt` (new, if needed): remaining before each dart of a leg, from the start
-  score and the player's non-voided darts (bust visits restore the score).
-- Tests: `X01StatsTest.kt` with hand-built journals.
+- The figures read the per-dart facts of `StatsMatch` (remaining before each dart, T3); they never replay a leg. An
+  out-of-range position gives empty figures, never an exception.
+- Tests: `X01StatsTest.kt` with matches built through `StatsMatchFixtures` (T3).
 
 ## Depends on
 T3.
@@ -28,6 +28,8 @@ STX1 to STX8, ST1, ST5, ST6, ST8; X01 out rules of `docs/rules/x01.md`.
 - STX6, STX7: best leg and average darts per leg won, solo legs included; none won gives null.
 - STX8 and ST5: solo match excluded from won, lost, win ratio, legs, sets; 3- and 4-player rank 2 and 3 are losses.
 - 501 and 301; sets > 1.
+- ST10: the figures over valid matches plus one corrupt match (skipped by the validator) equal those of the valid
+  matches alone; unknown profile id or position gives empty figures, no exception.
 
 ## Done when
 `./gradlew :game-engine:test` and `./gradlew build` green; `kosmo-detekt` exit 0.

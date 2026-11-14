@@ -26,6 +26,9 @@ CR13 (rewritten), CR14 (unchanged), CR11 undo, DJ2.
 - Solo: MPR counts only closing marks.
 - No dart: no MPR. Process death: a saved game reloaded gives the same MPR (journal replay).
 - CR14 visit marks still count all marks.
+- `CricketGameScreenStateTest`: 3- and 4-player cases (MPR per player on useful marks).
+- Regression: the X01 statistics of the game, between-legs and end screens (501 and 301) are unchanged; their
+  existing tests pass untouched.
 
 ## Done when
 `./gradlew :game-engine:test`, `./gradlew build` and `./gradlew :app:testDebugUnitTest` green; `kosmo-detekt` exit 0.

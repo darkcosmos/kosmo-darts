@@ -5,13 +5,17 @@
 point-to-zone lookup. Root "Approach" 2.
 
 ## Files
-- `game-engine/.../engine/board/BoardGeometry.kt`: public radii for Bull, 25, inner and outer single limits, triple
+- Public names (review A5), used as is by T18, T19 and the camera milestone: `BoardGeometry` (public object, the
+  geometry) and `BoardZone` (the zone type). No other public board name.
+- `game-engine/.../engine/board/BoardGeometry.kt`: from `internal` to public object; public radii for Bull, 25,
+  inner and outer single limits, triple
   and double rings (official dimensions, source cited), sector order and angle (existing constants made public or
   wrapped).
 - `game-engine/.../engine/board/BoardZone.kt` (new): `BoardZone` (number 1..20 with ring SINGLE / DOUBLE / TRIPLE,
   `OUTER_BULL`, `BULL`), `BoardZone.ALL` (62 zones), `BoardZone.of(dart): BoardZone?` (null for a miss),
-  `zoneAt(point: BoardPoint): BoardZone?`.
-- Tests: `BoardZoneTest.kt`.
+  and `BoardGeometry.zoneAt(point: BoardPoint): BoardZone?`.
+- Tests: `BoardZoneTest.kt` (zone list and `of`) and `BoardGeometryTest.kt` (existing, extended with `zoneAt` and the
+  public radii); test names use `BoardZone` and `BoardGeometry`.
 
 ## Depends on
 T1.

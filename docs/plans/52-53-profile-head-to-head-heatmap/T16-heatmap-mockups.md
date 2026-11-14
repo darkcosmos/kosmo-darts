@@ -11,7 +11,10 @@ gate G1. No Kotlin code.
   values, and the question for Kosmo.
 - Each SVG at Pixel 7 portrait width (412 x about 900 px viewBox), background `#0A0F1E`, shows the same two boards:
   "répartie" (darts spread over many zones) and "concentrée" (most darts in T20, S20, S5, S1), each with the misses
-  line under it ("Ratés : 12 · 8 %"), the legend, and one zone at 0 in the neutral colour.
+  line under it ("Raté : 12 · 8 %", HM4 label), the legend with its numeric end values, and one zone at 0 in the neutral
+  colour.
+- Ramp (review U3): monotonic luminance from low to high, so the board reads in greyscale; the neutral zone-0 colour
+  clearly distinct from the lowest stop; every stop readable on the dark theme background.
 
 ## Depends on
 T1.
@@ -21,7 +24,8 @@ HM1, HM2, HM5; design system section 2 (tokens) and PC11 contrast idea (zones re
 
 ## Tests
 None (documents). Self-check: both files use the same ramp and the same data; the zone-0 colour differs from the
-lowest ramp colour; the files render in a browser (open them with any SVG viewer available, or validate the XML with
+lowest ramp colour; the relative luminance of the stops increases strictly (values listed in the README); the files
+render in a browser (open them with any SVG viewer available, or validate the XML with
 `xmllint --noout`). A generator script, if used, stays in the scratchpad and is not committed.
 
 ## Done when

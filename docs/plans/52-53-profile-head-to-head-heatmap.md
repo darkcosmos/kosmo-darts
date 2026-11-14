@@ -36,23 +36,50 @@ screens smaller than a Pixel 7 (owner decision).
    darts: the archived matches (AR5) for the Profile and the Head-to-head, the in-memory `MatchJournal` (DJ1) for the
    game, between-legs and end screens. Nothing is stored. DAOs only load rows.
 2. **New engine package `engine/stats`.** Input type `StatsMatch` (session id, start, end, settings as
-   `ArchivedSettings`, players with profile id, rank, legs and sets won, legs, darts in leg/visit/rank order) built by
-   the app from rows; `MatchSelection` applies ST2 to ST5; `X01Stats`, `CricketStats`, `TrendSeries`,
-   `HeatmapAggregation`, `HeadToHead` compute the figures. `CricketUsefulMarks` replays a Cricket leg with the existing
-   `CricketGame` and returns, for each dart in play, its useful marks and the points it scored or inflicted (STC1). The
-   same function serves the in-game MPR (CR13) and the Profile, so both always agree.
+   `ArchivedSettings`, players with profile id, rank, legs and sets won, legs, darts in leg/visit/rank order) with its
+   per-dart facts (remaining before the dart for X01, `DartYield` for Cricket). Its constructor is internal: the only
+   way to get one is `StatsMatchValidator.validate(raw)` (see 2b). `MatchSelection` applies ST2 to ST5; `X01Stats`,
+   `CricketStats`, `TrendSeries`, `HeatmapAggregation`, `HeadToHead` compute the figures from the per-dart facts and
+   never replay a leg themselves. `CricketUsefulMarks` replays a Cricket leg with the existing `CricketGame` and
+   returns, for each dart in play, its useful marks and the points it scored or inflicted (STC1). The same function
+   serves the in-game MPR (CR13) and the Profile, so both always agree.
+2b. **Invalid archived data (review S1, decision D4: skip and count).** The app maps rows to a `RawStatsMatch` (plain
+   values, no rule). `StatsMatchValidator` in `:game-engine` (JVM-tested) accepts a match only if: the settings
+   decode; positions, ranks, legs won and sets won are in range for the player count; every leg has darts; every dart
+   has a known segment and multiplier; and the engine replay of each leg (`X01Game` or `CricketGame`, the voided darts
+   applied as DJ2 says) accepts every dart and ends with the stored leg winner. A dart after a win, an unknown value,
+   or any engine rejection makes the whole match invalid: it is never replayed further and never counted. The
+   validator and every stats function catch nothing and throw nothing on such input: invalid input is a value
+   (`Invalid(reason)`), out-of-range indexes give empty results. The loader counts the skipped matches; the Profile and
+   the Head-to-head show a short notice "n matchs ignorés (données illisibles)" (ST10). A database read failure stays a
+   `DbResult` failure (HS7). Visible product consequence, to be contested by Kosmo at the plan gate if he prefers the
+   whole screen to fail (option 2).
    - Alternative rejected for CR13: store useful marks in the confirmed-leg summaries of the saved game (format v3). It
      duplicates a value derivable from the journal (R26) and needs a stored format change; the journal replay needs
      none.
-3. **Performance.** One read loads every match of the profile (sessions, players, legs, darts joined by indexed
-   columns: `match_player.profile_id`, `leg(session_id, ordinal)`, `dart(leg_id, visit, rank)`), then the engine
-   computes off the UI thread. A JVM test computes all Profile figures on 1,000 generated matches under 1 s. A cache
-   is added only if that test or the loader test fails; it would then follow the #52 constraint (derived, invalidated
-   on archive, reset, merge, delete).
+3. **Performance and memory.** The loader reads the profile's session ids (indexed `match_player.profile_id`), then
+   reads players, legs and darts in batches of 100 sessions (indexed `leg(session_id, ordinal)`,
+   `dart(leg_id, visit, rank)`), validates and maps each match at once and drops its rows, so only the validated
+   `StatsMatch` list stays in memory (review S2). Bound: about 1,000 matches x 250 darts, a few tens of MB at worst;
+   the R12 limit caps a single leg. The engine computes off the UI thread. A JVM test computes all Profile figures on
+   1,000 generated matches within a 1 s budget, which is generous (the local time is recorded in T8's notes);
+   structurally, the replay runs once per leg in the validator and the stats functions only read per-dart facts. A
+   cache is added only if that test or the loader test fails; it would then follow the #52 constraint (derived,
+   invalidated on archive, reset, merge, delete).
 4. **Navigation.** `Screen` gains a back stack for the history screens: `Screen.Players`, `Screen.History`,
    `Screen.Profile`, `Screen.HeadToHead` and `Screen.MatchDetail` each hold their parent screen (as `MatchDetail` holds
-   `History` today). Opening a screen equal to one already in the chain (same profile, same pair, same match) returns
-   to that screen and drops those above (HS9). The chain lives in `AppState` in the ViewModel, so it survives rotation.
+   `History` and `Settings` holds `Home` today). Opening a screen equal to one already in the chain (same profile, same
+   pair, same match) returns to that screen and drops those above (HS9): a walk up the parents. The chain lives in
+   `AppState` in the ViewModel, so it survives rotation; after a process death the app restarts at home, as History
+   does today (no saved state handle). Why a parent chain rather than a `List<Screen>` in `AppState` (review A3): it is
+   the existing pattern, each screen keeps its own typed state (filters, scroll) in its node, Back stays "show the
+   parent" for every screen, and the game screens are untouched; a list would need every reducer to read and write
+   the top of a heterogeneous list. Recorded in the ADR (5).
+5. **ADR (review A1).** `docs/adr/0015-derived-statistics.md` records: statistics derived only, no cache (D2, with the
+   cache alternative); CR13 from the journal replay (D1, with the format v3 alternative); skip-and-count validation of
+   archived matches (D4, with the whole-load failure alternative); `BoardGeometry` and `BoardZone` public in
+   `:game-engine` as the reusable board model for the camera milestone; the parent-chain back stack (with the
+   `List<Screen>` alternative).
 5. **Players actions in the Profile.** The rename, merge, reset and delete panels, requests and answers of
    `ui/players` move to `ui/profile` unchanged in behavior (PM3 to PM11), opened by "Gérer le joueur" (P1 A). The
    Players screen becomes a list of rows that open the Profile.
@@ -60,16 +87,24 @@ screens smaller than a Pixel 7 (owner decision).
    same sample data) are committed under `docs/design/mockups/heatmap/` (task T16). `main` stops for Kosmo's choice
    (gate G1); task T20 implements only the chosen scale and records it in `docs/design/design-system.md` section 2.
 7. **End-of-leg heatmap.** `Screen.End` and `Screen.CricketEnd` also carry the `MatchJournal` (between-legs screens
-   already do). The last leg's journal gives each player's darts in play; the shared aggregation (HM2) gives the values.
-   The selected player is part of the screen state.
+   already do). Which leg is read (review A2): on the between-legs screens `journal.currentLeg` is the empty next leg,
+   so the last completed leg `journal.legs[legs.size - 2]` is read; on the end screens the finished leg is
+   `journal.currentLeg`. The engine function takes the leg explicitly (`LastLeg.COMPLETED` or `LastLeg.CURRENT`). The
+   shared aggregation (HM2) gives the values. The selected player is part of the screen state; its default comes from
+   one named function `defaultHeatmapPlayer` (N2 A: the leg or match winner). On the between-legs screen after a
+   process death, the journal comes from the saved game, which already passed R9 and R29 before the screen is built.
+   No new logging is added anywhere in the mission (no names, no darts in logs) (review S3).
 
 ## Files and types added or changed
 
 Engine (`game-engine/.../engine/`):
-- `profile/ProfileRules.kt`: `merge` follows PM4 (Q1 B), `isReallyReset(dates)` (ST9).
-- `stats/` (new): `StatsMatch.kt`, `MatchSelection.kt` (filters, periods), `X01Stats.kt`, `CricketUsefulMarks.kt`,
-  `CricketStats.kt`, `TrendSeries.kt`, `HeatmapAggregation.kt`, `HeadToHead.kt`; tests under `stats/`.
-- `board/BoardGeometry.kt` made public as `BoardZones` (zone list, radii, sector order, `zoneAt(x, y)`); BC4, BC5.
+- `profile/ProfileRules.kt`: the existing `mergedDates` follows PM4 (Q1 B), new `isReallyReset(dates)` (ST9).
+- `stats/` (new): `StatsMatch.kt` (with `RawStatsMatch`), `StatsMatchValidator.kt`, `MatchSelection.kt` (filters,
+  periods), `X01Stats.kt`, `CricketUsefulMarks.kt`, `CricketStats.kt`, `TrendSeries.kt` (with `TrendSummary`),
+  `HeatmapAggregation.kt`, `HeadToHead.kt`; tests under `stats/`.
+- `board/BoardGeometry.kt` (today `internal`) becomes the public geometry object `BoardGeometry` (radii, sector
+  order, `zoneAt(point)`), and `board/BoardZone.kt` (new) the public zone type `BoardZone`; these two names are used
+  everywhere (T17, T18, T19); BC4, BC5. The `Dartboard` component depends only on them.
 - `cricket/CricketMatch.kt`: MPR from the match journal on useful marks (CR13).
 
 App (`app/.../`):
@@ -83,7 +118,8 @@ App (`app/.../`):
 - `ui/between/`, `ui/end/`, `ui/cricket/CricketBetweenLegsContent.kt`, `CricketEndContent.kt`: heatmap block.
 - `ui/history/MatchDetailScreen.kt`: tappable player names (HS8).
 - `res/values/strings.xml`, `res/values-fr/strings.xml`: every new text, both languages in the same task.
-- Docs: `docs/rules/statistics.md` (new), `docs/rules/history.md`, `docs/rules/cricket.md`,
+- Docs: `docs/adr/0015-derived-statistics.md` (new), `docs/rules/statistics.md` (new), `docs/rules/history.md`,
+  `docs/rules/cricket.md`,
   `docs/design/design-system.md` (section 2 heatmap tokens after G1), `docs/design/mockups/heatmap/*.svg`.
 
 ## Data read, stored or exposed
@@ -91,7 +127,11 @@ App (`app/.../`):
 - Read: the archive tables (profile, session, match_record, match_player, leg, dart) and the in-memory match journal.
 - Stored: nothing new. No schema version change, no saved game or last setup format change. Profile updates are the
   existing PM3 to PM6 writes (PM4 date computation changed).
-- Exposed: nothing leaves the device. No permission, no dependency added. Android backup unchanged.
+- Exposed: nothing leaves the device. No permission, no dependency added. Android backup unchanged. No new log line
+  (no names, no darts).
+- Invalid archived data: a match that fails `StatsMatchValidator` is skipped and counted, never replayed past the
+  faulty dart, never counted in a figure (Approach 2b, ST10, D4). A read failure is a `DbResult` failure (HS7).
+- Memory: rows mapped per batch of 100 sessions, only validated matches kept (Approach 3).
 
 ## Rules (new and rewritten)
 
@@ -120,7 +160,8 @@ Task T1 copies this section into the rule documents. Ids are stable.
 - HS9. Back stack (owner #53 Q11, P3): Players, History, Profile, Head-to-head and Match detail open on top of the
   screen they come from; Back always returns one screen, with its filters and scroll position. Opening a screen equal
   to one already in the stack (same profile, same pair in the same order, same match) returns to it and drops the
-  screens above: never two copies. The stack survives a rotation.
+  screens above: never two copies. The stack survives a rotation; after a process death the app restarts at home (or
+  offers the saved game), as History does today.
 - BC4. The engine exposes the board zones: for each number 1 to 20 its sector angle (order of BC2) and the radii of
   the single, triple and double rings; the 25 and Bull radii (official dimensions, source cited in the code). Each
   nominal point (BC2) lies inside its own zone.
@@ -143,7 +184,13 @@ Common:
   matches shows in less than 1 s. Nothing is stored.
 - ST8. Won = final rank 1; lost = any other rank (owner Q6).
 - ST9. A profile is *really reset* when its reset date is after its creation date. The Profile then shows
-  "Since <date>", otherwise "Since always" (owner Q13).
+  "Since <date>" (date in the device locale format), otherwise "Since always" (owner Q13).
+- ST10. An archived match that breaks the rules (settings that do not decode, a position, rank, legs or sets won out
+  of range, a leg without darts, an unknown dart value, a dart the engine rejects such as a dart after the win, or a
+  replayed leg winner different from the stored one) is ignored by every statistic, heatmap and head-to-head figure,
+  and is never replayed past the faulty dart. The other matches are unaffected. When at least one match is ignored,
+  the screen shows "n matchs ignorés (données illisibles)" (plural resource). The History list and detail are
+  unchanged.
 
 X01:
 - STX1. 3-dart average = points scored / darts thrown x 3. A bust visit scores 0 and its darts count. No padding to
@@ -178,12 +225,15 @@ Profile screen:
 - PS2. Header: the name, "Since always" or "Since <date>" (ST9), the buttons "Manage player" and "Compare with…".
   "Manage player" unfolds inside the screen the four actions Rename, Merge, Reset, Delete (owner P1 A); a second tap
   folds them.
-- PS3. Three sections X01, Cricket, Board (owner P4 A), as tabs at the top. X01 and Cricket each have their filters
-  (ST3) and the period (ST4); the selections survive a rotation and a return from a pushed screen.
+- PS3. Three sections X01, Cricket, Board (owner P4 A), as tabs at the top; in portrait the tabs stay pinned at the
+  top while the header and the content scroll. X01 and Cricket each have their filters (ST3) and the period (ST4);
+  the selections survive a rotation and a return from a pushed screen.
 - PS4. X01 section: STX1 to STX8 and the trend curve. Cricket section: STC2 to STC5 and the trend curve.
 - PS5. Trend curve: one point per selected match in end order, 3-dart average (X01) or MPR (Cricket), drawn with
-  Compose Canvas, no chart library. With fewer than 2 points, a short text replaces the curve. TalkBack reads the
-  number of matches, the first, last, lowest and highest values.
+  Compose Canvas, no chart library. With fewer than 2 points, a short text replaces the curve. The curve shows as text
+  its lowest and highest values and the dates of the first and last matches; TalkBack reads the number of matches,
+  the first, last, lowest and highest values and the two dates. These values come from the engine (`TrendSummary`),
+  never from a composable.
 - PS6. States: no match at all, an explicit empty state; no match for the selected filters or period, a message with
   the filters still shown; loading and read failure as HS7.
 - PS7. Actions (PM3 to PM10, PM11) behave as before, inside the Profile. After a merge where the shown profile is the
@@ -199,18 +249,26 @@ Heatmap:
 - HM2. A zone's value = its darts / all darts (misses included, voided excluded) of the selection (owner Q6 A).
 - HM3. Profile Board section: mode filter All modes / X01 / Cricket, then the filters of the chosen mode (none for
   All modes), then the period (ST4); ST2 applies.
-- HM4. Miss label: "Miss" when only X01 darts are counted; "Miss or outside Cricket numbers" as soon as Cricket darts
-  are counted (Cricket, All modes, a Cricket leg) (owner #53 Q4 C).
+- HM4. Miss label: "Miss" / « Raté » when only X01 darts are counted; "Miss or outside Cricket numbers" / « Raté ou
+  hors numéros Cricket » as soon as Cricket darts are counted (Cricket, All modes, a Cricket leg) (owner #53 Q4 C).
+  One resource key per label and language; the misses line fits at 200 % font (it wraps, never cut).
 - HM5. Colour scale: decided at gate G1 (relative to the most hit zone, or absolute 0 to 100 %); a zone with 0 dart
-  has a distinct neutral colour; a legend shows the scale. Tokens in `docs/design/design-system.md` section 2.
+  has a distinct neutral colour; a legend shows the scale with its numeric end values. The ramp has a monotonic
+  luminance (readable in greyscale) and the meaning never relies on colour alone (the band and the top 5 list give
+  the numbers). Tokens in `docs/design/design-system.md` section 2.
 - HM6. Tapping a zone shows, in a fixed band under the board, the zone name, its darts and its percentage; a new tap
-  replaces it. A text list of the 5 most hit zones serves TalkBack (owner #53 Q8 A). No popup.
+  replaces it; with no zone selected the band says « Touchez une zone ». Zone taps are a supplementary access (the
+  smallest zones are far below 48 dp): the text list of the 5 most hit zones (darts and %, ties ordered by count then
+  zone order) is the reliable access and serves TalkBack, whose zone text includes the count and the percentage
+  (owner #53 Q8 A). Names, counts, percentages and the top 5 come from the state holder, never from a composable. No
+  popup.
 - HM7. No dart in the selection: explicit empty state.
 - HM8. The dartboard component draws values per zone with the BC4 geometry and has no rule logic; taps resolve with
   BC5.
 - HM9. End of a leg (between-legs screens M16, CR26) and end of a match (M17, CR27): the heatmap of the last leg
   played, for one player at a time, with a player selector (one entry per player, name and colour; none in a solo
-  game). Same zones, values, scale, misses line and HM4 label. Derived from the match journal.
+  game). Same zones, values, scale, misses line and HM4 label. Derived from the match journal: between legs, the last
+  completed leg (the current leg journal is the empty next leg); at the end of a match, the current (finished) leg.
 
 Head-to-head:
 - HH1. "Compare with…" opens a picker inside the screen: every profile except the shown one and the anonymous one,
@@ -228,7 +286,9 @@ Head-to-head:
 - HH7. The list of common matches opens the match detail; Back returns to the head-to-head with its filters (HS9).
 - HH8. Date line: "Since <latest real reset date>" when at least one of the two is really reset, else "Since always"
   (owner P8).
-- HH9. No common match: explicit empty state. PS8 applies.
+- HH9. No common match: explicit empty state. PS8 applies. The picker, the selected pair, the filters and the period
+  are kept in the screen state in `AppState`: they survive a rotation and a return from a common match detail. ST10
+  applies (notice of ignored matches).
 
 ## Screens and states
 
@@ -242,11 +302,19 @@ Head-to-head:
 - **Between legs and end screens**: a "BOARD · LEG n" block (title per HM9) with the player selector (chips with the
   colour strip and the name, horizontal scroll, 48 dp), the board, the misses line, the legend and the tap band.
   Portrait: the block under the scoreboard in the scrolling content, the main button ("MANCHE SUIVANTE", "REVANCHE" /
-  "NOUVELLE PARTIE") stays pinned at the bottom. Landscape: a third column at the right of the scoreboard column, board
-  sized to the available height. Pending owner answers N1 to N3 ("Open questions").
+  "NOUVELLE PARTIE") stays pinned at the bottom. Landscape: a third column at the right of the scoreboard column that
+  scrolls on its own, with a minimum board size of 200 dp (at 200 % font the selector, misses line and band scroll
+  under the board). Pending owner answers N1 to N3 ("Open questions").
+- **Texts**: every count (matches, common matches, legs, darts, ignored matches) is a plural resource in English and
+  French; dates use the device locale format.
 
 ## Test plan
 
+- Invalid archive (ST10, D4): fixtures with an unknown dart value, a dart after the win, undecodable settings, an
+  empty leg, a rank and a player position out of range, a stored leg winner that differs from the replay; each gives
+  `Invalid` in the validator (T3, X01 and Cricket), is skipped and counted by the loader with an
+  explicit assertion on the outcome (T9), and one bad match among good ones leaves the figures (T4, T7), the heatmap
+  (T18) and the head-to-head (T23) equal to those of the good matches alone. No exception escapes.
 - Engine (JVM, cite rule ids): PM4 dates for the four reset combinations, ST9; ST2 boundary (start equal to the reset
   date); ST3 every filter combination; ST4 boundaries (exactly 30 days, 9/10/11 matches, filters before "last 10");
   ST5 solo; STX1 to STX8 on hand-built journals: busts, voided darts, double and single out, a leg won on the first
@@ -254,16 +322,21 @@ Head-to-head:
   visits, a leg under 9 darts; STC1 useful and useless marks in both variants, solo, dead target, triple that closes
   and kills, 25-Bull off; STC4 40 points case; CR13 in-game MPR on useful marks with undo at every step (voided
   darts); trend series; 1,000-match performance test; BC4 nominal points inside their zone, BC5 borders and outside;
-  HM2 with misses and voided darts; HM9 last leg per player, 1 to 4 players, after undo; HH2 common matches at 2, 3
-  and 4 players, both reset dates; HH3 draws.
+  HM2 with misses and voided darts; HM9 last leg per player, 1 to 4 players, after undo, between legs (empty current
+  leg, values of the last completed leg) and at the end (current leg); HH2 common matches at 2, 3 and 4 players, both
+  reset dates; HH3 draws.
 - Data (Robolectric): loader returns the profile's matches with all players' darts; anonymous never loaded as a
   profile; merge dates through the repository; a read failure gives `DbResult` failure.
-- UI (Compose JVM tests): navigation stack (no copies, Back one level, rotation), Profile states, filters, actions
+- State (JVM): top-5 order with ties and percentages (T21, T26); trend summary values (T8, T14); head-to-head
+  filters after rotation and after Back from a detail (T24); plurals and French dates (T13).
+- UI (Compose JVM tests): navigation stack (no copies, Back one level, rotation, process death returns home), Profile
+  states, filters, actions
   panels and P2 outcomes, Players row opens the Profile, detail name tap, heatmap tap band and top-5 list, picker,
   head-to-head states, end-screen selector.
 - Captures (Roborazzi, Pixel 7 only, portrait, landscape, 200 % font): Profile empty and filled (X01, Cricket),
   actions panel, Players list; trend curve; Board section empty, spread, concentrated; head-to-head picker, filled,
-  empty; between-legs and end screens with the heatmap, X01 and Cricket, 1 and 4 players.
+  empty; between-legs and end screens with the heatmap, X01 and Cricket, 1 and 4 players, and 4 players in landscape
+  at 200 % font.
 - Every edge case of the project review focus that this mission touches: bust, double-out and single-out, undo at
   every step (CR13, HM9), 1 to 4 players, 501 and 301, rematch (end-screen heatmap uses the finished match), process
   death on the between-legs screen (journal restored, heatmap shown, selection back to the default).
@@ -288,9 +361,9 @@ On the Pixel 7, after uninstalling the previous version and installing the CI de
 
 | Id | Title | Task file | Depends on | Model | Why this model |
 |---|---|---|---|---|---|
-| T1 | Rule documents | `52-53-profile-head-to-head-heatmap/T1-rules-docs.md` | - | haiku | Text copied from this plan, no choice |
+| T1 | Rule documents and ADR 0015 | `52-53-profile-head-to-head-heatmap/T1-rules-docs.md` | - | haiku | Text copied from this plan, no choice |
 | T2 | Merge reset date and "really reset" | `52-53-profile-head-to-head-heatmap/T2-profile-reset-rules.md` | T1 | sonnet | Small specified engine rule with tests |
-| T3 | Stats input and match selection | `52-53-profile-head-to-head-heatmap/T3-stats-selection.md` | T1 | sonnet | Specified filters and periods, pure functions |
+| T3 | Stats input, validation and match selection | `52-53-profile-head-to-head-heatmap/T3-stats-selection.md` | T5 | sonnet | Specified validation (ST10) over the existing engines, filters and periods, pure functions |
 | T4 | X01 statistics | `52-53-profile-head-to-head-heatmap/T4-x01-stats.md` | T3 | sonnet | Formulas specified (STX), tests listed |
 | T5 | Cricket useful marks per dart | `52-53-profile-head-to-head-heatmap/T5-cricket-useful-marks.md` | T1 | sonnet | Rule STC1 fully specified after Q9 |
 | T6 | In-game MPR on useful marks | `52-53-profile-head-to-head-heatmap/T6-ingame-mpr.md` | T5 | sonnet | Wiring of an engine function into existing state holders |
@@ -314,12 +387,13 @@ On the Pixel 7, after uninstalling the previous version and installing the CI de
 | T23 | Head-to-head engine | `52-53-profile-head-to-head-heatmap/T23-head-to-head-engine.md` | T4, T7 | sonnet | Specified HH rules, tests listed |
 | T24 | Head-to-head data and state | `52-53-profile-head-to-head-heatmap/T24-head-to-head-state.md` | T23, T9, T10 | sonnet | Loader and state holder with JVM tests |
 | T25 | Head-to-head screen | `52-53-profile-head-to-head-heatmap/T25-head-to-head-screen.md` | T24, T13 | sonnet | Screen from this plan, tests, captures |
-| T26 | End-screen heatmap state | `52-53-profile-head-to-head-heatmap/T26-end-heatmap-state.md` | T18 | sonnet | Wiring of the journal and a selection event |
+| T26 | End-screen heatmap state | `52-53-profile-head-to-head-heatmap/T26-end-heatmap-state.md` | T18, T6 | sonnet | Wiring of the journal and a selection event |
 | T27 | End-screen heatmap layout | `52-53-profile-head-to-head-heatmap/T27-end-heatmap-layout.md` | T26, T20, N1 to N3 | sonnet | Layout from this plan, captures |
 
 No `opus` task: no stored format change (the CR13 change derives from the journal), no cross-module refactoring
 (the back stack stays in `:app`), and no rule left ambiguous after the intake answers. T16 can run right after T1 so
-that gate G1 does not block the #52 tasks.
+that gate G1 does not block the #52 tasks. Build order follows "Depends on", not the ids: T5 runs before T3 because
+the validator stores the Cricket per-dart yields (review A1); T3 also owns the X01 remaining per dart.
 
 ## Decisions
 
@@ -345,6 +419,16 @@ Design decisions (developer, to be confirmed in design review):
 - D1: CR13 derives useful marks from the journal replay, no save format change (Approach 2).
 - D2: Profile figures computed without cache; a cache only if the performance tests fail (Approach 3).
 - D3: the Profile opens on the X01 tab, period "Since always", filters "All".
+- D4 (review S1): an archived match that breaks the rules is skipped and counted, validated in `:game-engine`; the
+  Profile and the Head-to-head show "n matchs ignorés (données illisibles)" (ST10). Visible product consequence:
+  Kosmo may prefer option 2 (the whole screen shows the read error) at the plan gate.
+- D5 (review A3): back stack as a parent chain in each `Screen`, not a `List<Screen>` (Approach 4, ADR 0015).
+- D6 (review A2): between legs the heatmap reads the last completed leg, at the end the current leg (HM9).
+- D7: the end-screen default player is one named function `defaultHeatmapPlayer` implementing N2 A; answer B is a
+  one-line change in that function.
+- D8 (review U4): in portrait the Profile tabs stay pinned; the header scrolls away.
+- Review findings A4, A5, A6, S2, S3, T1 to T6, U1 to U7: all accepted and written into the rules, "Approach" and the
+  task files; none rejected.
 
 ## Open questions
 

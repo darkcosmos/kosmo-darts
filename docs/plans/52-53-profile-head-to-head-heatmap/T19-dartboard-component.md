@@ -21,9 +21,12 @@ HM8, BC4, BC5, PS8 (no popup); design system sections 2 and 8.
 
 ## Tests
 - Tap at the centre gives BULL; at T20 nominal point gives T20; outside the board gives nothing.
+- Border taps: a point exactly on the outer edge of the double ring and one just inside it (D20), a point just
+  outside it (nothing), a point on a sector edge (exactly one zone, the one `BoardGeometry.zoneAt` gives).
 - Square layout in portrait and landscape sizes; numbers readable at 200 % font (they scale with the board, not the
   font, documented in the KDoc).
-- The component receives colours only: no import of stats or rules other than geometry.
+- The component receives colours only: its only engine imports are `BoardZone` and `BoardGeometry` (T17); no stats
+  or rules.
 
 ## Done when
 `./gradlew build` and `./gradlew :app:testDebugUnitTest` green (captures recorded); `kosmo-detekt` exit 0.

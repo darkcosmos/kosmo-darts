@@ -8,8 +8,9 @@ Cricket.
 - `game-engine/.../engine/stats/CricketStats.kt` (new): `CricketFigures` (MPR, best visit in useful marks, useful
   marks per target 20 to 15 and Bull, points scored total and per leg (Standard matches), points given total and per
   leg (Cut-throat matches), results per variant: won, lost, win ratio, legs, sets); optional values `null` when not
-  computable (ST6). Constant for the 9-mark visit maximum.
-- Tests: `CricketStatsTest.kt`.
+  computable (ST6). Constant for the 9-mark visit maximum. Reads the per-dart `DartYield` stored in `StatsMatch` by
+  the validator (T3); never replays a leg. An out-of-range position gives empty figures, never an exception.
+- Tests: `CricketStatsTest.kt` with `StatsMatchFixtures` (T3).
 
 ## Depends on
 T3, T5.
@@ -23,6 +24,7 @@ STC2 to STC5, ST1, ST5, ST6, ST8.
 - STC4 totals and averages per leg played; the 40-point case; Standard points only from Standard matches.
 - STC5 with "All variants": two result blocks; with a variant filter, one; solo excluded from results.
 - No Cricket match: every value null.
+- ST10: valid matches plus one corrupt match give the figures of the valid matches alone; no exception.
 
 ## Done when
 `./gradlew :game-engine:test` and `./gradlew build` green; `kosmo-detekt` exit 0.

@@ -24,6 +24,8 @@ HH1 (counts), HH2 to HH6, ST1, ST3, ST4.
 - Legs won from stored values.
 - Figures computed only on common matches (a solo match of A does not change A's average here).
 - "Last 10" takes the last 10 common matches; mode All gives counters over every mode plus X01 and Cricket blocks.
+- ST10: one corrupt common match (skipped by T3) leaves the figures equal to those of the valid matches alone; an
+  unknown profile id gives empty figures, no exception.
 
 ## Done when
 `./gradlew :game-engine:test` and `./gradlew build` green; `kosmo-detekt` exit 0.
