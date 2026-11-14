@@ -36,3 +36,17 @@ HS6, HS9.
 sonnet. Why: reducer change specified by HS9, JVM tests.
 
 ## Implementation notes
+- `Screen.Stacked` (sealed, in `AppState.kt`) is the parent chain: `parent`, `reparented(parent)`, `isSameAs(other)`.
+  Implemented by `MatchDetail(parent, detail)`, `Profile(parent, profileId, profile: Unit)` and
+  `HeadToHead(parent, a, b, state: Unit)`. `Screen.open(target)` returns the equal screen already in the chain (HS9) or
+  stacks `target` on the current screen. Callers (T13, T25) call `screen.open(Screen.Profile(screen, id))`.
+- Back for Profile and HeadToHead is `reduceStacked` (HistoryReducer.kt): pops to `parent`. T13/T25 should replace the
+  `Unit` placeholders and add their own events in a dedicated reducer, keeping Back = parent.
+- Real-code divergence: History and Players keep `home` as their parent (they are chain roots), so `Players >
+  Profile` works and Back from both returns home as before. `homeOfStack()` and `historyListOfStack()` give the saved
+  game (HS1) and the History read (HS7) from any depth; a detail opened from a Profile triggers no History read.
+- Process death: as History does today (HS9), History and its detail (opened straight from History) still come back
+  through `historySnapshot`; Profile, Head-to-head and a detail above them store nothing, so the app restarts at home.
+- KosmoDartsApp renders nothing for Profile/HeadToHead yet (T13, T25).
+- Tests: `NavigationStackTest` (rotation at ViewModel level, process death with a new ViewModel); one assertion in
+  `HistoryNavigationTest` follows the `parent` rename.

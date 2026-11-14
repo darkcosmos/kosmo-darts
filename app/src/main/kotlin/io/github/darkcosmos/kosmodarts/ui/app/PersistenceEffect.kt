@@ -72,7 +72,7 @@ fun savedGameOf(state: AppState): StoredGame? = when (val screen = state.screen)
     is Screen.Settings -> screen.home.resumableGame
     // The same for History (HS1): it is read-only and leaves the saved game as it is.
     is Screen.History -> screen.home.resumableGame
-    is Screen.MatchDetail -> screen.list.home.resumableGame
+    is Screen.Stacked -> screen.homeOfStack()?.resumableGame
     // The same for Players (PM2): it never touches the saved game, it only reads it to lock names (PM8).
     is Screen.Players -> screen.home.resumableGame
     // R12, R20, R21: a Cricket game is saved like an X01 one, between legs included, and deleted at its end.
@@ -110,7 +110,7 @@ fun persistenceEffects(before: AppState, after: AppState): List<PersistenceEffec
 /** The History list a screen shows or hides behind the detail (HS6), or `null`. */
 private fun historyOf(screen: Screen): HistoryState? = when (screen) {
     is Screen.History -> screen.history
-    is Screen.MatchDetail -> screen.list.history
+    is Screen.Stacked -> screen.historyListOfStack()?.history
     else -> null
 }
 

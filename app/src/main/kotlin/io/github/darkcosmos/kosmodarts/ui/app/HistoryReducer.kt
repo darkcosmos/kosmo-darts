@@ -28,12 +28,25 @@ internal fun reduceMatchDetail(state: AppState, screen: Screen.MatchDetail, even
         is AppEvent.MatchDetailLoaded -> screen.detail.loaded(event.loadId, event.result)
         else -> screen.detail
     }
-    val list = if (event is AppEvent.HistoryLoaded) screen.list.history.after(event) else screen.list.history
+    val parent = screen.parent
+    val list = if (event is AppEvent.HistoryLoaded && parent is Screen.History) parent.history.after(event) else null
     return when {
-        event == AppEvent.Back -> state.copy(screen = screen.list)
-        next == screen.detail && list == screen.list.history -> state
-        else -> state.copy(screen = screen.copy(list = screen.list.copy(history = list), detail = next))
+        event == AppEvent.Back -> state.copy(screen = parent)
+        list != null && parent is Screen.History && list != parent.history ->
+            state.copy(screen = screen.copy(parent = parent.copy(history = list), detail = next))
+        next == screen.detail -> state
+        else -> state.copy(screen = screen.copy(detail = next))
     }
+}
+
+/**
+ * HS9: the match detail has its own events; for a Profile and a head-to-head (their screens come with their own
+ * tasks) Back returns one level and nothing else changes.
+ */
+internal fun reduceStacked(state: AppState, screen: Screen.Stacked, event: AppEvent): AppState = when {
+    screen is Screen.MatchDetail -> reduceMatchDetail(state, screen, event)
+    event == AppEvent.Back -> state.copy(screen = screen.parent)
+    else -> state
 }
 
 /** HS1 to HS4, HS6, HS7: the History state after [event]; events History does not know change nothing. */

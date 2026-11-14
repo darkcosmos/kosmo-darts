@@ -69,10 +69,43 @@ sealed interface Screen {
     data class Players(val home: Home, val players: PlayersState = PlayersState()) : Screen
 
     /**
-     * The read-only detail of one archived match (HS5, HS6). It keeps the whole [list] screen it came from, so that
-     * Back returns to History with its filters, matches and scroll position, without a new read.
+     * The read-only detail of one archived match (HS5, HS6). It keeps the whole [parent] screen it came from (History,
+     * later a Profile or a head-to-head), so that Back returns to it as it was left, without a new read (HS9).
      */
-    data class MatchDetail(val list: History, val detail: MatchDetailState) : Screen
+    data class MatchDetail(override val parent: Screen, val detail: MatchDetailState) : Stacked {
+        override fun reparented(parent: Screen): Stacked = copy(parent = parent)
+
+        override fun isSameAs(other: Screen): Boolean =
+            other is MatchDetail && other.detail.sessionId == detail.sessionId
+    }
+
+    /** The Profile of one player (HS9). [profile] is a placeholder until its screen exists. */
+    data class Profile(override val parent: Screen, val profileId: Long, val profile: Unit = Unit) : Stacked {
+        override fun reparented(parent: Screen): Stacked = copy(parent = parent)
+
+        override fun isSameAs(other: Screen): Boolean = other is Profile && other.profileId == profileId
+    }
+
+    /**
+     * The head-to-head of the ordered pair [a], [b] (HS9: (B, A) is another screen than (A, B)). [state] is a
+     * placeholder until its screen exists.
+     */
+    data class HeadToHead(override val parent: Screen, val a: Long, val b: Long, val state: Unit = Unit) : Stacked {
+        override fun reparented(parent: Screen): Stacked = copy(parent = parent)
+
+        override fun isSameAs(other: Screen): Boolean = other is HeadToHead && other.a == a && other.b == b
+    }
+
+    /** A screen of the history back stack (HS9): it opens over its [parent], and Back returns there. */
+    sealed interface Stacked : Screen {
+        val parent: Screen
+
+        /** The same screen opened over [parent]. */
+        fun reparented(parent: Screen): Stacked
+
+        /** Whether [other] is the same profile, ordered pair or match, so that opening it must not stack a copy. */
+        fun isSameAs(other: Screen): Boolean
+    }
 
     /**
      * Between two legs of a match, after "Finish leg" or "Finish set" (docs/rules/match.md, M16). [match] already has
@@ -311,4 +344,33 @@ sealed interface AppEvent {
 
     /** "Install a voice" on the "no offline voice" message: it also closes it (AN16, AN17). */
     data object InstallVoiceTapped : AppEvent
+}
+
+/**
+ * HS9: opens [target] over this screen. A screen equal to [target] already in the chain (this one included) is
+ * returned as it was left, which drops the screens above it: never two copies. Otherwise [target] is stacked on this.
+ */
+fun Screen.open(target: Screen.Stacked): Screen {
+    var candidate: Screen? = this
+    while (candidate != null) {
+        if (target.isSameAs(candidate)) return candidate
+        candidate = (candidate as? Screen.Stacked)?.parent
+    }
+    return target.reparented(this)
+}
+
+/** The home screen at the bottom of the stack this screen belongs to, or `null` outside the history screens. */
+fun Screen.homeOfStack(): Screen.Home? = when (this) {
+    is Screen.Home -> this
+    is Screen.History -> home
+    is Screen.Players -> home
+    is Screen.Stacked -> parent.homeOfStack()
+    else -> null
+}
+
+/** The History list at the bottom of the stack of this screen, or `null` when it does not come from History (HS6). */
+fun Screen.historyListOfStack(): Screen.History? = when (this) {
+    is Screen.History -> this
+    is Screen.Stacked -> parent.historyListOfStack()
+    else -> null
 }

@@ -53,6 +53,8 @@ fun KosmoDartsApp(
         is Screen.Settings -> SettingsScreen(settings, onSettingsEvent, onBack = { onEvent(AppEvent.Back) })
         is Screen.History -> HistoryScreen(screen.history, onEvent)
         is Screen.MatchDetail -> MatchDetailScreen(screen.detail, onEvent)
+        // T13 and T25 add the Profile and head-to-head screens; their stack and Back already work (HS9).
+        is Screen.Profile, is Screen.HeadToHead -> Unit
         is Screen.Players -> PlayersScreen(screen.players, onEvent)
         is Screen.CricketGame ->
             CricketGameScreen(screen.game, screen.journal, onEvent, noVoiceNotice = screen.noVoiceNotice)

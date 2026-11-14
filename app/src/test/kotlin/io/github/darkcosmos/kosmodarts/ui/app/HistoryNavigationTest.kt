@@ -179,7 +179,7 @@ class HistoryNavigationTest {
 
         val screen = restored.screen as Screen.MatchDetail
         assertEquals(MatchDetailState(1), screen.detail)
-        assertEquals(HistoryScroll(2, 4), screen.list.history.scroll)
+        assertEquals(HistoryScroll(2, 4), (screen.parent as Screen.History).history.scroll)
         assertEquals(
             listOf(PersistenceEffect.LoadHistory(HistoryFilters(), 1), PersistenceEffect.LoadMatch(1, 1)),
             startupEffects(restored),
