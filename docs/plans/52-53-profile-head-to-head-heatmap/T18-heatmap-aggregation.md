@@ -41,3 +41,17 @@ HM1, HM2, HM3 (mode filter), HM4 (`includesCricket` drives the label), HM7, HM9 
 sonnet. Why: counting rules fully specified.
 
 ## Implementation notes
+- Public API in `engine/stats/HeatmapAggregation.kt`: `Heatmap(counts, misses, total, includesCricket)` with
+  `share(zone): Double?`, `missShare: Double?` (percent 0..100, unrounded; null when total is 0), `topZones(limit = 5)`
+  returning `ZoneShare(zone, count, percent)` (count desc, ties by `BoardZone.ALL` order, zero-count zones never
+  listed), `Heatmap.EMPTY`, const `TOP_ZONES = 5`; `heatmapOf(matches: List<StatsMatch>, profileId, modeFilter:
+  StatsFilter): Heatmap` (applies the filter's `accepts`; `includesCricket` true when a Cricket match contributes at
+  least one dart); `enum LastLeg { COMPLETED, CURRENT }`.
+- Deviation: `MatchJournal` carries no configuration, so `lastLegHeatmap(journal, setup: LegSetup, playerIndex,
+  lastLeg)` takes the `LegSetup` (X01 or Cricket with its config); its starting player is ignored: the starter of leg n
+  is n modulo the player count (M6), so replay attributes darts to the right player. `includesCricket` comes from the
+  setup, only when at least one dart counts. Missing leg, out-of-range player or unreplayable journal give
+  `Heatmap.EMPTY`.
+- A Cricket dart outside the Cricket numbers is whatever the journal recorded (a miss when the input records it so);
+  the engine does not reclassify.
+- Tests: `HeatmapAggregationTest.kt`.
