@@ -35,3 +35,20 @@ HM1 to HM8, PS8.
 sonnet. Why: screen from the plan with Compose tests and captures.
 
 ## Implementation notes
+- `ui/profile/HeatmapSection.kt`: `HeatmapFilters` (mode chips, X01 or Cricket filters, period; reuses the now
+  `internal` `FilterGroup`, `PeriodGroup` and label functions of `ProfileFilters.kt`) and `HeatmapSection(state, onEvent)`
+  (board, band, misses line via `FigureRowView`, `HeatmapLegend`, top 5 list; HM7 text instead when `isEmpty`).
+  `HeatmapTags` in `HeatmapTags.kt`. `ProfileScreen`: the heatmap is one lazy item in portrait and the right column in
+  landscape; the placeholder (string, tag, `FigureBlock` branch) is gone.
+- Deviations: `ZoneText.kt` lives in `ui/profile` (it formats `ZoneName`/`ZoneFigure`, which are there) and is
+  resource based (`ZoneName.text`, `dartsText`, `ZoneFigure.detail`, `description`), so it serves composables and the
+  TalkBack lambda alike; zone names are the T21 ones ("Triple 20", "Simple 5"), not "T20"/"S5". `ZoneBand`
+  (`ui/board`, `ZoneBandTags`) takes `title` and nullable `detail` only: T27 switches it off by not calling it (D11).
+  Added `HeatmapSectionState.zoneShares` (ratios for the colour scale, so no counting in the composable) with a test.
+- Strings: `heatmap_filter_mode`, `heatmap_mode_all`, `heatmap_mode_cricket`, `heatmap_empty`, `heatmap_board_description`,
+  `heatmap_top_title`, plural `heatmap_darts`, `heatmap_zone_detail`, `heatmap_zone_description` (en and fr).
+- Tests: `HeatmapSectionTest` (HM2 to HM7, PS8), `ZoneTextTest`, `ProfileScreenTest` heatmap tab. Merged-semantics
+  nodes (band, top rows) are read through their merged text. Captures `profile_heatmap_*` in `ProfileScreenshotTest`
+  (empty, spread, concentrated, selected, Cricket label; portrait, landscape, 200 % font).
+- Open (UX): in portrait the band sits under a 360 dp board, so at the top of the screen it is just below the fold
+  (the Heatmap scrolls; the top 5 list is the reliable access, HM6). T27 may want the filters collapsed.

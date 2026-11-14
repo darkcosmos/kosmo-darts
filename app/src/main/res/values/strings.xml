@@ -388,7 +388,6 @@
     <string name="heatmap_legend_max">max = %1$s</string>
     <string name="heatmap_legend_note">A zone\'s value = its darts / all darts, misses included.</string>
     <string name="heatmap_legend_description">Colour scale: dark blue for the least hit zones up to yellow for the most hit zone, %1$s of the darts. Zones with no dart are dark grey.</string>
-    <string name="profile_heatmap_placeholder">The heatmap of this player is coming soon.</string>
     <string name="heatmap_zone_single">Single %1$d</string>
     <string name="heatmap_zone_double">Double %1$d</string>
     <string name="heatmap_zone_triple">Triple %1$d</string>
@@ -397,6 +396,18 @@
     <string name="heatmap_miss">Miss</string>
     <string name="heatmap_miss_cricket">Miss or outside Cricket numbers</string>
     <string name="heatmap_band_none">Touch a zone</string>
+    <string name="heatmap_filter_mode">MODE</string>
+    <string name="heatmap_mode_all">All modes</string>
+    <string name="heatmap_mode_cricket">Cricket</string>
+    <string name="heatmap_empty">No dart in this selection yet.</string>
+    <string name="heatmap_board_description">Dartboard heatmap. The details of each zone are in the list of the most hit zones.</string>
+    <string name="heatmap_top_title">5 MOST HIT ZONES</string>
+    <plurals name="heatmap_darts">
+        <item quantity="one">%1$d dart</item>
+        <item quantity="other">%1$d darts</item>
+    </plurals>
+    <string name="heatmap_zone_detail" translatable="false">%1$s · %2$s</string>
+    <string name="heatmap_zone_description">%1$s, %2$s, %3$s</string>
     <string name="profile_filter_start_score">START SCORE</string>
     <string name="profile_filter_out_rule">OUT RULE</string>
     <string name="profile_filter_variant">VARIANT</string>

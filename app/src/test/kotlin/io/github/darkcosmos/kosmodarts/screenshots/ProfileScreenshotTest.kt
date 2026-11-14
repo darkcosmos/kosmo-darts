@@ -6,12 +6,18 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.darkcosmos.kosmodarts.MainActivity
+import io.github.darkcosmos.kosmodarts.engine.board.BoardZone
+import io.github.darkcosmos.kosmodarts.engine.stats.Heatmap
 import io.github.darkcosmos.kosmodarts.engine.stats.RawStatsMatch
 import io.github.darkcosmos.kosmodarts.engine.stats.X01Filter
+import io.github.darkcosmos.kosmodarts.ui.profile.HeatmapFigures
+import io.github.darkcosmos.kosmodarts.ui.profile.HeatmapSelections
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileContent
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileScreen
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileSection
@@ -53,7 +59,12 @@ class ProfileScreenshotTest {
         return base.copy(content = ProfileContent.Loaded(data, data.figures(base.query)))
     }
 
-    private fun capture(name: String, state: ProfileState, scrollToTrend: Boolean = false) {
+    private fun capture(
+        name: String,
+        state: ProfileState,
+        scrollToTrend: Boolean = false,
+        scrolled: Boolean = false,
+    ) {
         composeRule.runOnUiThread {
             val view = ComposeView(composeRule.activity)
             view.setContent { KosmoDartsTheme { ProfileScreen(state, onEvent = {}) } }
@@ -63,6 +74,11 @@ class ProfileScreenshotTest {
         if (scrollToTrend) {
             composeRule.onNodeWithTag(ProfileTags.CONTENT)
                 .performScrollToNode(hasTestTag(ProfileTags.figure("trend_last_date")))
+            composeRule.waitForIdle()
+        }
+        if (scrolled) {
+            composeRule.onNodeWithTag(ProfileTags.CONTENT)
+                .performTouchInput { swipeUp(startY = bottom - 1f, endY = top + 1f) }
             composeRule.waitForIdle()
         }
         val directory = System.getProperty(SCREENSHOT_DIR_PROPERTY, DEFAULT_SCREENSHOT_DIR)
@@ -185,6 +201,93 @@ class ProfileScreenshotTest {
     @Test
     @Config(qualifiers = "+fr-land")
     fun trendOnePointLandscape() = capture("trend_one_point_landscape_fr", onePointState, scrollToTrend = true)
+
+    /** The Heatmap section with a given heatmap (HM4: Cricket darts give the long miss label). */
+    private fun heatmapState(heatmap: Heatmap, selected: BoardZone? = null): ProfileState {
+        val base = stateOf(matches, ProfileSection.HEATMAP).copy(
+            heatmapSelections = HeatmapSelections(selectedZone = selected),
+        )
+        val loaded = base.content as ProfileContent.Loaded
+        val figures = checkNotNull(loaded.figures).copy(heatmap = HeatmapFigures(2, heatmap))
+        return base.copy(content = loaded.copy(figures = figures))
+    }
+
+    private fun heatmapOf(counts: Map<BoardZone, Int>, misses: Int, isCricket: Boolean) =
+        Heatmap(counts, misses, counts.values.sum() + misses, isCricket)
+
+    private val spreadCounts get() = BoardZone.ALL.filterIndexed { i, _ -> i % 2 == 0 }
+        .mapIndexed { i, zone -> zone to (i % 6 + 1) }.toMap()
+    private val concentratedCounts get() = mapOf(
+        BoardZone(20, BoardZone.Ring.TRIPLE) to 60,
+        BoardZone(19, BoardZone.Ring.TRIPLE) to 12,
+        BoardZone(1, BoardZone.Ring.SINGLE) to 8,
+        BoardZone(18, BoardZone.Ring.TRIPLE) to 5,
+    )
+    private val t20 = BoardZone(20, BoardZone.Ring.TRIPLE)
+    private val spreadState get() = heatmapState(heatmapOf(spreadCounts, 9, isCricket = false))
+    private val concentratedState get() = heatmapState(heatmapOf(concentratedCounts, 15, isCricket = false))
+    private val selectedState get() = heatmapState(heatmapOf(concentratedCounts, 15, isCricket = false), t20)
+    private val cricketMissState get() = heatmapState(heatmapOf(concentratedCounts, 15, isCricket = true))
+    private val noDartState get() = heatmapState(Heatmap.EMPTY)
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun heatmapEmptyPortrait() = capture("heatmap_empty_portrait_en", noDartState)
+
+    @Test
+    @Config(qualifiers = "+fr-land")
+    fun heatmapEmptyLandscape() = capture("heatmap_empty_landscape_fr", noDartState)
+
+    @Test
+    @Config(qualifiers = "+fr-port", fontScale = LARGEST_FONT_SCALE)
+    fun heatmapEmptyPortraitLargestFont() = capture("heatmap_empty_portrait_fr_font200", noDartState)
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun heatmapSpreadPortrait() = capture("heatmap_spread_portrait_en", spreadState)
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun heatmapSpreadPortraitLower() = capture("heatmap_spread_portrait_fr_lower", spreadState, scrolled = true)
+
+    @Test
+    @Config(qualifiers = "+fr-land")
+    fun heatmapSpreadLandscape() = capture("heatmap_spread_landscape_fr", spreadState)
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun heatmapConcentratedPortrait() = capture("heatmap_concentrated_portrait_en", concentratedState)
+
+    @Test
+    @Config(qualifiers = "+fr-land")
+    fun heatmapConcentratedLandscape() = capture("heatmap_concentrated_landscape_fr", concentratedState)
+
+    @Test
+    @Config(qualifiers = "+fr-port")
+    fun heatmapSelectedPortrait() = capture("heatmap_selected_portrait_fr", selectedState)
+
+    @Test
+    @Config(qualifiers = "+fr-land")
+    fun heatmapSelectedLandscape() = capture("heatmap_selected_landscape_fr", selectedState)
+
+    @Test
+    @Config(qualifiers = "+fr-port", fontScale = LARGEST_FONT_SCALE)
+    fun heatmapSelectedPortraitLargestFont() = capture("heatmap_selected_portrait_fr_font200", selectedState)
+
+    @Test
+    @Config(qualifiers = "+fr-port", fontScale = LARGEST_FONT_SCALE)
+    fun heatmapCricketLabelPortraitLargestFont() =
+        capture("heatmap_cricket_label_portrait_fr_font200", cricketMissState, scrolled = true)
+
+    @Test
+    @Config(qualifiers = "+fr-land", fontScale = LARGEST_FONT_SCALE)
+    fun heatmapCricketLabelLandscapeLargestFont() =
+        capture("heatmap_cricket_label_landscape_fr_font200", cricketMissState, scrolled = true)
+
+    @Test
+    @Config(qualifiers = "+en-port")
+    fun heatmapCricketLabelPortraitLower() =
+        capture("heatmap_cricket_label_portrait_en_lower", cricketMissState, scrolled = true)
 
     private companion object {
         const val SCREENSHOT_DIR_PROPERTY = "kosmodarts.screenshot.dir"

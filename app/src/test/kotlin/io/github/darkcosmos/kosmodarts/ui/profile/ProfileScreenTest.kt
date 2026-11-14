@@ -145,9 +145,11 @@ class ProfileScreenTest {
 
     /** PS3 */
     @Test
-    fun heatmapTabShowsItsPlaceholderUntilItsContentExists() {
+    fun heatmapTabShowsItsModeFiltersAndItsSection() {
         showState(loaded(section = ProfileSection.HEATMAP))
-        node(ProfileTags.HEATMAP_PLACEHOLDER).assertIsDisplayed()
+        node(HeatmapTags.MODE_FILTER).assertIsDisplayed()
+        node(ProfileTags.PERIOD_FILTER).assertIsDisplayed()
+        node(HeatmapTags.TOP_LIST).assertExists()
     }
 
     /** ST3, PS3 */

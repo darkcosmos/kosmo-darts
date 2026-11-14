@@ -88,6 +88,15 @@ class HeatmapSectionStateTest {
     }
 
     @Test
+    fun `HM5 the shares for the colour scale are ratios of the zones with darts only`() {
+        val shares = section(shown()).zoneShares
+        assertTrue(shares.keys.containsAll(setOf(t20, t19)))
+        assertTrue(shares.values.all { it > 0.0 && it <= 1.0 })
+        assertEquals(section(shown()).heatmap.share(t20)!! / 100.0, shares.getValue(t20), DELTA)
+        assertTrue(HeatmapSectionState(HeatmapSelections(), HeatmapFigures.EMPTY).zoneShares.isEmpty())
+    }
+
+    @Test
     fun `HM6 nothing is selected at open and the band asks to touch a zone`() {
         val state = shown()
         assertNull(section(state).selected)

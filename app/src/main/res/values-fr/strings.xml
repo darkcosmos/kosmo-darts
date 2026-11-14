@@ -371,7 +371,6 @@
     <string name="heatmap_legend_max">max = %1$s</string>
     <string name="heatmap_legend_note">Valeur d\'une zone = ses fléchettes / toutes les fléchettes, ratés inclus.</string>
     <string name="heatmap_legend_description">Échelle de couleurs : du bleu foncé pour les zones les moins touchées au jaune pour la zone la plus touchée, %1$s des fléchettes. Les zones sans fléchette sont gris foncé.</string>
-    <string name="profile_heatmap_placeholder">La heatmap de ce joueur arrive bientôt.</string>
     <string name="heatmap_zone_single">Simple %1$d</string>
     <string name="heatmap_zone_double">Double %1$d</string>
     <string name="heatmap_zone_triple">Triple %1$d</string>
@@ -380,6 +379,18 @@
     <string name="heatmap_miss">Raté</string>
     <string name="heatmap_miss_cricket">Raté ou hors numéros Cricket</string>
     <string name="heatmap_band_none">Touchez une zone</string>
+    <string name="heatmap_filter_mode">MODE</string>
+    <string name="heatmap_mode_all">Tous les modes</string>
+    <string name="heatmap_mode_cricket">Cricket</string>
+    <string name="heatmap_empty">Aucune fléchette dans cette sélection pour l\'instant.</string>
+    <string name="heatmap_board_description">Heatmap de la cible. Le détail de chaque zone est dans la liste des zones les plus touchées.</string>
+    <string name="heatmap_top_title">5 ZONES LES PLUS TOUCHÉES</string>
+    <plurals name="heatmap_darts">
+        <item quantity="one">%1$d fléchette</item>
+        <item quantity="many">%1$d fléchettes</item>
+        <item quantity="other">%1$d fléchettes</item>
+    </plurals>
+    <string name="heatmap_zone_description">%1$s, %2$s, %3$s</string>
     <string name="profile_filter_start_score">SCORE DE DÉPART</string>
     <string name="profile_filter_out_rule">SORTIE</string>
     <string name="profile_filter_variant">VARIANTE</string>

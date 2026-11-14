@@ -33,9 +33,9 @@ import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.States
 
-private val START_SCORES: List<Int?> = listOf(null, 501, 301)
-private val OUT_RULES: List<CheckoutRule?> = listOf(null, CheckoutRule.DOUBLE_OUT, CheckoutRule.SINGLE_OUT)
-private val VARIANTS: List<CricketVariant?> = listOf(null, CricketVariant.STANDARD, CricketVariant.CUT_THROAT)
+internal val START_SCORES: List<Int?> = listOf(null, 501, 301)
+internal val OUT_RULES: List<CheckoutRule?> = listOf(null, CheckoutRule.DOUBLE_OUT, CheckoutRule.SINGLE_OUT)
+internal val VARIANTS: List<CricketVariant?> = listOf(null, CricketVariant.STANDARD, CricketVariant.CUT_THROAT)
 
 /** ST3, ST4: the filters of the shown section, then its period. Shown in every state of the section (PS6). */
 @Composable
@@ -44,7 +44,7 @@ internal fun ProfileFilters(state: ProfileState, onEvent: (AppEvent) -> Unit, mo
         when (state.section) {
             ProfileSection.X01 -> X01Filters(state, onEvent)
             ProfileSection.CRICKET -> CricketFilters(state, onEvent)
-            ProfileSection.HEATMAP -> Unit
+            ProfileSection.HEATMAP -> HeatmapFilters(state.heatmapSelections, onEvent)
         }
     }
 }
@@ -84,7 +84,7 @@ private fun CricketFilters(state: ProfileState, onEvent: (AppEvent) -> Unit) {
 }
 
 @Composable
-private fun PeriodGroup(selected: Period, onSelect: (Period) -> Unit) {
+internal fun PeriodGroup(selected: Period, onSelect: (Period) -> Unit) {
     FilterGroup(
         title = stringResource(R.string.profile_filter_period),
         tag = ProfileTags.PERIOD_FILTER,
@@ -96,7 +96,7 @@ private fun PeriodGroup(selected: Period, onSelect: (Period) -> Unit) {
 }
 
 @Composable
-private fun <T> FilterGroup(
+internal fun <T> FilterGroup(
     title: String,
     tag: String,
     options: List<T>,
@@ -163,21 +163,21 @@ private fun <T> StackedChoice(
 private const val STACK_FONT_SCALE = 1.3f
 
 @Composable
-private fun startScoreLabel(score: Int?): String = if (score == null) {
+internal fun startScoreLabel(score: Int?): String = if (score == null) {
     stringResource(R.string.history_filter_all)
 } else {
     stringResource(R.string.profile_start_score, score)
 }
 
 @Composable
-private fun outRuleLabel(rule: CheckoutRule?): String = when (rule) {
+internal fun outRuleLabel(rule: CheckoutRule?): String = when (rule) {
     null -> stringResource(R.string.history_filter_all)
     CheckoutRule.DOUBLE_OUT -> stringResource(R.string.setup_double_out)
     CheckoutRule.SINGLE_OUT -> stringResource(R.string.setup_single_out)
 }
 
 @Composable
-private fun variantLabel(variant: CricketVariant?): String = when (variant) {
+internal fun variantLabel(variant: CricketVariant?): String = when (variant) {
     null -> stringResource(R.string.history_filter_all)
     CricketVariant.STANDARD -> stringResource(R.string.cricket_variant_standard)
     CricketVariant.CUT_THROAT -> stringResource(R.string.cricket_variant_cut_throat)

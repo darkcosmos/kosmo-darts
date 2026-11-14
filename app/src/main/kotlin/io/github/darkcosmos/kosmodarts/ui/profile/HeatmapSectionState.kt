@@ -9,6 +9,8 @@ import io.github.darkcosmos.kosmodarts.engine.stats.Period
 import io.github.darkcosmos.kosmodarts.engine.stats.StatsFilter
 import io.github.darkcosmos.kosmodarts.engine.stats.X01Filter
 
+private const val PERCENT = 100.0
+
 /** The mode filter of the Heatmap section (HM3): every mode, X01 only or Cricket only. */
 enum class HeatmapMode { ALL, X01, CRICKET }
 
@@ -78,6 +80,10 @@ data class HeatmapSectionState(val selections: HeatmapSelections, val figures: H
     /** HM2: the misses over all darts, 0 to 100, or `null` without a dart. */
     val missPercent: Double?
         get() = heatmap.missShare
+
+    /** HM5: the share (0 to 1) of every zone with at least one dart, which the screen maps to the colour scale. */
+    val zoneShares: Map<BoardZone, Double>
+        get() = heatmap.counts.filterValues { it > 0 }.mapValues { (zone, _) -> (heatmap.share(zone) ?: 0.0) / PERCENT }
 
     /** HM6: the five most hit zones, most first; ties follow the order of the board zones. */
     val topZones: List<ZoneFigure>

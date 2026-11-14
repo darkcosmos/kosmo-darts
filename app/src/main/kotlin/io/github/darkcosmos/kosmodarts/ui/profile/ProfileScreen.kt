@@ -35,7 +35,7 @@ import java.util.Locale
 /** One line of figures: its [key] for tests, its label and its value, the dash when it cannot be computed (ST6). */
 internal data class FigureRow(val key: String, val label: String, val value: String)
 
-/** A titled group of figures; [note] is a plain sentence under the title (the Heatmap placeholder). */
+/** A titled group of figures; [note] is a plain sentence under the title (the trend with too few points). */
 internal data class FigureBlock(
     val key: String,
     val title: String,
@@ -90,21 +90,14 @@ fun ProfileScreen(state: ProfileState, onEvent: (AppEvent) -> Unit, modifier: Mo
     }
 }
 
-/** The blocks of the shown section for its current selection (PS4); the Heatmap tab is a placeholder until T22. */
+/** The blocks of the shown section for its current selection (PS4); the Heatmap tab has its own [HeatmapSection]. */
 @Composable
 private fun sectionBlocks(state: ProfileState): List<FigureBlock> {
     val figures = state.figures ?: return emptyList()
     return when (state.section) {
         ProfileSection.X01 -> x01Blocks(figures.x01)
         ProfileSection.CRICKET -> cricketBlocks(figures.cricket, state.cricketFilter.variant)
-        ProfileSection.HEATMAP -> listOf(
-            FigureBlock(
-                key = "heatmap",
-                title = stringResource(R.string.profile_tab_heatmap),
-                rows = emptyList(),
-                note = stringResource(R.string.profile_heatmap_placeholder),
-            ),
-        )
+        ProfileSection.HEATMAP -> emptyList()
     }
 }
 
@@ -122,6 +115,8 @@ private fun PortraitContent(state: ProfileState, onEvent: (AppEvent) -> Unit, mo
         item(key = "filters") { ProfileFilters(state, onEvent) }
         if (state.isSelectionEmpty) {
             item(key = "no_match") { NoMatchForFilters() }
+        } else if (state.section == ProfileSection.HEATMAP) {
+            item(key = "heatmap") { state.heatmap?.let { HeatmapSection(it, onEvent) } }
         } else {
             items(blocks, key = { it.key }) { FigureBlockView(it) }
         }
@@ -147,7 +142,11 @@ private fun LandscapeContent(state: ProfileState, onEvent: (AppEvent) -> Unit, m
                 .verticalScroll(rememberScrollState())
                 .testTag(ProfileTags.CONTENT),
         ) {
-            if (state.isSelectionEmpty) NoMatchForFilters() else TwoColumns(sectionBlocks(state))
+            when {
+                state.isSelectionEmpty -> NoMatchForFilters()
+                state.section == ProfileSection.HEATMAP -> state.heatmap?.let { HeatmapSection(it, onEvent) }
+                else -> TwoColumns(sectionBlocks(state))
+            }
         }
     }
 }
@@ -179,9 +178,7 @@ private fun FigureBlockView(block: FigureBlock, modifier: Modifier = Modifier) {
                 text = it,
                 style = KosmoTheme.typography.body,
                 color = colors.onBackgroundMuted,
-                modifier = Modifier.testTag(
-                    if (block.trend == null) ProfileTags.HEATMAP_PLACEHOLDER else ProfileTags.TREND_TOO_FEW,
-                ),
+                modifier = Modifier.testTag(ProfileTags.TREND_TOO_FEW),
             )
         }
         block.trend?.let { TrendCurve(it) }
@@ -191,7 +188,7 @@ private fun FigureBlockView(block: FigureBlock, modifier: Modifier = Modifier) {
 
 /** A label and its value on one line; they wrap at a large font. One element for TalkBack: "label, value". */
 @Composable
-private fun FigureRowView(row: FigureRow) {
+internal fun FigureRowView(row: FigureRow) {
     val colors = KosmoTheme.colors
     // A row that does not fit (large font, long date) puts the value on its own line: a word is never cut.
     FlowRow(
