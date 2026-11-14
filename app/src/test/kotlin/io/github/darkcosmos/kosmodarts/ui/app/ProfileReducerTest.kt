@@ -49,7 +49,8 @@ class ProfileReducerTest {
     @Test
     fun `HS7 opening the Profile reads it once, and the open state is X01 since always with All filters`() {
         val effects = persistenceEffects(AppState(screen = players), opened)
-        assertEquals(listOf<PersistenceEffect>(PersistenceEffect.LoadProfile(1, 1)), effects)
+        val reads = listOf(PersistenceEffect.LoadProfile(1, 1), PersistenceEffect.LoadProfileRoster(1, 1))
+        assertEquals(reads, effects)
         assertEquals(ProfileSection.X01, profile(opened).profile.section)
         assertEquals(ProfileView.LOADING, profile(opened).profile.view)
     }
@@ -74,7 +75,8 @@ class ProfileReducerTest {
         assertEquals(ProfileView.FAILED, profile(failed).profile.view)
         val retried = send(failed, ProfileEvent.RetryTapped)
         val reload = PersistenceEffect.LoadProfile(1, 2)
-        assertEquals(listOf<PersistenceEffect>(reload), persistenceEffects(failed, retried))
+        val reloads = listOf(reload, PersistenceEffect.LoadProfileRoster(1, 2))
+        assertEquals(reloads, persistenceEffects(failed, retried))
         // The answer of the first read, arriving late, is ignored.
         assertSame(retried, send(retried, ProfileEvent.Loaded(1, 1, DbResult.Ok(data))))
     }

@@ -4,8 +4,11 @@ import io.github.darkcosmos.kosmodarts.engine.stats.CricketFilter
 import io.github.darkcosmos.kosmodarts.engine.stats.Period
 import io.github.darkcosmos.kosmodarts.engine.stats.X01Filter
 import io.github.darkcosmos.kosmodarts.history.DbResult
+import io.github.darkcosmos.kosmodarts.history.PlayerSummary
 import io.github.darkcosmos.kosmodarts.history.ProfileStatsData
+import io.github.darkcosmos.kosmodarts.ui.profile.ProfileAnswer
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileFigures
+import io.github.darkcosmos.kosmodarts.ui.profile.ProfileRequest
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileSection
 
 /**
@@ -21,6 +24,41 @@ sealed interface ProfileEvent : AppEvent {
 
     /** The answer to computation [figuresId] of the Profile of [profileId]. */
     data class FiguresComputed(val profileId: Long, val figuresId: Int, val figures: ProfileFigures) : ProfileEvent
+
+    /** The answer to read [loadId] of the profiles list of the Profile of [profileId] (PM3, PM4). */
+    data class RosterLoaded(val profileId: Long, val loadId: Int, val result: DbResult<List<PlayerSummary>>) :
+        ProfileEvent
+
+    /** "Manage player" (PS2): unfolds or folds the four actions. */
+    data object ManageToggled : ProfileEvent
+
+    data object RenameTapped : ProfileEvent
+
+    data class RenameTextChanged(val text: String) : ProfileEvent
+
+    /** "Save" of the rename panel. */
+    data object RenameSaved : ProfileEvent
+
+    data object MergeTapped : ProfileEvent
+
+    /** The profile [id] picked as the target of the merge. */
+    data class MergeTargetPicked(val id: Long) : ProfileEvent
+
+    /** "Merge into ..." of the rename panel, when the new name belongs to another profile (Q6). */
+    data object MergeIntoTakenTapped : ProfileEvent
+
+    data object ResetTapped : ProfileEvent
+
+    data object DeleteTapped : ProfileEvent
+
+    /** The confirm button of the merge, reset or delete panel. */
+    data object Confirmed : ProfileEvent
+
+    /** "Cancel" of any panel. */
+    data object Cancelled : ProfileEvent
+
+    /** The database answered [request] of the Profile of [profileId]. It counts even when the screen was left (PM9). */
+    data class Answered(val profileId: Long, val request: ProfileRequest, val answer: ProfileAnswer) : ProfileEvent
 
     data class SectionSelected(val section: ProfileSection) : ProfileEvent
 

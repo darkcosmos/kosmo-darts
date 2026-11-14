@@ -12,8 +12,8 @@ import io.github.darkcosmos.kosmodarts.ui.cricket.toSavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.game.toSavedGame
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
-import io.github.darkcosmos.kosmodarts.ui.players.PlayersRequest
 import io.github.darkcosmos.kosmodarts.ui.profile.ProfileQuery
+import io.github.darkcosmos.kosmodarts.ui.profile.ProfileRequest
 
 /** A change to make on the device after an event (rules R3, R6, R7, R12, R13, R15). */
 sealed interface PersistenceEffect {
@@ -45,10 +45,16 @@ sealed interface PersistenceEffect {
     data class LoadPlayers(val loadId: Int) : PersistenceEffect
 
     /**
-     * PM3 to PM6: run [request] on the database; the answer comes back as [PlayersEvent.Answered], then the last setup
-     * is rewritten by the reducer (PM9), which gives a [SaveLastSetup].
+     * PM3 to PM6, PS7: run [request] of the Profile of [profileId] on the database; the answer comes back as
+     * [ProfileEvent.Answered], then the last setup is rewritten by the reducer (PM9), which gives a [SaveLastSetup].
      */
-    data class RunPlayersRequest(val request: PlayersRequest) : PersistenceEffect
+    data class RunProfileRequest(val profileId: Long, val request: ProfileRequest) : ProfileEffect
+
+    /**
+     * PM3, PM4: read the profiles list for the actions of the Profile of [profileId]; the answer comes back as
+     * [ProfileEvent.RosterLoaded] with the same [loadId].
+     */
+    data class LoadProfileRoster(val profileId: Long, val loadId: Int) : ProfileEffect
 
     /**
      * HS7, ST10: read the statistics input of the Profile of [profileId]; the answer comes back as
@@ -122,7 +128,6 @@ fun persistenceEffects(before: AppState, after: AppState): List<PersistenceEffec
         loadHistoryEffect(before, after),
         loadMatchEffect(before, after),
         loadPlayersEffect(before, after),
-        playersRequestEffect(before, after),
     ) + profileEffects(before, after)
 }
 
@@ -213,7 +218,6 @@ fun Persistence.applyEffects(effects: List<PersistenceEffect>, onEvent: (AppEven
                 loadMatch(effect.sessionId) { onEvent(AppEvent.MatchDetailLoaded(effect.loadId, it)) }
             is PersistenceEffect.LoadPlayers ->
                 playersAccess.load { onEvent(PlayersEvent.Loaded(effect.loadId, it)) }
-            is PersistenceEffect.RunPlayersRequest -> runPlayersRequest(effect.request, onEvent)
             is ProfileEffect -> runProfileEffect(effect, onEvent)
             is PersistenceEffect.ArchiveMatch ->
                 archiveMatch(effect.archived, effect.colorsArgb) { isArchived ->

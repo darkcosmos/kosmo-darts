@@ -20,12 +20,16 @@ import io.github.darkcosmos.kosmodarts.ui.home.HomeTags
 import io.github.darkcosmos.kosmodarts.ui.resume.AppProcess
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 
 /** PM1 to PM11: Players opened from the home screen, through the activity, over a fake database. */
+// The four actions left the Players list for the Profile screen (PS7); T15 puts them in the Profile and moves this flow
+// there, so it is paused until then, with its cases kept.
+@Ignore("Actions panel UI moves into the Profile in T15")
 @RunWith(AndroidJUnit4::class)
 @Config(qualifiers = "w411dp-h2400dp-xxhdpi")
 class PlayersFlowTest {

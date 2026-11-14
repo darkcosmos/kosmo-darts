@@ -29,18 +29,4 @@ class PlayersTextTest {
         assertEquals(ErasedText.Matches(1), erasedText(1))
         assertEquals(ErasedText.Matches(5), erasedText(5))
     }
-
-    @Test
-    fun `PM4 the merge targets are every profile but the open one, none when no card is open`() {
-        val kevin = playerSummary(1, "Kevin")
-        val lea = playerSummary(2, "Lea")
-        val ana = playerSummary(3, "Ana")
-        val state = PlayersState().loaded(1, DbResult.Ok(listOf(kevin, lea, ana)))
-
-        assertEquals(listOf(lea, ana), state.profileTapped(1).mergeTargets)
-        assertEquals(listOf(kevin, ana), state.profileTapped(2).mergeTargets)
-        assertEquals(listOf(kevin, lea, ana), state.mergeTargets)
-        val alone = PlayersState().loaded(1, DbResult.Ok(listOf(kevin)))
-        assertEquals(emptyList<PlayerSummary>(), alone.profileTapped(1).mergeTargets)
-    }
 }

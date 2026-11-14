@@ -14,6 +14,7 @@ import io.github.darkcosmos.kosmodarts.engine.stats.summarize
 import io.github.darkcosmos.kosmodarts.engine.stats.trendSeries
 import io.github.darkcosmos.kosmodarts.engine.stats.x01Figures
 import io.github.darkcosmos.kosmodarts.history.DbResult
+import io.github.darkcosmos.kosmodarts.history.PlayerSummary
 import io.github.darkcosmos.kosmodarts.history.ProfileStatsData
 
 /** The three sections of the Profile (PS3, owner P4 A). */
@@ -106,6 +107,11 @@ data class ProfileState(
     val cricketFilter: CricketFilter = CricketFilter(),
     val cricketPeriod: Period = Period.SINCE_ALWAYS,
     val now: Long = 0,
+    val roster: ProfileRoster = ProfileRoster.Loading,
+    val isManageOpen: Boolean = false,
+    val panel: ProfilePanel? = null,
+    val message: ProfileMessage? = null,
+    val request: ProfileRequest? = null,
 ) {
     private val data: ProfileStatsData?
         get() = (content as? ProfileContent.Loaded)?.data
@@ -149,11 +155,39 @@ data class ProfileState(
     val isIgnoredNoticeShown: Boolean
         get() = ignoredMatches > 0
 
+    /** The profiles that the merge can target (PM4): every other one. */
+    val mergeTargets: List<PlayerSummary>
+        get() = (roster as? ProfileRoster.Loaded)?.others.orEmpty()
+
+    /** Whether an action waits for the database: every user action is ignored meanwhile (PM3 to PM6). */
+    val isBusy: Boolean
+        get() = request != null
+
     /** "Retry" after a failed read (HS7). */
     fun retry(at: Long): ProfileState = if (content == ProfileContent.Failed) {
-        copy(content = ProfileContent.Loading, loadId = loadId + 1, now = at)
+        copy(content = ProfileContent.Loading, roster = ProfileRoster.Loading, loadId = loadId + 1, now = at)
     } else {
         this
+    }
+
+    /** PS7: asks for a new read of the profile and of the profiles list; what is shown stays until the answer. */
+    fun reloaded(): ProfileState = copy(loadId = loadId + 1)
+
+    /**
+     * The answer to the read of the profiles list for read [id] of the profile [profileId]; an older answer changes
+     * nothing. A failure is only noted: the actions then stay unavailable until the next read.
+     */
+    fun rosterLoaded(id: Int, profileId: Long, result: DbResult<List<PlayerSummary>>): ProfileState = when {
+        id != loadId -> this
+        result is DbResult.Ok -> {
+            val (self, others) = result.value.partition { it.id == profileId }
+            val target = (panel as? ProfilePanel.MergeConfirm)?.target
+            // A panel closes when the shown profile is no longer listed, or when the target of its merge is gone.
+            val isTargetGone = target != null && others.none { it.id == target.id }
+            val loaded = copy(roster = ProfileRoster.Loaded(self.firstOrNull(), others))
+            if (isTargetGone || self.isEmpty()) loaded.copy(panel = null, message = null) else loaded
+        }
+        else -> copy(roster = ProfileRoster.Failed)
     }
 
     /** The answer to read [id]; an older answer changes nothing. The figures of the selection are then computed. */

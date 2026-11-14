@@ -19,7 +19,6 @@ import kotlin.random.Random
 class AppReducer(private val random: Random) {
 
     fun reduce(state: AppState, event: AppEvent, stamp: EventStamp): AppState = when (event) {
-        is PlayersEvent.Answered -> reducePlayersAnswer(state, event)
         is ProfileEvent -> reduceProfileEvent(state, event, stamp)
         else -> reduceScreen(state, event, stamp)
     }

@@ -43,9 +43,8 @@ import io.github.darkcosmos.kosmodarts.ui.theme.States
 import java.time.ZoneId
 
 /**
- * The Players screen (PM2 to PM11): the profiles most recently used first, one card open at a time with its four
- * actions. Rename, merge, reset and delete are panels inside the card, never popups (PM11). It only shows the
- * [PlayersState] and sends events.
+ * The Players screen (PM2): the profiles most recently used first, each row opening the Profile, where the actions are
+ * (PS7). It only shows the [PlayersState] and sends events.
  */
 @Composable
 fun PlayersScreen(state: PlayersState, onEvent: (AppEvent) -> Unit, modifier: Modifier = Modifier) {
@@ -75,37 +74,21 @@ private fun PlayersList(state: PlayersState, onEvent: (AppEvent) -> Unit, modifi
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = modifier.testTag(PlayersTags.LIST),
     ) {
-        items(state.players, key = { it.id }) { profile -> PlayerCard(profile, state, onEvent) }
+        items(state.players, key = { it.id }) { profile -> PlayerCard(profile, onEvent) }
     }
 }
 
-/** A card: name, number of matches and last match date; tapping it opens or closes its actions (one at a time). */
-@OptIn(ExperimentalFoundationApi::class)
+/** A row: name, number of matches and last match date; the whole row opens the Profile (PM2, PS1). */
 @Composable
-private fun PlayerCard(profile: PlayerSummary, state: PlayersState, onEvent: (AppEvent) -> Unit) {
-    val isExpanded = state.expandedId == profile.id
-    val requester = remember { BringIntoViewRequester() }
-    val panelKind = state.panel?.let { it::class }
-    // U6: the card, its panel and the rename field stay in view when they open (the keyboard shrinks the screen).
-    LaunchedEffect(isExpanded, panelKind) { if (isExpanded) requester.bringIntoView() }
+private fun PlayerCard(profile: PlayerSummary, onEvent: (AppEvent) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(KosmoShapes.card)
             .background(KosmoTheme.colors.surface)
-            .bringIntoViewRequester(requester)
             .testTag(PlayersTags.card(profile.id)),
     ) {
         CardHeader(profile) { onEvent(PlayersEvent.ProfileTapped(profile.id)) }
-        if (isExpanded) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-            ) {
-                state.message?.let { Message(it) }
-                PlayersPanelContent(profile, state, onEvent)
-            }
-        }
     }
 }
 
@@ -147,24 +130,6 @@ private fun summaryText(profile: PlayerSummary): String {
                     formatEndDate(text.lastEndedAt, locale, ZoneId.systemDefault()),
                 )
     }
-}
-
-/** PM4, PM8, PM10: a short refusal or error, announced when it appears. */
-@Composable
-private fun Message(message: PlayersMessage) {
-    val text = when (message) {
-        is PlayersMessage.InProgress -> stringResource(R.string.players_in_progress, message.playerName)
-        PlayersMessage.SharedMatch -> stringResource(R.string.players_shared_match)
-        PlayersMessage.DatabaseError -> stringResource(R.string.players_database_error)
-    }
-    Text(
-        text = text,
-        style = KosmoTheme.typography.body,
-        color = KosmoTheme.colors.dangerText,
-        modifier = Modifier
-            .testTag(PlayersTags.MESSAGE)
-            .semantics { liveRegion = LiveRegionMode.Polite },
-    )
 }
 
 /** HS7 form: a short message and "Retry". */
