@@ -36,3 +36,23 @@ PS2 (label only), PS3, PS4, PS5 (summary), PS6, ST2 to ST10.
 sonnet. Why: state holder with JVM tests, behavior specified.
 
 ## Implementation notes
+- `ui/profile/ProfileState.kt`: `ProfileSection` (X01 first, CRICKET, HEATMAP), `ProfileSince` (`Always`/`Date`, ST9),
+  `ProfileQuery` (filters, periods and `now`), `X01Selection`/`CricketSelection` (`matchCount`, figures, `trend`,
+  `trendSummary` = engine `summarize`), `ProfileFigures(eligibleCount, x01, cricket)`, `ProfileStatsData.figures(query)`
+  (pure engine calls, run off the main thread), `ProfileContent` (Loading, Failed, Loaded(data, figures?)),
+  `ProfileView` (LOADING, FAILED, NO_MATCH, CONTENT), `ProfileState`. `isSelectionEmpty` is the PS6 "no match for the
+  filters" of the shown section; `since`, `name`, `ignoredMatches`, `isIgnoredNoticeShown` come from the loaded data.
+- Design: the read gives only the data; each answer raises `figuresId` and a second effect computes the figures
+  (`ComputeProfileFigures`), also after every filter or period change (no new read). View stays LOADING until the
+  first figures arrive; later selections keep the old figures until the new ones arrive. Both effects run on the read
+  executor (`ProfileStatsPersistence`, `Persistence.profileAccess`; new `profileStats` constructor parameter).
+- `Screen.Profile.profile` is now a `ProfileState` (was `Unit`). Callers (T13) open it with
+  `screen.open(Screen.Profile(screen, id, ProfileState(now = stamp.at)))`; opening creates `LoadProfile(id, 1)` by
+  itself (`profileEffects`, ProfileEffect.kt). `ProfileEvent` has no open event: opening is a navigation.
+- Answers (`Loaded`, `FiguresComputed`) carry the `profileId` and reach the Profile wherever it is in the stack (a
+  detail may be open above it); user events apply to the Profile on top only. `now` is refreshed by every filter,
+  period or retry event (stamp clock) for "Last 30 days" (ST4).
+- Deviation: no "HS7 loading delay" code here: the delay is a screen concern (T13) and is reused from History.
+- T12 (actions) should reload by raising `loadId` on the Profile state: `profileEffects` then re-reads it.
+- Tests: `ProfileStateTest`, `ProfileReducerTest` (effects, executors through a fake repository, stack), fixtures in
+  `ProfileTestData` (valid and corrupt raw matches, validated by the real validator).

@@ -2,6 +2,7 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMatch
 import io.github.darkcosmos.kosmodarts.history.HistoryFilters
+import io.github.darkcosmos.kosmodarts.history.ProfileStatsData
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.SavedCricketGame
@@ -12,6 +13,7 @@ import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.game.toSavedGame
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
 import io.github.darkcosmos.kosmodarts.ui.players.PlayersRequest
+import io.github.darkcosmos.kosmodarts.ui.profile.ProfileQuery
 
 /** A change to make on the device after an event (rules R3, R6, R7, R12, R13, R15). */
 sealed interface PersistenceEffect {
@@ -47,6 +49,23 @@ sealed interface PersistenceEffect {
      * is rewritten by the reducer (PM9), which gives a [SaveLastSetup].
      */
     data class RunPlayersRequest(val request: PlayersRequest) : PersistenceEffect
+
+    /**
+     * HS7, ST10: read the statistics input of the Profile of [profileId]; the answer comes back as
+     * [ProfileEvent.Loaded] with the same [loadId].
+     */
+    data class LoadProfile(val profileId: Long, val loadId: Int) : ProfileEffect
+
+    /**
+     * ST7: compute the figures of [data] for [query] off the main thread; the answer comes back as
+     * [ProfileEvent.FiguresComputed] with the same [figuresId].
+     */
+    data class ComputeProfileFigures(
+        val profileId: Long,
+        val figuresId: Int,
+        val data: ProfileStatsData,
+        val query: ProfileQuery,
+    ) : ProfileEffect
 
     /**
      * AR1, AR2: write [archived] to the history with one ARGB color per player, then delete the saved game, only if the
@@ -104,7 +123,7 @@ fun persistenceEffects(before: AppState, after: AppState): List<PersistenceEffec
         loadMatchEffect(before, after),
         loadPlayersEffect(before, after),
         playersRequestEffect(before, after),
-    )
+    ) + profileEffects(before, after)
 }
 
 /** The History list a screen shows or hides behind the detail (HS6), or `null`. */
@@ -195,6 +214,7 @@ fun Persistence.applyEffects(effects: List<PersistenceEffect>, onEvent: (AppEven
             is PersistenceEffect.LoadPlayers ->
                 playersAccess.load { onEvent(PlayersEvent.Loaded(effect.loadId, it)) }
             is PersistenceEffect.RunPlayersRequest -> runPlayersRequest(effect.request, onEvent)
+            is ProfileEffect -> runProfileEffect(effect, onEvent)
             is PersistenceEffect.ArchiveMatch ->
                 archiveMatch(effect.archived, effect.colorsArgb) { isArchived ->
                     onEvent(if (isArchived) AppEvent.ArchiveSucceeded else AppEvent.ArchiveFailed)

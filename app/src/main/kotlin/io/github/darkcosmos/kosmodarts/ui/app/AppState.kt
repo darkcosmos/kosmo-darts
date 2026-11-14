@@ -23,6 +23,7 @@ import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
 import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailState
 import io.github.darkcosmos.kosmodarts.ui.players.PlayersState
+import io.github.darkcosmos.kosmodarts.ui.profile.ProfileState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 
 /** The screen on display, with its content. There is no navigation library: the screen is plain state. */
@@ -79,8 +80,12 @@ sealed interface Screen {
             other is MatchDetail && other.detail.sessionId == detail.sessionId
     }
 
-    /** The Profile of one player (HS9). [profile] is a placeholder until its screen exists. */
-    data class Profile(override val parent: Screen, val profileId: Long, val profile: Unit = Unit) : Stacked {
+    /**
+     * The Profile of one player (HS9). [profile] holds the read, the selections and the figures (PS2 to PS6); a caller
+     * opens it with a [ProfileState] whose `now` is the event's clock reading.
+     */
+    data class Profile(override val parent: Screen, val profileId: Long, val profile: ProfileState = ProfileState()) :
+        Stacked {
         override fun reparented(parent: Screen): Stacked = copy(parent = parent)
 
         override fun isSameAs(other: Screen): Boolean = other is Profile && other.profileId == profileId

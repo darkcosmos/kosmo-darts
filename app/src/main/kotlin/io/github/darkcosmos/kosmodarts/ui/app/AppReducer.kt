@@ -18,8 +18,11 @@ import kotlin.random.Random
  */
 class AppReducer(private val random: Random) {
 
-    fun reduce(state: AppState, event: AppEvent, stamp: EventStamp): AppState =
-        if (event is PlayersEvent.Answered) reducePlayersAnswer(state, event) else reduceScreen(state, event, stamp)
+    fun reduce(state: AppState, event: AppEvent, stamp: EventStamp): AppState = when (event) {
+        is PlayersEvent.Answered -> reducePlayersAnswer(state, event)
+        is ProfileEvent -> reduceProfileEvent(state, event, stamp)
+        else -> reduceScreen(state, event, stamp)
+    }
 
     private fun reduceScreen(state: AppState, event: AppEvent, stamp: EventStamp): AppState = when (
         val screen = state.screen
