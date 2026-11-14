@@ -1,7 +1,8 @@
 # History rules (profiles, dart journal, board coordinates, match archive, history screens)
 
 Status: draft for design review (issue #50, owner answers Q1 to Q8 of 2026-11-01 and the clean slate decisions D24,
-D25, recorded in `docs/plans/50-history-archive.md`, section "Decisions").
+D25, recorded in `docs/plans/50-history-archive.md`, section "Decisions"). Amended by issues #52 and #53 (PM2, PM4,
+PM11, HS8, HS9, BC4, BC5; `docs/plans/52-53-profile-head-to-head-heatmap.md`).
 This document is the single source of truth for the match history: tests cite these rules, never the issue text.
 Rule ids are stable. Prefixes: PF (profiles), DJ (dart journal), BC (board coordinates), AR (archive), HS (history
 screens). They never collide with R, M, PC, CR, AN, VT, CS or the X01 rules.
@@ -52,6 +53,11 @@ Vocabulary:
   a miss and to any dart whose position is not known (owner decision, plan D33); an unknown position is never read
   as (0, 0).
 - BC3. The engine computes the nominal point; the app never computes coordinates.
+- BC4. The engine exposes the board zones: for each number 1 to 20 its sector angle (order of BC2) and the radii of
+  the single, triple and double rings; the 25 and Bull radii (official dimensions, source cited in the code). Each
+  nominal point (BC2) lies inside its own zone.
+- BC5. `zoneAt(x, y)` gives the heatmap zone (HM1) under a board point, or none outside the double ring; a point on a
+  border belongs to one zone only.
 
 ## Archive
 
@@ -107,6 +113,12 @@ Vocabulary:
 - HS7. When a History or detail read fails (AR9), the screen shows a short message in the player's language with a
   "Retry" button and the Back action, never a technical text, and is never stuck on loading. While loading, nothing
   is shown for the first 300 ms, then a loading indicator with a TalkBack description.
+- HS8. In a match detail, tapping a player's name opens his Profile. "Deleted player" is not tappable.
+- HS9. Back stack (owner #53 Q11, P3): Players, History, Profile, Head-to-head and Match detail open on top of the
+  screen they come from; Back always returns one screen, with its filters and scroll position. Opening a screen equal
+  to one already in the stack (same profile, same pair in the same order, same match) returns to it and drops the
+  screens above: never two copies. The stack survives a rotation; after a process death the app restarts at home (or
+  offers the saved game), as History does today.
 
 ## App version (issue #78)
 
@@ -123,17 +135,18 @@ The archived app version (AR5) is unchanged: it stays `versionName` alone, witho
 
 - PM1. The home screen has a "Players" button under "History", same form; both carry an icon (decorative, the text is
   the accessible name), 48dp touch targets.
-- PM2. The Players screen lists every profile except the anonymous one, most recently used first. Each shows its
-  name, its number of matches and the end date of its last match ("No match yet" when none). The reset date is not
-  shown (Q7). With no profile, the screen says so.
+- PM2. The Players screen lists every profile except the anonymous one, most recently used first. Each row shows the
+  name, the number of matches and the end date of the last match ("No match yet" when none), and opens the Profile
+  (PS1). The Players screen has no action. With no profile, the screen says so.
 - PM3. Rename: the new name is trimmed and normalized and must be valid under `PlayerListRules` (non-blank, at most
   20 code points). Same name key as the profile: the spelling changes (case-only rename allowed). Name key of another
   profile: refused, and the screen offers to merge this profile (source) into that one (target). History shows the
   current name.
 - PM4. Merge a source into a target: every participation of the source moves to the target, then the source is
-  deleted. The target keeps its name; its reset date and last-used date become the latest of the two, its creation
-  date the earliest. Refused, with a short message, when both profiles played a same match. One transaction.
-  Irreversible, so preceded by an explicit confirmation inside the screen.
+  deleted. The target keeps its name; its last-used date becomes the latest of the two, its creation date the earliest;
+  its reset date becomes the latest real reset (ST9) of the two, or the new creation date when neither was really
+  reset. Refused, with a short message, when both profiles played a same match. One transaction. Irreversible, so
+  preceded by an explicit confirmation inside the screen.
 - PM5. Reset: the reset date becomes now; nothing else changes and no match leaves History. Preceded by an explicit
   confirmation inside the screen.
 - PM6. Delete: in one transaction, every participation of the profile moves to the anonymous profile, every match
@@ -150,8 +163,8 @@ The archived app version (AR5) is unchanged: it stays `versionName` alone, witho
   and colors are unchanged. A failure to write the last setup is ignored (R10).
 - PM10. A database error leaves everything unchanged (transaction) and shows a short message in the screen; the
   action can be retried.
-- PM11. No popup: confirmations, refusals and errors are shown inside the Players screen, announced by TalkBack, in
-  portrait and landscape and at 200% font size.
+- PM11. No popup: confirmations, refusals and errors are shown inside the Profile screen (PS8), announced by TalkBack,
+  in portrait and landscape and at 200% font size.
 
 ## Related rules
 

@@ -36,3 +36,14 @@ None (documents only). Check that every rule id of the root section appears once
 haiku. Why: text copied from the root plan (rules, "Approach", "Decisions"), no design choice.
 
 ## Implementation notes
+- Done as specified; no deviation from the root "Rules (new and rewritten)" section. Rule texts copied with their owner
+  references; the "(rewritten)" and "(new ...)" markers dropped.
+- `docs/rules/statistics.md` (new): 50 rule ids (ST, STX, STC, PS, HM, HH), each once. Sub-sections: Common, X01,
+  Cricket, Profile screen, Heatmap, Head-to-head, Related rules. HM5 still says "decided at gate G1".
+- `docs/rules/history.md`: PM2, PM4, PM11 replaced; HS8, HS9 after HS7; BC4, BC5 after BC3; status line amended.
+  PF1 unchanged.
+- `docs/rules/cricket.md`: CR13 replaced (points to STC1; CR14 unchanged).
+- `docs/adr/0015-derived-statistics.md` (new), format of ADR 0014, status Proposed.
+- `app/.../history/HistoryEntities.kt`: KDoc of `ProfileEntity` only, now points to PM4 and PM5 (path to the rule
+  file left out to keep the line under 120 characters).
+- Checks on this head (before commit): `./gradlew build` BUILD SUCCESSFUL (5 min 26 s); `kosmo-detekt` exit 0.
