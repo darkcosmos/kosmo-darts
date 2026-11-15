@@ -18,16 +18,19 @@ tune the thresholds on dev, and guard the eval run. The report itself is T13b.
 - Added `tools/camera/kosmo_camera/frozen.py`: the single reader of `frozen.json` (strict per CV4: `format`
   `"kosmo-camera-frozen"`, `version` 1, `tauLow`, `tauSure` in [0, 1] with `tauLow <= tauSure`, 64-hex
   `modelSha256`, no other key, 64 KiB cap) and `guard_eval(frozen_path, model_path, split_bytes, lock)` (CV4).
-- Added `tools/camera/kosmo_camera/compare.py` (root CV22, D21): `select_version(without, with_) -> Choice` where
-  each side is the dev results of one version on the comparison set plus its `kosmoPartSha256` and public sets;
-  tunes each with `tune.py`, applies the CV22 order and returns the retained side, the deciding step, both
-  versions' figures (CV8 rates with Wilson intervals, tuned pair or `NoFeasiblePair`, CV9 successes, CV12 median)
-  and the overlap flag; `with_` None or without public images gives "sans jeux publics seulement". Overlap branch:
-  unless main's assignment carries Kosmo's answer to Q2, it fails closed (root CV22): the without-public version is
-  kept and `Choice` carries the French message of CV22, shown by T13b and printed by `compare` (T14), not only
-  logged. Q2's answer later replaces this branch and its test in one commit.
+- Added `tools/camera/kosmo_camera/compare.py` (root CV22, D21, D23): `select_version(versions, not_built) ->
+  Choice` where `versions` maps `sans`, `A`, `B` (any subset, `sans` required) to the dev results of that version on
+  the comparison set plus its manifest `version`, `kosmoPartSha256`, public sets and pseudo-label figures (CV23,
+  copied from the manifest, never recomputed), and `not_built` maps a missing version to its reason; tunes each with
+  `tune.py`, ranks them by the CV22 order (pairwise first difference, ties to the simpler version, simplicity order
+  `sans` < `A` < `B`) and returns the retained version, the leader, the deciding step against each other version,
+  every version's figures (CV8 rates with Wilson intervals, tuned pair or `NoFeasiblePair`, CV9 successes, CV12
+  median) and the overlap flags. Only `sans`: "sans jeux publics seulement". Overlap branch: unless main's
+  assignment carries Kosmo's answer to Q2, it fails closed (root CV22): the simplest version whose correct-rate
+  interval overlaps the leader's is kept and `Choice` carries the French message of CV22 naming it, shown by T13b
+  and printed by `compare` (T14), not only logged. Q2's answer later replaces this branch and its test in one commit.
 - Changed `docs/adr/0016-camera-feasibility-tooling.md`, section "Public data and version selection" (T9): adds the
-  CV22 selection order and the overlap case.
+  three-version CV22 order and the overlap case.
 - Added tests `tools/camera/tests/test_metrics.py`, `test_tune.py`, `test_frozen.py`, `test_compare.py`.
 
 ## Depends on
@@ -52,16 +55,20 @@ CV8 boundaries: correct `>=` 95 % passes, unflagged errors `<=` 1 % passes.
 - Drift: CV9 on a drifted photo uses the compensated reference (success where the stale segment would fail); a
   volley whose first photo is unmeasurable is not evaluated and counted; CV12 skips and counts such photos; the
   correct and unflagged-error rates are identical with and without drift data.
-- Comparison (CV22) on scripted fake-detector results: one case per decision step (feasible beats infeasible, lower
-  best reachable rate, more correct, fewer unflagged, more CV9, lower CV12 median), exact tie keeps without public,
-  one case where two steps disagree (version A ahead on correct darts, B ahead on CV9 and CV12: A wins, step 2
-  reported; T3), overlapping intervals fail closed (without public kept, French message present) until Q2, different `kosmoPartSha256` or an eval or campaign result
-  raises, no public version gives "sans jeux publics seulement".
+- Comparison (CV22) on scripted fake-detector results, two and three versions: one case per decision step
+  (feasible beats infeasible, lower best reachable rate, more correct, fewer unflagged, more CV9, lower CV12
+  median), exact tie keeps the simpler version (`sans` over `A`, `A` over `B`, three-way tie keeps `sans`), one case
+  where two steps disagree (one version ahead on correct darts, the other ahead on CV9 and CV12: the first wins, step
+  2 reported; T3), three versions with B leading: deciding step reported against `sans` and against `A`; overlap
+  fails closed until Q2: B leads and overlaps A only (A kept, message names A), B leads and overlaps both (`sans`
+  kept), A leads and overlaps `sans` (`sans` kept), no overlap (leader kept, no message); different
+  `kosmoPartSha256`, a duplicated version name, a missing `sans`, or an eval or campaign result raises; only `sans`
+  gives "sans jeux publics seulement"; `not_built` B listed with its reason; pseudo figures carried unchanged.
 
 ## Done when
 Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
 
 ## Model
-sonnet. Why: statistics, strict reader and selection rule specified in CV4, CV8 to CV14, CV22.
+sonnet. Why: statistics, strict reader and selection rule (three versions) specified in CV4, CV8 to CV14, CV22.
 
 ## Implementation notes
