@@ -54,6 +54,8 @@ const TEXT = {
   staleMeasure: "(mesure périmée)",
   pickerSuggested: "{number} !",
   pickerSuggestedLabel: "Fléchette {number}, à recalibrer",
+  pickerSuggestedDone: "{number} ✓ !",
+  pickerSuggestedDoneLabel: "Fléchette {number}, annotée, à recalibrer",
 };
 
 const WIRES = ["5|20", "13|6", "17|3", "8|11"]; // CV2 order
@@ -332,7 +334,8 @@ function renderPanel() {
   setText($("progress"), `${fill(TEXT.progress, { done, total: dartsOfView().length })} - ${calibrationStatus(view)}`);
   const banner = $("banner");
   const suggested = cursor.kind === "dart" && currentDart().drift === "suggested";
-  const message = state.blocked || view.warning || (suggested ? TEXT.driftSuggestedBanner : null);
+  const driftBanner = view.driftStale ? `${TEXT.driftSuggestedBanner} ${TEXT.staleMeasure}` : TEXT.driftSuggestedBanner;
+  const message = state.blocked || view.warning || (suggested ? driftBanner : null);
   banner.hidden = !message;
   banner.className = state.blocked ? "error" : (!view.warning && suggested ? "drift" : "");
   const shown = state.blocked || !view.warning ? message : TEXT.warningPrefix + message;
@@ -369,6 +372,9 @@ function renderCalibrationPanel(cursor) {
 
 function calibrationStatus(view) {
   const count = view.segments ? view.segments.length : 0;
+  if (count === 0) {
+    return TEXT.notCalibrated;
+  }
   return count > 1 ? fill(TEXT.calibratedSegments, { count }) : TEXT.calibrated;
 }
 
@@ -390,26 +396,28 @@ function renderRecalibrationPanel(cursor) {
   drawDiagram(placed);
 }
 
-function driftText(dart) {
+function driftText(dart, stale) {
   const names = { beyond: TEXT.driftBeyond, unmeasurable: TEXT.driftUnmeasurable };
-  return names[dart.drift] || "";
+  const name = names[dart.drift] || "";
+  return name && stale ? `${name} ${TEXT.staleMeasure}` : name;
 }
 
 function stateText(dart) {
   const names = { VISIBLE: TEXT.stateVisible, HIDDEN: TEXT.stateHidden, OFF_BOARD: TEXT.stateOffBoard };
   const base = dart.status === null ? TEXT.stateNone : names[dart.status];
-  const drift = driftText(dart);
+  const drift = driftText(dart, state.view.driftStale);
   return drift ? `${base} - ${drift}` : base;
 }
 
-// Picker label of a dart: "59 !" for a dart to recalibrate (text, not colour only), "(mesure périmée)" when stale.
+// Picker label of a dart: "59 !" (or "59 ✓ !" when annotated) for a dart to recalibrate (text, not colour only), "(mesure périmée)" when stale.
 function pickerText(dart, stale) {
   const suggested = dart.drift === "suggested";
   let label = dart.status === null ? String(dart.number) : fill(TEXT.pickerDone, { number: dart.number });
   let aria = fill(TEXT.pickerLabel, { number: dart.number });
   if (suggested) {
-    label = fill(TEXT.pickerSuggested, { number: dart.number });
-    aria = fill(TEXT.pickerSuggestedLabel, { number: dart.number });
+    const annotated = dart.status !== null;
+    label = fill(annotated ? TEXT.pickerSuggestedDone : TEXT.pickerSuggested, { number: dart.number });
+    aria = fill(annotated ? TEXT.pickerSuggestedDoneLabel : TEXT.pickerSuggestedLabel, { number: dart.number });
     if (stale) {
       aria = `${aria} ${TEXT.staleMeasure}`;
     }

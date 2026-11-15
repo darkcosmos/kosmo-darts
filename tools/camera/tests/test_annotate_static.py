@@ -183,6 +183,8 @@ def test_string_table_has_the_recalibration_and_drift_strings():
     assert table["staleMeasure"] == "(mesure périmée)"
     assert table["pickerSuggested"] == "{number} !"
     assert table["pickerSuggestedLabel"] == "Fléchette {number}, à recalibrer"
+    assert table["pickerSuggestedDone"] == "{number} ✓ !"
+    assert table["pickerSuggestedDoneLabel"] == "Fléchette {number}, annotée, à recalibrer"
     assert table["oldPoint"] == "ancien {n}"
 
 
@@ -199,6 +201,27 @@ def test_picker_label_building_keeps_the_marker_and_the_stale_suffix():
     assert "TEXT.pickerSuggested" in body and "TEXT.pickerSuggestedLabel" in body
     assert re.search(r"if \(stale\) \{\s*aria = `\$\{aria\} \$\{TEXT\.staleMeasure\}`;", body)
     assert "pickerText(dart, state.view.driftStale)" in source
+
+
+def test_picker_keeps_the_annotated_mark_on_a_suggested_dart():
+    body = re.search(r"function pickerText\(dart, stale\) \{(.*?)\n\}\n", read("app.js"), re.DOTALL).group(1)
+    assert "TEXT.pickerSuggestedDone" in body and "TEXT.pickerSuggestedDoneLabel" in body
+    assert "dart.status !== null" in body
+
+
+def test_calibration_status_distinguishes_none_one_and_several_segments():
+    body = re.search(r"function calibrationStatus\(view\) \{(.*?)\n\}\n", read("app.js"), re.DOTALL).group(1)
+    assert "TEXT.notCalibrated" in body and "TEXT.calibratedSegments" in body and "TEXT.calibrated" in body
+    assert re.search(r"count === 0", body) and re.search(r"count > 1", body)
+
+
+def test_stale_measure_text_is_shown_in_the_banner_and_the_state_text():
+    source = read("app.js")
+    panel = re.search(r"function renderPanel\(\) \{(.*?)\n\}\n", source, re.DOTALL).group(1)
+    assert "TEXT.staleMeasure" in panel and "view.driftStale" in panel
+    drift_text = re.search(r"function driftText\(dart, stale\) \{(.*?)\n\}\n", source, re.DOTALL).group(1)
+    assert "TEXT.staleMeasure" in drift_text
+    assert "driftText(dart, state.view.driftStale)" in source
 
 
 def test_the_recalibration_row_is_full_width_and_at_least_48px_high():
