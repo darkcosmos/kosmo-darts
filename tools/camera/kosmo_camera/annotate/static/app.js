@@ -8,6 +8,7 @@ const TEXT = {
   progress: "{done} sur {total} fléchettes annotées",
   calibrated: "Calibrée",
   notCalibrated: "Non calibrée",
+  finished: "Terminée",
   ignoredLabel: "Ignorée : aucune fléchette jugée",
   readOnly: "Lecture seule",
   open: "Ouvrir",
@@ -51,12 +52,15 @@ const MAGNIFIER_SIZE = 160;
 const MAGNIFICATION = 4;
 const PAN_STEP = 60;
 const ZOOM_STEP = 1.25;
+const CLICK_GUARD_MS = 300; // a double click must not land on the next dart
 const MAX_ZOOM = 40;
 
 const state = {
   view: null,
   name: null,
   busy: false,
+  lastActionAt: 0,
+  viewKey: null,
   blocked: null,
   imageReady: false,
   zoom: 1,
@@ -127,8 +131,10 @@ function sessionLine(item) {
   const info = document.createElement("div");
   info.className = "session-info";
   if (item.state === "ok") {
+    const finished = item.calibrated && item.progress.total > 0 && item.progress.done === item.progress.total;
     const calibration = item.calibrated ? TEXT.calibrated : TEXT.notCalibrated;
-    setText(info, `${fill(TEXT.progress, item.progress)} - ${calibration}`);
+    const progress = finished ? TEXT.finished : fill(TEXT.progress, item.progress);
+    setText(info, `${progress} - ${calibration}`);
     line.appendChild(makeButton(TEXT.open, () => openSession(item.name), "primary"));
   } else if (item.state === "ignored") {
     setText(info, item.label || TEXT.ignoredLabel);
@@ -223,7 +229,9 @@ function imageLoaded() {
       { width, height, calWidth: view.calibration.width, calHeight: view.calibration.height });
   }
   state.imageReady = true;
-  if (state.zoom === 1) {
+  const viewKey = `${state.name}:${width}x${height}`;
+  if (state.zoom === 1 || state.viewKey !== viewKey) {
+    state.viewKey = viewKey;
     resetView();
   }
   render();
@@ -609,6 +617,7 @@ async function perform(payload) {
       setStatus(result.saved, "saved");
     }
     state.busy = false;
+    state.lastActionAt = Date.now();
     applyView(result.session, false);
   } catch (error) {
     state.busy = false;
@@ -618,7 +627,7 @@ async function perform(payload) {
 }
 
 function onStageClick(event) {
-  if (!state.view || !state.imageReady) {
+  if (!state.view || !state.imageReady || Date.now() - state.lastActionAt < CLICK_GUARD_MS) {
     return;
   }
   const point = toNatural(event.clientX, event.clientY);

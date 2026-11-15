@@ -142,3 +142,9 @@ def test_buttons_are_at_least_48px_high_and_wide():
 def test_system_fonts_only():
     css = read("style.css")
     assert "@font-face" not in css and "url(" not in css
+
+
+def test_double_click_guard_finished_label_and_view_reset_are_present():
+    text = read("app.js")
+    assert "CLICK_GUARD_MS" in text and "lastActionAt" in text
+    assert "Terminée" in text and "viewKey" in text
