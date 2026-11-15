@@ -11,14 +11,17 @@ sessions (truth file, photos, short videos, annotations) that every later test u
   drawn from its tip; returns the tip pixels and the 4 calibration pixels (CV2).
   `make_session(dir, spec, seed)` writes `truth.json` v2 (a small writer local to `synth.py`, golden-compatible with
   `truth.py`), `dart-NNN.jpg`, `volley-NNN.mp4` (PyAV, mpeg4 codec, 10 fps, 640x360, a dart appearing between two
-  entries, an optional person-sized occluder, an empty board after removal) and the matching annotations (T5).
+  entries, an optional person-sized occluder, an empty board after removal) and the matching annotations (format
+  v2, T5b). The spec may give a per-dart camera drift (image translation in px and roll in degrees applied after
+  the warp, from a dart number on) and the calibration segments to write; the truth view of every photo is returned
+  so T8b compares measured and true drift. An optional occluder over one calibration corner on a chosen photo.
 - Added `tools/camera/tests/conftest.py` (fixtures `synthetic_session`, `synthetic_board`), `test_synth.py`.
 
 ## Depends on
-T4, T5.
+T4, T5b.
 
 ## Rules
-CV1, CV2, CV5 (voided entries and a null photo in the generated sessions), CV10 and CV11 timing (entries and
+CV1, CV2, CV20 (segments in generated annotations), CV5 (voided entries and a null photo in the generated sessions), CV10 and CV11 timing (entries and
 `videoPositionMs` consistent with the video frames).
 
 ## Tests
@@ -27,6 +30,8 @@ CV1, CV2, CV5 (voided entries and a null photo in the generated sessions), CV10 
 - A dart placed at the centre of zone Z, mapped back with the true homography, scores Z for 20 random zones.
 - Calibration pixels equal the homography applied to `CALIBRATION_POINTS_MM`.
 - Video: frame count and duration match the spec; the dart appears at the planned frame (pixel difference in its box).
+- Drift spec: calibration pixels of a drifted photo equal the drifted view applied to `CALIBRATION_POINTS_MM`; with
+  no drift every photo has the same view; a session with two segments validates (T5b).
 
 ## Done when
 Python checks of root "Test plan" green (generation fast enough: whole suite under 2 minutes),

@@ -18,7 +18,8 @@ GPU check come from T10a (PR A).
 T3, T9, T10a.
 
 ## Rules
-CV4 (training reads the T9 dataset only). Decision 10 (offline container of T10a). No change to the T10a
+CV4 (training reads the T9 dataset only), D16 (`num_classes=5`, category ids 0 to 4 in `CLASS_NAMES` order as
+written by T9; the trained checkpoint exports with T3's `export_litert` unchanged). Decision 10 (offline container of T10a). No change to the T10a
 `Dockerfile` or requirements unless training needs it; any such change is listed in the notes and Kosmo rebuilds
 the image (K3 again).
 

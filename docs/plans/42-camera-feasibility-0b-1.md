@@ -14,14 +14,23 @@ report with an explicit limits section. Depending on the result, that report pro
 thresholds) or specifies a targeted confirmation campaign, whose sessions go to `~/kosmo-data/captures-eval/` (CV17).
 The annotation tool has priority: Kosmo annotates the existing captures as soon as it is delivered.
 
+Kosmo's information of 2026-11-15 after annotation (decision D15): the tripod moved during the captures (a net move
+from dart 59 in one eval session, drifts of a few pixels in every session), so the calibration clicked once per
+session is wrong on part of the photos; `truth.json` values and the tips clicked per photo stay right. PR B therefore
+adds, before training: a drift measure per photo (CV18), calibration segments in annotation format version 2 with a
+"Recalibrer à partir de cette fléchette" action in the tool (CV20), compensation of sub-threshold drift in the
+`cal1`-`cal4` training labels and in the mm measures (CV19), and the order measure, recalibrate, measure again, then
+train. The main criterion (correct dart, CV7) does not use the clicked calibration: no session is excluded.
+
 ## Scope and out of scope
 
 In scope:
-- `tools/camera/`: Python package `kosmo_camera` (truth reader, dev/eval split, annotation format, board geometry,
-  homography, synthetic boards, COCO dataset builder, training, export, LiteRT detector, per-dart decision, arrival
+- `tools/camera/`: Python package `kosmo_camera` (truth reader, dev/eval split, annotation format v1 then v2, board
+  geometry, homography, synthetic boards, tripod drift measure, COCO dataset builder, training, export, LiteRT detector, per-dart decision, arrival
   and empty-board events, metrics and report, CLI), the stdlib-only annotation tool, the GPU training image
   (`Dockerfile`, pinned requirements), CPU tests on generated boards.
-- Docs: `docs/rules/camera.md` (rules CV1 to CV17 below), `docs/camera/annotation-format.md`,
+- Docs: `docs/rules/camera.md` (rules CV1 to CV20 below), `docs/camera/annotation-format.md` (version 2 added in
+  PR B),
   `docs/camera/datasets.md`, `docs/camera/training.md`, `docs/camera/feasibility-report.md` (template, then filled),
   `docs/adr/0016-camera-feasibility-tooling.md`.
 - `.gitignore`: `.venv/`, `__pycache__/`, `.pytest_cache/`, `*.tflite`, `*.pth` (no model or weights committed).
@@ -39,13 +48,15 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   checked with the resolver on 2026-11-15 in the sandbox: `rfdetr` 1.12.1, `litert-torch` 0.10.0, `ai-edge-litert`
   2.3.0, `ai-edge-quantizer` 0.10.1, `torch` 2.14.1, `torchvision` 0.29.2, `numpy` 2.5.4, `pillow` 13.0.0, `av` 19.0.2
   (all pulled by `rfdetr` or `litert-torch` except `pytest` 9.2.0: no extra library).
-- **Stdlib-only core**: `config.py`, `truth.py`, `split.py`, `annotations.py`, `board.py` import only the standard library, so the
+- **Stdlib-only core**: `config.py`, `truth.py`, `split.py`, `annotations.py`, `board.py`, `drift_file.py` import only the standard library, so the
   annotation tool runs in WSL with a bare `python3` (3.14 in Kosmo's WSL, which has no python3.13; the stdlib core must work on 3.13 and 3.14), outside the container and without the venv (decision 5).
   Everything with numpy, PIL, av, torch or LiteRT lives in other modules.
 - **Detector** (issue): RF-DETR Nano from COCO weights, "keypoints as objects": 5 classes, `tip` and `cal1` to `cal4`,
   each a fixed square box centred on the point (side `BOX_FRACTION` = 2.5 % of the longer image side, a training
   constant); the point is the box centre. Training on Kosmo's dev photos (`dart-NNN.jpg`) plus public sets once Kosmo
-  confirmed their licence.
+  confirmed their licence. Model contract fixed by T3 (D16): input 384x384 reached by a squash bilinear resize (no
+  letterbox, x and y scale independently), category ids 0-based in the order `tip`, `cal1`, `cal2`, `cal3`, `cal4`
+  (`model_spec.CLASS_NAMES`), outputs `boxes [1,300,4]` and `logits [1,300,6]` whose trailing slot is "no object".
 - **Calibration points** (CV2): the 4 corners where the outer edge of the double ring (170 mm) meets the wires 5|20,
   13|6, 17|3 and 8|11, 90 degrees apart. Why: sharp wire crossings are easy to click and to detect, the largest radius
   and 90-degree spacing give the best-conditioned homography, outer double corners are rarely hidden by darts, and the
@@ -57,8 +68,31 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   The route runs on the CPU (XNNPACK) delegate per that page; GPU delegate work is 0b-2. The page says the route was
   validated on `litert-torch` 0.9.4; T3 proves 0.10.0 on CPU early. If export fails: stop and report (issue).
 - **Measure on the exported file only**: `detector.py` runs `ai_edge_litert` directly (NCHW float32 ImageNet
-  normalisation, outputs `boxes [1,300,4]` cxcywh normalised and class logits), with our own pre- and post-processing,
-  the exact chain 0b-2 will port to Kotlin. `RFDETRInference` is not used for measures.
+  normalisation, squash resize, outputs `boxes [1,300,4]` cxcywh normalised and `logits [1,300,6]`, slot 5 ignored),
+  with our own pre- and post-processing, the exact chain 0b-2 will port to Kotlin. `LiteRtDetector.detect` returns one
+  point per query (best of the 5 classes) in image pixels, sorted by score, unthresholded. `RFDETRInference` is not
+  used for measures.
+- **Tripod drift** (D15, CV18 to CV20): the clicked calibration becomes a list of segments (format v2): a segment
+  starts at a dart number and applies until the next segment. `drift.py` (numpy; JPEG decoding by Pillow, already
+  pinned, no new dependency) measures, for each judged photo, how far the board moved relative to the reference photo
+  of its segment: phase correlation (numpy FFT) first on the board box downscaled, then on 4 patches centred on the
+  clicked calibration points, giving one sub-pixel shift per point. Drift in px is the largest point shift; drift in
+  mm is the CV9 error of the segment homography against the homography of the shifted points. At or below
+  `DRIFT_MAX_MM` the shifted points are the reference calibration of that photo (compensation); above it Kosmo
+  recalibrates from that dart in the tool. The same function serves the `drift` command (report plus a local flag file
+  read by the tool), the dataset builder (labels) and the measures (CV9, CV12, CV14), so nothing stale is reused.
+  Alternatives rejected: OpenCV feature matching (D4, a dependency for one translation per point); a global
+  translation only (misses roll and per-corner perspective change); compensation from the model's own calibration
+  (the reference must not depend on the model under test).
+- **Drift threshold** (CV19, Q1): proposed `DRIFT_MAX_MM` = 1.0 mm = `CAL_MAX_ERROR_MM` / 2. Why: compensation
+  models each corner's motion as a local translation; for jitter of a few pixels this is accurate to the sub-pixel
+  precision of the fit (well under 0.2 mm on a board several hundred pixels wide), but a real move (pan, roll, focus
+  or zoom change) can break that model. If compensation were entirely wrong on a photo just under the threshold, its
+  reference calibration would be off by at most 1.0 mm, half the CV9 budget: a CV9 error measured against it is off
+  by at most 1.0 mm (triangle inequality over the 41 points), and a tip label mapped with it stays inside an 8 mm
+  ring when centred. 0.5 mm would make the reference error a quarter (the CV9 ratio of 2 mm to 8 mm rings) but asks
+  Kosmo to recalibrate on most "few pixels" drifts; 2.0 mm would let a stale calibration that alone fails CV9 pass.
+  The value is a trade-off between Kosmo's clicking time and label safety, hence a question for Kosmo.
 - **Per dart** (CV5 to CV7): each non-voided entry is judged on its own photo. Tips found on the photo are mapped to
   board millimetres with the photo's predicted calibration; a candidate within `MATCH_RADIUS_MM` (6 mm) of a tip
   announced earlier in the volley is an old dart. The best new candidate is announced if its score is at least
@@ -72,7 +106,7 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   change (a person) waits for the next stable state without counting. Empty board: a stable state where the model sees
   no tip at or above `TAU_LOW`. The board region comes from the model's calibration on the first stable frame of the
   volley. Video and photo frames differ (crop, scale), so calibration and tip metrics use photos, events use video.
-- **Evaluation guard** (CV4): every tool except `split` and the annotation tool needs the split file whose SHA-256
+- **Evaluation guard** (CV4): every tool except `split`, `drift` and the annotation tool needs the split file whose SHA-256
   matches `split-lock.json`. `measure --set eval` also needs `tools/camera/config/frozen.json` (only `tau_low`,
   `tau_sure` and the model SHA-256, strict reader `frozen.py` in T13, the single reader of that file) and fails if the model hash
   differs. Training, tuning and dataset building refuse any eval session or block, and anything in `captures-eval/`.
@@ -93,7 +127,7 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   (no session name committed). Block mode is locked only after Kosmo's OK in the PR.
 - **Constants** (A1): one source of truth, `tools/camera/config/defaults.json`, loaded by the stdlib module
   `kosmo_camera/config.py` (strict reader); modules never repeat the values.
-- **Groups for breakdowns** (decision 3, CV14): tripod position from the clicked calibration (viewing angle from the
+- **Groups for breakdowns** (decision 3, CV14): tripod position from the reference calibration of the photo (CV19; viewing angle from the
   board ellipse ratio, side from the foreshortening direction, distance from the apparent board diameter divided by
   the zoom ratio, each binned); lighting from the median luma of the board region of the photo; zoom from
   `truth.json`. Bins are fixed in `docs/camera/training.md` (T2) before any measure.
@@ -120,7 +154,7 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   sessions and eval has at least 100 judged darts. Otherwise block mode: each session cut into blocks of
   `SPLIT_BLOCK_VOLLEYS` (5) consecutive volleys, same walk over blocks; flagged "more optimistic" (same tripod,
   lighting and calibration clicks on both sides). The split file is canonical JSON (sorted keys); its SHA-256 is
-  locked in `split-lock.json`. Every tool except `split` and the annotation tool checks it.
+  locked in `split-lock.json`. Every tool except `split`, `drift` (CV18) and the annotation tool checks it.
 - CV4 Eval units never enter training, tuning, threshold choice or dataset building; `measure --set eval` needs a
   valid `frozen.json` (strict: format, version, `tau_low`, `tau_sure`, 64-hex `modelSha256`, no other key) with a
   matching model SHA-256; the report records the model, `frozen.json` and split hashes.
@@ -130,10 +164,11 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   is correct when nothing is announced on the board (decision 4). Hidden tips stay in the total.
 - CV8 Detection thresholds: correct >= 95 % and unflagged errors <= 1 % of judged darts.
 - CV9 Calibration success per volley (first photo of the volley): project 41 board points (bull centre, the 20 sector
-  centres at 103 mm and at 166 mm) to the image with the clicked homography, back to the board with the predicted
-  one; success if the largest error is at most `CAL_MAX_ERROR_MM` = 2.0 mm and all 4 points were found. Target 99 %.
-  Why 2 mm: a quarter of the 8 mm treble and double rings, so a calibration error alone cannot move a dart centred in
-  a ring out of it; to be confirmed by the report.
+  centres at 103 mm and at 166 mm) to the image with the reference homography of that photo (CV19), back to the board
+  with the predicted one; success if the largest error is at most `CAL_MAX_ERROR_MM` = 2.0 mm and all 4 points were
+  found. Target 99 %. Why 2 mm: a quarter of the 8 mm treble and double rings, so a calibration error alone cannot
+  move a dart centred in a ring out of it; to be confirmed by the report. A volley whose first photo has no reference
+  calibration (CV19) is not evaluated and is counted.
 - CV10 Arrival of dart k (non-voided, segment not 0, both entry positions in the video) is detected if an arrival
   event falls between the previous non-voided entry (volley start for the first) and entry k. Every other arrival
   event is false. Targets: >= 98 % detected, false events <= 1 % of evaluated darts.
@@ -141,28 +176,59 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   `captures/`, where the protocol was mixed, and reported as such; volleys with at least one dart on the board): success if declared between the last
   entry and the volley `end`; a false empty is one declared after the first on-board dart and before the last entry.
   Targets: >= 99 % success, 0 false empty.
-- CV12 Tip error: clicked tip versus matched predicted tip, both mapped with the clicked homography; median and 95th
-  percentile in mm, VISIBLE annotations only.
+- CV12 Tip error: clicked tip versus matched predicted tip, both mapped with the reference homography of the photo
+  (CV19); median and 95th percentile in mm, VISIBLE annotations only; photos without reference calibration counted
+  apart.
 - CV13 Confidence intervals: Wilson 95 % for rates, distribution-free order-statistic interval for quantiles.
 - CV14 Breakdowns: near and far half (split line through the bull, perpendicular to the camera direction), single,
   double, treble, 25, bull (from truth), lighting class, tripod group, zoom bin.
-- CV15 Reports contain numbers and group labels only: no image, path, file or session name.
+- CV15 Reports contain numbers and group labels only: no image, path, file or session name. The drift report labels
+  sessions `S01`, `S02`... in session-name order. The drift flag file `drift.json` (CV18) holds session names and is,
+  like the split file, a local working file in `~/kosmo-runs/`: never pasted, never committed.
 - CV16 Annotation tool: stdlib only, `127.0.0.1` only, no external resource, captures read-only, writes only in the
   annotations folder, atomic; every route resolves the session name against the listed sessions; never overwrites
-  an annotation file that the strict reader rejects. Details in T6a.
+  an annotation file that the strict reader rejects (a version 1 file is accepted and written back as version 2 on
+  the first change, CV20). It reads the optional drift flag file read-only through its strict stdlib reader; a missing,
+  invalid or oversized file gives a warning in the session list, never an error. Details in T6a and T6c.
 - CV17 Sessions in `~/kosmo-data/captures-eval/` (confirmation campaign, later) are always eval: never in the split,
   never in training or tuning; `measure --set campaign` reads them under the same `frozen.json` guard.
+- CV18 Drift of a judged photo (D15): compared with the reference photo of its segment (CV20), both decoded to luma
+  in stored pixel order (D8). (1) Coarse: the box of the 4 segment points enlarged by 15 % is cropped from both,
+  block-averaged so its longer side is at most `DRIFT_COARSE_PX` (512), and phase-correlated (zero mean, Hann
+  window, normalised cross-power spectrum, `numpy.fft`): shift `t0`. (2) Fine, per point `i`: square patch of side
+  `DRIFT_PATCH_FRACTION` (0.06) times the longer image side, centred on `p_i` in the reference and on `p_i + t0` in
+  the photo, phase-correlated with a 3-point parabolic sub-pixel fit per axis: `d_i = t0 + r_i`. (3) Drift px =
+  max `|d_i|`; drift mm = CV9 error with `H_true` = homography of the points `p_i + d_i` and `H_pred` = segment
+  homography (the error the stale calibration would cause). The reference photo itself has drift 0 without
+  computation. No usable reference gives status "unmeasurable" with one reason: `uncalibrated` (session without
+  calibration), `size_mismatch` (photo size differs from the segment), `border` (a patch not inside both images),
+  `low_peak` (a correlation peak below `DRIFT_MIN_PEAK`: occlusion or change), `unreadable`. Drift is annotation
+  quality control, independent of any model, so it reads every session, dev and eval, without the split lock (CV4
+  unaffected). The `drift` command writes a numbers-only report (CV15) and the local flag file `drift.json`.
+- CV19 Drift threshold and compensation: a photo is "beyond" when drift mm > `DRIFT_MAX_MM` (proposed 1.0 mm =
+  `CAL_MAX_ERROR_MM` / 2, open question Q1). Reference calibration of a photo = its compensated points `p_i + d_i`
+  when measured and not beyond; none otherwise. Used for the `cal1`-`cal4` training labels (T9), CV9, CV12 and CV14.
+  Photos without reference calibration are dropped from the dataset and excluded from CV9 and CV12, each counted by
+  reason. `dataset` and `measure` refuse to run while a judged photo of their set is beyond (message: run `drift`,
+  recalibrate, run `drift` again); `--accept-drift` overrides and the run records the count. CV7 (and CV8) never use
+  the clicked calibration: no dart or session is excluded from the main criterion.
+- CV20 Calibration segments (annotation format version 2): `calibrations` is an ordered list of segments
+  `{fromDart, photo, width, height, points}`; the first starts at dart 1, `fromDart` strictly ascending, each applies
+  from its `fromDart` until the next one. A version 1 file is read by the kept v1 reader and migrated without loss
+  (a v1 `calibration` becomes the single segment from dart 1; `null` becomes an empty list). Writers write version 2
+  only. Details in T5b.
 
 ## Files and types added or changed
 
 - Added `tools/camera/`: `requirements-cpu.txt`, `requirements-gpu.txt`, `pytest.ini`, `Dockerfile`, `README.md`
   (pointer to `docs/camera/training.md`), `config/defaults.json` (every constant: `BOX_FRACTION`, split ratio and
   criteria, `SPLIT_BLOCK_VOLLEYS`, `MATCH_RADIUS_MM`, `CAL_MAX_ERROR_MM`, initial `TAU_LOW`/`TAU_SURE`, group bins,
-  event parameters; read only through `config.py`). Later, committed by developer-fix from Kosmo's pasted numbers:
+  event parameters, drift parameters `DRIFT_MAX_MM`, `DRIFT_COARSE_PX`, `DRIFT_PATCH_FRACTION`, `DRIFT_MIN_PEAK`
+  added by T8b; read only through `config.py`). Later, committed by developer-fix from Kosmo's pasted numbers:
   `config/split-lock.json` (mode, split file SHA-256, unit and judged-dart counts; no session name) and
   `config/frozen.json` (thresholds and model hash only, A3), before the eval run.
-- Added package `tools/camera/kosmo_camera/`: `config.py`, `board.py`, `truth.py`, `split.py`, `annotations.py`, `geometry.py`,
-  `groups.py`, `synth.py`, `dataset.py`, `public_import.py`, `model_spec.py`, `train.py`, `gpu_check.py`, `export.py`,
+- Added package `tools/camera/kosmo_camera/`: `config.py`, `board.py`, `truth.py`, `split.py`, `annotations.py` (v2 in
+  T5b), `geometry.py`, `groups.py`, `synth.py`, `drift.py`, `drift_file.py`, `dataset.py`, `public_import.py`, `model_spec.py`, `train.py`, `gpu_check.py`, `export.py`,
   `detector.py`, `decide.py`, `video.py`, `events.py`, `metrics.py`, `tune.py`, `frozen.py`, `report.py`, `cli.py`, `__main__.py`,
   `annotate/` (`flow.py`, `server.py`, `jpeg_size.py`, `static/`). The ADR is written by T1.
 - Added tests `tools/camera/tests/` (pytest; marker `slow` for export and training smoke tests).
@@ -174,8 +240,11 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
 - Read (Kosmo's machine): `~/kosmo-data/captures/<session>/` (truth, photos, videos), later
   `~/kosmo-data/captures-eval/<session>/` (CV17), `~/kosmo-data/public/`, `~/kosmo-data/annotations/`. Never modified
   by any tool except the annotation tool, which writes only annotations. The squad never sees the session count.
-- Written: `~/kosmo-runs/` (split file, datasets, checkpoints, `.tflite`, per-run JSON results, reports). Nothing
-  written in the repository by the tools. The `split` command prints counts and the split SHA-256 only.
+- Written: `~/kosmo-runs/` (split file, `drift/drift.json` and `drift/drift-report.md`, datasets, checkpoints,
+  `.tflite`, per-run JSON results, reports). Nothing written in the repository by the tools. The `split` command
+  prints counts and the split SHA-256 only; `drift` prints the report path and "Tout sous le seuil : oui|non".
+- `drift.json` (local, CV15): per session its name, label `Sxx`, `segmentsSha256`, max drift and the dart numbers
+  beyond, suggested and unmeasurable; read by the annotation tool on the same machine only.
 - Exposed: the Markdown report only (CV15), pasted by Kosmo. The model stays in `~/kosmo-runs/`; the repository keeps
   its SHA-256, size and rebuild command (decision 6). No network at run time (container `--network none`; annotation
   tool loopback only).
@@ -188,12 +257,20 @@ tip: {x, y} | null } ] }`. Pixel coordinates in the stored pixel order of the JP
 orientation ignored everywhere: page, server and PIL loaders, decision D8). `tip` set exactly when VISIBLE. Strict
 reader (unknown fields, duplicates, version, numbers that do not exist in the truth file are rejected; 1 MiB cap).
 
+Version 2 (T5b, CV20): same document with `version: 2` and `calibrations: [ { fromDart, photo, width, height,
+points } ]` instead of `calibration`. Reader knows versions 1 and 2 and always returns the v2 model; writer writes
+version 2 only; a v1 file on disk is rewritten as v2 only when the tool saves a change. `truthSha256` is copied
+unchanged by the migration.
+
 ## Screens and states (annotation tool, French)
 
 Session list, calibration screen, darts screen, the per-dart flow (one click sets the tip and moves on, autosave on
 every action), keys, markers, the error and empty states and their French messages: written once in
 `42-camera-feasibility-0b-1/T6a-annotation-server.md` (flow and states) and `T6b-annotation-page.md` (page, keys,
 markers, contrast). The tool does not show dev or eval: Kosmo annotates every session the same way.
+PR B (T6c flow and server, T6d page): action "Recalibrer à partir de cette fléchette" (key R) on the darts screen,
+recalibration screen "Recalibration à partir de la fléchette N : point k sur 4", and drift flags in the session list
+and on flagged darts, read from `drift.json` (`--drift FILE`, optional).
 
 ## Test plan
 
@@ -210,17 +287,30 @@ the cases. Summary:
 - T6a: flow transitions, autosave round trip, session resolution on every route, write-route attacks (encoded `..`,
   `/`, backslash, NUL, unlisted name), body and header checks, error states (CV16).
 - T6b: static files scan (no external URL, no `innerHTML`, `eval`, `document.write`), French strings.
-- T7: synthetic board render reproducible from a seed, known tips land in known zones.
+- T5b: v1 golden migrates to the v2 golden byte for byte, v1 to v2 to v1 identity on seeded files, v2 strict
+  rejections (first `fromDart` not 1, order, duplicates, unknown key, v3), `segment_for` boundaries, tool flow
+  unchanged with one segment, v1 file rewritten as v2 only on a change (CV20, CV16).
+- T7: synthetic board render reproducible from a seed, known tips land in known zones, sessions with planned
+  per-dart camera drift and v2 annotations.
 - T8: DLT exact on 4 points, CV9 metric at exactly 2.0 mm and with fewer than 4 points, groups (CV14).
-- T9: COCO output, box size, eval unit refused (CV4), public class map.
+- T8b: drift recovered on synthetic shifts and roll, mm equal to the CV9 error of the true views, every
+  unmeasurable reason, threshold boundary, compensation, report and flag file privacy, guard (CV18, CV19, CV15).
+- T6c: recalibration flow (start, points, autosave, undo, leave), segment replaced or removed, drift flags and stale
+  flag file, invalid flag file is a warning (CV20, CV16).
+- T6d: R button and key, French strings, flags shown, static scan as T6b.
+- T9: COCO output with 0-based category ids, box size, compensated calibration boxes, drift guard and
+  `--accept-drift`, eval unit refused (CV4, CV19), public class map.
 - T10a: CPU and GPU requirements in sync and hashed, Dockerfile static checks, `gpu_check` exit codes.
 - T10 (slow, fixed seed): 2-iteration training on CPU from random weights on synthetic data produces a checkpoint.
 - T11: CV6 and CV7 on fake detector outputs, boundaries (6.0 mm, `tau_low`, ties, same-class duplicates).
 - T12: CV10 and CV11 on generated videos: arrival in window, false arrival, person occlusion, empty board.
 - T13: intervals, breakdowns, tuning (including no feasible pair), CV8 boundaries, 0 judged darts, strict
-  `frozen.json`, CV4 guard with split lock.
-- T13b: limits section, D12 verdict at the interval boundary, path list or campaign size, CV15 privacy scan.
-- T14: CLI end to end on a synthetic session (fake detector), commands documented match `--help`.
+  `frozen.json`, CV4 guard with split lock, CV9 and CV12 with compensated reference and photos without reference
+  counted, CV7 unchanged by drift.
+- T13b: limits section (with the drift summary), D12 verdict at the interval boundary, path list or campaign size,
+  CV15 privacy scan.
+- T14: CLI end to end on a synthetic session (fake detector), `drift` then `dataset` refused while beyond, commands
+  documented match `--help`.
 
 Python checks for every task (T5 of the design review): `.venv/bin/python -m pytest tools/camera -q` (plus `-m slow
 -q` where the task says so) and `.venv/bin/python -m compileall -q tools/camera`. No Python linter is added (D4).
@@ -241,14 +331,24 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
   points in order 1 to 4 on a diagram that highlights the next point; each dart photo shows its true value ("T20"); voided entries are skipped; one
   click sets the tip and shows the next dart; "Enregistré à HH:MM:SS" after each action; closing and reopening a
   session resumes at the first dart not annotated, with earlier tips drawn on the same spots; files appear in
-  `~/kosmo-data/annotations/<session>.json`, the captures folder is unchanged.
+  `~/kosmo-data/annotations/<session>.json`, the captures folder is unchanged. Done (Kosmo, 2026-11-15) with
+  annotation format v1; PR B reads those files and migrates them on the first change (CV20).
 - K3 (PR A, while annotating) Build the image once with network, run `python -m kosmo_camera.gpu_check` in it: GPU
   name and `cuda available: True`; the COCO weights SHA-256 is pinned in the `Dockerfile` (done after Kosmo's first
   build), so the build now passes directly.
 - K4 (PR A, during part B) Check the licences of the public set candidates (`docs/camera/datasets.md`), download the
   accepted ones.
-- K5 (PR B) Rebuild the image (it carries the PR B code), run `gpu-check`, then run on dev: dataset, train, export, measure, tune; paste the dev report. The squad iterates on dev reports only,
-  then commits `frozen.json`.
+- K5 (PR B) In this order, documented in `training.md` and enforced by the drift guard of `dataset` and `measure`
+  (CV19, D15):
+  - K5.1 Rebuild the image (it carries the PR B code), run `gpu-check`.
+  - K5.2 Run `drift` (container) on all sessions: it writes `~/kosmo-runs/drift/drift-report.md` and `drift.json`
+    and prints "Tout sous le seuil : oui|non".
+  - K5.3 Relaunch the annotation tool with `--drift ~/kosmo-runs/drift/drift.json`: the session list shows the
+    sessions to recalibrate and from which darts (the 18h24 eval session should ask from dart 59); on each suggested
+    dart press "Recalibrer à partir de cette fléchette" (R) and click the 4 points; "Enregistré à HH:MM:SS".
+  - K5.4 Run `drift` again; repeat K5.3 and K5.4 until "Tout sous le seuil : oui"; paste the last drift report.
+  - K5.5 Then on dev: dataset, train, export, measure, tune; paste the dev report. The squad iterates on dev reports
+    only, then commits `frozen.json`.
 - K6 (PR B) Run `measure --set eval` once; paste the preliminary report. The squad fills `feasibility-report.md`: path
   proposal, or the confirmation campaign to capture into `~/kosmo-data/captures-eval/` (CV17).
 
@@ -274,12 +374,17 @@ closing it):
   eval 2 units / 137 darts) and `NANO_SHA256` (K3). K3 result: GPU check OK on NVIDIA GeForce RTX 4070 SUPER 12 GB,
   driver 610.57, torch 2.14.1+cu130, cuda available True.
 
-PR B (new branch from an up-to-date `main` once PR A is merged, tasks T3, T7, T8, T9, T10, T11, T12, T13, T13b, T14;
-`Closes #42`):
-- How to verify: K5, K6 (image rebuilt first).
-- Versions table only if a pin changes in part B.
+PR B (branch `feat/camera-feasibility-0b-1-detection` from `main` after PR A, tasks T3, T5b, T7, T8, T8b, T6c,
+T6d, T9, T10, T11, T12, T13, T13b, T14; `Closes #42`):
+- How to verify: K5 with its sub-steps K5.1 to K5.5 (image rebuilt first, drift loop before any training), then K6.
+  The tool steps state what Kosmo sees: an old v1 file opens unchanged, the first change saves it as v2 without
+  losing a tip; the session list flags "À recalibrer à partir de la fléchette 59" for the 18h24 eval session; after
+  recalibration and a new `drift`, the flag is gone; "Effacer" during a recalibration removes the last point and,
+  with no point left, leaves without change.
+- Versions table only if a pin changes in part B (none planned: drift uses numpy and Pillow, already pinned).
 - Justifications the issue asks for: input size and FP32 versus FP16 for the Pixel 7, then the confidence threshold
-  from the dev report.
+  from the dev report; plus the drift threshold (CV19, Kosmo's answer to Q1) and the drift method (CV18).
+- Kosmo's pasted numbers recorded in the PR: the last drift report (all under the threshold) before the dev report.
 
 ## Tasks
 
@@ -297,24 +402,28 @@ is delivered):
 | T10a | GPU training image and GPU check | `42-camera-feasibility-0b-1/T10a-gpu-image.md` | T1 | sonnet | Container and hashed requirements wiring with given flags, URL and hashes; not haiku because the GPU hashes are generated from the `cu130` index and checked against the CPU file |
 | T2 | Kosmo docs: split, annotation, image and GPU check, campaign protocol, bins, datasets | `42-camera-feasibility-0b-1/T2-kosmo-docs.md` | T4b, T6b, T10a | haiku | Documentation copied from this plan and the T10a `Dockerfile`, no design choice |
 
-Part B / PR B, training and measurement:
+Part B / PR B, drift and calibration segments (D15), then training and measurement:
 
 | Id | Title | Task file | Depends on | Model | Why this model |
 |---|---|---|---|---|---|
-| T3 | LiteRT export feasibility and detector runtime | `42-camera-feasibility-0b-1/T3-export-detector.md` | T1 | sonnet | Library wiring with a specified output contract, early go/no-go on export |
-| T7 | Synthetic boards and sessions for tests | `42-camera-feasibility-0b-1/T7-synthetic.md` | T4, T5 | sonnet | Test fixture generator from fixed geometry |
+| T3 | LiteRT export feasibility and detector runtime (done, a9576aa) | `42-camera-feasibility-0b-1/T3-export-detector.md` | T1 | sonnet | Library wiring with a specified output contract, early go/no-go on export |
+| T5b | Annotation format v2 (calibration segments), v1 reader and migration, tool kept working | `42-camera-feasibility-0b-1/T5b-annotation-format-v2.md` | T5, T6a | opus | Changed stored format with its migration (case 1): v2 schema, strict reader, lossless v1 migration of Kosmo's real files |
+| T7 | Synthetic boards and sessions for tests | `42-camera-feasibility-0b-1/T7-synthetic.md` | T4, T5b | sonnet | Test fixture generator from fixed geometry |
 | T8 | Homography, calibration metric, groups | `42-camera-feasibility-0b-1/T8-geometry-groups.md` | T7 | sonnet | Formulas specified in CV9 and CV14 |
-| T9 | COCO dataset builder and public import | `42-camera-feasibility-0b-1/T9-dataset.md` | T4b, T8 | sonnet | Specified conversion and CV4 guard |
+| T8b | Drift measure, compensation, report, flag file and guard | `42-camera-feasibility-0b-1/T8b-drift.md` | T5b, T8 | sonnet | Algorithm, statuses and threshold fully specified in CV18 and CV19; flag file derived and regenerable (like the split file) |
+| T6c | Tool: recalibration action and drift flags (flow and server) | `42-camera-feasibility-0b-1/T6c-recalibration-flow.md` | T5b, T8b | sonnet | Flow, undo and flag rules specified, Python tests, same patterns as T6a |
+| T6d | Tool page: recalibration button, screen and flags | `42-camera-feasibility-0b-1/T6d-recalibration-page.md` | T6c | sonnet | Page changes from a specified flow and French strings, same patterns as T6b |
+| T9 | COCO dataset builder and public import | `42-camera-feasibility-0b-1/T9-dataset.md` | T3, T4b, T8b | sonnet | Specified conversion, CV4 guard and drift guard |
 | T10 | Training | `42-camera-feasibility-0b-1/T10-training.md` | T3, T9, T10a | sonnet | Wrapper around a library training call with given parameters and tests |
 | T11 | Per-dart decision | `42-camera-feasibility-0b-1/T11-decide.md` | T3, T8 | sonnet | Rules CV5 to CV7 specified, fake detector tests |
 | T12 | Arrival and empty-board events on video | `42-camera-feasibility-0b-1/T12-events.md` | T11 | sonnet | Algorithm and rules CV10, CV11 specified |
-| T13 | Metrics, tuning, frozen thresholds and eval guard | `42-camera-feasibility-0b-1/T13-metrics-report.md` | T12 | sonnet | Statistics and strict reader specified in CV4, CV8 to CV14 |
+| T13 | Metrics, tuning, frozen thresholds and eval guard | `42-camera-feasibility-0b-1/T13-metrics-report.md` | T8b, T12 | sonnet | Statistics and strict reader specified in CV4, CV8 to CV14, CV19 |
 | T13b | Preliminary report | `42-camera-feasibility-0b-1/T13b-report.md` | T13 | sonnet | Report content and verdict rule D12 fully specified |
-| T14 | CLI, training doc commands, report template | `42-camera-feasibility-0b-1/T14-cli-docs.md` | T10, T13b | sonnet | Wiring of existing pieces and their documentation |
+| T14 | CLI (with `drift`), training doc commands, report template | `42-camera-feasibility-0b-1/T14-cli-docs.md` | T6d, T10, T13b | sonnet | Wiring of existing pieces and their documentation |
 
-18 tasks (8 in part A, 10 in part B), one `opus` task (T5). Execution order: part A in table order, PR A, then part B
-in table order, PR B (D11). No task needs Kosmo's machine to be built; K1 to K3 run once PR A is delivered (K4 during
-part B), K5 and K6 once PR B is.
+22 tasks (8 in part A, 14 in part B), two `opus` tasks (T5, T5b). Execution order: part A in table order, PR A, then
+part B in table order, one task at a time, PR B (D11). No task needs Kosmo's machine to be built; K1 to K3 run once
+PR A is delivered (K4 during part B), K5 (drift loop first) and K6 once PR B is.
 
 ## Decisions
 
@@ -323,7 +432,7 @@ part B), K5 and K6 once PR B is.
 | Py | Python 3.13 everywhere (sandbox, image, CI); deviation from "latest stable" because `rfdetr` and `litert-torch` do not install together on 3.14. `download-r2.pytorch.org` allowlisted. | - |
 | B1 | (Issue) RF-DETR Nano first; keypoint model only on Kosmo's decision after a report. | - |
 | B2 | (Issue) LiteRT only, measures on the `.tflite` with `ai-edge-litert`; ONNX Runtime only as fallback on Kosmo's decision. | CV4 |
-| B4 | (Issue) Kosmo clicks tips and the 4 calibration points once per session. | CV2, CV12 |
+| B4 | (Issue) Kosmo clicks tips and the 4 calibration points once per session; amended by D15: once per calibration segment, a new segment where the drift measure asks for it. | CV2, CV12, CV20 |
 | B5 | Superseded by K0. (Issue) Existing captures are dev; new dedicated sessions (>= 500 darts) are eval. | - |
 | K0 | Kosmo, 2026-11-15: no capture campaign before a first result; existing captures split about 70/30 by session (block mode, "more optimistic", if too coarse); preliminary report with limits; path proposal or targeted campaign into `captures-eval/`; annotation tool first. Supersedes B5, D1, P2. | CV3, CV11, CV17 |
 | B6 | (Issue) >= 95 % correct without flag and <= 1 % unflagged errors. | CV8 |
@@ -352,6 +461,8 @@ part B), K5 and K6 once PR B is.
 | D13 | Kosmo, 2026-11-15: sessions with no judged dart (CV5) are ignored by the split: in no set, not counted for "at least 2 sessions per set". Tested in T4b; the annotation tool lists such a session as "Ignorée" (design review U9, T6a). | CV3, CV16 |
 | D14 | Design review A5: two-step image. PR A delivers the image with `gpu_check` only (no entry point); PR B adds training and the `python -m kosmo_camera` entry point, and Kosmo rebuilds it (K5). Recorded in the ADR (T1). | - |
 | D12 | Verdict per threshold: "clearly below" when the whole 95 % interval misses the target; else "close or above" (preliminary report, K0). | CV8 to CV11 |
+| D15 | Kosmo, 2026-11-15 (tripod drift found after K2): in PR B, before training: drift measure per photo against the calibration photo of its segment, in px and mm through the homography, report per session (max drift, darts beyond a threshold tied to `CAL_MAX_ERROR_MM`); sub-threshold drift compensated in the `cal1`-`cal4` labels and the mm measures; annotation format v2 with calibration segments (v1 reader kept, lossless migration); tool action "Recalibrer à partir de cette fléchette" and session list flags from the drift measure; order measure, recalibrate, measure again (all under the threshold), then training; no session excluded since CV7 does not use the clicked calibration. Squad's design: phase correlation with numpy FFT (JPEG decoding by Pillow, already pinned), flag file `drift.json` local like the split file, ordering enforced by a guard in `dataset` and `measure` with an explicit `--accept-drift` override recorded in the run. Threshold value pending Q1. | CV9, CV12, CV14 to CV16, CV18 to CV20 |
+| D16 | T3 result (a9576aa): export works with `litert-torch` 0.10.0; logits `[1,300,6]` with a trailing no-object slot; category ids 0-based in `CLASS_NAMES` order; squash resize to 384x384 (no letterbox). T9, T10 and T11 rely on this contract. | CV4 |
 
 ## Open questions
 
@@ -359,3 +470,11 @@ part B), K5 and K6 once PR B is.
   from the sandbox, so no public dataset page or licence could be opened. `docs/camera/datasets.md` (T2) gives
   search links and acceptance criteria (CC BY 4.0 only, DeepDarts excluded); the tooling works with zero public sets.
 - P3: decided, two PRs (D11).
+- Q1 (Kosmo, blocks T8b only through the value in `defaults.json`): drift threshold `DRIFT_MAX_MM` (CV19, see
+  "Approach, Drift threshold"). Options: A) 0.5 mm (a quarter of `CAL_MAX_ERROR_MM`: safest labels, but most
+  "few pixels" drifts will ask for a recalibration); B) 1.0 mm, recommended (half: compensation handles the small
+  drifts, a real move asks for a recalibration); C) 2.0 mm (fewest clicks; a drift that alone fails CV9 would be
+  compensated without a click).
+- P4 (information for Kosmo, not blocking): "stdlib + numpy" is read as "no new library": the drift computation is
+  numpy only, but JPEG decoding needs Pillow, already pinned and in the image. So `drift` runs in the container, not
+  with the bare `python3` of WSL; the annotation tool stays stdlib and only reads `drift.json`.

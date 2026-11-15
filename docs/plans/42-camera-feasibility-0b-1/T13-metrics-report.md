@@ -7,7 +7,10 @@ tune the thresholds on dev, and guard the eval run. The report itself is T13b.
 ## Files
 - Added `tools/camera/kosmo_camera/metrics.py`: `wilson(k, n)`, `quantile_ci(values, q)` (order statistics, stdlib
   `math.comb`), `outcome(decision, truth, annotation)` (CV7), `aggregate(results) -> Metrics` with breakdowns (CV14)
-  and the counts of every skipped case (null photo, missing annotation, no position, no region).
+  and the counts of every skipped case (null photo, missing annotation, no position, no region, no reference
+  calibration per CV19 reason, photos excluded by `--accept-drift`). CV9, CV12 and the CV14 near/far, tripod and
+  lighting groups use each photo's reference calibration from T8b (`PhotoDrift.reference_points`); CV7 and CV8 do
+  not use it.
 - Added `tools/camera/kosmo_camera/tune.py`: on dev results only, grid over `tau_low < tau_sure`; pick the pair with
   unflagged errors <= 1 % that maximises correct; writes a proposal `tuned.json` in the run folder (developer-fix
   commits it as `tools/camera/config/frozen.json`: thresholds and model SHA-256 only, A3); no feasible pair gives an
@@ -18,10 +21,10 @@ tune the thresholds on dev, and guard the eval run. The report itself is T13b.
 - Added tests `tools/camera/tests/test_metrics.py`, `test_tune.py`, `test_frozen.py`.
 
 ## Depends on
-T12.
+T8b, T12.
 
 ## Rules
-CV4, CV7, CV8, CV9, CV12, CV13, CV14, CV17. Tuning reads dev only: passing an eval or campaign result raises.
+CV4, CV7, CV8, CV9, CV12, CV13, CV14, CV17, CV19. Tuning reads dev only: passing an eval or campaign result raises.
 CV8 boundaries: correct `>=` 95 % passes, unflagged errors `<=` 1 % passes.
 
 ## Tests
@@ -36,6 +39,9 @@ CV8 boundaries: correct `>=` 95 % passes, unflagged errors `<=` 1 % passes.
 - Frozen reader: valid file; unknown key, missing key, short or non-hex hash, `tauLow > tauSure`, other version each
   rejected.
 - Guard: missing `frozen.json`, wrong model hash, missing or mismatched split lock, all matching.
+- Drift: CV9 on a drifted photo uses the compensated reference (success where the stale segment would fail); a
+  volley whose first photo is unmeasurable is not evaluated and counted; CV12 skips and counts such photos; the
+  correct and unflagged-error rates are identical with and without drift data.
 
 ## Done when
 Python checks of root "Test plan" green, `kosmo-detekt` exit 0.

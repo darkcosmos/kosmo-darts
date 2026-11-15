@@ -12,7 +12,10 @@ section, the verdict per threshold and either a path proposal or the confirmatio
   tool versions).
 - Limits section: sample size and interval half-width per rate; overlap table of tripod groups and lighting classes
   (judged darts per group in dev and in eval, groups present on one side only marked); "removals not measurable on
-  the existing captures (protocol mixed)"; block mode warning when used.
+  the existing captures (protocol mixed)"; block mode warning when used; drift summary of the measured set (CV19:
+  threshold, calibration segments, photos compensated, max compensated drift mm, photos without reference
+  calibration per reason, photos excluded by `--accept-drift`), with the line "critère principal indépendant de la
+  calibration cliquée".
 - Next step section (D12): any threshold "clearly below" (whole interval on the wrong side of the target) lists the
   candidate paths of the issue (more data, larger model, keypoint model, classic detection) with the numbers that
   point to each (tip error versus calibration failures versus missed tips); otherwise the campaign: judged darts
@@ -25,7 +28,7 @@ section, the verdict per threshold and either a path proposal or the confirmatio
 T13.
 
 ## Rules
-CV8 to CV15, CV17, D12. Interval at exactly the target counts as "close or above" (not clearly below).
+CV8 to CV15, CV17, CV19, D12. Interval at exactly the target counts as "close or above" (not clearly below).
 
 ## Tests
 - Verdict: interval entirely below 95 % gives "clearly below"; upper bound exactly 95 % gives "close or above"; same
@@ -35,6 +38,7 @@ CV8 to CV15, CV17, D12. Interval at exactly the target counts as "close or above
 - Limits: a group present only in dev is marked; block mode adds the warning; "removals not measurable" present for
   `captures/` and absent for a campaign report.
 - 0 judged darts: report renders with "n/a" everywhere.
+- Drift summary present with its counts; an `--accept-drift` run shows the excluded count.
 - Privacy (CV15): a report built from synthetic sessions contains no session name, file name, path separator from the
   inputs, or image data (scan for the input strings and for base64 or data URLs).
 
