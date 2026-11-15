@@ -7,7 +7,9 @@ GPU check come from T10a (PR A).
 ## Files
 - Added `tools/camera/kosmo_camera/train.py`: `train(dataset_dir, out_dir, weights, epochs, batch, resolution,
   device)` wrapping `rfdetr.RFDETRNano(pretrain_weights=weights, num_classes=5, resolution=...)` then `.train(...)`;
-  writes `train-run.json` (versions, config, dataset manifest hash, best checkpoint path, metrics per epoch).
+  writes `train-run.json` (versions, config, dataset manifest hash, `kosmoPartSha256` and `publicSets` (slug,
+  licence, images) copied from the T9 manifest, best checkpoint path, metrics per epoch). No public-data option
+  here: the with/without choice is made by the dataset (T9 `public`) and compared by T13 (root CV22).
   `weights=None` only for tests. Fails before training if any network access would be needed (explicit weights
   path, `HF_HUB_OFFLINE=1`). Checkpoints loaded with `torch.load(..., weights_only=True)` wherever `rfdetr` lets the
   caller choose; notes list the places where it does not. Default `weights` is `/opt/weights/rf-detr-nano.pth`,
@@ -27,6 +29,8 @@ the image (K3 again).
 - Slow: `torch.manual_seed(42)` and synthetic seed 7; 2 iterations on CPU from random weights on a 4-image synthetic
   dataset produce a checkpoint and
   `train-run.json`.
+- Not slow: `train-run.json` built from a synthetic manifest with one public slug lists it in `publicSets`; without
+  public sets the list is empty (D21).
 - No network: a weights path that does not exist fails before training with a clear message.
 
 ## Done when

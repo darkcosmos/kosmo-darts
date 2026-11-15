@@ -8,8 +8,13 @@ section, the verdict per threshold and either a path proposal or the confirmatio
 - Added `tools/camera/kosmo_camera/report.py`: `build_report(metrics, context) -> (markdown, json)` with sections:
   Set and split (mode, flag "plus optimiste" in block mode, units and judged darts per set); Results (every CV8 to
   CV12 rate with count, 95 % interval, target, pass or fail, verdict); Breakdowns (CV14 tables); Tip error (median,
-  p95, intervals); Limits; Next step; Hashes and versions (model SHA-256 and size, `frozen.json` and split SHA-256,
-  tool versions).
+  p95, intervals); Public data; Limits; Next step; Hashes and versions (model SHA-256 and size, `frozen.json` and split SHA-256,
+  tool versions). `build_comparison(choice) -> (markdown, json)` for the `compare` run of T14.
+- Public data section (CV15, CV21, CV22): sets used by the measured model (slug, licence, images kept and dropped,
+  "attribution : voir docs/camera/datasets.md") or "aucun jeu public"; then the comparison of T13 `compare`: one row
+  per version (sans / avec jeux publics) with correct and unflagged rates and intervals, tuned pair or "aucune paire",
+  CV9 successes, CV12 median, comparison set size; the retained version, its model SHA-256, the deciding step in
+  French and "écart dans le bruit" when flagged. The same section is the whole output of `build_comparison`.
 - Limits section: sample size and interval half-width per rate; overlap table of tripod groups and lighting classes
   (judged darts per group in dev and in eval, groups present on one side only marked); "removals not measurable on
   the existing captures (protocol mixed)"; block mode warning when used; drift summary of the measured set (CV19:
@@ -28,7 +33,7 @@ section, the verdict per threshold and either a path proposal or the confirmatio
 T13.
 
 ## Rules
-CV8 to CV15, CV17, CV19, D12. Interval at exactly the target counts as "close or above" (not clearly below).
+CV8 to CV15, CV17, CV19, CV21, CV22, D12, D21. Interval at exactly the target counts as "close or above" (not clearly below).
 
 ## Tests
 - Verdict: interval entirely below 95 % gives "clearly below"; upper bound exactly 95 % gives "close or above"; same
@@ -39,6 +44,9 @@ CV8 to CV15, CV17, CV19, D12. Interval at exactly the target counts as "close or
   `captures/` and absent for a campaign report.
 - 0 judged darts: report renders with "n/a" everywhere.
 - Drift summary present with its counts; an `--accept-drift` run shows the excluded count.
+- Public data: a model trained with two synthetic slugs lists both with licence and counts; without, "aucun jeu
+  public"; a comparison choice renders both rows, the retained version and the deciding step; overlap flag shown.
+- Privacy scan also run on the comparison output; slugs are allowed, session names are not.
 - Privacy (CV15): a report built from synthetic sessions contains no session name, file name, path separator from the
   inputs, or image data (scan for the input strings and for base64 or data URLs).
 

@@ -15,18 +15,35 @@ Build the RF-DETR training dataset (COCO layout) from annotated dev photos and a
   at most 1600 px (labels scaled, aspect kept, no letterbox or padding: the model squashes to 384x384, D16), written
   as JPEG; `_annotations.coco.json` per subset as `rfdetr` expects, `categories` with ids 0 to 4 in
   `model_spec.CLASS_NAMES` order (D16); a `manifest.json` with counts per subset, drop counts per reason, the
-  `accept_drift` flag and the list of source session names (stays in `~/kosmo-runs`).
-- Added `tools/camera/kosmo_camera/public_import.py`: reads a COCO export plus a class map file
-  (`<set>/kosmo-class-map.json`: source class to `tip`, `cal1`..`cal4` or `drop-image`) and converts its points to
-  our boxes; images whose calibration convention differs are dropped (map says `drop-image`).
-- Added tests `tools/camera/tests/test_dataset.py`, `test_public_import.py`.
+  `accept_drift` flag and the list of source session names (stays in `~/kosmo-runs`); plus `public` (per slug:
+  licence, images kept, dropped per reason) and `kosmoPartSha256` (root "Data read, stored or exposed").
+  `public` argument: `"none"`, `"all"` (every slug of the map) or a list of slugs; public images go to train only,
+  the Kosmo part (images, labels, train/valid assignment) is byte-identical for every `public` value (CV22).
+- Added `tools/camera/kosmo_camera/public_import.py`: strict reader of `tools/camera/config/public-class-maps.json`
+  (format of root "Files and types", CV21: unknown key, target outside `tip`, `cal1`..`cal4`, `ignore`,
+  `drop-image`, slug not matching `^[a-z0-9_-]{1,64}$`, 64 KiB cap rejected); reads every subset
+  (`train`/`valid`/`test` `_annotations.coco.json`) of `<public_root>/<slug>/`, refuses a set with an unknown
+  category name, differing category lists between subsets or a slug absent from the map; per image, `drop-image`
+  drops it, `ignore` drops the annotation, `tip`/`calN` become our square box at the source box centre.
+- Added `tools/camera/config/public-class-maps.json` with `sets` empty (T9b fills it).
+- Changed `docs/camera/datasets.md` (French): the search rows are replaced by one row per set of root D20, table
+  `| slug | jeu | lien | licence | attribution | statut |`, e.g. `| mat24_dartsv2 | mat24_dartsv2 (school) |
+  https://universe.roboflow.com/school-asc0d/mat24_dartsv2 | CC BY 4.0 | à compléter par Kosmo au téléchargement |
+  accepted |`; four `accepted`, `dart-tip-detection-6d3mw` `conditional` (accepted only if its page shows CC BY 4.0
+  at download), `bullseyebot` (Hugging Face, link "non fourni", licence "aucune") `rejected`. Acceptance rule kept
+  (CC BY 4.0 only, DeepDarts excluded); "How a set is added" points to the class map file and T9b.
+- Added tests `tools/camera/tests/test_dataset.py`, `test_public_import.py`, `test_datasets_doc.py` (row structure:
+  6 cells, status in `accepted|conditional|rejected`, link `https://universe.roboflow.com/` and licence `CC BY 4.0`
+  for `accepted` and `conditional`, every slug of the map is an `accepted` row; attribution text not checked).
 
 ## Depends on
 T3 (`model_spec.CLASS_NAMES`), T4b, T8b.
 
 ## Rules
 CV4 (an eval session or block raises even if passed explicitly; no lock or a wrong hash raises), CV17 (`captures-eval/`
-refused), CV2, CV5, CV16 (sources read-only), CV19, CV20, D16. Constants from `config.py`. Check in the `rfdetr`
+refused), CV2, CV5, CV16 (sources read-only), CV19, CV20, CV21, CV22, D16, D20. Writes CV21 and CV22 into
+`docs/rules/camera.md`. Kosmo's real category lists are not needed here: everything is built and tested on
+synthetic COCO exports; T9b adds the real maps when the lists arrive. Constants from `config.py`. Check in the `rfdetr`
 1.12.1 source how COCO category ids reach the logit slots and record it in the notes; if `rfdetr` remaps them,
 adapt so that slot k is `CLASS_NAMES[k]` (T3 contract).
 
@@ -45,13 +62,17 @@ adapt so that slot k is `CLASS_NAMES[k]` (T3 contract).
   `model_spec.RESOLUTION`, 384).
 - Source check (A15): `flow.py`, `drift.py` and `dataset.py` import `segment_for` from `annotations` and define no
   function of their own walking `fromDart` (AST scan of the three files).
-- Public import: class map applied, `drop-image` honoured, unknown class raises.
+- Public import on a synthetic Roboflow-style export (with the unused supercategory at id 0): map applied, `ignore`
+  and `drop-image` honoured, unknown category, unknown slug, differing subset categories each raise; map strict
+  reader rejections and cap.
+- `public="none"` and `"all"` on the same seed: same `kosmoPartSha256`, same valid subset, public images only in
+  train; empty map: `"all"` equals `"none"` plus an empty `public` list.
 - Source folders unchanged (hashes before and after).
 
 ## Done when
 Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
 
 ## Model
-sonnet. Why: specified conversion, CV4 guard and drift guard.
+sonnet. Why: specified conversion, CV4, CV21 and drift guards, tested on synthetic COCO.
 
 ## Implementation notes

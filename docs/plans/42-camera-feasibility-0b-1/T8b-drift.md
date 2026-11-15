@@ -26,15 +26,19 @@ Kosmo's recalibration loop (D15).
   `<runs>/drift/drift-report.md`. Report: threshold and why (one line, CV19), parameters, then one row per session
   label `S01`... (session-name order): judged photos, segments, measured, unmeasurable per reason, max and median
   drift px and mm, darts beyond (count), suggested start darts (numbers); totals; a table "Seuils candidats" with,
-  for each value of `DRIFT_CANDIDATES_MM`, the sessions and darts beyond (U11, Q1); "Tout sous le seuil : oui|non".
-- Changed `tools/camera/config/defaults.json` (`DRIFT_MAX_MM`: Kosmo's Q1 answer, 1.0 only if main confirms the
-  recommendation; `DRIFT_CANDIDATES_MM` [0.5, 1.0, 2.0], `DRIFT_COARSE_PX` 512, `DRIFT_PATCH_FRACTION` 0.06,
+  for each value of `DRIFT_CANDIDATES_MM`, the sessions and darts beyond (U11, for information); "Tout sous le seuil : oui|non".
+- Changed `tools/camera/config/defaults.json` (`DRIFT_MAX_MM` 1.0, Kosmo's answer, root D18;
+  `DRIFT_CANDIDATES_MM` [0.5, 1.0, 2.0], `DRIFT_COARSE_PX` 512, `DRIFT_PATCH_FRACTION` 0.06,
   `DRIFT_MIN_PEAK` 0.2), `config.py` and `test_config.py` (the one test that pins each value, so a change is
   intentional; every other test reads them through `config.py`, A16).
 - Changed `docs/rules/camera.md`: adds CV18, CV19; amends CV3 (`drift` exempt from the lock), CV9, CV12, CV14,
   CV15 (root plan "Rules").
 - Changed `docs/adr/0016-camera-feasibility-tooling.md`: new section "Tripod drift" with the content listed in root
   plan "Files and types added or changed" (ADR bullet, A13).
+- Changed `tools/camera/Dockerfile` (batch 1, root D19): `COPY config/ /app/config/` after the package copy, since
+  `config.py` reads `config/defaults.json` at import and the image has no `config/` yet; header comment says the
+  image also runs `python -m kosmo_camera.drift` with `-v ~/kosmo-data:/data:ro` (root "How Kosmo verifies", K5.2).
+  No entry point (T14). `tests/test_dockerfile.py`: asserts the `config/` copy; the no-entry-point test stays.
 - Added tests `tools/camera/tests/test_drift.py`, `test_drift_file.py`.
 
 ## Depends on
@@ -58,9 +62,12 @@ CV18, CV19, CV15, CV5, D8. Shift sign: content position in the photo minus in th
 - `suggested_starts`: beyond darts 12, 13, 14, 20 give 12, 20; an unmeasurable 13 does not split the run.
 - `require_clean`: raises when beyond, returns the count with `accept_drift`; clean set returns 0.
 - Report privacy (CV15): no session name, file name or path from the inputs; `drift.json` strict reader rejections.
+- `main()` as Kosmo runs it (K5.2): `python -m kosmo_camera.drift` in a subprocess with `cwd` outside
+  `tools/camera` and the package on `PYTHONPATH`, on a T7 session, writes both outputs and prints the two lines.
 
 ## Done when
-Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
+Python checks of root "Test plan" green (including the CI command `python -m pytest -q -m "not slow"` from
+`tools/camera`), `kosmo-detekt` exit 0.
 
 ## Model
 sonnet. Why: algorithm, statuses and threshold fully specified in CV18 and CV19; derived, regenerable file.

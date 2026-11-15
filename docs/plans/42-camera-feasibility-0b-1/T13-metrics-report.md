@@ -18,13 +18,19 @@ tune the thresholds on dev, and guard the eval run. The report itself is T13b.
 - Added `tools/camera/kosmo_camera/frozen.py`: the single reader of `frozen.json` (strict per CV4: `format`
   `"kosmo-camera-frozen"`, `version` 1, `tauLow`, `tauSure` in [0, 1] with `tauLow <= tauSure`, 64-hex
   `modelSha256`, no other key, 64 KiB cap) and `guard_eval(frozen_path, model_path, split_bytes, lock)` (CV4).
-- Added tests `tools/camera/tests/test_metrics.py`, `test_tune.py`, `test_frozen.py`.
+- Added `tools/camera/kosmo_camera/compare.py` (root CV22, D21): `select_version(without, with_) -> Choice` where
+  each side is the dev results of one version on the comparison set plus its `kosmoPartSha256` and public sets;
+  tunes each with `tune.py`, applies the CV22 order and returns the retained side, the deciding step, both
+  versions' figures (CV8 rates with Wilson intervals, tuned pair or `NoFeasiblePair`, CV9 successes, CV12 median)
+  and the overlap flag; `with_` None or without public images gives "sans jeux publics seulement". The overlap
+  branch follows Kosmo's answer to Q2 (root "Open questions"); main gives it in the assignment.
+- Added tests `tools/camera/tests/test_metrics.py`, `test_tune.py`, `test_frozen.py`, `test_compare.py`.
 
 ## Depends on
 T8b, T12.
 
 ## Rules
-CV4, CV7, CV8, CV9, CV12, CV13, CV14, CV17, CV19. Tuning reads dev only: passing an eval or campaign result raises.
+CV4, CV7, CV8, CV9, CV12, CV13, CV14, CV17, CV19, CV22. Tuning and comparison read dev only: passing an eval or campaign result raises.
 CV8 boundaries: correct `>=` 95 % passes, unflagged errors `<=` 1 % passes.
 
 ## Tests
@@ -42,11 +48,15 @@ CV8 boundaries: correct `>=` 95 % passes, unflagged errors `<=` 1 % passes.
 - Drift: CV9 on a drifted photo uses the compensated reference (success where the stale segment would fail); a
   volley whose first photo is unmeasurable is not evaluated and counted; CV12 skips and counts such photos; the
   correct and unflagged-error rates are identical with and without drift data.
+- Comparison (CV22) on scripted fake-detector results: one case per decision step (feasible beats infeasible, lower
+  best reachable rate, more correct, fewer unflagged, more CV9, lower CV12 median), exact tie keeps without public,
+  overlapping intervals set the flag and follow Q2, different `kosmoPartSha256` or an eval or campaign result
+  raises, no public version gives "sans jeux publics seulement".
 
 ## Done when
 Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
 
 ## Model
-sonnet. Why: statistics and strict reader specified in CV4, CV8 to CV14.
+sonnet. Why: statistics, strict reader and selection rule specified in CV4, CV8 to CV14, CV22.
 
 ## Implementation notes

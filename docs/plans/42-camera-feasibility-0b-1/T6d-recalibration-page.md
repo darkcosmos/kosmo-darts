@@ -20,6 +20,12 @@ rules as T6b.
   width, at least 48 px high, label wrapping allowed (U10).
 - Changed `index.html` and `style.css` only if the new button or banner needs it (colours as `:root` variables).
 - Changed tests `tools/camera/tests/test_annotate_static.py` (T6b's static test file).
+- Changed `docs/camera/training.md` (last task of batch 1, root D19): new French section "Dérive et recalibration"
+  with steps K5.0 to K5.4 of root "How Kosmo verifies" (switch to the branch, rebuild, the exact `docker run ...
+  python -m kosmo_camera.drift` line, the tool with `--drift`, R and its undo, "(mesure périmée)", repeat until
+  "Tout sous le seuil : oui", paste the last report). T14 later switches it to the `drift` subcommand.
+- Added test `tools/camera/tests/test_training_doc.py`: the `drift` and `annotate` commands of that section parse
+  with the modules' argument parsers; the `docker run` line has the decision 10 flags and `/data` read-only.
 
 ## Depends on
 T6c.
@@ -37,7 +43,8 @@ CV16 (no external resource, no `innerHTML`, `eval`, `document.write`), D5 (Frenc
 - Static scan of T6b still passes; contrast of the banner colours against the background >= 4.5:1.
 
 ## Done when
-Python checks of root "Test plan" green, `kosmo-detekt` exit 0. Notes record a manual run: golden-like session
+Python checks of root "Test plan" green (including the CI command `python -m pytest -q -m "not slow"` from
+`tools/camera`), `kosmo-detekt` exit 0; the branch is then ready to push (main decides). Notes record a manual run: golden-like session
 with a fake `drift.json`, server started, `curl` of `/api/sessions` shows the flags and `/static/app.js` is served
 (no browser or `node` in the sandbox: say so in the notes; Kosmo checks the page in K5.3).
 
