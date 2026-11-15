@@ -46,3 +46,11 @@ Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
 sonnet. Why: algorithm and criteria fully specified in CV3; the split file is derived and regenerable (no migration).
 
 ## Implementation notes
+- `split.py` works on `SessionInput(name, volleys=((volley index, judged darts), ...), path)`; `from_truth` and
+  `list_sessions` build them from `read_truth`. Tests use generated inputs only.
+- Unit keys in block mode use the block ordinal (position of the volley in the session, divided by 5). A block
+  without judged dart in a judged session is still a unit (0 darts) so `set_of` covers every volley.
+- `Split.session_criteria` / `block_criteria` are not encoded; they feed the printed summary only.
+- Added beyond the task text: `make_lock(split_bytes)` and `--lock FILE` (writes `split-lock.json`); the command
+  refuses to overwrite an existing split or lock (computed once). `check_lock` returns the decoded split.
+- Lock format string: `kosmo-camera-split-lock`; lock `counts` = units and darts per set.
