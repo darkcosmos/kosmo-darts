@@ -108,6 +108,7 @@ class SoundPoolPlayer(context: Context) : SoundPlayer {
             SoundEffect.BUST -> R.raw.sfx_bust
             SoundEffect.ONE_EIGHTY -> R.raw.sfx_one_eighty
             SoundEffect.CLOSED_SECTOR -> R.raw.sfx_closed_cricket_sector
+            SoundEffect.SECTOR_CLOSING -> R.raw.sfx_closed_sector
             SoundEffect.VICTORY -> R.raw.sfx_victory
         }
     }

@@ -14,6 +14,12 @@ sealed interface CricketCue {
     /** AN30, CR15: [dart] gives at least one mark on a target that was already dead before it. */
     data class ClosedSectorHit(val dart: Dart) : CricketCue
 
+    /**
+     * CR17, AN33: [dart] gives at least one mark on a target that was live before it and is dead after it, and does
+     * not win the leg (a winning closing dart is a [DartHit] followed by the [Win] cue).
+     */
+    data class ClosingHit(val dart: Dart) : CricketCue
+
     /** AN29: a dart that gives no mark. */
     data object DartMiss : CricketCue
 
@@ -48,6 +54,7 @@ object CricketCues {
         val dartCue = when {
             CricketMarks.of(dart, after.config).count == 0 -> CricketCue.DartMiss
             before.isClosedSectorHit(dart) -> CricketCue.ClosedSectorHit(dart)
+            after.isClosedSectorHit(dart) && after.state.winnerIndex == null -> CricketCue.ClosingHit(dart)
             else -> CricketCue.DartHit(dart)
         }
         val winner = after.state.winnerIndex
