@@ -32,6 +32,8 @@ CV16 (no external resource, no `innerHTML`, `eval`, `document.write`), D5 (Frenc
 - `KEY_ACTIONS` keys match the T6c action names; no key letter used twice.
 - String table has the picker marker and its `aria-label`, "ancien 1" to "ancien 4" and "(mesure périmée)"; the
   stylesheet gives the recalibration button row `min-height` >= 48px (static check).
+- Stale flags: for a session view with `driftStale` true and a `suggested` dart, the picker label building code
+  keeps the "59 !" marker and its `aria-label` and appends "(mesure périmée)" (string and rendering-function check).
 - Static scan of T6b still passes; contrast of the banner colours against the background >= 4.5:1.
 
 ## Done when
