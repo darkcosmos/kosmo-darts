@@ -20,12 +20,17 @@ import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
  * @param history the History filters and scroll position stored when the process was killed on the History screen, or
  *   `null`; History then comes back over the home screen (HS6).
  */
-fun initialState(load: LoadResult, wasOnGameScreen: Boolean, history: HistorySnapshot? = null): AppState {
+fun initialState(
+    load: LoadResult,
+    wasOnGameScreen: Boolean,
+    history: HistorySnapshot? = null,
+    heatmapPlayer: HeatmapPlayerChoice = ::defaultHeatmapPlayer,
+): AppState {
     val screen = when (val game = load.game) {
         GameLoad.Absent -> Screen.Home().backToHistory(history)
         // R14, R21: after a process kill the game screen comes back, else the home screen offers the saved game.
         is GameLoad.Valid -> game.saved.let {
-            if (wasOnGameScreen) it.toScreen() else Screen.Home(resumableGame = it).backToHistory(history)
+            if (wasOnGameScreen) it.toScreen(heatmapPlayer) else Screen.Home(resumableGame = it).backToHistory(history)
         }
         is GameLoad.Invalid ->
             Screen.Setup(SetupState.prefilled(load.lastSetup, GameMode.X01), isRestoreFailedShown = true)
@@ -41,19 +46,31 @@ private fun Screen.Home.backToHistory(snapshot: HistorySnapshot?): Screen {
 }
 
 /** R14: the screen the saved game was on: the between-legs screen (owner Q6 ii), else the game screen. */
-fun SavedGame.toScreen(): Screen =
-    if (isBetweenLegs) Screen.BetweenLegs(match, journal) else Screen.Game(toGameScreenState(), journal)
+fun SavedGame.toScreen(heatmapPlayer: HeatmapPlayerChoice = ::defaultHeatmapPlayer): Screen =
+    if (isBetweenLegs) {
+        Screen.BetweenLegs(
+            match,
+            journal,
+            heatmapPlayer = match.heatmapPlayerOf(EndScreenKind.BETWEEN_LEGS, heatmapPlayer),
+        )
+    } else {
+        Screen.Game(toGameScreenState(), journal)
+    }
 
 /** R14, R21: the screen the saved Cricket game was on: between legs, else the Cricket game screen. */
-fun SavedCricketGame.toScreen(): Screen =
+fun SavedCricketGame.toScreen(heatmapPlayer: HeatmapPlayerChoice = ::defaultHeatmapPlayer): Screen =
     if (isBetweenLegs) {
-        Screen.CricketBetweenLegs(match, journal)
+        Screen.CricketBetweenLegs(
+            match,
+            journal,
+            heatmapPlayer = match.heatmapPlayerOf(EndScreenKind.BETWEEN_LEGS, heatmapPlayer),
+        )
     } else {
         Screen.CricketGame(toGameScreenState(), journal)
     }
 
 /** R14, R21: the screen the saved game of either mode was on. */
-fun StoredGame.toScreen(): Screen = when (this) {
-    is SavedGame -> toScreen()
-    is SavedCricketGame -> toScreen()
+fun StoredGame.toScreen(heatmapPlayer: HeatmapPlayerChoice = ::defaultHeatmapPlayer): Screen = when (this) {
+    is SavedGame -> toScreen(heatmapPlayer)
+    is SavedCricketGame -> toScreen(heatmapPlayer)
 }

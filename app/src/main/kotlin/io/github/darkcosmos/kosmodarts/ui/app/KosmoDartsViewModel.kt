@@ -55,7 +55,9 @@ class KosmoDartsViewModel(
     val historySnapshot: HistorySnapshot?
         get() = when (val screen = mutableState.value.screen) {
             is Screen.History -> screen.history.snapshot()
-            is Screen.MatchDetail -> screen.list.history.snapshot().copy(detailSessionId = screen.detail.sessionId)
+            // Only History, or the detail opened straight from it, comes back; Profile and head-to-head never do (HS9).
+            is Screen.MatchDetail ->
+                (screen.parent as? Screen.History)?.history?.snapshot()?.copy(detailSessionId = screen.detail.sessionId)
             else -> null
         }
 

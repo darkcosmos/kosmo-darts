@@ -399,7 +399,8 @@ class X01ScreensTest {
         finishGame()
 
         key(EndTags.WINNER).assertTextEquals("ANN")
-        composeRule.onAllNodes(hasClickAction()).assertCountEquals(2)
+        // The two main actions and the two tabs of the tab row (HM9).
+        composeRule.onAllNodes(hasClickAction()).assertCountEquals(4)
         composeRule.onNodeWithText(string(R.string.end_rematch)).assertHasClickAction()
         composeRule.onNodeWithText(string(R.string.home_new_game)).assertHasClickAction()
         composeRule.onNodeWithText(string(R.string.key_undo)).assertDoesNotExist()

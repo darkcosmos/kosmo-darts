@@ -1,7 +1,9 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMatch
+import io.github.darkcosmos.kosmodarts.history.HeadToHeadData
 import io.github.darkcosmos.kosmodarts.history.HistoryFilters
+import io.github.darkcosmos.kosmodarts.history.ProfileStatsData
 import io.github.darkcosmos.kosmodarts.persistence.LastSetups
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.SavedCricketGame
@@ -10,8 +12,10 @@ import io.github.darkcosmos.kosmodarts.persistence.StoredGame
 import io.github.darkcosmos.kosmodarts.ui.cricket.toSavedGame
 import io.github.darkcosmos.kosmodarts.ui.game.ArchiveStatus
 import io.github.darkcosmos.kosmodarts.ui.game.toSavedGame
+import io.github.darkcosmos.kosmodarts.ui.headtohead.HeadToHeadSelections
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
-import io.github.darkcosmos.kosmodarts.ui.players.PlayersRequest
+import io.github.darkcosmos.kosmodarts.ui.profile.ProfileQuery
+import io.github.darkcosmos.kosmodarts.ui.profile.ProfileRequest
 
 /** A change to make on the device after an event (rules R3, R6, R7, R12, R13, R15). */
 sealed interface PersistenceEffect {
@@ -43,10 +47,57 @@ sealed interface PersistenceEffect {
     data class LoadPlayers(val loadId: Int) : PersistenceEffect
 
     /**
-     * PM3 to PM6: run [request] on the database; the answer comes back as [PlayersEvent.Answered], then the last setup
-     * is rewritten by the reducer (PM9), which gives a [SaveLastSetup].
+     * PM3 to PM6, PS7: run [request] of the Profile of [profileId] on the database; the answer comes back as
+     * [ProfileEvent.Answered], then the last setup is rewritten by the reducer (PM9), which gives a [SaveLastSetup].
      */
-    data class RunPlayersRequest(val request: PlayersRequest) : PersistenceEffect
+    data class RunProfileRequest(val profileId: Long, val request: ProfileRequest) : ProfileEffect
+
+    /**
+     * PM3, PM4: read the profiles list for the actions of the Profile of [profileId]; the answer comes back as
+     * [ProfileEvent.RosterLoaded] with the same [loadId].
+     */
+    data class LoadProfileRoster(val profileId: Long, val loadId: Int) : ProfileEffect
+
+    /**
+     * HS7, ST10: read the statistics input of the Profile of [profileId]; the answer comes back as
+     * [ProfileEvent.Loaded] with the same [loadId].
+     */
+    data class LoadProfile(val profileId: Long, val loadId: Int) : ProfileEffect
+
+    /**
+     * ST7: compute the figures of [data] for [query] off the main thread; the answer comes back as
+     * [ProfileEvent.FiguresComputed] with the same [figuresId].
+     */
+    data class ComputeProfileFigures(
+        val profileId: Long,
+        val figuresId: Int,
+        val data: ProfileStatsData,
+        val query: ProfileQuery,
+    ) : ProfileEffect
+
+    /**
+     * HH1: read the picker of the head-to-head of profile [a]; the answer comes back as
+     * [HeadToHeadEvent.PickerLoaded] with the same [loadId].
+     */
+    data class LoadHeadToHeadPicker(val a: Long, val loadId: Int) : HeadToHeadEffect
+
+    /**
+     * HH2, ST10: read the common matches of [a] and [b]; the answer comes back as [HeadToHeadEvent.PairLoaded] with
+     * the same [loadId].
+     */
+    data class LoadHeadToHeadPair(val a: Long, val b: Long, val loadId: Int) : HeadToHeadEffect
+
+    /**
+     * ST7: compute the result of [data] for [selections] off the main thread; the answer comes back as
+     * [HeadToHeadEvent.ResultComputed] with the same [figuresId].
+     */
+    data class ComputeHeadToHead(
+        val a: Long,
+        val figuresId: Int,
+        val data: HeadToHeadData,
+        val selections: HeadToHeadSelections,
+        val now: Long,
+    ) : HeadToHeadEffect
 
     /**
      * AR1, AR2: write [archived] to the history with one ARGB color per player, then delete the saved game, only if the
@@ -72,7 +123,7 @@ fun savedGameOf(state: AppState): StoredGame? = when (val screen = state.screen)
     is Screen.Settings -> screen.home.resumableGame
     // The same for History (HS1): it is read-only and leaves the saved game as it is.
     is Screen.History -> screen.home.resumableGame
-    is Screen.MatchDetail -> screen.list.home.resumableGame
+    is Screen.Stacked -> screen.homeOfStack()?.resumableGame
     // The same for Players (PM2): it never touches the saved game, it only reads it to lock names (PM8).
     is Screen.Players -> screen.home.resumableGame
     // R12, R20, R21: a Cricket game is saved like an X01 one, between legs included, and deleted at its end.
@@ -103,14 +154,13 @@ fun persistenceEffects(before: AppState, after: AppState): List<PersistenceEffec
         loadHistoryEffect(before, after),
         loadMatchEffect(before, after),
         loadPlayersEffect(before, after),
-        playersRequestEffect(before, after),
-    )
+    ) + profileEffects(before, after) + headToHeadEffects(before, after)
 }
 
 /** The History list a screen shows or hides behind the detail (HS6), or `null`. */
 private fun historyOf(screen: Screen): HistoryState? = when (screen) {
     is Screen.History -> screen.history
-    is Screen.MatchDetail -> screen.list.history
+    is Screen.Stacked -> screen.historyListOfStack()?.history
     else -> null
 }
 
@@ -194,7 +244,8 @@ fun Persistence.applyEffects(effects: List<PersistenceEffect>, onEvent: (AppEven
                 loadMatch(effect.sessionId) { onEvent(AppEvent.MatchDetailLoaded(effect.loadId, it)) }
             is PersistenceEffect.LoadPlayers ->
                 playersAccess.load { onEvent(PlayersEvent.Loaded(effect.loadId, it)) }
-            is PersistenceEffect.RunPlayersRequest -> runPlayersRequest(effect.request, onEvent)
+            is ProfileEffect -> runProfileEffect(effect, onEvent)
+            is HeadToHeadEffect -> runHeadToHeadEffect(effect, onEvent)
             is PersistenceEffect.ArchiveMatch ->
                 archiveMatch(effect.archived, effect.colorsArgb) { isArchived ->
                     onEvent(if (isArchived) AppEvent.ArchiveSucceeded else AppEvent.ArchiveFailed)

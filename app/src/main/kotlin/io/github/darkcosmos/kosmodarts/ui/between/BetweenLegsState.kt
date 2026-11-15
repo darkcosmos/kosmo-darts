@@ -1,6 +1,8 @@
 package io.github.darkcosmos.kosmodarts.ui.between
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
+import io.github.darkcosmos.kosmodarts.engine.stats.CricketMatchMpr
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.match.MatchScore
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
@@ -95,12 +97,14 @@ data class BetweenLegsState(
         }
 
         /**
-         * The screen for the Cricket [match], whose last leg was just confirmed (CR26).
+         * The screen for the Cricket [match], whose last leg was just confirmed (CR26); its MPR counts useful marks
+         * (CR13) and is read from the match [journal].
          *
          * @throws IllegalArgumentException if [match] has no confirmed leg.
          */
-        fun of(match: CricketMatch): BetweenLegsState {
+        fun of(match: CricketMatch, journal: MatchJournal): BetweenLegsState {
             val score = match.score
+            val mprs = CricketMatchMpr.of(match, journal)
             val lastWinner = requireNotNull(score.legWinners.lastOrNull()) { "No confirmed leg" }
             val before = MatchScore(score.format, score.playerCount, score.legWinners.dropLast(1))
             val names = match.config.players
@@ -119,7 +123,7 @@ data class BetweenLegsState(
                         color = match.colors[player],
                         setsWon = score.setsWon[player].takeIf { match.format.hasSets },
                         legsWon = score.legsWonInSet[player],
-                        average = match.playerStats[player].marksPerRound,
+                        average = mprs[player],
                         isLegWinner = player == lastWinner,
                     )
                 },

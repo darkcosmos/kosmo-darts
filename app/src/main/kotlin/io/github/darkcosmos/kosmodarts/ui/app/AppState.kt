@@ -2,6 +2,8 @@ package io.github.darkcosmos.kosmodarts.ui.app
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
+import io.github.darkcosmos.kosmodarts.engine.board.BoardZone
+import io.github.darkcosmos.kosmodarts.engine.journal.LegSetup
 import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.CheckoutRule
@@ -9,7 +11,6 @@ import io.github.darkcosmos.kosmodarts.engine.x01.Dart
 import io.github.darkcosmos.kosmodarts.engine.x01.Multiplier
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
-import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.engine.archive.ArchivedMode
 import io.github.darkcosmos.kosmodarts.history.DbResult
 import io.github.darkcosmos.kosmodarts.history.HistoryList
@@ -23,6 +24,8 @@ import io.github.darkcosmos.kosmodarts.ui.game.GameScreenState
 import io.github.darkcosmos.kosmodarts.ui.history.HistoryState
 import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailState
 import io.github.darkcosmos.kosmodarts.ui.players.PlayersState
+import io.github.darkcosmos.kosmodarts.ui.headtohead.HeadToHeadState
+import io.github.darkcosmos.kosmodarts.ui.profile.ProfileState
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 
 /** The screen on display, with its content. There is no navigation library: the screen is plain state. */
@@ -69,10 +72,53 @@ sealed interface Screen {
     data class Players(val home: Home, val players: PlayersState = PlayersState()) : Screen
 
     /**
-     * The read-only detail of one archived match (HS5, HS6). It keeps the whole [list] screen it came from, so that
-     * Back returns to History with its filters, matches and scroll position, without a new read.
+     * The read-only detail of one archived match (HS5, HS6). It keeps the whole [parent] screen it came from (History,
+     * later a Profile or a head-to-head), so that Back returns to it as it was left, without a new read (HS9).
      */
-    data class MatchDetail(val list: History, val detail: MatchDetailState) : Screen
+    data class MatchDetail(override val parent: Screen, val detail: MatchDetailState) : Stacked {
+        override fun reparented(parent: Screen): Stacked = copy(parent = parent)
+
+        override fun isSameAs(other: Screen): Boolean =
+            other is MatchDetail && other.detail.sessionId == detail.sessionId
+    }
+
+    /**
+     * The Profile of one player (HS9). [profile] holds the read, the selections and the figures (PS2 to PS6); a caller
+     * opens it with a [ProfileState] whose `now` is the event's clock reading.
+     */
+    data class Profile(override val parent: Screen, val profileId: Long, val profile: ProfileState = ProfileState()) :
+        Stacked {
+        override fun reparented(parent: Screen): Stacked = copy(parent = parent)
+
+        override fun isSameAs(other: Screen): Boolean = other is Profile && other.profileId == profileId
+    }
+
+    /**
+     * The head-to-head of the ordered pair [a], [b] (HS9: (B, A) is another screen than (A, B)); [b] is `null` while
+     * the picker of the partner shows (HH1). [state] holds the reads, the selections and the result (HH9); a caller
+     * opens it with a [HeadToHeadState] whose `now` is the event's clock reading.
+     */
+    data class HeadToHead(
+        override val parent: Screen,
+        val a: Long,
+        val b: Long? = null,
+        val state: HeadToHeadState = HeadToHeadState(),
+    ) : Stacked {
+        override fun reparented(parent: Screen): Stacked = copy(parent = parent)
+
+        override fun isSameAs(other: Screen): Boolean = other is HeadToHead && other.a == a && other.b == b
+    }
+
+    /** A screen of the history back stack (HS9): it opens over its [parent], and Back returns there. */
+    sealed interface Stacked : Screen {
+        val parent: Screen
+
+        /** The same screen opened over [parent]. */
+        fun reparented(parent: Screen): Stacked
+
+        /** Whether [other] is the same profile, ordered pair or match, so that opening it must not stack a copy. */
+        fun isSameAs(other: Screen): Boolean
+    }
 
     /**
      * Between two legs of a match, after "Finish leg" or "Finish set" (docs/rules/match.md, M16). [match] already has
@@ -82,22 +128,51 @@ sealed interface Screen {
      * @property isAbandonDialogShown whether the "Abandon the game?" confirmation is open (owner Q6 i).
      * @property checkout the winning visit of the leg just confirmed, shown in the winner's zone; `null` after a resume
      *   on this screen (not saved).
+     * @property endTab the selected tab (HM9); [endTab], [heatmapPlayer] and [heatmapZone] are not saved (D9, HM10).
+     * @property heatmapPlayer the player whose last leg the heatmap shows; the leg winner by default (N2 A, D7).
+     * @property heatmapZone the zone of the band (HM6), or `null`.
      */
     data class BetweenLegs(
         val match: X01Match,
-        val journal: MatchJournal,
+        override val journal: MatchJournal,
         val isAbandonDialogShown: Boolean = false,
         val checkout: CheckoutSummary? = null,
-    ) : Screen
+        override val endTab: EndTab = EndTab.RESULT,
+        override val heatmapPlayer: Int = match.heatmapPlayerOf(EndScreenKind.BETWEEN_LEGS),
+        override val heatmapZone: BoardZone? = null,
+    ) : EndHeatmapScreen {
+        override val kind: EndScreenKind get() = EndScreenKind.BETWEEN_LEGS
+        override val legSetup: LegSetup get() = LegSetup.X01(match.config)
+        override val playerNames: List<String> get() = match.config.players
+        override val playerColors: List<PlayerColor> get() = match.colors
 
-    /** End of a finished match (M17); a single game is a match of one leg. */
-    data class End(val match: X01Match) : Screen {
-        /** The end of a single game (M5): [game] is its only, finished, leg. */
-        constructor(game: X01Game) : this(X01Match(X01MatchConfig(game.config), emptyList(), game))
+        override fun withHeatmap(tab: EndTab, player: Int, zone: BoardZone?): Screen =
+            copy(endTab = tab, heatmapPlayer = player, heatmapZone = zone)
+    }
 
+    /**
+     * End of a finished match (M17); a single game is a match of one leg. [journal] is the match journal, which the
+     * heatmap of the last leg reads (HM9); the tab, player and zone are like [BetweenLegs]'s, the match winner is the
+     * default player (N2 A).
+     */
+    data class End(
+        val match: X01Match,
+        override val journal: MatchJournal,
+        override val endTab: EndTab = EndTab.RESULT,
+        override val heatmapPlayer: Int = match.heatmapPlayerOf(EndScreenKind.MATCH_END),
+        override val heatmapZone: BoardZone? = null,
+    ) : EndHeatmapScreen {
         /** The last leg, the one that decided the match. */
         val game: X01Game
             get() = match.currentLeg
+
+        override val kind: EndScreenKind get() = EndScreenKind.MATCH_END
+        override val legSetup: LegSetup get() = LegSetup.X01(match.config)
+        override val playerNames: List<String> get() = match.config.players
+        override val playerColors: List<PlayerColor> get() = match.colors
+
+        override fun withHeatmap(tab: EndTab, player: Int, zone: BoardZone?): Screen =
+            copy(endTab = tab, heatmapPlayer = player, heatmapZone = zone)
     }
 
     /**
@@ -123,12 +198,40 @@ sealed interface Screen {
      */
     data class CricketBetweenLegs(
         val match: CricketMatch,
-        val journal: MatchJournal,
+        override val journal: MatchJournal,
         val isAbandonDialogShown: Boolean = false,
-    ) : Screen
+        override val endTab: EndTab = EndTab.RESULT,
+        override val heatmapPlayer: Int = match.heatmapPlayerOf(EndScreenKind.BETWEEN_LEGS),
+        override val heatmapZone: BoardZone? = null,
+    ) : EndHeatmapScreen {
+        override val kind: EndScreenKind get() = EndScreenKind.BETWEEN_LEGS
+        override val legSetup: LegSetup get() = LegSetup.Cricket(match.config)
+        override val playerNames: List<String> get() = match.config.players
+        override val playerColors: List<PlayerColor> get() = match.colors
 
-    /** End of a finished Cricket match (M17, CR27); a single game is a match of one leg. [match] is not confirmed. */
-    data class CricketEnd(val match: CricketMatch) : Screen
+        override fun withHeatmap(tab: EndTab, player: Int, zone: BoardZone?): Screen =
+            copy(endTab = tab, heatmapPlayer = player, heatmapZone = zone)
+    }
+
+    /**
+     * End of a finished Cricket match (M17, CR27); a single game is a match of one leg. [match] is not confirmed;
+     * [journal] is the match journal, which the MPR needs (CR13) and the heatmap of the last leg reads (HM9).
+     */
+    data class CricketEnd(
+        val match: CricketMatch,
+        override val journal: MatchJournal,
+        override val endTab: EndTab = EndTab.RESULT,
+        override val heatmapPlayer: Int = match.heatmapPlayerOf(EndScreenKind.MATCH_END),
+        override val heatmapZone: BoardZone? = null,
+    ) : EndHeatmapScreen {
+        override val kind: EndScreenKind get() = EndScreenKind.MATCH_END
+        override val legSetup: LegSetup get() = LegSetup.Cricket(match.config)
+        override val playerNames: List<String> get() = match.config.players
+        override val playerColors: List<PlayerColor> get() = match.colors
+
+        override fun withHeatmap(tab: EndTab, player: Int, zone: BoardZone?): Screen =
+            copy(endTab = tab, heatmapPlayer = player, heatmapZone = zone)
+    }
 }
 
 /** Whether [this] is a game screen of any mode, the between-legs screens included (R1, R14; ADR 0002). */
@@ -264,6 +367,15 @@ sealed interface AppEvent {
 
     data object Rematch : AppEvent
 
+    /** HM9: a tab of the between-legs or end screen. */
+    data class EndTabSelected(val tab: EndTab) : AppEvent
+
+    /** HM9: the colour chip of the player at [index] on the "Leg heatmap" tab. */
+    data class HeatmapPlayerSelected(val index: Int) : AppEvent
+
+    /** HM6, HM9: a tap on [zone] of the board of the "Leg heatmap" tab. */
+    data class HeatmapZoneTapped(val zone: BoardZone) : AppEvent
+
     /** The gear on the home screen (AN13). */
     data object SettingsTapped : AppEvent
 
@@ -294,6 +406,9 @@ sealed interface AppEvent {
     /** The answer to read [loadId] of History (HS7); an answer to an older read is ignored. */
     data class HistoryLoaded(val loadId: Int, val result: DbResult<HistoryList>) : AppEvent
 
+    /** HS8: a name of the match detail was tapped; the Profile of [profileId] opens (never for a deleted player). */
+    data class DetailPlayerTapped(val profileId: Long) : AppEvent
+
     /** "Retry" after a failed read of the match detail (HS7). */
     data object MatchDetailRetryTapped : AppEvent
 
@@ -308,4 +423,33 @@ sealed interface AppEvent {
 
     /** "Install a voice" on the "no offline voice" message: it also closes it (AN16, AN17). */
     data object InstallVoiceTapped : AppEvent
+}
+
+/**
+ * HS9: opens [target] over this screen. A screen equal to [target] already in the chain (this one included) is
+ * returned as it was left, which drops the screens above it: never two copies. Otherwise [target] is stacked on this.
+ */
+fun Screen.open(target: Screen.Stacked): Screen {
+    var candidate: Screen? = this
+    while (candidate != null) {
+        if (target.isSameAs(candidate)) return candidate
+        candidate = (candidate as? Screen.Stacked)?.parent
+    }
+    return target.reparented(this)
+}
+
+/** The home screen at the bottom of the stack this screen belongs to, or `null` outside the history screens. */
+fun Screen.homeOfStack(): Screen.Home? = when (this) {
+    is Screen.Home -> this
+    is Screen.History -> home
+    is Screen.Players -> home
+    is Screen.Stacked -> parent.homeOfStack()
+    else -> null
+}
+
+/** The History list at the bottom of the stack of this screen, or `null` when it does not come from History (HS6). */
+fun Screen.historyListOfStack(): Screen.History? = when (this) {
+    is Screen.History -> this
+    is Screen.Stacked -> parent.historyListOfStack()
+    else -> null
 }

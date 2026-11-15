@@ -36,6 +36,9 @@ data class MatchDetailState(
         else -> copy(content = MatchDetailContent.Failed)
     }
 
+    /** PS7: asks for a new read of the match (a profile was renamed or merged); what is shown stays until then. */
+    fun reloaded(): MatchDetailState = copy(loadId = loadId + 1)
+
     /** "Retry" (HS7): reads again; nothing happens unless the last read failed. */
     fun retry(): MatchDetailState = if (content == MatchDetailContent.Failed) {
         copy(content = MatchDetailContent.Loading, loadId = loadId + 1)

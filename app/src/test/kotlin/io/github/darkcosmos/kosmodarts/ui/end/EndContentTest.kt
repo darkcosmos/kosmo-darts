@@ -1,6 +1,7 @@
 package io.github.darkcosmos.kosmodarts.ui.end
 
 import io.github.darkcosmos.kosmodarts.persistence.CricketSaveFixtures
+import io.github.darkcosmos.kosmodarts.testing.MatchJournals
 import io.github.darkcosmos.kosmodarts.persistence.MatchFixtures
 import io.github.darkcosmos.kosmodarts.persistence.confirmLegsWonBy
 import io.github.darkcosmos.kosmodarts.persistence.playLegWonBy
@@ -25,13 +26,15 @@ class EndContentTest {
     @Test
     fun `CR27 the Cricket rows give the last leg points, the MPR and the darts`() {
         val finished = CricketSaveFixtures.match("Ann", "Bob", "Cid").playLegWonByScoring20(1)
-        val rows = endRows(finished)
+        val rows = endRows(finished, MatchJournals.of(finished))
 
         assertEquals(listOf("Bob", "Ann", "Cid"), rows.map(EndRow::name))
         assertEquals(listOf(1, 2, 2), rows.map(EndRow::rank))
         assertEquals(listOf(true, false, false), rows.map(EndRow::isWinner))
         assertEquals(listOf(20, 0, 0), rows.map(EndRow::points))
-        assertEquals(finished.playerStats[1].marksPerRound, rows[0].threeDartAverage)
+        // CR13: Bob closes every target in 10 darts, 22 useful marks (nobody else closes anything); Ann and Cid: 0.
+        assertEquals(22 * 3.0 / 10, rows[0].threeDartAverage!!, 0.0)
+        assertEquals(listOf(0.0, 0.0), rows.drop(1).map(EndRow::threeDartAverage))
         assertEquals(finished.playerStats[1].dartsThrown, rows[0].dartsThrown)
         assertNull(rows[0].legsWon)
         assertNull(rows[0].setsWon)
@@ -40,7 +43,8 @@ class EndContentTest {
     /** M10, CR16 (review T8): two players equal on sets, legs, points and board marks share the second place. */
     @Test
     fun `M10 a full tie of the losers gives an ex aequo row`() {
-        val rows = endRows(CricketSaveFixtures.match("Ann", "Bob", "Cid").playLegWonBy(2))
+        val finished = CricketSaveFixtures.match("Ann", "Bob", "Cid").playLegWonBy(2)
+        val rows = endRows(finished, MatchJournals.of(finished))
 
         assertEquals(listOf(1, 2, 2), rows.map(EndRow::rank))
         assertEquals(listOf("Cid", "Ann", "Bob"), rows.map(EndRow::name))
@@ -49,7 +53,8 @@ class EndContentTest {
     /** CR27: no PTS column in a solo game. */
     @Test
     fun `CR27 a solo game has no points`() {
-        val rows = endRows(CricketSaveFixtures.match("Ann").playLegWonByScoring20(0))
+        val finished = CricketSaveFixtures.match("Ann").playLegWonByScoring20(0)
+        val rows = endRows(finished, MatchJournals.of(finished))
 
         assertEquals(listOf(null), rows.map(EndRow::points))
     }
@@ -59,7 +64,7 @@ class EndContentTest {
     fun `M17 a Cricket match has legs over the match and no set column with one set`() {
         val finished = CricketSaveFixtures.match("Ann", "Bob", legsPerSet = 2)
             .confirmLegsWonBy(1, 0).playLegWonBy(0)
-        val rows = endRows(finished)
+        val rows = endRows(finished, MatchJournals.of(finished))
 
         assertEquals(listOf(2, 1), rows.map(EndRow::legsWon))
         assertTrue(rows.all { it.setsWon == null })
@@ -68,6 +73,7 @@ class EndContentTest {
     /** M17: while the match is in progress there is no ranking. */
     @Test
     fun `no rows while the match is in progress`() {
-        assertTrue(endRows(CricketSaveFixtures.match("Ann", "Bob")).isEmpty())
+        val match = CricketSaveFixtures.match("Ann", "Bob")
+        assertTrue(endRows(match, MatchJournals.of(match)).isEmpty())
     }
 }

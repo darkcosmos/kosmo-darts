@@ -154,7 +154,8 @@ class PlayersRepositoryTest {
         play("Cleo", "Dan")
         val ana = db.playersDao().find(idOf("Ana"))!!
         val cleo = db.playersDao().find(idOf("Cleo"))!!
-        db.playersDao().updateResetAt(ana.id, 777L)
+        val realReset = 9_999_999_999_999L
+        db.playersDao().updateResetAt(ana.id, realReset)
 
         assertEquals(DbResult.Ok(MergeResult.MERGED), repository.merge(sourceId = ana.id, targetId = cleo.id))
 
@@ -163,10 +164,24 @@ class PlayersRepositoryTest {
         assertEquals("Cleo", target.name)
         assertEquals(maxOf(ana.lastUsedAt, cleo.lastUsedAt), target.lastUsedAt)
         assertEquals(minOf(ana.createdAt, cleo.createdAt), target.createdAt)
-        assertEquals(777L.coerceAtLeast(cleo.resetAt), target.resetAt)
+        assertEquals(realReset, target.resetAt)
         assertEquals(2, list().first { it.id == cleo.id }.matchCount)
         val firstSession = db.historyDao().matchSummaries(null, null).first { it.endedAt == firstEnd }.sessionId
         assertEquals(cleo.id, participants(firstSession).first())
+    }
+
+    @Test
+    fun `PM4 merge of two profiles never reset stores the earliest creation as reset date`() {
+        play("Ana", "Bob")
+        play("Cleo", "Dan")
+        val ana = db.playersDao().find(idOf("Ana"))!!
+        val cleo = db.playersDao().find(idOf("Cleo"))!!
+
+        assertEquals(DbResult.Ok(MergeResult.MERGED), repository.merge(sourceId = ana.id, targetId = cleo.id))
+
+        val target = db.playersDao().find(cleo.id)!!
+        assertEquals(minOf(ana.createdAt, cleo.createdAt), target.createdAt)
+        assertEquals(target.createdAt, target.resetAt)
     }
 
     @Test

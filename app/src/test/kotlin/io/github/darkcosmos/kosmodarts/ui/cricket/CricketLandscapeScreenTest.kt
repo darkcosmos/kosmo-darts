@@ -17,6 +17,7 @@ import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.darkcosmos.kosmodarts.testing.MatchJournals
 import io.github.darkcosmos.kosmodarts.MainActivity
 import io.github.darkcosmos.kosmodarts.TestDevices
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketTarget
@@ -67,7 +68,8 @@ class CricketLandscapeScreenTest {
     private fun show(state: CricketGameScreenState) {
         composeRule.runOnUiThread {
             val view = ComposeView(composeRule.activity)
-            view.setContent { KosmoDartsTheme { CricketGameScreen(state, onEvent = {}) } }
+            val journal = MatchJournals.of(state.match)
+            view.setContent { KosmoDartsTheme { CricketGameScreen(state, journal, onEvent = {}) } }
             composeRule.activity.setContentView(view)
             this.view = view
         }
@@ -496,7 +498,8 @@ class CricketLandscapeScreenTest {
         fun showWithEvents(state: CricketGameScreenState) {
             composeRule.runOnUiThread {
                 val view = ComposeView(composeRule.activity)
-                view.setContent { KosmoDartsTheme { CricketGameScreen(state, onEvent = { events += it }) } }
+                val journal = MatchJournals.of(state.match)
+                view.setContent { KosmoDartsTheme { CricketGameScreen(state, journal, onEvent = { events += it }) } }
                 composeRule.activity.setContentView(view)
             }
             composeRule.waitForIdle()

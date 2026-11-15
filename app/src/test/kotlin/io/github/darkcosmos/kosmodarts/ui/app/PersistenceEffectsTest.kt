@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.endScreen
 import io.github.darkcosmos.kosmodarts.testing.startedJournal
 import io.github.darkcosmos.kosmodarts.testing.reduce
 import io.github.darkcosmos.kosmodarts.testing.savedGame
@@ -158,7 +159,7 @@ class PersistenceEffectsTest {
     fun `R7 Rematch saves the rotated setup and the new game`() {
         val three = X01Config(listOf("Ann", "Bob", "Cid"))
         val end = AppState(
-            screen = Screen.End(X01Game(three, emptyList())),
+            screen = endScreen(X01Game(three, emptyList())),
             lastSetup = X01MatchConfig(three).toLastSetups(),
         )
         val rotated = X01Config(listOf("Bob", "Cid", "Ann"))
@@ -183,7 +184,7 @@ class PersistenceEffectsTest {
         assertEquals(saved, savedGameOf(AppState(screen = Screen.Home(resumableGame = saved))))
         assertNull(savedGameOf(AppState(screen = Screen.Home())))
         assertNull(savedGameOf(AppState(screen = Screen.Setup(SetupState()))))
-        assertNull(savedGameOf(AppState(screen = Screen.End(saved.game))))
+        assertNull(savedGameOf(AppState(screen = endScreen(saved.game))))
     }
 
     @Test

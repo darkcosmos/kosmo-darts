@@ -1,6 +1,8 @@
 package io.github.darkcosmos.kosmodarts.ui.end
 
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
+import io.github.darkcosmos.kosmodarts.engine.stats.CricketMatchMpr
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerColor
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Game
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Match
@@ -54,11 +56,12 @@ fun endRows(match: X01Match): List<EndRow> {
 
 /**
  * End screen ranking of a finished Cricket match, in the engine order (M10, CR16, CR27). The `threeDartAverage` of a
- * row holds the marks per round (CR13). `points` are those of the last leg (CR27), `null` in a solo game.
- * Empty while the match is in progress.
+ * row holds the marks per round on useful marks (CR13), read from the match [journal]. `points` are those of the last
+ * leg (CR27), `null` in a solo game. Empty while the match is in progress.
  */
-fun endRows(match: CricketMatch): List<EndRow> {
+fun endRows(match: CricketMatch, journal: MatchJournal): List<EndRow> {
     val score = match.finalScore ?: return emptyList()
+    val mprs = CricketMatchMpr.of(match, journal)
     val format = match.format
     val lastLeg = match.currentLeg.state.players
     val isSolo = match.config.players.size == 1
@@ -68,7 +71,7 @@ fun endRows(match: CricketMatch): List<EndRow> {
         EndRow(
             rank = rank.rank,
             name = match.config.players[player],
-            threeDartAverage = stats.marksPerRound,
+            threeDartAverage = mprs[player],
             dartsThrown = stats.dartsThrown,
             isWinner = player == score.winnerIndex,
             setsWon = score.setsWon[player].takeIf { format.hasSets },

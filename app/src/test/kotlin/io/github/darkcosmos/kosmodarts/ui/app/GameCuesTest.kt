@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.endScreen
 import io.github.darkcosmos.kosmodarts.testing.reduce
 import io.github.darkcosmos.kosmodarts.testing.gameScreen
 import io.github.darkcosmos.kosmodarts.engine.x01.Dart
@@ -77,7 +78,7 @@ class GameCuesTest {
     /** AN4: Rematch announces the new first player (the second player of the last game). */
     @Test
     fun `AN4 rematch announces the new first player`() {
-        val end = AppState(screen = Screen.End(SaveFixtures.WAITING_CHECKOUT.game))
+        val end = AppState(screen = endScreen(SaveFixtures.WAITING_CHECKOUT.game))
         val first = SaveFixtures.WAITING_CHECKOUT.game.config.players.let { if (it.size > 1) it[1] else it[0] }
         val cues = cuesOf(end, AppEvent.Rematch)
         assertEquals(1, cues.size)

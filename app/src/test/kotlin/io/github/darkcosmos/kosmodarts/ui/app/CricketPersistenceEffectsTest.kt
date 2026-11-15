@@ -25,6 +25,7 @@ class CricketPersistenceEffectsTest {
     private val reducer = AppReducer(Random(0))
 
     private val duel = CricketSaveFixtures.match("Ann", "Bob", legsPerSet = 2)
+    private val finishedDuel = duel.confirmLegsWonBy(0).playLegWonBy(0)
 
     private fun effectsOf(before: AppState, event: AppEvent): List<PersistenceEffect> =
         persistenceEffects(before, reducer.reduce(before, event))
@@ -113,7 +114,7 @@ class CricketPersistenceEffectsTest {
 
     @Test
     fun `R22 Rematch saves the rotated setup and the new game`() {
-        val end = AppState(screen = Screen.CricketEnd(duel.confirmLegsWonBy(0).playLegWonBy(0)))
+        val end = AppState(screen = Screen.CricketEnd(finishedDuel, MatchJournals.of(finishedDuel)))
         val rematch = reducer.reduce(end, AppEvent.Rematch)
         val rotated = cricketRematchSetup(duel)
 

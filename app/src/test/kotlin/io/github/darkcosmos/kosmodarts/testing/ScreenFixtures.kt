@@ -78,3 +78,11 @@ fun cricketBetweenLegs(
 
 /** The journal of a match just started by "Start" or "Rematch" with [TEST_STAMP]: its id and start, no dart. */
 fun startedJournal(): MatchJournal = MatchJournal(TEST_STAMP.matchId, TEST_STAMP.at)
+
+fun endScreen(match: X01Match, journal: MatchJournal = MatchJournals.of(match)): Screen.End = Screen.End(match, journal)
+
+/** The end of a single game (M5): [game] is its only, finished, leg. */
+fun endScreen(game: X01Game, journal: MatchJournal? = null): Screen.End {
+    val match = X01Match(X01MatchConfig(game.config), emptyList(), game)
+    return endScreen(match, journal ?: MatchJournals.of(match))
+}

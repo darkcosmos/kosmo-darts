@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.darkcosmos.kosmodarts.ui.components.ScreenTopBar
 import io.github.darkcosmos.kosmodarts.ui.layout.ScreenLayoutPolicy
@@ -32,6 +33,7 @@ fun HistoryScaffold(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     backTag: String = HistoryTags.BACK,
+    maxWidth: Dp = ScreenLayoutPolicy.CONTENT_MAX_WIDTH.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Box(
@@ -45,7 +47,7 @@ fun HistoryScaffold(
             modifier = Modifier
                 .safeDrawingPadding()
                 .fillMaxHeight()
-                .widthIn(max = ScreenLayoutPolicy.CONTENT_MAX_WIDTH.dp)
+                .widthIn(max = maxWidth)
                 .fillMaxWidth()
                 .padding(
                     horizontal = ScreenLayoutPolicy.HORIZONTAL_MARGIN.dp,

@@ -5,6 +5,7 @@ import io.github.darkcosmos.kosmodarts.engine.x01.X01MatchConfig
 import io.github.darkcosmos.kosmodarts.persistence.GameLoad
 import io.github.darkcosmos.kosmodarts.persistence.LoadResult
 import io.github.darkcosmos.kosmodarts.persistence.SaveFixtures
+import io.github.darkcosmos.kosmodarts.testing.endScreen
 import io.github.darkcosmos.kosmodarts.settings.AudioSettings
 import io.github.darkcosmos.kosmodarts.settings.AudioSettingsRepository
 import io.github.darkcosmos.kosmodarts.settings.AudioSettingsStore
@@ -56,7 +57,7 @@ class NoVoiceNoticeTest {
 
     @Test
     fun `AN16 after a rematch, the message opens`() {
-        val viewModel = viewModel(AppState(screen = Screen.End(SaveFixtures.WAITING_CHECKOUT.game)))
+        val viewModel = viewModel(AppState(screen = endScreen(SaveFixtures.WAITING_CHECKOUT.game)))
         viewModel.onEvent(AppEvent.Rematch)
         viewModel.onEvent(AppEvent.VoiceUnavailable(canInstall = true))
         assertEquals(NoVoiceNotice(true), viewModel.notice)

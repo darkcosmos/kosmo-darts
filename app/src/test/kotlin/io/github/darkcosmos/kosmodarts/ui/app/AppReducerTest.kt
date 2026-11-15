@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.endScreen
 import io.github.darkcosmos.kosmodarts.testing.TEST_STAMP
 import io.github.darkcosmos.kosmodarts.testing.startedJournal
 import io.github.darkcosmos.kosmodarts.testing.reduce
@@ -217,7 +218,8 @@ class AppReducerTest {
     fun finishGameOpensTheEndScreen() {
         val state = inGame(singleOut301, winningDarts).after(*finishEvents)
 
-        assertEquals(Screen.End(X01Game(singleOut301, winningDarts + Dart.single(1))), state.screen)
+        val journal = (state.screen as Screen.End).journal
+        assertEquals(endScreen(X01Game(singleOut301, winningDarts + Dart.single(1)), journal), state.screen)
     }
 
     @Test

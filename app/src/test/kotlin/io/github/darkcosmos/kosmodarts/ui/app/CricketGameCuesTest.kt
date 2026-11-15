@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.MatchJournals
 import io.github.darkcosmos.kosmodarts.testing.TEST_STAMP
 import io.github.darkcosmos.kosmodarts.testing.reduce
 import io.github.darkcosmos.kosmodarts.testing.cricketGameScreen
@@ -25,6 +26,7 @@ class CricketGameCuesTest {
     private val reducer = AppReducer(Random(0))
 
     private val duel = CricketSaveFixtures.match("Ann", "Bob", legsPerSet = 2)
+    private val finishedDuel = duel.confirmLegsWonBy(0).playLegWonBy(0)
 
     private fun inGame(match: CricketMatch = duel, isAwaiting: Boolean = false) =
         AppState(screen = cricketGameScreen(CricketGameScreenState(match, isAwaitingConfirmation = isAwaiting)))
@@ -94,7 +96,7 @@ class CricketGameCuesTest {
     fun `AN31 a new match and a rematch announce who throws first`() {
         val start = newCricketMatchState(duel.matchConfig, previous = null, stamp = TEST_STAMP)
         val cues = cricketGameCues(AppState(screen = Screen.Setup(SetupState())), AppEvent.StartRequested, start)
-        val end = AppState(screen = Screen.CricketEnd(duel.confirmLegsWonBy(0).playLegWonBy(0)))
+        val end = AppState(screen = Screen.CricketEnd(finishedDuel, MatchJournals.of(finishedDuel)))
 
         assertEquals(listOf(CricketCue.TurnStart(0, "Ann", isGameStart = true)), cues)
         assertEquals(listOf(CricketCue.TurnStart(0, "Bob", isGameStart = true)), cuesOf(end, AppEvent.Rematch))

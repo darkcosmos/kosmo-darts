@@ -38,7 +38,7 @@ private val BAND_GAP = 12.dp
  * zone (name, MPR or "VICTOIRE", the three dart cells at the right end), which takes the width the title leaves.
  */
 @Composable
-internal fun CricketTopBand(game: CricketGameScreenState, modifier: Modifier = Modifier) {
+internal fun CricketTopBand(game: CricketGameScreenState, mprs: List<Double?>, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(BAND_GAP),
@@ -53,7 +53,7 @@ internal fun CricketTopBand(game: CricketGameScreenState, modifier: Modifier = M
             .padding(vertical = BAND_PADDING_VERTICAL),
     ) {
         TitleRow(game)
-        Zone(game, Modifier.weight(1f).fillMaxHeight(), isSingleLine = true)
+        Zone(game, mprs, Modifier.weight(1f).fillMaxHeight(), isSingleLine = true)
     }
 }
 

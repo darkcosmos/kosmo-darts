@@ -265,13 +265,61 @@ class CricketGameScreenStateTest {
         assertNull(screen(CricketSaveFixtures.match("Ann")).tripleOf(20).zoneTotal)
     }
 
+    private fun CricketGameScreenState.mprList(): List<Double?> = mprs(MatchJournals.of(match))
+
+    /** A turn of one dart then two misses, confirmed. */
+    private fun CricketGameScreenState.turnWith(dart: Dart): CricketGameScreenState =
+        throwDart(dart).throwMiss().throwMiss().nextPlayer()
+
     @Test
     fun `CR13 MPR is absent before the first dart and counted over the match`() {
         val first = screen().tripleOf(20).tripleOf(19).tripleOf(18)
 
-        assertNull(screen().mprOf(0))
-        assertEquals(9.0, first.mprOf(0)!!, 0.0)
-        assertNull(first.mprOf(1))
+        assertEquals(listOf(null, null), screen().mprList())
+        assertEquals(listOf(9.0, null), first.mprList())
+    }
+
+    @Test
+    fun `CR13 STC1 the MPR counts useful marks, so a surplus mark on a dead target lowers it`() {
+        val deadSurplus = screen().turnWith(Dart.triple(20)).turnWith(Dart.triple(20)).tripleOf(20)
+
+        assertEquals(listOf(3 * 3.0 / 4, 3.0), deadSurplus.mprList())
+        assertEquals(listOf(3.0, 3.0), screen().turnWith(Dart.triple(20)).turnWith(Dart.triple(20)).mprList())
+    }
+
+    @Test
+    fun `CR13 STC1 CR11 undoing a closing dart or a scoring dart updates the MPR`() {
+        val scoring = screen().tripleOf(20).tripleOf(20)
+
+        assertEquals(listOf(6 * 3.0 / 2, null), scoring.mprList())
+        assertEquals(listOf(9.0, null), scoring.undo().mprList())
+        assertEquals(listOf(null, null), scoring.undo().undo().mprList())
+    }
+
+    @Test
+    fun `CR13 STC1 solo MPR counts only closing marks`() {
+        val solo = screen(CricketSaveFixtures.match("Ann")).tripleOf(20).tripleOf(20)
+
+        assertEquals(listOf(3 * 3.0 / 2), solo.mprList())
+    }
+
+    @Test
+    fun `CR13 STC1 three players count the surplus while one opponent is open`() {
+        val bobCloses = screen(CricketSaveFixtures.match("Ann", "Bob", "Cid"))
+            .tripleOf(20).tripleOf(20).throwMiss().nextPlayer() // Ann: both marks useful, Bob and Cid are open
+            .turnWith(Dart.triple(20)) // Bob closes, Cid is still open
+        val cid = bobCloses.tripleOf(20).tripleOf(20).throwMiss() // Cid closes, then a dead 20
+
+        assertEquals(listOf(6 * 3.0 / 3, 3.0, 3 * 3.0 / 3), cid.mprList())
+    }
+
+    @Test
+    fun `CR13 STC1 four players, the last one to close makes the target dead`() {
+        val round = screen(CricketSaveFixtures.match("Ann", "Bob", "Cid", "Dee"))
+            .turnWith(Dart.triple(20)).turnWith(Dart.triple(20)).turnWith(Dart.triple(20)).turnWith(Dart.triple(20))
+
+        assertEquals(listOf(3.0, 3.0, 3.0, 3.0), round.mprList())
+        assertEquals(listOf(3 * 3.0 / 4, 3.0, 3.0, 3.0), round.tripleOf(20).mprList())
     }
 
     @Test

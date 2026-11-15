@@ -333,6 +333,8 @@
         <item quantity="other">%1$d matches</item>
     </plurals>
     <string name="players_last_match">Last match: %1$s</string>
+    <string name="profile_open">Open the profile of %1$s</string>
+    <string name="profile_manage">Manage player</string>
     <string name="players_rename">Rename</string>
     <string name="players_merge">Merge</string>
     <string name="players_reset">Reset</string>
@@ -355,4 +357,137 @@
     <string name="players_in_progress">%1$s is in the game in progress. Finish or abandon it first.</string>
     <string name="players_shared_match">These two players played a match together: they cannot be merged.</string>
     <string name="players_database_error">The database failed. Nothing changed; try again.</string>
+
+    <!-- Profile screen (docs/rules/statistics.md, PS2 to PS6, ST9, ST10). -->
+    <string name="profile_title">PROFILE</string>
+    <string name="profile_loading">Loading the profile</string>
+    <string name="profile_failed">The profile cannot be read right now.</string>
+    <string name="profile_retry">Retry</string>
+    <string name="profile_empty_title">No match yet</string>
+    <string name="profile_empty_hint">The finished matches of this player appear here.</string>
+    <string name="profile_no_match_filters">No match for these filters</string>
+    <string name="profile_since_always">Since always</string>
+    <string name="profile_since_date">Since %1$s</string>
+    <plurals name="profile_ignored_matches">
+        <item quantity="one">%1$d match ignored (unreadable data)</item>
+        <item quantity="other">%1$d matches ignored (unreadable data)</item>
+    </plurals>
+    <plurals name="profile_match_count">
+        <item quantity="one">%1$d match</item>
+        <item quantity="other">%1$d matches</item>
+    </plurals>
+    <plurals name="profile_leg_count">
+        <item quantity="one">%1$d leg</item>
+        <item quantity="other">%1$d legs</item>
+    </plurals>
+    <string name="profile_tab_x01" translatable="false">X01</string>
+    <string name="profile_tab_heatmap">HEATMAP</string>
+    <string name="heatmap_legend_title">Scale relative to the most hit zone</string>
+    <string name="heatmap_legend_zero">0 darts</string>
+    <string name="heatmap_legend_low">&gt; 0 %</string>
+    <string name="heatmap_legend_max">max = %1$s</string>
+    <string name="heatmap_legend_note">A zone\'s value = its darts / all darts, misses included.</string>
+    <string name="heatmap_legend_description">Colour scale: dark blue for the least hit zones up to yellow for the most hit zone, %1$s of the darts. Zones with no dart are dark grey.</string>
+    <string name="heatmap_zone_single">Single %1$d</string>
+    <string name="heatmap_zone_double">Double %1$d</string>
+    <string name="heatmap_zone_triple">Triple %1$d</string>
+    <string name="heatmap_zone_outer_bull">Outer bull (25)</string>
+    <string name="heatmap_zone_bull">Bull</string>
+    <string name="heatmap_miss">Miss</string>
+    <string name="heatmap_miss_cricket">Miss or outside Cricket numbers</string>
+    <string name="heatmap_band_none">Touch a zone</string>
+    <string name="heatmap_filter_mode">MODE</string>
+    <string name="heatmap_mode_all">All modes</string>
+    <string name="heatmap_mode_cricket">Cricket</string>
+    <string name="heatmap_empty">No dart in this selection yet.</string>
+    <string name="heatmap_board_description">Dartboard heatmap. The details of each zone are in the list of the most hit zones.</string>
+    <string name="heatmap_top_title">5 MOST HIT ZONES</string>
+    <string name="end_tab_result">RESULT</string>
+    <string name="end_tab_heatmap">LEG HEATMAP</string>
+    <plurals name="heatmap_darts">
+        <item quantity="one">%1$d dart</item>
+        <item quantity="other">%1$d darts</item>
+    </plurals>
+    <string name="heatmap_zone_detail" translatable="false">%1$s · %2$s</string>
+    <string name="heatmap_zone_description">%1$s, %2$s, %3$s</string>
+    <string name="profile_filter_start_score">START SCORE</string>
+    <string name="profile_filter_out_rule">OUT RULE</string>
+    <string name="profile_filter_variant">VARIANT</string>
+    <string name="profile_filter_period">PERIOD</string>
+    <string name="profile_start_score" translatable="false">%1$d</string>
+    <string name="profile_period_always">Since always</string>
+    <string name="profile_period_30_days">Last 30 days</string>
+    <string name="profile_period_10_matches">Last 10 matches</string>
+    <string name="profile_none" translatable="false">–</string>
+    <string name="profile_checkout_value" translatable="false">%1$s (%2$d/%3$d)</string>
+    <string name="profile_block_averages">AVERAGES</string>
+    <string name="profile_block_checkouts">CHECKOUTS</string>
+    <string name="profile_block_visits">VISITS</string>
+    <string name="profile_block_legs">LEGS</string>
+    <string name="profile_block_results">RESULTS</string>
+    <string name="profile_block_results_variant">RESULTS · %1$s</string>
+    <string name="profile_block_trend">TREND</string>
+    <string name="profile_block_marks">USEFUL MARKS PER TARGET</string>
+    <string name="profile_block_points">POINTS</string>
+    <string name="profile_average">3-dart average</string>
+    <string name="profile_first_nine_average">First 9 average</string>
+    <string name="profile_checkout_rate">Checkout rate</string>
+    <string name="profile_best_checkout">Best checkout</string>
+    <string name="profile_visits_180">180</string>
+    <string name="profile_visits_140">140 to 179</string>
+    <string name="profile_visits_100">100 to 139</string>
+    <string name="profile_visits_60">60 to 99</string>
+    <string name="profile_best_visit">Best visit</string>
+    <string name="profile_busts">Bust visits</string>
+    <string name="profile_darts_per_leg">Darts per leg won</string>
+    <string name="profile_best_leg">Best leg (darts)</string>
+    <string name="profile_matches_won">Matches won</string>
+    <string name="profile_matches_lost">Matches lost</string>
+    <string name="profile_win_rate">Win rate</string>
+    <string name="profile_legs_won">Legs won</string>
+    <string name="profile_sets_won">Sets won</string>
+    <string name="profile_trend_matches">Matches in the curve</string>
+    <string name="profile_trend_lowest">Lowest</string>
+    <string name="profile_trend_highest">Highest</string>
+    <string name="profile_trend_first_date">First match</string>
+    <string name="profile_trend_last_date">Last match</string>
+    <string name="profile_trend_too_few">A curve needs at least 2 matches.</string>
+    <string name="profile_trend_description_empty">Trend curve: no match.</string>
+    <plurals name="profile_trend_description">
+        <item quantity="one">Trend curve of %1$d match. First %2$s, last %3$s, lowest %4$s, highest %5$s. From %6$s to %7$s.</item>
+        <item quantity="other">Trend curve of %1$d matches. First %2$s, last %3$s, lowest %4$s, highest %5$s. From %6$s to %7$s.</item>
+    </plurals>
+    <string name="profile_mpr">Marks per round</string>
+    <string name="profile_best_visit_marks">Best visit (marks)</string>
+    <string name="profile_target_bull">Bull</string>
+    <string name="profile_points_scored">Points scored</string>
+    <string name="profile_points_scored_leg">Points scored per leg</string>
+    <string name="profile_points_given">Points given</string>
+    <string name="profile_points_given_leg">Points given per leg</string>
+
+    <!-- Head-to-head screen (docs/rules/statistics.md, HH1 to HH9). -->
+    <string name="profile_compare">Compare with…</string>
+    <string name="h2h_title">HEAD TO HEAD</string>
+    <string name="h2h_loading">Loading the comparison</string>
+    <string name="h2h_failed">The comparison cannot be read right now.</string>
+    <string name="h2h_picker_title">Compare %1$s with:</string>
+    <string name="h2h_picker_empty_title">No other player yet</string>
+    <string name="h2h_picker_empty_hint">Add another player to compare your results.</string>
+    <plurals name="h2h_common_count">
+        <item quantity="one">%1$d match in common</item>
+        <item quantity="other">%1$d matches in common</item>
+    </plurals>
+    <string name="h2h_versus">%1$s vs %2$s</string>
+    <string name="h2h_change">Change player</string>
+    <string name="h2h_no_common_title">No match in common</string>
+    <string name="h2h_no_common_hint">The matches these two players finished together appear here.</string>
+    <string name="h2h_block_results">RESULTS</string>
+    <string name="h2h_common_matches">Matches in common</string>
+    <string name="h2h_wins">Wins</string>
+    <string name="h2h_draws">Draws</string>
+    <string name="h2h_legs_won">Legs won</string>
+    <string name="h2h_row_description">%1$s: %2$s %3$s, %4$s %5$s</string>
+    <string name="h2h_matches_title">MATCHES IN COMMON</string>
+    <string name="h2h_outcome_won">%1$s won</string>
+    <string name="h2h_outcome_draw">Draw</string>
 </resources>

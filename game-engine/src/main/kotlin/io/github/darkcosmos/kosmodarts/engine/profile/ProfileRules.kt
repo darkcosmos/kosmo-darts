@@ -47,12 +47,22 @@ object ProfileRules {
     fun canMerge(sourceSessions: Set<Long>, targetSessions: Set<Long>): Boolean =
         sourceSessions.none { it in targetSessions }
 
-    /** PM4, decision D11: latest reset and last-used dates, earliest creation date. */
-    fun mergedDates(source: ProfileDates, target: ProfileDates): ProfileDates = ProfileDates(
-        resetAt = maxOf(source.resetAt, target.resetAt),
-        createdAt = minOf(source.createdAt, target.createdAt),
-        lastUsedAt = maxOf(source.lastUsedAt, target.lastUsedAt),
-    )
+    /**
+     * PM4 (owner Q1 B): the latest real reset (ST9) of the two profiles, even one earlier than the other profile's
+     * creation; the merged creation date when neither was really reset. Creation earliest, last used latest.
+     */
+    fun mergedDates(source: ProfileDates, target: ProfileDates): ProfileDates {
+        val createdAt = minOf(source.createdAt, target.createdAt)
+        val realResets = listOf(source, target).filter(::isReallyReset).map { it.resetAt }
+        return ProfileDates(
+            resetAt = realResets.maxOrNull() ?: createdAt,
+            createdAt = createdAt,
+            lastUsedAt = maxOf(source.lastUsedAt, target.lastUsedAt),
+        )
+    }
+
+    /** ST9: a profile is really reset when its reset date is after its creation date. */
+    fun isReallyReset(dates: ProfileDates): Boolean = dates.resetAt > dates.createdAt
 
     /**
      * PM6: [matches] maps each match id to the profile ids of its players. A match of [profileId] is deleted when

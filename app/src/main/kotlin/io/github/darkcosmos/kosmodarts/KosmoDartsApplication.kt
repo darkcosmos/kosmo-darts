@@ -11,6 +11,7 @@ import io.github.darkcosmos.kosmodarts.history.HistoryDatabase
 import io.github.darkcosmos.kosmodarts.history.MatchArchiveRequest
 import io.github.darkcosmos.kosmodarts.history.RoomHistoryRepository
 import io.github.darkcosmos.kosmodarts.history.RoomPlayersRepository
+import io.github.darkcosmos.kosmodarts.history.RoomProfileStatsRepository
 import io.github.darkcosmos.kosmodarts.history.RoomProfileRepository
 import io.github.darkcosmos.kosmodarts.persistence.AtomicFileStore
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
@@ -84,6 +85,7 @@ open class KosmoDartsApplication : Application() {
             history = RoomHistoryRepository(database),
             readExecutor = readThread,
             players = RoomPlayersRepository(database),
+            profileStats = RoomProfileStatsRepository(database),
         )
     }
 

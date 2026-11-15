@@ -7,9 +7,12 @@ import androidx.compose.ui.platform.LocalResources
 import io.github.darkcosmos.kosmodarts.R
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketConfig
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketMatch
+import io.github.darkcosmos.kosmodarts.engine.journal.MatchJournal
 import io.github.darkcosmos.kosmodarts.engine.cricket.CricketVariant
 import io.github.darkcosmos.kosmodarts.engine.match.MatchFormat
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
+import io.github.darkcosmos.kosmodarts.ui.app.EndHeatmapScreen
+import io.github.darkcosmos.kosmodarts.ui.board.END_SCREEN_ZONE_TAP_ENABLED
 import io.github.darkcosmos.kosmodarts.ui.between.BetweenLegsContent
 import io.github.darkcosmos.kosmodarts.ui.between.BetweenLegsState
 
@@ -21,16 +24,21 @@ import io.github.darkcosmos.kosmodarts.ui.between.BetweenLegsState
 @Composable
 fun CricketBetweenLegsScreen(
     match: CricketMatch,
+    journal: MatchJournal,
     onEvent: (AppEvent) -> Unit,
     modifier: Modifier = Modifier,
     isAbandonDialogShown: Boolean = false,
+    heatmapScreen: EndHeatmapScreen? = null,
+    isZoneTapEnabled: Boolean = END_SCREEN_ZONE_TAP_ENABLED,
 ) {
     BetweenLegsContent(
-        state = BetweenLegsState.of(match),
+        state = BetweenLegsState.of(match, journal),
         formatLine = cricketFormatText(LocalResources.current, match.config, match.format),
         onEvent = onEvent,
         modifier = modifier,
         isAbandonDialogShown = isAbandonDialogShown,
+        heatmapScreen = heatmapScreen,
+        isZoneTapEnabled = isZoneTapEnabled,
     )
 }
 

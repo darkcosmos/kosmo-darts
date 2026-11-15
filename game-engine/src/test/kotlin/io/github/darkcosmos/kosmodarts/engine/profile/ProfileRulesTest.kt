@@ -54,11 +54,61 @@ class ProfileRulesTest {
     }
 
     @Test
-    fun `PM4 merged dates take latest reset and last used and earliest creation`() {
+    fun `PM4 both really reset keeps the later reset, latest last used and earliest creation`() {
         val source = ProfileDates(resetAt = 10, createdAt = 1, lastUsedAt = 50)
         val target = ProfileDates(resetAt = 20, createdAt = 5, lastUsedAt = 40)
         val expected = ProfileDates(resetAt = 20, createdAt = 1, lastUsedAt = 50)
         assertEquals(expected, ProfileRules.mergedDates(source, target))
+    }
+
+    @Test
+    fun `PM4 neither reset keeps the earliest creation as reset date`() {
+        val january = ProfileDates(resetAt = 100, createdAt = 100, lastUsedAt = 150)
+        val june = ProfileDates(resetAt = 600, createdAt = 600, lastUsedAt = 700)
+        val expected = ProfileDates(resetAt = 100, createdAt = 100, lastUsedAt = 700)
+        assertEquals(expected, ProfileRules.mergedDates(january, june))
+        assertEquals(expected, ProfileRules.mergedDates(june, january))
+    }
+
+    @Test
+    fun `PM4 only the source really reset keeps its reset date`() {
+        val source = ProfileDates(resetAt = 300, createdAt = 100, lastUsedAt = 400)
+        val target = ProfileDates(resetAt = 600, createdAt = 600, lastUsedAt = 700)
+        assertEquals(300, ProfileRules.mergedDates(source, target).resetAt)
+    }
+
+    @Test
+    fun `PM4 only the target really reset keeps its reset date`() {
+        val source = ProfileDates(resetAt = 100, createdAt = 100, lastUsedAt = 150)
+        val target = ProfileDates(resetAt = 300, createdAt = 200, lastUsedAt = 400)
+        assertEquals(300, ProfileRules.mergedDates(source, target).resetAt)
+    }
+
+    @Test
+    fun `PM4 a real reset earlier than the other creation still wins`() {
+        val reallyReset = ProfileDates(resetAt = 300, createdAt = 100, lastUsedAt = 400)
+        val later = ProfileDates(resetAt = 900, createdAt = 900, lastUsedAt = 950)
+        assertEquals(300, ProfileRules.mergedDates(reallyReset, later).resetAt)
+        assertEquals(300, ProfileRules.mergedDates(later, reallyReset).resetAt)
+    }
+
+    @Test
+    fun `ST9 reset equal to creation is not really reset`() {
+        assertFalse(ProfileRules.isReallyReset(ProfileDates(resetAt = 5, createdAt = 5, lastUsedAt = 9)))
+    }
+
+    @Test
+    fun `ST9 reset after creation is really reset`() {
+        assertTrue(ProfileRules.isReallyReset(ProfileDates(resetAt = 6, createdAt = 5, lastUsedAt = 9)))
+    }
+
+    @Test
+    fun `ST9 merged profile with no real reset is not really reset`() {
+        val merged = ProfileRules.mergedDates(
+            ProfileDates(resetAt = 100, createdAt = 100, lastUsedAt = 150),
+            ProfileDates(resetAt = 600, createdAt = 600, lastUsedAt = 700),
+        )
+        assertFalse(ProfileRules.isReallyReset(merged))
     }
 
     @Test

@@ -13,7 +13,7 @@ import io.github.darkcosmos.kosmodarts.engine.journal.DartSource
 // dart.x_mm and dart.y_mm (D33). Times are epoch milliseconds. Every foreign key is NO ACTION: nothing is deleted
 // (AR8). Enum columns are stored as text (their names).
 
-/** A player profile (PF1). [resetAt] equals [createdAt] at creation and never changes in this mission (D32). */
+/** A player profile (PF1). [resetAt] equals [createdAt] at creation, then changes only by PM4 and PM5. */
 @Entity(
     tableName = "profile",
     indices = [

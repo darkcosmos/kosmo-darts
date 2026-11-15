@@ -16,6 +16,8 @@ import io.github.darkcosmos.kosmodarts.ui.history.HistoryScreen
 import io.github.darkcosmos.kosmodarts.ui.history.MatchDetailScreen
 import io.github.darkcosmos.kosmodarts.ui.home.HomeScreen
 import io.github.darkcosmos.kosmodarts.ui.players.PlayersScreen
+import io.github.darkcosmos.kosmodarts.ui.headtohead.HeadToHeadScreen
+import io.github.darkcosmos.kosmodarts.ui.profile.ProfileScreen
 import io.github.darkcosmos.kosmodarts.ui.settings.SettingsEvent
 import io.github.darkcosmos.kosmodarts.ui.settings.SettingsScreen
 import io.github.darkcosmos.kosmodarts.ui.settings.SettingsUiState
@@ -48,15 +50,37 @@ fun KosmoDartsApp(
                 onEvent,
                 isAbandonDialogShown = screen.isAbandonDialogShown,
                 checkout = screen.checkout,
+                heatmapScreen = screen,
             )
-        is Screen.End -> EndScreen(screen.match, onEvent)
+        is Screen.End -> EndScreen(screen.match, onEvent, heatmapScreen = screen)
         is Screen.Settings -> SettingsScreen(settings, onSettingsEvent, onBack = { onEvent(AppEvent.Back) })
         is Screen.History -> HistoryScreen(screen.history, onEvent)
         is Screen.MatchDetail -> MatchDetailScreen(screen.detail, onEvent)
+        is Screen.Profile -> ProfileScreen(screen.profile, onEvent)
+        is Screen.HeadToHead -> HeadToHeadScreen(screen.b, screen.state, onEvent)
         is Screen.Players -> PlayersScreen(screen.players, onEvent)
-        is Screen.CricketGame -> CricketGameScreen(screen.game, onEvent, noVoiceNotice = screen.noVoiceNotice)
+        is Screen.CricketGame,
+        is Screen.CricketBetweenLegs,
+        is Screen.CricketEnd,
+        -> CricketScreens(screen, onEvent)
+    }
+}
+
+/** The Cricket screens, apart so that [KosmoDartsApp] stays a flat dispatch. */
+@Composable
+private fun CricketScreens(screen: Screen, onEvent: (AppEvent) -> Unit) {
+    when (screen) {
+        is Screen.CricketGame ->
+            CricketGameScreen(screen.game, screen.journal, onEvent, noVoiceNotice = screen.noVoiceNotice)
         is Screen.CricketBetweenLegs ->
-            CricketBetweenLegsScreen(screen.match, onEvent, isAbandonDialogShown = screen.isAbandonDialogShown)
-        is Screen.CricketEnd -> CricketEndScreen(screen.match, onEvent)
+            CricketBetweenLegsScreen(
+                screen.match,
+                screen.journal,
+                onEvent,
+                isAbandonDialogShown = screen.isAbandonDialogShown,
+                heatmapScreen = screen,
+            )
+        is Screen.CricketEnd -> CricketEndScreen(screen.match, screen.journal, onEvent, heatmapScreen = screen)
+        else -> Unit
     }
 }

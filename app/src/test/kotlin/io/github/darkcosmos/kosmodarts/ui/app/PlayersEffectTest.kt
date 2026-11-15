@@ -12,15 +12,15 @@ import io.github.darkcosmos.kosmodarts.persistence.MemoryStore
 import io.github.darkcosmos.kosmodarts.persistence.Persistence
 import io.github.darkcosmos.kosmodarts.persistence.SharedRoster
 import io.github.darkcosmos.kosmodarts.persistence.X01Settings
-import io.github.darkcosmos.kosmodarts.ui.players.PlayersAnswer
-import io.github.darkcosmos.kosmodarts.ui.players.PlayersRequest
+import io.github.darkcosmos.kosmodarts.ui.profile.ProfileAnswer
+import io.github.darkcosmos.kosmodarts.ui.profile.ProfileRequest
 import io.github.darkcosmos.kosmodarts.ui.setup.SetupState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.util.concurrent.Executor
 
-/** PM2 to PM6, PM9, PM10: the Players effects run on the right executor and always answer, with the value or Failed. */
+/** PM2 to PM6, PM9, PM10, PS7: the Players and Profile effects run on the right executor and always answer. */
 class PlayersEffectTest {
     private val queue = ArrayDeque<Runnable>()
     private val reads = ArrayDeque<Runnable>()
@@ -43,8 +43,8 @@ class PlayersEffectTest {
         generateSequence { reads.removeFirstOrNull() }.forEach(Runnable::run)
     }
 
-    private fun request(repository: FakePlayersRepository?, request: PlayersRequest) =
-        run(repository, PersistenceEffect.RunPlayersRequest(request))
+    private fun request(repository: FakePlayersRepository?, request: ProfileRequest) =
+        run(repository, PersistenceEffect.RunProfileRequest(1L, request))
 
     @Test
     fun `PM2 the list is read on the read executor and answered with its load id`() {
@@ -59,18 +59,29 @@ class PlayersEffectTest {
     }
 
     @Test
+    fun `PS7 the profiles list for a Profile is read on the read executor and answered with both numbers`() {
+        val list = listOf(kevin, lea)
+        val repository = FakePlayersRepository(players = DbResult.Ok(list))
+        persistence(repository).applyEffects(listOf(PersistenceEffect.LoadProfileRoster(1L, 4))) { events += it }
+
+        assertEquals(1, reads.size)
+        reads.removeFirst().run()
+        assertEquals(listOf<AppEvent>(ProfileEvent.RosterLoaded(1L, 4, DbResult.Ok(list))), events)
+    }
+
+    @Test
     fun `PM10 without a repository, or with a failing one, every request answers Failed`() {
         run(null, PersistenceEffect.LoadPlayers(1))
         assertEquals(PlayersEvent.Loaded(1, DbResult.Failed), events.single())
 
         events.clear()
         val failing = FakePlayersRepository(renameResult = DbResult.Failed)
-        request(failing, PlayersRequest.Rename(kevin, "Kev"))
-        request(null, PlayersRequest.Reset(kevin, 5L))
+        request(failing, ProfileRequest.Rename(kevin, "Kev"))
+        request(null, ProfileRequest.Reset(kevin, 5L))
         assertEquals(
             listOf<AppEvent>(
-                PlayersEvent.Answered(PlayersRequest.Rename(kevin, "Kev"), PlayersAnswer.Renamed(DbResult.Failed)),
-                PlayersEvent.Answered(PlayersRequest.Reset(kevin, 5L), PlayersAnswer.ResetDone(DbResult.Failed)),
+                ProfileEvent.Answered(1L, ProfileRequest.Rename(kevin, "Kev"), ProfileAnswer.Renamed(DbResult.Failed)),
+                ProfileEvent.Answered(1L, ProfileRequest.Reset(kevin, 5L), ProfileAnswer.ResetDone(DbResult.Failed)),
             ),
             events,
         )
@@ -84,9 +95,9 @@ class PlayersEffectTest {
         )
         persistence(repository).applyEffects(
             listOf(
-                PersistenceEffect.RunPlayersRequest(PlayersRequest.Rename(kevin, "Kev")),
-                PersistenceEffect.RunPlayersRequest(PlayersRequest.Merge(kevin, lea)),
-                PersistenceEffect.RunPlayersRequest(PlayersRequest.Reset(lea, 9L)),
+                PersistenceEffect.RunProfileRequest(1L, ProfileRequest.Rename(kevin, "Kev")),
+                PersistenceEffect.RunProfileRequest(1L, ProfileRequest.Merge(kevin, lea)),
+                PersistenceEffect.RunProfileRequest(2L, ProfileRequest.Reset(lea, 9L)),
             ),
         ) { events += it }
         assertEquals(3, queue.size)
@@ -97,12 +108,12 @@ class PlayersEffectTest {
         assertEquals(listOf(1L to 2L), repository.merges)
         assertEquals(listOf(2L to 9L), repository.resets)
         assertEquals(
-            listOf<PlayersAnswer>(
-                PlayersAnswer.Renamed(DbResult.Ok(RenameResult.Renamed("Kev", "kev"))),
-                PlayersAnswer.Merged(DbResult.Ok(MergeResult.SHARED_MATCH)),
-                PlayersAnswer.ResetDone(DbResult.Ok(Unit)),
+            listOf<ProfileAnswer>(
+                ProfileAnswer.Renamed(DbResult.Ok(RenameResult.Renamed("Kev", "kev"))),
+                ProfileAnswer.Merged(DbResult.Ok(MergeResult.SHARED_MATCH)),
+                ProfileAnswer.ResetDone(DbResult.Ok(Unit)),
             ),
-            events.map { (it as PlayersEvent.Answered).answer },
+            events.map { (it as ProfileEvent.Answered).answer },
         )
     }
 
@@ -111,8 +122,8 @@ class PlayersEffectTest {
         val repository = FakePlayersRepository(deletionCountResult = DbResult.Ok(4), deleteResult = DbResult.Ok(3))
         persistence(repository).applyEffects(
             listOf(
-                PersistenceEffect.RunPlayersRequest(PlayersRequest.CountDeletion(kevin)),
-                PersistenceEffect.RunPlayersRequest(PlayersRequest.Delete(kevin, 8L)),
+                PersistenceEffect.RunProfileRequest(1L, ProfileRequest.CountDeletion(kevin)),
+                PersistenceEffect.RunProfileRequest(1L, ProfileRequest.Delete(kevin, 8L)),
             ),
         ) { events += it }
         assertEquals(1, reads.size)
@@ -121,8 +132,8 @@ class PlayersEffectTest {
         queue.removeFirst().run()
 
         assertEquals(listOf(1L to 8L), repository.deletes)
-        assertEquals(PlayersAnswer.Counted(DbResult.Ok(4)), (events[0] as PlayersEvent.Answered).answer)
-        assertEquals(PlayersAnswer.Deleted(DbResult.Ok(3)), (events[1] as PlayersEvent.Answered).answer)
+        assertEquals(ProfileAnswer.Counted(DbResult.Ok(4)), (events[0] as ProfileEvent.Answered).answer)
+        assertEquals(ProfileAnswer.Deleted(DbResult.Ok(3)), (events[1] as ProfileEvent.Answered).answer)
     }
 
     @Test

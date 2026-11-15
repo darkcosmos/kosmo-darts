@@ -1,4 +1,4 @@
-package io.github.darkcosmos.kosmodarts.ui.players
+package io.github.darkcosmos.kosmodarts.ui.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -38,9 +38,12 @@ import io.github.darkcosmos.kosmodarts.engine.player.PlayerListError
 import io.github.darkcosmos.kosmodarts.engine.player.PlayerListRules
 import io.github.darkcosmos.kosmodarts.history.PlayerSummary
 import io.github.darkcosmos.kosmodarts.ui.app.AppEvent
-import io.github.darkcosmos.kosmodarts.ui.app.PlayersEvent
+import io.github.darkcosmos.kosmodarts.ui.app.ProfileEvent
 import io.github.darkcosmos.kosmodarts.ui.components.ButtonKind
 import io.github.darkcosmos.kosmodarts.ui.components.KosmoButton
+import io.github.darkcosmos.kosmodarts.ui.players.PlayersTags
+import io.github.darkcosmos.kosmodarts.ui.players.ErasedText
+import io.github.darkcosmos.kosmodarts.ui.players.erasedText
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoShapes
 import io.github.darkcosmos.kosmodarts.ui.theme.KosmoTheme
 import io.github.darkcosmos.kosmodarts.ui.theme.States
@@ -53,27 +56,27 @@ private val DELETE_GAP = 16.dp
 
 /** What the open card shows under its header: the four actions, or the panel of the action chosen (PM3 to PM6). */
 @Composable
-internal fun PlayersPanelContent(profile: PlayerSummary, state: PlayersState, onEvent: (AppEvent) -> Unit) {
+internal fun ProfileActionsPanelContent(profile: PlayerSummary, state: ProfileState, onEvent: (AppEvent) -> Unit) {
     val enabled = !state.isBusy
     when (val panel = state.panel) {
         null -> ActionsGrid(enabled, onEvent)
-        is PlayersPanel.Rename -> RenamePanel(panel, enabled, onEvent)
-        PlayersPanel.MergePick -> MergePickPanel(profile, state.mergeTargets, enabled, onEvent)
-        is PlayersPanel.MergeConfirm -> ConfirmPanel(
+        is ProfilePanel.Rename -> RenamePanel(panel, enabled, onEvent)
+        ProfilePanel.MergePick -> MergePickPanel(profile, state.mergeTargets, enabled, onEvent)
+        is ProfilePanel.MergeConfirm -> ConfirmPanel(
             text = stringResource(R.string.players_merge_confirm_text, profile.name, panel.target.name),
             confirmLabel = stringResource(R.string.players_merge),
             kind = ButtonKind.PRIMARY,
             enabled = enabled,
             onEvent = onEvent,
         )
-        PlayersPanel.ResetConfirm -> ConfirmPanel(
+        ProfilePanel.ResetConfirm -> ConfirmPanel(
             text = stringResource(R.string.players_reset_confirm_text, profile.name),
             confirmLabel = stringResource(R.string.players_reset),
             kind = ButtonKind.PRIMARY,
             enabled = enabled,
             onEvent = onEvent,
         )
-        is PlayersPanel.DeleteConfirm -> ConfirmPanel(
+        is ProfilePanel.DeleteConfirm -> ConfirmPanel(
             text = deleteText(profile.name, panel.count),
             confirmLabel = stringResource(R.string.players_delete),
             kind = ButtonKind.DESTRUCTIVE,
@@ -104,24 +107,24 @@ private fun ActionsGrid(enabled: Boolean, onEvent: (AppEvent) -> Unit) {
     val merge = stringResource(R.string.players_merge)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (stackedButtons) {
-            ActionButton(rename, PlayersTags.RENAME, enabled, Modifier) { onEvent(PlayersEvent.RenameTapped) }
-            ActionButton(merge, PlayersTags.MERGE, enabled, Modifier) { onEvent(PlayersEvent.MergeTapped) }
+            ActionButton(rename, PlayersTags.RENAME, enabled, Modifier) { onEvent(ProfileEvent.RenameTapped) }
+            ActionButton(merge, PlayersTags.MERGE, enabled, Modifier) { onEvent(ProfileEvent.MergeTapped) }
         } else {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ActionButton(rename, PlayersTags.RENAME, enabled, Modifier.weight(1f)) {
-                    onEvent(PlayersEvent.RenameTapped)
+                    onEvent(ProfileEvent.RenameTapped)
                 }
                 ActionButton(merge, PlayersTags.MERGE, enabled, Modifier.weight(1f)) {
-                    onEvent(PlayersEvent.MergeTapped)
+                    onEvent(ProfileEvent.MergeTapped)
                 }
             }
         }
         ActionButton(stringResource(R.string.players_reset), PlayersTags.RESET, enabled, Modifier) {
-            onEvent(PlayersEvent.ResetTapped)
+            onEvent(ProfileEvent.ResetTapped)
         }
         KosmoButton(
             text = stringResource(R.string.players_delete),
-            onClick = { onEvent(PlayersEvent.DeleteTapped) },
+            onClick = { onEvent(ProfileEvent.DeleteTapped) },
             kind = ButtonKind.DESTRUCTIVE,
             enabled = enabled,
             modifier = Modifier
@@ -147,7 +150,7 @@ private fun ActionButton(text: String, tag: String, enabled: Boolean, modifier: 
 
 /** PM3: the name field with its IME action, the error under it, and "Merge into ..." when the name is taken. */
 @Composable
-private fun RenamePanel(panel: PlayersPanel.Rename, enabled: Boolean, onEvent: (AppEvent) -> Unit) {
+private fun RenamePanel(panel: ProfilePanel.Rename, enabled: Boolean, onEvent: (AppEvent) -> Unit) {
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     val taken = (panel.error as? RenameError.Taken)?.target
@@ -156,7 +159,7 @@ private fun RenamePanel(panel: PlayersPanel.Rename, enabled: Boolean, onEvent: (
         if (taken != null) {
             KosmoButton(
                 text = stringResource(R.string.players_merge_into, taken.name),
-                onClick = { onEvent(PlayersEvent.MergeIntoTakenTapped) },
+                onClick = { onEvent(ProfileEvent.MergeIntoTakenTapped) },
                 kind = ButtonKind.OUTLINED_ACCENT,
                 enabled = enabled,
                 modifier = Modifier
@@ -170,18 +173,18 @@ private fun RenamePanel(panel: PlayersPanel.Rename, enabled: Boolean, onEvent: (
             kind = ButtonKind.PRIMARY,
             enabled = enabled,
             onEvent = onEvent,
-            onConfirm = PlayersEvent.RenameSaved,
+            onConfirm = ProfileEvent.RenameSaved,
         )
     }
 }
 
 @Composable
-private fun RenameField(panel: PlayersPanel.Rename, onEvent: (AppEvent) -> Unit, modifier: Modifier) {
+private fun RenameField(panel: ProfilePanel.Rename, onEvent: (AppEvent) -> Unit, modifier: Modifier) {
     val colors = KosmoTheme.colors
     val error = panel.error?.let { renameErrorText(it) }
     TextField(
         value = panel.text,
-        onValueChange = { onEvent(PlayersEvent.RenameTextChanged(it)) },
+        onValueChange = { onEvent(ProfileEvent.RenameTextChanged(it)) },
         label = { Text(stringResource(R.string.players_rename_label)) },
         singleLine = true,
         isError = error != null,
@@ -197,7 +200,7 @@ private fun RenameField(panel: PlayersPanel.Rename, onEvent: (AppEvent) -> Unit,
         },
         textStyle = KosmoTheme.typography.bodyLarge,
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { onEvent(PlayersEvent.RenameSaved) }),
+        keyboardActions = KeyboardActions(onDone = { onEvent(ProfileEvent.RenameSaved) }),
         colors = TextFieldDefaults.colors(
             focusedContainerColor = colors.surfaceHigh,
             unfocusedContainerColor = colors.surfaceHigh,
@@ -250,7 +253,7 @@ private fun MergePickPanel(
         )
         KosmoButton(
             text = stringResource(R.string.players_cancel),
-            onClick = { onEvent(PlayersEvent.Cancelled) },
+            onClick = { onEvent(ProfileEvent.Cancelled) },
             kind = ButtonKind.SECONDARY,
             enabled = enabled,
             modifier = Modifier
@@ -266,7 +269,7 @@ private fun MergePickPanel(
                     .clip(KosmoShapes.control)
                     .background(KosmoTheme.colors.surfaceHigh)
                     .clickable(enabled = enabled, role = Role.Button) {
-                        onEvent(PlayersEvent.MergeTargetPicked(target.id))
+                        onEvent(ProfileEvent.MergeTargetPicked(target.id))
                     }
                     .padding(horizontal = 12.dp, vertical = 8.dp)
                     .testTag(PlayersTags.mergeTarget(target.id)),
@@ -296,7 +299,7 @@ private fun ConfirmPanel(
                 .testTag(PlayersTags.CONFIRM_TEXT)
                 .semantics { liveRegion = LiveRegionMode.Polite },
         )
-        ButtonPair(confirmLabel, PlayersTags.CONFIRM, kind, enabled, onEvent, PlayersEvent.Confirmed)
+        ButtonPair(confirmLabel, PlayersTags.CONFIRM, kind, enabled, onEvent, ProfileEvent.Confirmed)
     }
 }
 
@@ -308,12 +311,12 @@ private fun ButtonPair(
     kind: ButtonKind,
     enabled: Boolean,
     onEvent: (AppEvent) -> Unit,
-    onConfirm: PlayersEvent,
+    onConfirm: ProfileEvent,
 ) {
     val cancelButton: @Composable (Modifier) -> Unit = { modifier ->
         KosmoButton(
             text = stringResource(R.string.players_cancel),
-            onClick = { onEvent(PlayersEvent.Cancelled) },
+            onClick = { onEvent(ProfileEvent.Cancelled) },
             kind = ButtonKind.SECONDARY,
             enabled = enabled,
             modifier = modifier
@@ -343,4 +346,22 @@ private fun ButtonPair(
             confirmButton(Modifier.weight(1f))
         }
     }
+}
+
+/** PM4, PM8, PM10: a short refusal or error, announced when it appears. */
+@Composable
+internal fun ProfileMessageText(message: ProfileMessage) {
+    val text = when (message) {
+        is ProfileMessage.InProgress -> stringResource(R.string.players_in_progress, message.playerName)
+        ProfileMessage.SharedMatch -> stringResource(R.string.players_shared_match)
+        ProfileMessage.DatabaseError -> stringResource(R.string.players_database_error)
+    }
+    Text(
+        text = text,
+        style = KosmoTheme.typography.body,
+        color = KosmoTheme.colors.dangerText,
+        modifier = Modifier
+            .testTag(PlayersTags.MESSAGE)
+            .semantics { liveRegion = LiveRegionMode.Polite },
+    )
 }

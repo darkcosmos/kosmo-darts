@@ -26,6 +26,7 @@ data class HistoryProfile(val id: Long, val name: String)
  * true for the anonymous profile (PM6, PM7): the screens show the "Deleted player" resource, not [name].
  */
 data class HistoryPlayer(
+    val profileId: Long,
     val name: String,
     val colorArgb: Int,
     val finalRank: Int,
@@ -134,6 +135,7 @@ class RoomHistoryRepository(private val database: HistoryDatabase) : HistoryRepo
 
     // The stored alpha is forced to opaque, never an error (D16).
     private fun MatchPlayerRow.toHistoryPlayer() = HistoryPlayer(
+        profileId = profileId,
         name = name,
         colorArgb = PlayerColor.fromStored(colorArgb).argb,
         finalRank = finalRank,

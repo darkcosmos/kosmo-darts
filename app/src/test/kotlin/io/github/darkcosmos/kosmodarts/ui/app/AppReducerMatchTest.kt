@@ -1,5 +1,6 @@
 package io.github.darkcosmos.kosmodarts.ui.app
 
+import io.github.darkcosmos.kosmodarts.testing.endScreen
 import io.github.darkcosmos.kosmodarts.testing.startedJournal
 import io.github.darkcosmos.kosmodarts.testing.savedGame
 import io.github.darkcosmos.kosmodarts.testing.gameScreen
@@ -74,7 +75,7 @@ class AppReducerMatchTest {
         assertEquals(LegOutcome.MATCH, gameOf(won).checkoutOutcome)
 
         val ended = events.after(won, AppEvent.FinishGameTapped, AppEvent.ArchiveSucceeded)
-        assertEquals(Screen.End(gameOf(won).match), ended.screen)
+        assertEquals(endScreen(gameOf(won).match, (won.screen as Screen.Game).journal), ended.screen)
     }
 
     /** M16: "Next leg" opens the game screen on the new leg, started by the next player (M6). */
@@ -108,7 +109,7 @@ class AppReducerMatchTest {
         val format = MatchFormat(legsPerSet = 2, sets = 3)
         val config = X01Config(listOf("Ann", "Bob", "Cid"), 301, CheckoutRule.SINGLE_OUT)
         val start = X01Match.start(X01MatchConfig(config, format))
-        val ended = AppState(screen = Screen.End(start.playLegWonBy(0)))
+        val ended = AppState(screen = endScreen(start.playLegWonBy(0)))
 
         val rematch = events.after(ended, AppEvent.Rematch)
 
