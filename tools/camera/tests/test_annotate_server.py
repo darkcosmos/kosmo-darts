@@ -1,6 +1,7 @@
 """Annotation server (T6a, CV16, D8): routes, write-route attacks, error states, read-only captures, JPEG size."""
 import json
 import os
+import re
 import socket
 import subprocess
 import sys
@@ -166,11 +167,13 @@ def test_session_list_and_open_with_progress_and_resume_cursor(tool):
     tool.start()
     status, body = tool.json("GET", "/api/sessions")
     assert body["sessions"] == [{"name": NAME, "state": "ok", "message": None, "warning": None, "label": None,
-                                 "progress": {"done": 0, "total": 3}}]
+                                 "progress": {"done": 0, "total": 3}, "calibrated": False}]
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
     assert view["cursor"] == {"kind": "calibration", "number": None, "photo": "dart-001.jpg", "pending": []}
     assert [d["number"] for d in view["darts"]] == [1, 3, 4] and view["skipped"] == [2, 5]
     assert view["readOnly"] is False and view["photoSize"] == list(SIZE)
+    assert all(re.fullmatch(r"[DT]?\d{1,2}", d["value"]) for d in view["darts"])  # true value shown large by the page
+    assert all(isinstance(d["volley"], int) for d in view["darts"])
 
 
 def test_full_flow_autosaves_each_change_and_reports_the_saved_time(tool):

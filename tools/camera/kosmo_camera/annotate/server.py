@@ -133,7 +133,8 @@ class SessionStore:
 
     def summary(self, loaded) -> dict:
         return {"name": loaded.name, "state": loaded.state, "message": loaded.message, "warning": loaded.warning,
-                "label": IGNORED_LABEL if loaded.state == IGNORED else None, "progress": self._progress(loaded)}
+                "label": IGNORED_LABEL if loaded.state == IGNORED else None, "progress": self._progress(loaded),
+                "calibrated": loaded.annotations.calibration is not None if loaded.state == OK else None}
 
     def sessions(self) -> list:
         with self.lock:
@@ -146,8 +147,9 @@ class SessionStore:
             return view
         by_number = {d.number: d for d in loaded.annotations.darts}
         view["photoSize"] = [loaded.truth.photo_width, loaded.truth.photo_height]
-        view["darts"] = [{"number": number, "photo": photo, "status": by_number[number].status.value
-                          if number in by_number else None,
+        by_dart = {d.number: (_value_label(d), v.index) for v in loaded.truth.volleys for d in v.darts}
+        view["darts"] = [{"number": number, "photo": photo, "value": by_dart[number][0], "volley": by_dart[number][1],
+                          "status": by_number[number].status.value if number in by_number else None,
                           "tip": list(by_number[number].tip) if number in by_number and by_number[number].tip
                           else None} for number, photo in loaded.plan.darts]
         view["skipped"] = list(loaded.plan.skipped)
@@ -246,6 +248,12 @@ class SessionStore:
             return (folder / file).read_bytes()
         except OSError as error:
             raise HttpError(404, "Photo introuvable.") from error
+
+
+def _value_label(dart) -> str:
+    """The true value as Kosmo reads it on the board: "T20", "D16", "20", "25", "50" or "0" (miss)."""
+    prefix = {"DOUBLE": "D", "TRIPLE": "T"}.get(dart.multiplier, "")
+    return f"{prefix}{dart.segment}"
 
 
 def _parse_json(data):

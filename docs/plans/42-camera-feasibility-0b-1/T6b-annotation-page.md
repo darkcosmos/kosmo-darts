@@ -45,3 +45,15 @@ reopening a session, each tip is drawn on the same spot; the 4-point calibration
 sonnet. Why: page from a specified flow and layout.
 
 ## Implementation notes
+- Page in `tools/camera/kosmo_camera/annotate/static/`: `app.js` (string table `TEXT` first, then network, list, view,
+  drawing, actions, keys), `index.html`, `style.css` (colours as `:root` variables, contrast tested). Photo shown as an
+  `<img>` moved by CSSOM transform (CSP-safe) with `image-orientation: none`, marks on an overlay canvas, magnifier x4.
+- Deviation, small server change in `server.py` (T6a code): the session view now carries per dart `value` ("T20", "D16",
+  "20", "25", "50", "0") and `volley`, and the list summary carries `calibrated`, because the page must show the true
+  value, the volley and the calibration status without computing anything. Server test updated accordingly.
+- Size check (D8): after each photo load, `naturalWidth/Height` is compared with the truth photo size and the
+  calibration size; a mismatch or a load error sets a blocking banner until the user returns to the list.
+- Ignored sessions are listed with "Ignorée : aucune fléchette jugée" and have no open button; other read-only states
+  show the server message in the list. The dart picker (goto) appears once the calibration exists.
+- No browser and no `node` in the sandbox: the JavaScript was not executed here, only scanned by
+  `tests/test_annotate_static.py`. Kosmo's visual check (K2) is the first run of the page.
