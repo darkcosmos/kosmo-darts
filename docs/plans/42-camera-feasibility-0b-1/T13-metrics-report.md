@@ -22,8 +22,12 @@ tune the thresholds on dev, and guard the eval run. The report itself is T13b.
   each side is the dev results of one version on the comparison set plus its `kosmoPartSha256` and public sets;
   tunes each with `tune.py`, applies the CV22 order and returns the retained side, the deciding step, both
   versions' figures (CV8 rates with Wilson intervals, tuned pair or `NoFeasiblePair`, CV9 successes, CV12 median)
-  and the overlap flag; `with_` None or without public images gives "sans jeux publics seulement". The overlap
-  branch follows Kosmo's answer to Q2 (root "Open questions"); main gives it in the assignment.
+  and the overlap flag; `with_` None or without public images gives "sans jeux publics seulement". Overlap branch:
+  unless main's assignment carries Kosmo's answer to Q2, it fails closed (root CV22): the without-public version is
+  kept and `Choice` carries the French message of CV22, shown by T13b and printed by `compare` (T14), not only
+  logged. Q2's answer later replaces this branch and its test in one commit.
+- Changed `docs/adr/0016-camera-feasibility-tooling.md`, section "Public data and version selection" (T9): adds the
+  CV22 selection order and the overlap case.
 - Added tests `tools/camera/tests/test_metrics.py`, `test_tune.py`, `test_frozen.py`, `test_compare.py`.
 
 ## Depends on
@@ -50,7 +54,8 @@ CV8 boundaries: correct `>=` 95 % passes, unflagged errors `<=` 1 % passes.
   correct and unflagged-error rates are identical with and without drift data.
 - Comparison (CV22) on scripted fake-detector results: one case per decision step (feasible beats infeasible, lower
   best reachable rate, more correct, fewer unflagged, more CV9, lower CV12 median), exact tie keeps without public,
-  overlapping intervals set the flag and follow Q2, different `kosmoPartSha256` or an eval or campaign result
+  one case where two steps disagree (version A ahead on correct darts, B ahead on CV9 and CV12: A wins, step 2
+  reported; T3), overlapping intervals fail closed (without public kept, French message present) until Q2, different `kosmoPartSha256` or an eval or campaign result
   raises, no public version gives "sans jeux publics seulement".
 
 ## Done when

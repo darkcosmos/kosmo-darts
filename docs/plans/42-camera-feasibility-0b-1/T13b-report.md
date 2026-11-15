@@ -45,7 +45,8 @@ CV8 to CV15, CV17, CV19, CV21, CV22, D12, D21. Interval at exactly the target co
 - 0 judged darts: report renders with "n/a" everywhere.
 - Drift summary present with its counts; an `--accept-drift` run shows the excluded count.
 - Public data: a model trained with two synthetic slugs lists both with licence and counts; without, "aucun jeu
-  public"; a comparison choice renders both rows, the retained version and the deciding step; overlap flag shown.
+  public"; a comparison choice renders both rows, the retained version and the deciding step; overlap flag shown,
+  with the fail-closed French message of root CV22 while Q2 is open.
 - Privacy scan also run on the comparison output; slugs are allowed, session names are not.
 - Privacy (CV15): a report built from synthetic sessions contains no session name, file name, path separator from the
   inputs, or image data (scan for the input strings and for base64 or data URLs).

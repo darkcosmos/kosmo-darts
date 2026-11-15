@@ -25,16 +25,26 @@ Build the RF-DETR training dataset (COCO layout) from annotated dev photos and a
   (`train`/`valid`/`test` `_annotations.coco.json`) of `<public_root>/<slug>/`, refuses a set with an unknown
   category name, differing category lists between subsets or a slug absent from the map; per image, `drop-image`
   drops it, `ignore` drops the annotation, `tip`/`calN` become our square box at the source box centre.
+  Downloads are untrusted (root CV21, S10): `MAX_JSON_BYTES` (64 MiB) and `MAX_IMAGE_BYTES` (32 MiB) named in the
+  module and checked before reading; JSON invalid, oversized, with duplicated image or category ids or a dangling
+  `image_id`/`category_id` refuses the set; per image, `file_name` must be a bare name (no `/`, `\`, `..`, NUL,
+  absolute path) whose `lstat` is a regular file (no symlink) inside `<slug>/<subset>/`, opened with `O_NOFOLLOW`;
+  oversized, undecodable (`Image.MAX_IMAGE_PIXELS` kept, `DecompressionBombError`, truncated), size differing from
+  the JSON, or a box not finite or not inside the image: image dropped and counted per reason in the manifest.
 - Added `tools/camera/config/public-class-maps.json` with `sets` empty (T9b fills it).
 - Changed `docs/camera/datasets.md` (French): the search rows are replaced by one row per set of root D20, table
   `| slug | jeu | lien | licence | attribution | statut |`, e.g. `| mat24_dartsv2 | mat24_dartsv2 (school) |
-  https://universe.roboflow.com/school-asc0d/mat24_dartsv2 | CC BY 4.0 | à compléter par Kosmo au téléchargement |
-  accepted |`; four `accepted`, `dart-tip-detection-6d3mw` `conditional` (accepted only if its page shows CC BY 4.0
+  https://universe.roboflow.com/school-asc0d/mat24_dartsv2 | CC BY 4.0 (page vue par Kosmo le 2026-11-15) | à
+  compléter par Kosmo au téléchargement | accepted |` (S11: the date is the day Kosmo read the licence on the page;
+  attribution copied from the page by Kosmo, never invented); four `accepted`, `dart-tip-detection-6d3mw` `conditional` (accepted only if its page shows CC BY 4.0
   at download), `bullseyebot` (Hugging Face, link "non fourni", licence "aucune") `rejected`. Acceptance rule kept
   (CC BY 4.0 only, DeepDarts excluded); "How a set is added" points to the class map file and T9b.
 - Added tests `tools/camera/tests/test_dataset.py`, `test_public_import.py`, `test_datasets_doc.py` (row structure:
-  6 cells, status in `accepted|conditional|rejected`, link `https://universe.roboflow.com/` and licence `CC BY 4.0`
-  for `accepted` and `conditional`, every slug of the map is an `accepted` row; attribution text not checked).
+  6 cells, status in `accepted|conditional|rejected`, link `https://universe.roboflow.com/` and licence starting
+  `CC BY 4.0` for `accepted` and `conditional`, every `accepted` licence cell matches
+  `CC BY 4.0 (page vue par Kosmo le YYYY-MM-DD)`, every slug of the map is an `accepted` row; attribution text not checked).
+- Changed `docs/adr/0016-camera-feasibility-tooling.md`: new section "Public data and version selection" (A17): map
+  file, train-only rule, public datasets as untrusted input with the CV21 validation (T13 adds the selection order).
 
 ## Depends on
 T3 (`model_spec.CLASS_NAMES`), T4b, T8b.
@@ -65,6 +75,12 @@ adapt so that slot k is `CLASS_NAMES[k]` (T3 contract).
 - Public import on a synthetic Roboflow-style export (with the unused supercategory at id 0): map applied, `ignore`
   and `drop-image` honoured, unknown category, unknown slug, differing subset categories each raise; map strict
   reader rejections and cap.
+- Untrusted downloads (S10), synthetic files, deterministic: `file_name` `../x`, an absolute path and a symlink to a
+  file outside the public folder: each image dropped and counted, the outside file never opened (open calls
+  recorded); image of `MAX_IMAGE_BYTES` + 1: dropped; decompression bomb (`Image.MAX_IMAGE_PIXELS` lowered in the
+  test only, restored by the fixture): dropped; box NaN, infinite, outside the image: dropped; JSON of
+  `MAX_JSON_BYTES` + 1, invalid JSON, duplicated image id, duplicated category id, dangling `image_id`, dangling
+  `category_id`: each refuses the set; public folder unchanged (hashes before and after).
 - `public="none"` and `"all"` on the same seed: same `kosmoPartSha256`, same valid subset, public images only in
   train; empty map: `"all"` equals `"none"` plus an empty `public` list.
 - Source folders unchanged (hashes before and after).

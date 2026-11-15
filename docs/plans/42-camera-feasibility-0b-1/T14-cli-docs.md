@@ -10,7 +10,7 @@ feasibility report that developer-fix fills from Kosmo's reports.
   (default `none`; public root `<data>/public`), `train`, `compare --without RUN --with RUN` (two export runs;
   measures both on the dev photos of the shared valid subset with T11 and T13, calls `compare.select_version`,
   writes T13b `build_comparison` and `retained.json` (model path and SHA-256) in a new run folder, prints the report
-  path and "Version retenue : sans|avec jeux publics"; `--with` optional: without it, the without-public version
+  path and "Version retenue : sans|avec jeux publics", plus the fail-closed message of root CV22 when it applies; `--with` optional: without it, the without-public version
   alone, CV22),
   `export [--fp16]` (FP16 through `ai-edge-quantizer`, optional), `measure --set dev|eval|campaign`, `tune`, `report`
   (T13b); `split` and `annotate` stay their own stdlib modules (T4b, T6a) and are referenced in `--help` and docs; common

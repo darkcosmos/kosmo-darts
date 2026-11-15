@@ -13,6 +13,10 @@ are in main's assignment; nothing else depends on it.
   téléchargement" for a set he did not send); `dart-tip-detection-6d3mw` becomes `accepted` or `rejected` per his
   check; a set he did not download keeps its status and has no map entry.
 - Changed `tools/camera/tests/test_public_import.py`: the committed map loads strictly.
+- Licence cell: date updated if Kosmo gives the day he checked the page at download; attribution copied from his
+  message (from the page), never invented (S11).
+- Implementation notes list every `tip` and `calN` mapping (slug, source category, target) for the PR description,
+  so main and Kosmo confirm them once (T2).
 
 ## Depends on
 T9.

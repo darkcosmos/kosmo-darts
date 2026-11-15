@@ -243,15 +243,23 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   category, an unknown slug or subsets with different category lists refuse the set with a message naming them. A
   `tip` or `calN` target is only for a category whose box centre is that point; anything else is `drop-image`
   (whole dart, ambiguous meaning) or `ignore` (carries no dart and no calibration point). Public images go to the
-  train subset only, never to valid, dev measures or eval.
+  train subset only, never to valid, dev measures or eval. Downloaded files are untrusted input (S10): each
+  `_annotations.coco.json` is capped at `public_import.MAX_JSON_BYTES` (64 MiB) and must parse with unique image
+  and category ids and no dangling `image_id` or `category_id`, else the set is refused; an image is dropped and
+  counted per reason when its `file_name` is not a bare name resolving inside `<slug>/<subset>/` (no `/`, `\`,
+  `..`, absolute path or symlink, opened without following links), when it exceeds `public_import.MAX_IMAGE_BYTES`
+  (32 MiB), fails to decode (`Image.MAX_IMAGE_PIXELS` kept, decompression bomb, truncated, size different from the
+  JSON, as S8), or has a box that is not finite or not inside the image. Sources are never written.
 - CV22 Benefit of public data (D21): versions without (`--public none`) and with (`--public all`) public sets,
   same seed and same Kosmo part (`kosmoPartSha256` equal in both dataset manifests, else refused). Comparison set:
   the dev photos of the shared valid subset; eval and campaign results are refused. Each version is tuned on it (T13
   tune), then the first difference decides: (1) a version with a feasible pair (unflagged errors <= 1 %) beats one
   without, and between two without, the lower best reachable unflagged rate wins; (2) more correct darts (CV7, same
   denominator); (3) fewer unflagged errors; (4) more CV9 successes; (5) lower CV12 median tip error; (6) still equal:
-  without public. When the 95 % intervals of the correct rate overlap the report says "écart dans le bruit" (handling
-  pending Q2). No accepted set available or no public image kept: the without-public version alone, stated.
+  without public. When the 95 % intervals of the correct rate overlap the report says "écart dans le bruit"; until
+  Kosmo answers Q2 this case fails closed: the version without public data is kept and the compare output and
+  report show "Écart dans le bruit : règle en attente de la décision de Kosmo (Q2), version sans jeux publics
+  retenue par prudence". No accepted set available or no public image kept: the without-public version alone, stated.
 
 ## Files and types added or changed
 
@@ -275,13 +283,15 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   `annotate/` (`flow.py`, `server.py`, `jpeg_size.py`, `static/`). The segment of a dart is found by one function,
   `annotations.segment_for` (T5b), imported by `flow.py`, `drift.py` and `dataset.py`, never re-implemented (checked
   by a source test in T9).
-- ADR: `docs/adr/0016-camera-feasibility-tooling.md`, written by T1 (PR A). PR B adds two sections to it (A13):
+- ADR: `docs/adr/0016-camera-feasibility-tooling.md`, written by T1 (PR A). PR B adds three sections to it (A13, A17):
   T5b "Annotation format v2 and migration" (v1 to v2 change, CV20 segments, reader of both versions, v2-only
   writer, rewrite only on the first saved change, segment cap, and the proof of the policy: v1 golden to v2 golden
   byte for byte, a v1 file written by the PR A tool, 50 seeded v1 files round-tripped); T8b "Tripod drift" (method
   CV18 with the alternatives rejected in "Approach, Tripod drift", compensation labels derived from the reference
   photo of the segment, threshold as one constant, 1.0 mm (D18), `drift.json` as a local, regenerable, name-bearing file
-  written in the container and read by the stdlib tool, never pasted or committed, CV15).
+  written in the container and read by the stdlib tool, never pasted or committed, CV15); "Public data and version
+  selection" (A17): T9 writes the map file, the train-only rule and public datasets as untrusted input with the
+  strict validation of CV21 (S10); T13 adds the CV22 selection order and the fail-closed overlap case.
 - Added tests `tools/camera/tests/` (pytest; marker `slow` for export and training smoke tests).
 - Added docs listed in "Scope". Changed `.gitignore`. Nothing else changes (`git diff origin/main -- app capture
   game-engine .github` stays empty).
@@ -358,7 +368,10 @@ the cases. Summary:
 - T9: COCO output with 0-based category ids, box size, compensated calibration boxes, drift guard and
   `--accept-drift`, eval unit refused (CV4, CV19); on synthetic COCO exports: class map strict reader, unknown
   category or slug refused, `drop-image` and `ignore`, public images in train only, `--public none` and `all` give
-  the same `kosmoPartSha256` and valid subset (CV21, CV22); `datasets.md` row structure.
+  the same `kosmoPartSha256` and valid subset (CV21, CV22); untrusted downloads (S10): `file_name` `../x`, absolute
+  or symlink, oversized image, decompression bomb, non-finite or outside boxes each dropped and counted with nothing
+  read outside the public folder; oversized or invalid JSON, dangling or duplicated ids each refuse the set; source
+  folders unchanged (hashes); `datasets.md` row structure with a dated licence cell on accepted rows (S11).
 - T9b: the committed map loads strictly, every mapped slug is an `accepted` row of `datasets.md`, each set's
   category list from Kosmo is covered exactly (CV21).
 - T10a: CPU and GPU requirements in sync and hashed, Dockerfile static checks, `gpu_check` exit codes.
@@ -369,7 +382,8 @@ the cases. Summary:
 - T13: intervals, breakdowns, tuning (including no feasible pair), CV8 boundaries, 0 judged darts, strict
   `frozen.json`, CV4 guard with split lock, CV9 and CV12 with compensated reference and photos without reference
   counted, CV7 unchanged by drift; CV22 selection on scripted results: each decision step, exact tie keeps
-  without public, overlap flag, different `kosmoPartSha256` or an eval result refused, without-public alone.
+  without public, an earlier step winning over a later one that disagrees, overlap fails closed with its French
+  message until Q2, different `kosmoPartSha256` or an eval result refused, without-public alone.
 - T13b: limits section (with the drift summary), D12 verdict at the interval boundary, path list or campaign size,
   public sets section (slugs, licences, images) and comparison section (both versions, deciding step), CV15 privacy
   scan.
@@ -423,7 +437,10 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     recalibration the session's flags stay shown with "(mesure périmée)" until `drift` runs again, so the other
     suggested darts of that session are not lost. "Effacer" (U) on a saved recalibration removes its last point and
     the segment from the file at once.
-  - K5.4 Run K5.2 again; repeat K5.3 and K5.4 until "Tout sous le seuil : oui"; paste the last drift report.
+  - K5.4 Run K5.2 again; repeat K5.3 and K5.4 until "Tout sous le seuil : oui"; paste the last drift report,
+    `~/kosmo-runs/drift/drift-report.md`.
+  - The K5.2 `docker run` line is shown in `training.md` as one copy-paste block with the same wording, keeping
+    `--network none`, `--cap-drop ALL`, `no-new-privileges`, `--read-only` and `~/kosmo-data` mounted `:ro` (S10).
 - K5b (complete PR B branch, after T14; commands in `training.md` "Run", "Avec ou sans jeux publics" and "Dev loop"):
   - K5.5 `git pull`, rebuild the image (entry point `python -m kosmo_camera` now), run `gpu-check`.
   - K5.6 Public data benefit (D21, CV22): `dataset --public none` and `dataset --public all`, `train` and `export`
@@ -460,7 +477,7 @@ closing it):
 
 PR B (branch `feat/camera-feasibility-0b-1-detection` from `main` after PR A, tasks T3, T5b, T7, T8, T8b, T6c,
 T6d, T9, T10, T11, T12, T13, T13b, T14, T9b; `Closes #42`). Batch 1 (T5b to T6d) is pushed on this branch before the
-PR, without opening it (D19); no extra PR.
+PR, without opening it (D19); no extra PR. The batch 1 hand-back states the full pytest count (as in PR A, T4).
 - How to verify: K5.0 to K5.4 (from batch 1: image rebuilt, drift loop before any training), K5.5 to K5.7 (public
   data comparison, then dev loop), then K6.
   The tool steps state what Kosmo sees: an old v1 file opens unchanged, the first change saves it as v2 without
@@ -472,7 +489,8 @@ PR, without opening it (D19); no extra PR.
   from the dev report; plus the drift threshold (CV19, 1.0 mm, D18), the drift method (CV18), and the version
   retained with or without public data with its figures (CV22, D21).
 - Public datasets: the description lists the sets used (slug, licence) and says that their attribution lines are in
-  `docs/camera/datasets.md` (CC BY 4.0, D20).
+  `docs/camera/datasets.md` (CC BY 4.0, D20), and lists every `tip` and `calN` mapping of the class map (slug,
+  source category, target) so main and Kosmo confirm them once (T2).
 - Kosmo's pasted numbers recorded in the PR: the last drift report (all under the threshold), the comparison
   section, then the dev report.
 
@@ -566,6 +584,7 @@ then, main asks Kosmo). K1 to K3 ran on PR A, K4 during part B, K5 from batch 1,
 | D19 | Kosmo, 2026-11-15: « Plan de la PR B validé, avec un ajustement d'ordre : réalise d'abord T5b, T8, T8b, T6c et T6d, pousse la branche et préviens-moi dès qu'ils sont faits. Je lance alors la mesure de dérive et je recalibre depuis la branche, pendant que tu continues T9 à T14. Pas de PR supplémentaire. » Batch 1 = T5b, T7 (needed by T8), T8, T8b, T6c, T6d; then push of the PR B branch without a PR and main tells Kosmo; batch 2 = T9 to T14 (and T9b). Batch 1 runs `drift` as `python -m kosmo_camera.drift` in the container (no entry point before T14) and T8b adds `config/` to the image; T6d documents the batch 1 steps in `training.md`. | CV18 to CV20 |
 | D20 | Kosmo, 2026-11-15: « Jeux publics : acceptés les jeux affichant la licence CC BY 4.0 sur Roboflow Universe : dartsdetectfulldart (SchoolPXL) : https://universe.roboflow.com/schoolpxl/dartsdetectfulldart ; dart tip detection (PJATK) : https://universe.roboflow.com/pjatk-ni0m7/dart-tip-detection ; mat24_dartsv2 (school) : https://universe.roboflow.com/school-asc0d/mat24_dartsv2 ; dart_detection3 (DartsKEY01) : https://universe.roboflow.com/dartskey01/dart_detection3 ; dart-tip-detection-6d3mw (DartsDetector) : https://universe.roboflow.com/dartsdetector/dart-tip-detection-6d3mw, seulement si sa page affiche CC BY 4.0 au téléchargement. Exclu : bullseyebot (Hugging Face), aucune licence. Toute décision antérieure contraire est remplacée par celle-ci. docs/camera/datasets.md : une ligne par jeu avec lien direct, licence, attribution exacte et statut. Je télécharge ces jeux au format COCO JSON dans ~/kosmo-data/public/<slug>/ et je te transmets la liste des catégories de chaque jeu pour la table de correspondance (T9). » Supersedes decision 8 and the search rows of `datasets.md` (P1). Slug = last segment of the link. T9 writes the rows, T9b fills attributions and the class map from Kosmo's lists; committed map, unknown category refused (CV21). | CV15, CV21 |
 | D21 | Kosmo, 2026-11-15: « L'apport des jeux publics est mesuré, pas supposé : entraînement avec et sans jeux publics, comparaison sur dev uniquement (jamais eval). La meilleure version est retenue, et le choix et ses chiffres figurent dans le rapport. » Squad's design: same seed and Kosmo part, public images in train only, comparison on the dev photos of the shared valid subset (the dev photos not used for training by either version), selection rule CV22, `compare` subcommand (T13, T13b, T14); eval run once on the retained version (K6). | CV4, CV22 |
+| D22 | Design review of cf648af: downloaded public files are untrusted input, validated as in CV21 (bare `file_name` inside its subset folder, no symlink, byte caps `MAX_JSON_BYTES` 64 MiB and `MAX_IMAGE_BYTES` 32 MiB, `Image.MAX_IMAGE_PIXELS` kept, finite in-image boxes, unique and valid ids; bad image dropped and counted, bad JSON refuses the set; S10); accepted rows carry the licence page date, attribution copied from the page, never invented (S11); ADR section "Public data and version selection" (A17); CV22 overlap fails closed with a visible French message until Q2 (T1); PR lists every `tip`/`calN` mapping (T2); step-order test (T3); batch 1 hand-back with the full pytest count (T4). | CV21, CV22 |
 
 ## Open questions
 
@@ -574,7 +593,8 @@ then, main asks Kosmo). K1 to K3 ran on PR A, K4 during part B, K5 from batch 1,
   then each row says "à compléter par Kosmo au téléchargement". Kosmo chose the sets (D20).
 - P3: decided, two PRs (D11).
 - Q1: decided, 1.0 mm (D18).
-- Q2 (Kosmo, blocks only the overlap branch of the CV22 rule in T13): with a small comparison set, the two versions
+- Q2 (Kosmo, not blocking: until answered the overlap branch of CV22 fails closed, see CV22; the answer replaces
+  that branch and its test in one commit): with a small comparison set, the two versions
   may differ by a few darts while their 95 % intervals overlap ("écart dans le bruit"). Options: A) keep the version
   ahead on the CV22 order anyway, the overlap only stated in the report (follows "la meilleure version est
   retenue" literally; recommended); B) keep the version without public data whenever the intervals overlap (public

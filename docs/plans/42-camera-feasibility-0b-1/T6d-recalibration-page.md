@@ -22,10 +22,13 @@ rules as T6b.
 - Changed tests `tools/camera/tests/test_annotate_static.py` (T6b's static test file).
 - Changed `docs/camera/training.md` (last task of batch 1, root D19): new French section "Dérive et recalibration"
   with steps K5.0 to K5.4 of root "How Kosmo verifies" (switch to the branch, rebuild, the exact `docker run ...
-  python -m kosmo_camera.drift` line, the tool with `--drift`, R and its undo, "(mesure périmée)", repeat until
-  "Tout sous le seuil : oui", paste the last report). T14 later switches it to the `drift` subcommand.
+  python -m kosmo_camera.drift` line as one copy-paste code block, same wording as the plan, the tool with
+  `--drift`, R and its undo, "(mesure périmée)", repeat until "Tout sous le seuil : oui", paste the last report
+  `~/kosmo-runs/drift/drift-report.md`). T14 later switches it to the `drift` subcommand.
 - Added test `tools/camera/tests/test_training_doc.py`: the `drift` and `annotate` commands of that section parse
-  with the modules' argument parsers; the `docker run` line has the decision 10 flags and `/data` read-only.
+  with the modules' argument parsers; the `docker run` block has `--network none`, `--cap-drop ALL`,
+  `no-new-privileges`, `--read-only` and `~/kosmo-data` mounted `:ro` (S10).
+- Hand-back of this last batch 1 task states the full pytest count (root D22, T4).
 
 ## Depends on
 T6c.
