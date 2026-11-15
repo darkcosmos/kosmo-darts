@@ -89,3 +89,21 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   dart (CV5) and is clicked on that dart's photo. A version 1 file is read by the kept version 1 reader and migrated
   without loss (a version 1 `calibration` becomes the single segment from dart 1; `null` becomes an empty list).
   Writers write version 2 only. Details in `docs/camera/annotation-format.md`.
+- CV21 Public datasets (D20, D23, D27): only sets with an entry in `tools/camera/config/public-class-maps.json` are read,
+  from `~/kosmo-data/public/<slug>/` (slug = Kosmo's folder name, `^[a-z0-9_-]{1,64}$`); the map holds only sets with
+  status `accepted` or `conditional` in `docs/camera/datasets.md`, a set with a `pseudo-tip-box` target being
+  `conditional` and any other `accepted` (checked by a test, not at run time); rejected sets have no entry and their
+  folders are never opened. Targets: `tip` (the box centre is the tip; box rebuilt with `BOX_FRACTION`),
+  `whole-dart-checked` (annotation ignored; image dropped when no `tip` centre lies inside the box, counted under its
+  own rule), `pseudo-tip-box` (whole-dart box returned raw, tip only from CV23), `ignore`, `drop-image`; no calibration
+  target (public calibration labels come only from CV23). Every category carrying an annotation in any subset must be
+  in the map; a mapped name absent from the set, an unknown slug or subsets with different category lists refuse the
+  set with a message naming them; a category with no annotation in any subset is ignored. Public images go to the
+  train subset only, never to valid, dev measures or eval. Downloaded files are untrusted input (S10): each
+  `_annotations.coco.json` is capped at `public_import.MAX_JSON_BYTES` (64 MiB) and must parse with unique image and
+  category ids and no dangling `image_id` or `category_id`, else the set is refused; an image is dropped and counted per
+  reason when its `file_name` is not a bare name (no `/`, `\`, `..`, NUL, absolute path) of a regular file (`lstat`)
+  inside `<slug>/<subset>/` opened without following links (`O_NOFOLLOW`), when it exceeds
+  `public_import.MAX_IMAGE_BYTES` (32 MiB), fails to decode (`Image.MAX_IMAGE_PIXELS` kept, decompression bomb,
+  truncated), has a size different from the JSON, or has a box that is not finite or not inside the image. Both caps
+  are checked before reading and a read never goes past them. Sources are never written.

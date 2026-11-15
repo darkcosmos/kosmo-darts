@@ -57,3 +57,17 @@ Python checks of root "Test plan" green (including `python -m pytest -q -m "not 
 sonnet. Why: strict reader and untrusted-input rules fully specified in CV21, tested on synthetic files.
 
 ## Implementation notes
+- API: `public_import.PublicImporter(public_root, class_map)`; `iter_images(slug)` refuses the set at once
+  (`PublicImportError`) and returns an iterator of `PublicImage` (slug, subset, file_name, path, width, height, sha256,
+  `tips` = square `(x, y, side, side)` boxes with side `BOX_FRACTION` x longer image side, not clipped, `pseudo_boxes`
+  = raw `(x, y, w, h)`). Drops are counted in `importer.dropped[slug]` (a Counter, reset per call) under `drop-image`,
+  `whole-dart-checked`, `bad-file-name`, `not-regular-file`, `image-too-large`, `undecodable`, `size-mismatch`,
+  `bad-box`. `load_class_map()` / `decode_class_map(bytes)` read the committed map (cap 64 KiB).
+- Choices not fixed by the plan: a missing `valid` or `test` folder is tolerated (at least one subset required); boxes
+  of `ignore` annotations are not validated; a missing image counts as `not-regular-file`; a Pillow decompression
+  warning (between 1x and 2x `MAX_IMAGE_PIXELS`) is treated as an error; box checks use inclusive edges
+  (`x + w <= width`); the `whole-dart-checked` test uses source tip centres, per whole-dart box.
+- Tests: `tests/coco_fixtures.py` (helpers reused by T9, T9c, T9d; Pillow imported lazily inside), `importorskip("PIL")`
+  only in `test_public_import.py`. `test_datasets_doc.py` is stdlib-only (needs pytest, not Pillow).
+- Docs: CV21 written in `docs/rules/camera.md`, ADR section "Public data and version selection" added (T9 and later
+  tasks append their paragraphs), `datasets.md` table has no row yet (T9b).

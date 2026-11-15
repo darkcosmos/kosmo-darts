@@ -88,6 +88,24 @@ tripod moves by a few pixels. Decisions (rules CV18 and CV19, `tools/camera/kosm
 - Container: the image copies `config/` next to the package, since `config.py` reads it at import, and runs
   `python -m kosmo_camera.drift` with the data mounted read-only; the `drift` command needs no split lock (CV18).
 
+## Public data and version selection
+
+- Map file: `tools/camera/config/public-class-maps.json` (format `kosmo-camera-public-class-maps`, version 1) is the
+  only way a public set enters the tools: slug (Kosmo's folder name) to licence and a source-category-to-target table.
+  It is committed and reviewable. Alternative rejected: a map file inside each data folder (not reviewable, not
+  versioned). `docs/camera/datasets.md` has one row per set and a test keeps the two consistent.
+- Targets: `tip` (the centre of the source box is the tip, the box is rebuilt with `BOX_FRACTION`),
+  `whole-dart-checked` (ignored as a label, but the image is dropped when no tip lies inside it, so an unlabelled tip
+  never stays as background), `pseudo-tip-box` (raw box, never a label by itself), `ignore`, `drop-image`. There is no
+  calibration target.
+- Train-only rule: public images join the training subset only, in every fold and in the full training. Validation,
+  dev measures and eval hold Kosmo's photos only (CV21).
+- Untrusted input (CV21, S10): the downloaded JSON and images are validated before use. JSON over 64 MiB, invalid, with
+  duplicated or dangling ids, or with category lists that disagree refuses the set. An image is dropped and counted
+  per reason when its name is not a bare name of a regular file inside its subset folder (read without following
+  links), when it is over 32 MiB, does not decode (Pillow's pixel limit is kept), differs in size from the JSON or
+  carries a box that is not finite or not inside it. Source folders are never written.
+
 ## Consequences
 
 The tools add no dependency to the apps. The pinned wheels cover Linux x86_64 and cp313 only. The eval data is guarded
