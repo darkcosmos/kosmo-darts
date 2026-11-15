@@ -35,6 +35,10 @@ def test_committed_defaults_load_and_are_exposed_as_constants():
     assert (config.ANGLE_FRONT_MAX_DEGREES, config.ANGLE_OBLIQUE_MAX_DEGREES) == (15.0, 35.0)
     assert (config.DISTANCE_FAR_MAX, config.DISTANCE_MID_MAX) == (0.35, 0.6)
     assert (config.ZOOM_1X_BELOW, config.ZOOM_2X_MAX) == (1.5, 3.0)
+    # Drift (CV18, CV19, D18): the one place that pins DRIFT_MAX_MM, so that a change is intentional.
+    assert config.DRIFT_MAX_MM == 1.0 and config.DRIFT_MAX_MM == config.CAL_MAX_ERROR_MM / 2
+    assert config.DRIFT_CANDIDATES_MM == (0.5, 1.0, 2.0)
+    assert (config.DRIFT_COARSE_PX, config.DRIFT_PATCH_FRACTION, config.DRIFT_MIN_PEAK) == (512, 0.06, 0.2)
 
 
 def test_unknown_key_raises(tmp_path):
@@ -63,6 +67,20 @@ def test_wrong_type_raises(tmp_path, key, bad):
     data[key] = bad
     with pytest.raises(config.ConfigError, match=key):
         config.load_defaults(_write(tmp_path, data))
+
+
+@pytest.mark.parametrize("bad", [[], 1.0, "0.5", [0.5, "1"], [0.5, True], [0.5, None]])
+def test_candidate_list_must_be_a_non_empty_list_of_numbers(tmp_path, bad):
+    data = _valid()
+    data["DRIFT_CANDIDATES_MM"] = bad
+    with pytest.raises(config.ConfigError, match="DRIFT_CANDIDATES_MM"):
+        config.load_defaults(_write(tmp_path, data))
+
+
+def test_candidate_list_is_read_as_a_tuple_of_floats(tmp_path):
+    data = _valid()
+    data["DRIFT_CANDIDATES_MM"] = [1, 2.5]
+    assert config.load_defaults(_write(tmp_path, data))["DRIFT_CANDIDATES_MM"] == (1.0, 2.5)
 
 
 def test_not_an_object_raises(tmp_path):

@@ -8,6 +8,7 @@ from pathlib import Path
 DEFAULTS_PATH = Path(__file__).resolve().parent.parent / "config" / "defaults.json"
 
 # Expected type of every key; an integer key refuses floats, a float key accepts integers, booleans are refused.
+# `tuple` is a non-empty list of numbers (read as a tuple of floats).
 SCHEMA = {
     "ANGLE_FRONT_MAX_DEGREES": float,
     "ANGLE_OBLIQUE_MAX_DEGREES": float,
@@ -15,6 +16,11 @@ SCHEMA = {
     "CAL_MAX_ERROR_MM": float,
     "DISTANCE_FAR_MAX": float,
     "DISTANCE_MID_MAX": float,
+    "DRIFT_CANDIDATES_MM": tuple,
+    "DRIFT_COARSE_PX": int,
+    "DRIFT_MAX_MM": float,
+    "DRIFT_MIN_PEAK": float,
+    "DRIFT_PATCH_FRACTION": float,
     "LIGHT_DARK_BELOW": float,
     "LIGHT_MEDIUM_MAX": float,
     "MATCH_RADIUS_MM": float,
@@ -39,9 +45,17 @@ class ConfigError(ValueError):
 def _type_ok(value, expected):
     if isinstance(value, bool):
         return False
+    if expected is tuple:
+        return isinstance(value, list) and bool(value) and all(_type_ok(item, float) for item in value)
     if expected is float:
         return isinstance(value, (int, float))
     return isinstance(value, int)
+
+
+def _convert(value, expected):
+    if expected is tuple:
+        return tuple(float(item) for item in value)
+    return expected(value)
 
 
 def load_defaults(path=DEFAULTS_PATH):
@@ -59,7 +73,7 @@ def load_defaults(path=DEFAULTS_PATH):
     for key, expected in SCHEMA.items():
         if not _type_ok(data[key], expected):
             raise ConfigError(f"wrong type for {key}: expected {expected.__name__}")
-    return {key: expected(data[key]) for key, expected in SCHEMA.items()}
+    return {key: _convert(data[key], expected) for key, expected in SCHEMA.items()}
 
 
 _VALUES = load_defaults()
@@ -70,6 +84,11 @@ BOX_FRACTION = _VALUES["BOX_FRACTION"]
 CAL_MAX_ERROR_MM = _VALUES["CAL_MAX_ERROR_MM"]
 DISTANCE_FAR_MAX = _VALUES["DISTANCE_FAR_MAX"]
 DISTANCE_MID_MAX = _VALUES["DISTANCE_MID_MAX"]
+DRIFT_CANDIDATES_MM = _VALUES["DRIFT_CANDIDATES_MM"]
+DRIFT_COARSE_PX = _VALUES["DRIFT_COARSE_PX"]
+DRIFT_MAX_MM = _VALUES["DRIFT_MAX_MM"]
+DRIFT_MIN_PEAK = _VALUES["DRIFT_MIN_PEAK"]
+DRIFT_PATCH_FRACTION = _VALUES["DRIFT_PATCH_FRACTION"]
 LIGHT_DARK_BELOW = _VALUES["LIGHT_DARK_BELOW"]
 LIGHT_MEDIUM_MAX = _VALUES["LIGHT_MEDIUM_MAX"]
 MATCH_RADIUS_MM = _VALUES["MATCH_RADIUS_MM"]

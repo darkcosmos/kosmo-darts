@@ -47,6 +47,20 @@ def test_no_user_no_entry_point_and_cache_environment():
         assert pair in text
 
 
+def test_image_copies_the_package_and_the_config_folder_next_to_it():
+    copies = re.findall(r"^COPY (\S+) (\S+)$", _text(), re.M)
+    assert ("kosmo_camera/", "/app/kosmo_camera/") in copies
+    assert ("config/", "/app/config/") in copies  # config.py reads ../config/defaults.json at import
+    assert (DOCKERFILE.parent / "config" / "defaults.json").is_file()
+    assert copies.index(("config/", "/app/config/")) > copies.index(("kosmo_camera/", "/app/kosmo_camera/"))
+
+
+def test_header_documents_the_drift_run():
+    header = "\n".join(line for line in _text().splitlines() if line.startswith("#"))
+    assert "python -m kosmo_camera.drift --captures /data/captures --annotations /data/annotations --runs /runs" in header
+    assert "-v ~/kosmo-data:/data:ro" in header
+
+
 def test_header_documents_the_run_flags_of_decision_10():
     header = "\n".join(line for line in _text().splitlines() if line.startswith("#"))
     for flag in ("--device nvidia.com/gpu=all", "--network none", "--cap-drop ALL", "--security-opt no-new-privileges",

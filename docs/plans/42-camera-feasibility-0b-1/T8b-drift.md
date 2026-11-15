@@ -73,3 +73,25 @@ Python checks of root "Test plan" green (including the CI command `python -m pyt
 sonnet. Why: algorithm, statuses and threshold fully specified in CV18 and CV19; derived, regenerable file.
 
 ## Implementation notes
+- Deviation (accuracy): the whitened cross-power spectrum carries a Gaussian low-pass, `_SPECTRAL_SIGMA` = 0.08
+  cycles per pixel, in `drift.phase_shift`. A bare whitened peak is a sinc and the 3-point parabola then biased the
+  shift by about 0.1 px (measured: 2.5 px recovered as 2.58). With the weight the textured test is within 0.1 px.
+  CV18 and the ADR section say so. Peak height is normalised by the mean weight, so `DRIFT_MIN_PEAK` keeps its meaning.
+- Where: `drift.py` (`phase_shift`, `measure_photo`, `measure_session`, `suggested_starts`, `require_clean`,
+  `build_report`, `write_outputs`, `main`; `DriftParams` defaults come from `config.py`), `drift_file.py`
+  (`DriftFile`, `SessionFlags`, `read`, `encode`, `write_atomic`, `replace_atomic` also used for the report).
+  `config.py` schema gained the `tuple` type (non-empty list of numbers) for `DRIFT_CANDIDATES_MM`.
+- Later tasks: T6c reads `drift_file.read(path)` (camelCase keys only on disk; `SessionFlags` has `beyond`,
+  `suggested`, `unmeasurable`, `segments_sha256`, `max_drift_mm`); a flag is stale when `segments_sha256` differs from
+  `annotations.segments_sha256`. T9/T13 call `drift.measure_session` then use `PhotoDrift.reference_points`
+  (None means no reference calibration; `reason` tells why) and `drift.require_clean(drifts, accept_drift)`.
+- Reasons: a degenerate (collinear) segment gives `uncalibrated`. An unreadable reference photo gives `unreadable`
+  to the other photos of its segment; the reference photo itself stays drift 0.
+- `suggested_starts` works on the judged darts in number order: a dart under the threshold ends a run, an
+  unmeasurable one is skipped. Voided or photo-less darts are not in the annotations and do not split a run.
+- Test photo size: the planned-drift session uses 2400x1800 photos (3.7 px/mm, finer than the 3 px/mm synthetic
+  canvas) because at 640x480 the aliasing of the canvas limits the shift to about 0.15 px, above the 0.05 mm budget.
+  Its 12 photos are written once (module fixture, about 3 s). Measured: shifts within 0.17 px, mm within 0.045.
+- `main()` exits 2 on a missing folder, an annotation file the strict reader rejects (the path is on stderr), or a
+  session name that differs from its file name; sessions are the `*.json` files of `--annotations`, their photos
+  are read in `<captures>/<session>/`; a missing photo folder gives `unreadable` statuses, not an error.
