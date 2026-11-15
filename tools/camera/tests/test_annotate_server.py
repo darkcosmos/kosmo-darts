@@ -189,7 +189,7 @@ def test_full_flow_autosaves_each_change_and_reports_the_saved_time(tool):
     assert result["saved"] == "Enregistré à 12:34:56" and result["session"]["cursor"]["number"] == 3
     tool.act("hidden")
     saved = an.read(annotation_file(tool))
-    assert saved.calibration.width == SIZE[0] and [d.number for d in saved.darts] == [1, 3]
+    assert saved.calibrations[0].width == SIZE[0] and [d.number for d in saved.darts] == [1, 3]
     # reopening resumes at the first dart not annotated, with the earlier tips returned
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
     assert view["cursor"]["number"] == 4 and view["darts"][0]["tip"] == [100.5, 200.5]
@@ -236,7 +236,7 @@ def test_clicks_are_checked_against_the_real_jpeg_size_not_only_the_truth_size_d
     assert status == 400
     for x, y in POINTS:
         status, result = tool.act("click", x=x, y=y)
-    calibration = an.read(annotation_file(tool)).calibration
+    calibration = an.read(annotation_file(tool)).calibrations[0]
     assert (calibration.width, calibration.height) == (2000, 1000)
     assert tool.act("click", x=10, y=1001)[0] == 400
     assert tool.act("click", x=1999.5, y=999.5)[0] == 200
@@ -400,7 +400,7 @@ def test_rejected_annotation_file_is_read_only_with_cause_and_never_overwritten(
 def test_annotation_contradicting_the_truth_is_rejected_too(tool):
     _, sha = make_session(tool.captures)
     tool.annotations.mkdir()
-    bad = an.Annotations(NAME, sha, None, (an.DartAnnotation(2, an.Status.HIDDEN, None),))  # dart 2 is voided
+    bad = an.Annotations(NAME, sha, (), (an.DartAnnotation(2, an.Status.HIDDEN, None),))  # dart 2 is voided
     annotation_file(tool).write_text(an.encode(bad), encoding="utf-8")
     tool.start()
     assert states(tool)[NAME]["state"] == "annotation_rejected"
@@ -421,13 +421,64 @@ def test_annotation_file_over_1_mib_is_refused_and_untouched(tool):
 def test_stale_annotation_warns_and_still_allows_editing(tool):
     _, sha = make_session(tool.captures)
     tool.annotations.mkdir()
-    stale = an.Annotations(NAME, "0" * 64, None, ())
+    stale = an.Annotations(NAME, "0" * 64, (), ())
     annotation_file(tool).write_text(an.encode(stale), encoding="utf-8")
     tool.start()
     listed = states(tool)[NAME]
     assert listed["state"] == "ok" and "changé" in listed["warning"]
     status, result = tool.act("click", x=1, y=1)
     assert status == 200 and result["session"]["warning"]
+
+
+def _v1_text(sha):
+    """A version 1 file as the part A tool wrote it: calibration on dart 1, dart 1 visible, dart 3 hidden."""
+    return json.dumps({"format": an.FORMAT, "version": 1, "session": NAME, "truthSha256": sha,
+                       "calibration": {"photo": "dart-001.jpg", "width": SIZE[0], "height": SIZE[1],
+                                       "points": [{"x": float(x), "y": float(y)} for x, y in POINTS]},
+                       "darts": [{"number": 1, "status": "VISIBLE", "tip": {"x": 100.5, "y": 200.5}},
+                                 {"number": 3, "status": "HIDDEN", "tip": None}]}, indent=2)
+
+
+def test_v1_file_opened_listed_and_browsed_stays_byte_identical_cv16_cv20(tool):
+    _, sha = make_session(tool.captures)
+    tool.annotations.mkdir()
+    annotation_file(tool).write_text(_v1_text(sha), encoding="utf-8")
+    tool.start()
+    before = tree_listing(tool.root)
+    listed = states(tool)[NAME]
+    assert listed["state"] == "ok" and listed["calibrated"] is True and listed["progress"] == {"done": 2, "total": 3}
+    status, view = tool.json("GET", f"/api/sessions/{NAME}")
+    assert view["cursor"]["number"] == 4 and view["calibration"]["points"] == [list(map(float, p)) for p in POINTS]
+    for action in ("previous", "next"):
+        assert tool.act(action)[0] == 200
+    assert tool.act("goto", number=1)[0] == 200
+    assert tree_listing(tool.root) == before
+
+
+def test_first_saved_change_rewrites_a_v1_file_as_v2_with_every_tip_kept_cv16_cv20(tool):
+    _, sha = make_session(tool.captures)
+    tool.annotations.mkdir()
+    annotation_file(tool).write_text(_v1_text(sha), encoding="utf-8")
+    tool.start()
+    status, result = tool.act("off_board")  # resume cursor: dart 4
+    assert status == 200 and result["saved"] == "Enregistré à 12:34:56"
+    saved = json.loads(annotation_file(tool).read_text(encoding="utf-8"))
+    assert saved["version"] == 2 and "calibration" not in saved
+    assert saved["calibrations"] == [{"fromDart": 1, "photo": "dart-001.jpg", "width": SIZE[0], "height": SIZE[1],
+                                      "points": [{"x": float(x), "y": float(y)} for x, y in POINTS]}]
+    assert saved["truthSha256"] == sha
+    assert saved["darts"] == [{"number": 1, "status": "VISIBLE", "tip": {"x": 100.5, "y": 200.5}},
+                              {"number": 3, "status": "HIDDEN", "tip": None},
+                              {"number": 4, "status": "OFF_BOARD", "tip": None}]
+
+
+def test_stale_v1_file_keeps_its_warning_after_migration_cv20(tool):
+    make_session(tool.captures)
+    tool.annotations.mkdir()
+    annotation_file(tool).write_text(_v1_text("0" * 64), encoding="utf-8")
+    tool.start()
+    listed = states(tool)[NAME]
+    assert listed["state"] == "ok" and "changé" in listed["warning"]
 
 
 def test_session_without_judged_dart_is_listed_as_ignored_and_not_openable_cv3(tool):

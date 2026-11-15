@@ -59,3 +59,26 @@ exit 0.
 opus. Why: changed stored format with its migration (case 1), applied to Kosmo's real annotation files.
 
 ## Implementation notes
+- Model (`annotations.py`): `Calibration(from_dart, photo, width, height, points)` (field first, no default);
+  `Annotations(session, truth_sha256, calibrations, darts)`; v1 kept as `CalibrationV1` / `AnnotationsV1`, parsed by
+  `_annotations_v1` (unchanged v1 rules) then `migrate_v1`. Constants `VERSION = 2`, `VERSION_1 = 1`,
+  `MAX_SEGMENTS = 64`. Shared field rules in `_calibration_fields`; v2 list rules in `_calibrations` (cap checked
+  before parsing items). `encode` validates by decoding, so the cap and the order are also enforced on write.
+- `segment_for(annotations, n) -> (index, Calibration) | None`; `segments_sha256` hashes `_calibrations_json`
+  (exactly the encoded list) with `sort_keys`, compact separators; `[]` for no segment. T8b/T6c import both.
+- `validate_against`: errors at `$.calibrations[i].photo` / `.fromDart`; first segment may use any session photo.
+- Flow: `_calibrated()` = segment 0 exists; the calibration click replaces segment 0 and keeps the others. Deviation
+  for T6c: `clear` on the calibration screen while later segments exist raises `FlowError("Supprimez d'abord les
+  recalibrations suivantes.")` (removing segment 0 would leave no segment from dart 1); unreachable in this task
+  (the tool cannot create a second segment yet). T6c may replace this when it adds segment removal.
+- Server: the page API is unchanged: `view["calibration"]` is segment 0; T6c/T6d add segments to the view. The
+  409 at the cap belongs to T6c's recalibration action (no such action here).
+- Fixture `tests/data/annotations-v1-tool-written.json`: generated before any code change with `git archive 8d69f64
+  tools/camera` extracted to /tmp, then a script run with `python3.13 -I` that puts that export and its `tests/` on
+  `sys.path`, builds a session with `annotate_support.make_session(judged=1..9, voided=(10,), no_photo=(11,))`,
+  applies 4 calibration clicks then click, hidden, off_board x3 through `flow.apply` and calls
+  `annotations.write_atomic` after each action (autosave, as the PR A server); it asserts `VERSION == 1` and a
+  complete cursor. `annotations-v2-golden.json` = the doc's v2 example (v1 golden migrated).
+- Done-when deviation: `python3 -I -S -m kosmo_camera.annotate --help` cannot find the package (`-I` drops the
+  current folder from `sys.path`); checked instead with the form of `test_help_works_with_the_stdlib_only`
+  (`-I -S -c` with the package root inserted, 3.14 and 3.13) and with `python3 -S -m ... --help` from `tools/camera`.

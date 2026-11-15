@@ -3,7 +3,8 @@
 `apply(annotations, session, action, cursor)` returns the new annotations and the new cursor. Order: calibration
 points 1 to 4 on the first photo of the session, then judged darts by number. Voided darts and darts without a photo
 are skipped (CV5) and listed in `Plan.skipped`. The file format cannot hold a partial calibration, so the points
-clicked so far travel in `Cursor.pending` (kept in memory by the server).
+clicked so far travel in `Cursor.pending` (kept in memory by the server). The calibration screen edits segment 0,
+from dart 1, of the segment list (CV20); later segments are kept as they are.
 """
 import math
 from dataclasses import dataclass, replace
@@ -61,6 +62,11 @@ def _annotated(annotations):
     return {d.number for d in annotations.darts}
 
 
+def _calibrated(annotations):
+    """Segment 0 exists (CV20: when there is a segment, the first one starts at dart 1)."""
+    return bool(annotations.calibrations)
+
+
 def _dart_cursor(plan, number):
     return Cursor(DART, number, dict(plan.darts)[number])
 
@@ -77,7 +83,7 @@ def _first_open(annotations, plan):
 def resume(annotations, session, pending=()) -> Cursor:
     """Cursor when a session is opened: first missing calibration point, else first dart not annotated, else complete."""
     plan = plan_of(session)
-    if annotations.calibration is None:
+    if not _calibrated(annotations):
         return Cursor(CALIBRATION, photo=plan.first_photo, pending=tuple(pending)[:CALIBRATION_POINTS - 1])
     return _first_open(annotations, plan)
 
@@ -115,8 +121,8 @@ def _calibration_click(annotations, plan, action, cursor):
     if len(points) < CALIBRATION_POINTS:
         return annotations, replace(cursor, pending=points)
     width, height = action.size
-    calibration = Calibration(cursor.photo, int(width), int(height), points)
-    updated = replace(annotations, calibration=calibration)
+    calibration = Calibration(1, cursor.photo, int(width), int(height), points)
+    updated = replace(annotations, calibrations=(calibration,) + annotations.calibrations[1:])
     return updated, _first_open(updated, plan)
 
 
@@ -138,7 +144,9 @@ def _clear(annotations, cursor):
         darts = tuple(d for d in annotations.darts if d.number != cursor.number)
         return replace(annotations, darts=darts), cursor
     if cursor.kind == CALIBRATION and cursor.pending:
-        updated = replace(annotations, calibration=None) if annotations.calibration is not None else annotations
+        if len(annotations.calibrations) > 1:  # removing segment 0 would leave no segment from dart 1 (CV20)
+            raise FlowError("Supprimez d'abord les recalibrations suivantes.")
+        updated = replace(annotations, calibrations=()) if _calibrated(annotations) else annotations
         return updated, replace(cursor, pending=cursor.pending[:-1])
     return annotations, cursor
 
@@ -146,7 +154,7 @@ def _clear(annotations, cursor):
 def _move(annotations, plan, cursor, forward):
     numbers = [n for n, _ in plan.darts]
     if cursor.kind == CALIBRATION:
-        if forward and annotations.calibration is not None and numbers:
+        if forward and _calibrated(annotations) and numbers:
             return _dart_cursor(plan, numbers[0])
         return cursor
     if cursor.kind == COMPLETE:
@@ -156,8 +164,8 @@ def _move(annotations, plan, cursor, forward):
         return _dart_cursor(plan, numbers[index + 1]) if index + 1 < len(numbers) else cursor
     if index > 0:
         return _dart_cursor(plan, numbers[index - 1])
-    if annotations.calibration is not None:  # back to the calibration, which can then be cleared and redone
-        return Cursor(CALIBRATION, photo=plan.first_photo, pending=annotations.calibration.points)
+    if _calibrated(annotations):  # back to segment 0, which can then be cleared and redone
+        return Cursor(CALIBRATION, photo=plan.first_photo, pending=annotations.calibrations[0].points)
     return cursor
 
 
@@ -174,7 +182,7 @@ def apply(annotations, session, action, cursor=None) -> tuple:
     if action.kind in ("next", "previous"):
         return annotations, _move(annotations, plan, cursor, action.kind == "next")
     if action.kind == "goto":
-        if annotations.calibration is None:
+        if not _calibrated(annotations):
             raise FlowError("Calibrez d'abord le cadran.")
         if action.number not in dict(plan.darts):
             raise FlowError("Fléchette inconnue.")

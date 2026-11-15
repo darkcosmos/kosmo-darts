@@ -1,4 +1,5 @@
-"""Per-dart flow (T6a): CV2 calibration order, CV5 judged darts, resume cursor, replace, clear, skips, autosave."""
+"""Per-dart flow (T6a): CV2 calibration order, CV5 judged darts, resume cursor, replace, clear, skips, autosave;
+segment 0 of the calibration list (T5b, CV20)."""
 import pytest
 
 from annotate_support import NAME, SIZE, make_session, truth_dict
@@ -17,7 +18,7 @@ def session_of(tmp_path, **kwargs):
 
 
 def empty(session):
-    return Annotations(NAME, session.sha256, None, ())
+    return Annotations(NAME, session.sha256, (), ())
 
 
 def click(x=100.0, y=200.0):
@@ -25,7 +26,7 @@ def click(x=100.0, y=200.0):
 
 
 def calibrated(session, darts=()):
-    return Annotations(NAME, session.sha256, Calibration("dart-001.jpg", *SIZE, POINTS), tuple(darts))
+    return Annotations(NAME, session.sha256, (Calibration(1, "dart-001.jpg", *SIZE, POINTS),), tuple(darts))
 
 
 def calibrate(session):
@@ -53,9 +54,9 @@ def test_calibration_points_one_to_four_then_first_dart_cv2(tmp_path):
     for count, (x, y) in enumerate(POINTS, start=1):
         annotations, cursor = flow.apply(annotations, session, click(x, y), cursor)
         if count < 4:
-            assert annotations.calibration is None and cursor.kind == flow.CALIBRATION
+            assert annotations.calibrations == () and cursor.kind == flow.CALIBRATION
             assert cursor.pending == POINTS[:count]
-    assert annotations.calibration == Calibration("dart-001.jpg", SIZE[0], SIZE[1], POINTS)
+    assert annotations.calibrations == (Calibration(1, "dart-001.jpg", SIZE[0], SIZE[1], POINTS),)  # segment 0 (CV20)
     assert cursor == Cursor(flow.DART, 1, "dart-001.jpg")
 
 
@@ -64,7 +65,7 @@ def test_calibration_takes_the_real_jpeg_size_given_with_the_click(tmp_path):
     annotations, cursor = empty(session), None
     for x, y in POINTS:
         annotations, cursor = flow.apply(annotations, session, Action("click", x, y, size=(2000, 1000)), cursor)
-    assert (annotations.calibration.width, annotations.calibration.height) == (2000, 1000)
+    assert (annotations.calibrations[0].width, annotations.calibrations[0].height) == (2000, 1000)
 
 
 def test_click_on_a_dart_sets_the_tip_visible_and_moves_on(tmp_path):
@@ -153,9 +154,9 @@ def test_previous_from_the_first_dart_reopens_the_calibration_which_clear_then_r
     _, cursor = flow.apply(annotations, session, Action("previous"), cursor)
     assert cursor.kind == flow.CALIBRATION and cursor.pending == POINTS
     annotations, cursor = flow.apply(annotations, session, Action("clear"), cursor)
-    assert annotations.calibration is None and cursor.pending == POINTS[:3]
+    assert annotations.calibrations == () and cursor.pending == POINTS[:3]
     annotations, cursor = flow.apply(annotations, session, click(1.0, 2.0), cursor)
-    assert annotations.calibration.points[3] == (1.0, 2.0)
+    assert annotations.calibrations[0].points[3] == (1.0, 2.0)
 
 
 def test_click_with_four_points_already_set_in_calibration_is_ignored(tmp_path):
@@ -265,6 +266,37 @@ def test_autosave_round_trip_apply_write_reload_gives_the_same_file_and_cursor(t
     assert an.validate_against(reloaded, session) == []
     assert flow.resume(reloaded, session) == cursor
     assert cursor == Cursor(flow.DART, 4, "dart-004.jpg")
+
+
+def _two_segments(session, darts=()):
+    later = Calibration(3, "dart-003.jpg", *SIZE, ((1.0, 1.0), (2.0, 2.0), (3.0, 3.0), (4.0, 4.0)))
+    return Annotations(NAME, session.sha256, (Calibration(1, "dart-001.jpg", *SIZE, POINTS), later), tuple(darts))
+
+
+def test_calibration_screen_edits_segment_0_and_keeps_later_segments_cv20(tmp_path):
+    session = session_of(tmp_path)
+    annotations = _two_segments(session)
+    _, cursor = flow.apply(annotations, session, Action("previous"), Cursor(flow.DART, 1, "dart-001.jpg"))
+    assert cursor.kind == flow.CALIBRATION and cursor.pending == POINTS  # segment 0 points
+    assert flow.resume(annotations, session) == Cursor(flow.DART, 1, "dart-001.jpg")
+
+
+def test_clear_of_segment_0_with_later_segments_is_refused_and_changes_nothing_cv20(tmp_path):
+    session = session_of(tmp_path)
+    annotations = _two_segments(session)
+    cursor = Cursor(flow.CALIBRATION, photo="dart-001.jpg", pending=POINTS)
+    with pytest.raises(FlowError):
+        flow.apply(annotations, session, Action("clear"), cursor)
+
+
+def test_flow_saves_version_2_with_one_segment_from_dart_1_cv20(tmp_path):
+    session = session_of(tmp_path / "captures")
+    annotations, cursor = calibrate(session)
+    annotations, cursor = flow.apply(annotations, session, click(11.5, 12.5), cursor)
+    path = tmp_path / "annotations.json"
+    an.write_atomic(path, annotations)
+    assert an.read(path).calibrations == (Calibration(1, "dart-001.jpg", *SIZE, POINTS),)
+    assert '"version": 2' in path.read_text(encoding="utf-8")
 
 
 def test_truth_dict_helper_gives_a_readable_truth(tmp_path):

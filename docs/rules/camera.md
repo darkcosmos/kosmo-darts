@@ -50,6 +50,13 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
 - CV15 Reports contain numbers and group labels only: no image, path, file or session name.
 - CV16 Annotation tool: stdlib only, `127.0.0.1` only, no external resource, captures read-only, writes only in the
   annotations folder, atomic; every route resolves the session name against the listed sessions; never overwrites
-  an annotation file that the strict reader rejects.
+  an annotation file that the strict reader rejects (a version 1 file is accepted and written back as version 2 on
+  the first change, CV20).
 - CV17 Sessions in `~/kosmo-data/captures-eval/` (confirmation campaign, later) are always eval: never in the split,
   never in training or tuning; `measure --set campaign` reads them under the same `frozen.json` guard.
+- CV20 Calibration segments (annotation format version 2): `calibrations` is an ordered list of segments
+  `{fromDart, photo, width, height, points}`, at most `MAX_SEGMENTS` (64); the first starts at dart 1, `fromDart`
+  strictly ascending, each applies from its `fromDart` until the next one; a segment after the first starts at a judged
+  dart (CV5) and is clicked on that dart's photo. A version 1 file is read by the kept version 1 reader and migrated
+  without loss (a version 1 `calibration` becomes the single segment from dart 1; `null` becomes an empty list).
+  Writers write version 2 only. Details in `docs/camera/annotation-format.md`.

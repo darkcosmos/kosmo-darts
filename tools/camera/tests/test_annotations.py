@@ -1,11 +1,15 @@
-"""Annotation file format (docs/camera/annotation-format.md): CV2 calibration order, CV5 judged darts, CV16 writes."""
+"""Annotation file format (docs/camera/annotation-format.md): CV2 calibration order, CV5 judged darts, CV16 writes,
+CV20 calibration segments of version 2 and the lossless migration of version 1."""
 import copy
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path
+
+import random
 
 import pytest
 
@@ -16,6 +20,8 @@ from kosmo_camera.truth import read_truth
 
 DATA = Path(__file__).parent / "data"
 GOLDEN = DATA / "annotations-v1-golden.json"
+GOLDEN_V2 = DATA / "annotations-v2-golden.json"
+TOOL_V1 = DATA / "annotations-v1-tool-written.json"
 TRUTH_GOLDEN = DATA / "truth-v2-golden.json"
 DOC = Path(__file__).resolve().parents[3] / "docs" / "camera" / "annotation-format.md"
 TRUTH_SHA = "24c0d987d33c4c93aba546caf5d77fa49ee86b3eb2dc62c4763734f3d5083fcf"
@@ -25,8 +31,8 @@ def _full():
     return Annotations(
         session="20261031-140322",
         truth_sha256=TRUTH_SHA,
-        calibration=Calibration("dart-001.jpg", 4080, 3072,
-                                ((2040.5, 610.25), (3301.0, 1290.0), (2702.75, 2650.0), (1102.0, 2300.5))),
+        calibrations=(Calibration(1, "dart-001.jpg", 4080, 3072,
+                                  ((2040.5, 610.25), (3301.0, 1290.0), (2702.75, 2650.0), (1102.0, 2300.5))),),
         darts=(DartAnnotation(1, Status.VISIBLE, (2010.5, 640.0)),
                DartAnnotation(2, Status.HIDDEN, None),
                DartAnnotation(3, Status.OFF_BOARD, None)))
@@ -50,33 +56,33 @@ def test_full_file_round_trips():
 
 
 def test_partial_file_round_trips_without_calibration_and_with_some_darts():
-    partial = Annotations("20261031-140322", TRUTH_SHA, None, (DartAnnotation(2, Status.HIDDEN, None),))
+    partial = Annotations("20261031-140322", TRUTH_SHA, (), (DartAnnotation(2, Status.HIDDEN, None),))
     assert an.decode(an.encode(partial)) == partial
 
 
 def test_empty_annotation_in_progress_is_valid():
-    empty = Annotations("20261031-140322", TRUTH_SHA, None, ())
+    empty = Annotations("20261031-140322", TRUTH_SHA, (), ())
     assert an.decode(an.encode(empty)) == empty
 
 
 def test_golden_text_key_order_indentation_and_no_trailing_newline():
-    text = GOLDEN.read_text(encoding="utf-8")
+    text = GOLDEN_V2.read_text(encoding="utf-8")
     assert an.encode(_full()) == text
     assert not text.endswith("\n")
     assert text.splitlines()[1] == '  "format": "kosmo-camera-annotations",'
 
 
 def test_golden_reads_with_cv2_calibration_order():
-    a = an.read(GOLDEN)
-    assert a.calibration.points[0] == (2040.5, 610.25)  # cal1 on wire 5|20 (CV2)
-    assert a.calibration.points[3] == (1102.0, 2300.5)  # cal4 on wire 8|11 (CV2)
+    a = an.read(GOLDEN_V2)
+    assert a.calibrations[0].points[0] == (2040.5, 610.25)  # cal1 on wire 5|20 (CV2)
+    assert a.calibrations[0].points[3] == (1102.0, 2300.5)  # cal4 on wire 8|11 (CV2)
     assert [d.status for d in a.darts] == [Status.VISIBLE, Status.HIDDEN, Status.OFF_BOARD]
 
 
-def test_doc_example_equals_golden_text():
+def test_doc_examples_equal_the_v2_and_v1_golden_texts_cv20():
     doc = DOC.read_text(encoding="utf-8")
     blocks = re.findall(r"```json\n(.*?)\n```", doc, flags=re.DOTALL)
-    assert blocks == [GOLDEN.read_text(encoding="utf-8")]
+    assert blocks == [GOLDEN_V2.read_text(encoding="utf-8"), GOLDEN.read_text(encoding="utf-8")]
 
 
 def test_integer_coordinates_read_as_floats():
@@ -86,7 +92,7 @@ def test_integer_coordinates_read_as_floats():
 
 
 def test_encode_refuses_an_invalid_value():
-    bad = Annotations("20261031-140322", TRUTH_SHA, None, (DartAnnotation(1, Status.HIDDEN, (1.0, 2.0)),))
+    bad = Annotations("20261031-140322", TRUTH_SHA, (), (DartAnnotation(1, Status.HIDDEN, (1.0, 2.0)),))
     with pytest.raises(AnnotationError):
         an.encode(bad)
 
@@ -135,7 +141,7 @@ def test_other_format_is_rejected():
         _decode_modified(mutate)
 
 
-@pytest.mark.parametrize("version", [0, 2, "1", True, None])
+@pytest.mark.parametrize("version", [0, 3, "1", True, None, 1.0])
 def test_other_versions_are_rejected(version):
     def mutate(data):
         data["version"] = version
@@ -215,7 +221,7 @@ def test_calibration_point_on_the_photo_edge_is_accepted():
     def mutate(data):
         data["calibration"]["points"][0] = {"x": 0.0, "y": 0.0}
         data["calibration"]["points"][1] = {"x": 4080.0, "y": 3072.0}
-    assert _decode_modified(mutate).calibration.points[1] == (4080.0, 3072.0)
+    assert _decode_modified(mutate).calibrations[0].points[1] == (4080.0, 3072.0)
 
 
 def test_negative_tip_is_rejected():
@@ -271,7 +277,7 @@ def test_calibration_photo_name_must_be_a_dart_photo(name):
 def test_calibration_photo_beyond_999_is_accepted():
     def mutate(data):
         data["calibration"]["photo"] = "dart-1000.jpg"
-    assert _decode_modified(mutate).calibration.photo == "dart-1000.jpg"
+    assert _decode_modified(mutate).calibrations[0].photo == "dart-1000.jpg"
 
 
 @pytest.mark.parametrize("session", ["../x", "20261031-140322-0", "2026-10-31", ""])
@@ -305,6 +311,204 @@ def test_invalid_utf8_bom_truncation_and_deep_nesting_are_rejected(tmp_path):
             an.read(path)
 
 
+# ---- version 2 and the migration of version 1 (CV20) --------------------------------------------------------------
+
+def _to_v1(annotations):
+    """Test-only inverse of the migration: the v1 dict a v2 model with at most one segment from dart 1 came from."""
+    assert len(annotations.calibrations) <= 1
+    v2 = json.loads(an.encode(annotations))
+    segments = v2.pop("calibrations")
+    darts = v2.pop("darts")
+    calibration = None
+    if segments:
+        calibration = dict(segments[0])
+        assert calibration.pop("fromDart") == 1
+    return {**v2, "version": 1, "calibration": calibration, "darts": darts}
+
+
+def _v2_dict():
+    return json.loads(GOLDEN_V2.read_text(encoding="utf-8"))
+
+
+def _decode_v2_modified(mutate):
+    data = _v2_dict()
+    mutate(data)
+    return an.decode(json.dumps(data))
+
+
+def _segment(from_dart, photo=None):
+    return {"fromDart": from_dart, "photo": photo or f"dart-{from_dart:03d}.jpg", "width": 4080, "height": 3072,
+            "points": [{"x": 1.0, "y": 2.0}, {"x": 3.0, "y": 4.0}, {"x": 5.0, "y": 6.0}, {"x": 7.0, "y": 8.0}]}
+
+
+def test_writer_writes_version_2_only_cv20():
+    assert an.VERSION == 2
+    assert json.loads(an.encode(_full()))["version"] == 2
+
+
+def test_v1_golden_migrates_to_the_v2_golden_byte_for_byte_cv20():
+    migrated = an.decode(GOLDEN.read_text(encoding="utf-8"))
+    assert migrated == _full()
+    assert an.encode(migrated) == GOLDEN_V2.read_text(encoding="utf-8")
+
+
+def test_v1_golden_round_trips_through_v2_to_the_same_v1_dict_cv20():
+    v2_text = an.encode(an.decode(GOLDEN.read_text(encoding="utf-8")))
+    assert _to_v1(an.decode(v2_text)) == _golden_dict()
+
+
+def test_migration_copies_every_field_and_starts_the_segment_at_dart_1_cv20():
+    points = ((1.0, 2.0), (3.0, 4.0), (5.0, 6.0), (7.0, 8.0))
+    darts = (DartAnnotation(4, Status.VISIBLE, (9.0, 9.5)), DartAnnotation(7, Status.HIDDEN, None))
+    v1 = an.AnnotationsV1("20261031-140322-2", "ab" * 32, an.CalibrationV1("dart-004.jpg", 100, 50, points), darts)
+    migrated = an.migrate_v1(v1)
+    assert migrated == Annotations("20261031-140322-2", "ab" * 32,
+                                   (Calibration(1, "dart-004.jpg", 100, 50, points),), darts)
+    assert an.migrate_v1(an.AnnotationsV1(v1.session, v1.truth_sha256, None, ())).calibrations == ()
+
+
+def test_v1_with_null_calibration_gives_no_segment_and_encodes_back_cv20():
+    v1 = _golden_dict()
+    v1["calibration"] = None
+    migrated = an.decode(json.dumps(v1, indent=2))
+    assert migrated.calibrations == ()
+    v2_text = an.encode(migrated)
+    assert json.loads(v2_text)["calibrations"] == []
+    assert _to_v1(an.decode(v2_text)) == v1
+
+
+def _random_v1(rng):
+    width, height = rng.randint(1, 5000), rng.randint(1, 5000)
+
+    def point(precision):
+        return {"x": round(rng.uniform(0, width), precision), "y": round(rng.uniform(0, height), precision)}
+    calibration = None
+    if rng.random() < 0.8:
+        calibration = {"photo": f"dart-{rng.randint(1, 1500):03d}.jpg", "width": width, "height": height,
+                       "points": [point(rng.randint(0, 6)) for _ in range(4)]}
+    darts = []
+    for number in sorted(rng.sample(range(1, 400), rng.randint(0, 30))):
+        status = rng.choice(list(Status))
+        darts.append({"number": number, "status": status.value,
+                      "tip": point(rng.randint(0, 6)) if status is Status.VISIBLE else None})
+    suffix = rng.choice(["", "-2", f"-{rng.randint(10, 99)}"])
+    return {"format": an.FORMAT, "version": 1, "session": f"2026{rng.randint(1000, 1231)}-{rng.randint(100000, 235959)}"
+            f"{suffix}", "truthSha256": "".join(rng.choice("0123456789abcdef") for _ in range(64)),
+            "calibration": calibration, "darts": darts}
+
+
+@pytest.mark.parametrize("seed", range(50))
+def test_seeded_v1_files_migrate_encode_decode_and_invert_to_the_original_cv20(seed):
+    v1 = _random_v1(random.Random(seed))
+    migrated = an.decode(json.dumps(v1, indent=2))
+    v2_text = an.encode(migrated)
+    reread = an.decode(v2_text)
+    assert reread == migrated
+    assert _to_v1(reread) == v1
+
+
+def test_v1_file_written_by_the_part_a_tool_round_trips_to_the_same_v1_dict_cv20():
+    text = TOOL_V1.read_text(encoding="utf-8")
+    v1 = json.loads(text)
+    assert v1["version"] == 1
+    migrated = an.read(TOOL_V1)
+    assert len(migrated.calibrations) == 1 and migrated.calibrations[0].from_dart == 1
+    assert sorted(d.status.value for d in migrated.darts) == ["HIDDEN"] * 3 + ["OFF_BOARD"] * 3 + ["VISIBLE"] * 3
+    assert _to_v1(an.decode(an.encode(migrated))) == v1
+
+
+def test_max_segments_accepted_and_one_more_rejected_cv20():
+    def with_segments(count):
+        def mutate(data):
+            data["calibrations"] = [_segment(n) for n in range(1, count + 1)]
+        return mutate
+    assert len(_decode_v2_modified(with_segments(an.MAX_SEGMENTS)).calibrations) == an.MAX_SEGMENTS
+    with pytest.raises(AnnotationError, match=rf"\$\.calibrations: expected at most {an.MAX_SEGMENTS} segments"):
+        _decode_v2_modified(with_segments(an.MAX_SEGMENTS + 1))
+
+
+def test_encode_refuses_more_than_max_segments_cv20():
+    calibration = _full().calibrations[0]
+    segments = tuple(Calibration(n, calibration.photo, calibration.width, calibration.height, calibration.points)
+                     for n in range(1, an.MAX_SEGMENTS + 2))
+    with pytest.raises(AnnotationError, match="at most"):
+        an.encode(Annotations("20261031-140322", TRUTH_SHA, segments, ()))
+
+
+def _set(path_keys, value):
+    def mutate(data):
+        target = data
+        for key in path_keys[:-1]:
+            target = target[key]
+        target[path_keys[-1]] = value
+    return mutate
+
+
+@pytest.mark.parametrize("mutate, message", [
+    (_set(["calibrations", 0, "fromDart"], 2), r"\$\.calibrations\[0\]\.fromDart: the first segment must start at dart 1"),
+    (_set(["calibrations"], [_segment(1), _segment(5), _segment(5)]),
+     r"\$\.calibrations\[2\]\.fromDart: must be greater than"),
+    (_set(["calibrations"], [_segment(1), _segment(5), _segment(3)]),
+     r"\$\.calibrations\[2\]\.fromDart: must be greater than"),
+    (_set(["calibrations", 0, "fromDart"], 0), r"\$\.calibrations\[0\]\.fromDart: expected at least 1"),
+    (_set(["calibrations", 0, "fromDart"], 1.0), r"\$\.calibrations\[0\]\.fromDart: expected an integer"),
+    (_set(["calibrations", 0, "fromDart"], True), r"\$\.calibrations\[0\]\.fromDart: expected an integer"),
+    (_set(["calibrations", 0, "extra"], 1), r"\$\.calibrations\[0\]: unknown field 'extra'"),
+    (_set(["calibration"], None), r"\$: unknown field 'calibration'"),
+    (_set(["calibrations"], None), r"\$\.calibrations: expected an array"),
+    (_set(["calibrations", 0, "points"], []), r"\$\.calibrations\[0\]\.points: expected exactly 4 points"),
+    (_set(["calibrations", 0, "photo"], "../dart-001.jpg"), r"\$\.calibrations\[0\]\.photo"),
+    (_set(["version"], 3), r"\$\.version: unsupported version 3"),
+    (_set(["version"], 0), r"\$\.version: unsupported version 0"),
+], ids=["first-fromDart-2", "equal-fromDart", "descending-fromDart", "fromDart-0", "fromDart-float", "fromDart-bool",
+        "unknown-segment-key", "calibration-key-in-v2", "calibrations-null", "points", "photo", "version-3",
+        "version-0"])
+def test_v2_strict_rejections_with_their_json_path_cv20(mutate, message):
+    with pytest.raises(AnnotationError, match=message):
+        _decode_v2_modified(mutate)
+
+
+def test_v2_missing_from_dart_is_rejected_cv20():
+    def mutate(data):
+        del data["calibrations"][0]["fromDart"]
+    with pytest.raises(AnnotationError, match=r"\$\.calibrations\[0\]: missing field 'fromDart'"):
+        _decode_v2_modified(mutate)
+
+
+def test_calibrations_key_in_v1_is_rejected_cv20():
+    def mutate(data):
+        data["calibrations"] = []
+    with pytest.raises(AnnotationError, match=r"\$: unknown field 'calibrations'"):
+        _decode_modified(mutate)
+
+
+def test_v2_with_an_empty_calibration_list_is_valid_cv20():
+    assert _decode_v2_modified(_set(["calibrations"], [])).calibrations == ()
+
+
+def test_segment_for_picks_the_last_segment_starting_at_or_before_the_dart_cv20():
+    first, second = (Calibration(n, f"dart-{n:03d}.jpg", 4080, 3072, ((1.0, 1.0),) * 4) for n in (1, 4))
+    a = Annotations("20261031-140322", TRUTH_SHA, (first, second), ())
+    assert an.segment_for(a, 1) == (0, first)
+    assert an.segment_for(a, 3) == (0, first)  # before the fromDart of segment 1
+    assert an.segment_for(a, 4) == (1, second)  # at its fromDart
+    assert an.segment_for(a, 9) == (1, second)  # after it
+    assert an.segment_for(Annotations("20261031-140322", TRUTH_SHA, (), ()), 1) is None
+
+
+def test_segments_sha256_hashes_the_encoded_calibration_list_cv20():
+    full = _full()
+    encoded = json.loads(an.encode(full))["calibrations"]
+    expected = hashlib.sha256(json.dumps(encoded, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+    assert an.segments_sha256(full) == expected
+    moved = Calibration(1, "dart-001.jpg", 4080, 3072, ((1.0, 1.0),) * 4)
+    assert an.segments_sha256(Annotations(full.session, full.truth_sha256, (moved,), full.darts)) != expected
+    other_darts = Annotations(full.session, full.truth_sha256, full.calibrations, ())
+    assert an.segments_sha256(other_darts) == expected  # only the segments count
+    empty = Annotations(full.session, full.truth_sha256, (), ())
+    assert an.segments_sha256(empty) == hashlib.sha256(b"[]").hexdigest()
+
+
 # ---- consistency with the truth file ------------------------------------------------------------------------------
 
 def _session(tmp_path):
@@ -324,7 +528,7 @@ def _session(tmp_path):
 
 def _consistent(session):
     return Annotations(session.session, session.sha256,
-                       Calibration("dart-004.jpg", 4080, 3072, ((1.0, 1.0), (2.0, 2.0), (3.0, 3.0), (4.0, 4.0))),
+                       (Calibration(1, "dart-004.jpg", 4080, 3072, ((1.0, 1.0), (2.0, 2.0), (3.0, 3.0), (4.0, 4.0))),),
                        (DartAnnotation(1, Status.VISIBLE, (4080.0, 3072.0)), DartAnnotation(4, Status.HIDDEN, None)))
 
 
@@ -336,7 +540,7 @@ def test_consistent_annotation_has_no_warning(tmp_path):
 def test_unknown_dart_number_is_rejected(tmp_path):
     session = _session(tmp_path)
     a = _consistent(session)
-    a = Annotations(a.session, a.truth_sha256, a.calibration, a.darts + (DartAnnotation(9, Status.OFF_BOARD, None),))
+    a = Annotations(a.session, a.truth_sha256, a.calibrations, a.darts + (DartAnnotation(9, Status.OFF_BOARD, None),))
     with pytest.raises(AnnotationError, match="dart 9 does not exist"):
         an.validate_against(a, session)
 
@@ -344,7 +548,7 @@ def test_unknown_dart_number_is_rejected(tmp_path):
 def test_voided_dart_is_rejected_cv5(tmp_path):
     session = _session(tmp_path)
     a = _consistent(session)
-    a = Annotations(a.session, a.truth_sha256, a.calibration, (DartAnnotation(2, Status.HIDDEN, None),))
+    a = Annotations(a.session, a.truth_sha256, a.calibrations, (DartAnnotation(2, Status.HIDDEN, None),))
     with pytest.raises(AnnotationError, match="dart 2 is not judged"):
         an.validate_against(a, session)
 
@@ -352,7 +556,7 @@ def test_voided_dart_is_rejected_cv5(tmp_path):
 def test_dart_with_null_photo_is_rejected_cv5(tmp_path):
     session = _session(tmp_path)
     a = _consistent(session)
-    a = Annotations(a.session, a.truth_sha256, a.calibration, (DartAnnotation(3, Status.OFF_BOARD, None),))
+    a = Annotations(a.session, a.truth_sha256, a.calibrations, (DartAnnotation(3, Status.OFF_BOARD, None),))
     with pytest.raises(AnnotationError, match="dart 3 is not judged"):
         an.validate_against(a, session)
 
@@ -360,15 +564,42 @@ def test_dart_with_null_photo_is_rejected_cv5(tmp_path):
 def test_calibration_photo_not_in_the_session_is_rejected(tmp_path):
     session = _session(tmp_path)
     a = _consistent(session)
-    calibration = Calibration("dart-003.jpg", 4080, 3072, a.calibration.points)
-    with pytest.raises(AnnotationError, match=r"\$\.calibration\.photo"):
-        an.validate_against(Annotations(a.session, a.truth_sha256, calibration, a.darts), session)
+    calibration = Calibration(1, "dart-003.jpg", 4080, 3072, a.calibrations[0].points)
+    with pytest.raises(AnnotationError, match=r"\$\.calibrations\[0\]\.photo"):
+        an.validate_against(Annotations(a.session, a.truth_sha256, (calibration,), a.darts), session)
+
+
+def _with_second_segment(a, from_dart, photo):
+    second = Calibration(from_dart, photo, 4080, 3072, a.calibrations[0].points)
+    return Annotations(a.session, a.truth_sha256, (a.calibrations[0], second), a.darts)
+
+
+def test_second_segment_on_a_judged_dart_with_its_photo_is_accepted_cv20(tmp_path):
+    session = _session(tmp_path)
+    assert an.validate_against(_with_second_segment(_consistent(session), 4, "dart-004.jpg"), session) == []
+
+
+@pytest.mark.parametrize("from_dart, message", [
+    (2, r"\$\.calibrations\[1\]\.fromDart: dart 2 is not judged"),  # voided (CV5)
+    (3, r"\$\.calibrations\[1\]\.fromDart: dart 3 is not judged"),  # no photo (CV5)
+    (9, r"\$\.calibrations\[1\]\.fromDart: dart 9 does not exist"),
+])
+def test_second_segment_on_a_dart_that_is_not_judged_is_rejected_cv20(tmp_path, from_dart, message):
+    session = _session(tmp_path)
+    with pytest.raises(AnnotationError, match=message):
+        an.validate_against(_with_second_segment(_consistent(session), from_dart, "dart-001.jpg"), session)
+
+
+def test_second_segment_with_another_dart_photo_is_rejected_cv20(tmp_path):
+    session = _session(tmp_path)
+    with pytest.raises(AnnotationError, match=r"\$\.calibrations\[1\]\.photo: expected 'dart-004\.jpg'"):
+        an.validate_against(_with_second_segment(_consistent(session), 4, "dart-001.jpg"), session)
 
 
 def test_tip_outside_the_session_photo_size_is_rejected(tmp_path):
     session = _session(tmp_path)
     a = _consistent(session)
-    a = Annotations(a.session, a.truth_sha256, None, (DartAnnotation(1, Status.VISIBLE, (4080.5, 10.0)),))
+    a = Annotations(a.session, a.truth_sha256, (), (DartAnnotation(1, Status.VISIBLE, (4080.5, 10.0)),))
     with pytest.raises(AnnotationError, match=r"\$\.darts\[0\]\.tip"):
         an.validate_against(a, session)
 
@@ -377,13 +608,13 @@ def test_other_session_name_is_rejected(tmp_path):
     session = _session(tmp_path)
     a = _consistent(session)
     with pytest.raises(AnnotationError, match=r"\$\.session"):
-        an.validate_against(Annotations("20261031-140323", a.truth_sha256, a.calibration, a.darts), session)
+        an.validate_against(Annotations("20261031-140323", a.truth_sha256, a.calibrations, a.darts), session)
 
 
 def test_truth_sha256_mismatch_is_a_warning_not_an_error(tmp_path):
     session = _session(tmp_path)
     a = _consistent(session)
-    warnings = an.validate_against(Annotations(a.session, "0" * 64, a.calibration, a.darts), session)
+    warnings = an.validate_against(Annotations(a.session, "0" * 64, a.calibrations, a.darts), session)
     assert len(warnings) == 1 and "truthSha256" in warnings[0]
 
 
@@ -392,7 +623,7 @@ def test_truth_sha256_mismatch_is_a_warning_not_an_error(tmp_path):
 def test_write_atomic_writes_the_encoded_text_and_leaves_no_temp_file(tmp_path):
     path = tmp_path / "20261031-140322.json"
     an.write_atomic(path, _full())
-    assert path.read_text(encoding="utf-8") == GOLDEN.read_text(encoding="utf-8")
+    assert path.read_text(encoding="utf-8") == GOLDEN_V2.read_text(encoding="utf-8")
     assert sorted(p.name for p in tmp_path.iterdir()) == [path.name]
 
 
@@ -404,7 +635,7 @@ def test_exception_during_write_leaves_the_previous_file_intact(monkeypatch, tmp
     def failing_fsync(fd):
         raise OSError("disk full")
     monkeypatch.setattr(os, "fsync", failing_fsync)
-    partial = Annotations("20261031-140322", TRUTH_SHA, None, ())
+    partial = Annotations("20261031-140322", TRUTH_SHA, (), ())
     with pytest.raises(AnnotationError, match="cannot write"):
         an.write_atomic(path, partial)
     assert path.read_bytes() == before
@@ -415,7 +646,7 @@ def test_write_atomic_refuses_an_invalid_value_and_keeps_the_file(tmp_path):
     path = tmp_path / "20261031-140322.json"
     an.write_atomic(path, _full())
     before = path.read_bytes()
-    bad = Annotations("20261031-140322", TRUTH_SHA, None, (DartAnnotation(1, Status.VISIBLE, None),))
+    bad = Annotations("20261031-140322", TRUTH_SHA, (), (DartAnnotation(1, Status.VISIBLE, None),))
     with pytest.raises(AnnotationError):
         an.write_atomic(path, bad)
     assert path.read_bytes() == before

@@ -111,7 +111,7 @@ class SessionStore:
             return Loaded(name, folder, OK, truth=truth, plan=plan, annotations=self.unsaved[name])
         path = self._annotation_path(name)
         if not path.exists():
-            empty = annotation_file.Annotations(name, truth.sha256, None, ())
+            empty = annotation_file.Annotations(name, truth.sha256, (), ())
             return Loaded(name, folder, OK, truth=truth, plan=plan, annotations=empty)
         try:
             if path.stat().st_size > annotation_file.MAX_BYTES:
@@ -138,7 +138,7 @@ class SessionStore:
     def summary(self, loaded) -> dict:
         return {"name": loaded.name, "state": loaded.state, "message": loaded.message, "warning": loaded.warning,
                 "label": IGNORED_LABEL if loaded.state == IGNORED else None, "progress": self._progress(loaded),
-                "calibrated": loaded.annotations.calibration is not None if loaded.state == OK else None}
+                "calibrated": bool(loaded.annotations.calibrations) if loaded.state == OK else None}
 
     def sessions(self) -> list:
         with self.lock:
@@ -158,7 +158,8 @@ class SessionStore:
                           else None} for number, photo in loaded.plan.darts]
         view["skipped"] = list(loaded.plan.skipped)
         view["calibrationPhoto"] = loaded.plan.first_photo
-        calibration = loaded.annotations.calibration
+        segments = loaded.annotations.calibrations  # the page shows segment 0, from dart 1 (CV20)
+        calibration = segments[0] if segments else None
         view["calibration"] = None if calibration is None else {
             "photo": calibration.photo, "width": calibration.width, "height": calibration.height,
             "points": [list(p) for p in calibration.points]}

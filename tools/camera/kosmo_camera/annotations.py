@@ -1,11 +1,16 @@
-"""Annotation file of one capture session: calibration points (CV2) and dart tips of judged darts (CV5).
+"""Annotation file of one capture session: calibration segments (CV2, CV20) and dart tips of judged darts (CV5).
 
 Format: docs/camera/annotation-format.md. Stdlib only. Coordinates are photo pixels in the stored JPEG pixel order
 (origin top left, floats, EXIF orientation ignored, decision D8). The reader is strict: it rejects a file over 1 MiB
 (never read past the cap), duplicate or unknown keys, missing fields, any other format or version, a `tip` that is
 not present exactly when the status is VISIBLE, and duplicate or unordered dart numbers. Writes are atomic (CV16).
+
+Versions (CV20): the reader knows versions 1 and 2 and always returns the version 2 model. A version 1 body is read
+by the kept version 1 rules, then `migrate_v1` turns its single `calibration` into the segment from dart 1 (`null`
+gives no segment), every other field copied unchanged. The writer writes version 2 only.
 """
 import enum
+import hashlib
 import json
 import math
 import os
@@ -16,9 +21,11 @@ from pathlib import Path
 from typing import Optional
 
 MAX_BYTES = 1024 * 1024
+MAX_SEGMENTS = 64  # CV20: calibration segments per file
 MAX_DEPTH = 8
 FORMAT = "kosmo-camera-annotations"
-VERSION = 1
+VERSION = 2  # the only version written
+VERSION_1 = 1  # still read, then migrated (CV20)
 CALIBRATION_POINTS = 4  # CV2: cal1 to cal4
 _PHOTO = re.compile(r"dart-(\d{3}|[1-9]\d{3,})\.jpg")
 _SESSION = re.compile(r"\d{8}-\d{6}(-[2-9]|-[1-9]\d+)?")
@@ -37,6 +44,8 @@ class Status(enum.Enum):
 
 @dataclass(frozen=True)
 class Calibration:
+    """One calibration segment (CV20): applies from dart `from_dart` until the `from_dart` of the next segment."""
+    from_dart: int
     photo: str
     width: int
     height: int
@@ -54,8 +63,26 @@ class DartAnnotation:
 class Annotations:
     session: str
     truth_sha256: str
-    calibration: Optional[Calibration]
+    calibrations: tuple  # Calibration segments, first from dart 1, `from_dart` strictly ascending (CV20)
     darts: tuple  # DartAnnotation, strictly ascending numbers
+
+
+@dataclass(frozen=True)
+class CalibrationV1:
+    """The single `calibration` object of a version 1 file."""
+    photo: str
+    width: int
+    height: int
+    points: tuple
+
+
+@dataclass(frozen=True)
+class AnnotationsV1:
+    """A version 1 file as read by the kept version 1 rules, before `migrate_v1`."""
+    session: str
+    truth_sha256: str
+    calibration: Optional[CalibrationV1]
+    darts: tuple
 
 
 # ---- field checks -------------------------------------------------------------------------------------------------
@@ -109,16 +136,42 @@ def _array(value, path):
     return value
 
 
-def _calibration(value, path):
-    _object(value, path, ("photo", "width", "height", "points"))
+_CALIBRATION_KEYS = ("photo", "width", "height", "points")
+
+
+def _calibration_fields(value, path):
+    """`photo`, `width`, `height` and `points`, with the same rules in versions 1 and 2."""
     photo = _pattern(value["photo"], f"{path}.photo", _PHOTO, "a dart photo name 'dart-NNN.jpg'")
     width = _int(value["width"], f"{path}.width", 1)
     height = _int(value["height"], f"{path}.height", 1)
     points = _array(value["points"], f"{path}.points")
     if len(points) != CALIBRATION_POINTS:
         _fail(f"{path}.points", f"expected exactly {CALIBRATION_POINTS} points (CV2)")
-    return Calibration(photo, width, height,
-                       tuple(_point(p, f"{path}.points[{i}]", width, height) for i, p in enumerate(points)))
+    return photo, width, height, tuple(_point(p, f"{path}.points[{i}]", width, height) for i, p in enumerate(points))
+
+
+def _calibration_v1(value, path):
+    _object(value, path, _CALIBRATION_KEYS)
+    return CalibrationV1(*_calibration_fields(value, path))
+
+
+def _calibrations(value, path):
+    """Version 2 segment list (CV20): at most MAX_SEGMENTS, first from dart 1, `fromDart` strictly ascending."""
+    items = _array(value, path)
+    if len(items) > MAX_SEGMENTS:
+        _fail(path, f"expected at most {MAX_SEGMENTS} segments (CV20)")
+    segments = []
+    for i, item in enumerate(items):
+        item_path = f"{path}[{i}]"
+        _object(item, item_path, ("fromDart",) + _CALIBRATION_KEYS)
+        from_dart = _int(item["fromDart"], f"{item_path}.fromDart", 1)
+        if i == 0 and from_dart != 1:
+            _fail(f"{item_path}.fromDart", "the first segment must start at dart 1 (CV20)")
+        if i > 0 and from_dart <= segments[-1].from_dart:
+            _fail(f"{item_path}.fromDart", f"must be greater than the previous segment's {segments[-1].from_dart} "
+                  "(CV20)")
+        segments.append(Calibration(from_dart, *_calibration_fields(item, item_path)))
+    return tuple(segments)
 
 
 def _dart(value, path):
@@ -144,14 +197,35 @@ def _darts(value, path):
     return darts
 
 
-def _annotations(root):
+def _session_and_sha(root):
+    return (_pattern(root["session"], "$.session", _SESSION, "a capture session name 'YYYYMMDD-HHMMSS[-N]'"),
+            _pattern(root["truthSha256"], "$.truthSha256", _SHA256, "64 lowercase hexadecimal digits"))
+
+
+def _annotations_v1(root) -> AnnotationsV1:
+    """The version 1 rules, kept unchanged so Kosmo's version 1 files stay readable (CV20)."""
     _object(root, "$", ("format", "version", "session", "truthSha256", "calibration", "darts"))
+    session, truth_sha256 = _session_and_sha(root)
     calibration = root["calibration"]
-    return Annotations(
-        _pattern(root["session"], "$.session", _SESSION, "a capture session name 'YYYYMMDD-HHMMSS[-N]'"),
-        _pattern(root["truthSha256"], "$.truthSha256", _SHA256, "64 lowercase hexadecimal digits"),
-        None if calibration is None else _calibration(calibration, "$.calibration"),
-        _darts(root["darts"], "$.darts"))
+    return AnnotationsV1(session, truth_sha256,
+                         None if calibration is None else _calibration_v1(calibration, "$.calibration"),
+                         _darts(root["darts"], "$.darts"))
+
+
+def _annotations_v2(root) -> Annotations:
+    _object(root, "$", ("format", "version", "session", "truthSha256", "calibrations", "darts"))
+    session, truth_sha256 = _session_and_sha(root)
+    return Annotations(session, truth_sha256, _calibrations(root["calibrations"], "$.calibrations"),
+                       _darts(root["darts"], "$.darts"))
+
+
+def migrate_v1(v1) -> Annotations:
+    """Lossless migration (CV20): the v1 calibration becomes the single segment from dart 1, `None` no segment;
+    session, `truthSha256` and darts are copied unchanged (the stale-truth warning keeps working)."""
+    calibration = v1.calibration
+    segments = () if calibration is None else (
+        Calibration(1, calibration.photo, calibration.width, calibration.height, calibration.points),)
+    return Annotations(v1.session, v1.truth_sha256, segments, v1.darts)
 
 
 # ---- parsing ------------------------------------------------------------------------------------------------------
@@ -192,7 +266,10 @@ def _parse(text):
 
 
 def decode(text) -> Annotations:
-    """Validate the text of an annotation file; raise AnnotationError on any deviation."""
+    """Validate the text of an annotation file of version 1 or 2; raise AnnotationError on any deviation.
+
+    Always returns the version 2 model: a version 1 file is migrated in memory, never rewritten here (CV16, CV20).
+    """
     root = _parse(text)
     if _depth(root) > MAX_DEPTH:
         raise AnnotationError(f"$: nesting deeper than {MAX_DEPTH} levels")
@@ -201,9 +278,11 @@ def decode(text) -> Annotations:
     if root.get("format") != FORMAT:
         raise AnnotationError(f"$.format: expected '{FORMAT}'")
     version = root.get("version")
-    if isinstance(version, bool) or not isinstance(version, int) or version != VERSION:
+    if isinstance(version, bool) or not isinstance(version, int) or version not in (VERSION_1, VERSION):
         raise AnnotationError(f"$.version: unsupported version {version!r}")
-    return _annotations(root)
+    if version == VERSION_1:
+        return migrate_v1(_annotations_v1(root))
+    return _annotations_v2(root)
 
 
 def read(path) -> Annotations:
@@ -228,17 +307,20 @@ def _point_json(point):
     return {"x": float(point[0]), "y": float(point[1])}
 
 
+def _calibrations_json(annotations):
+    return [{"fromDart": c.from_dart, "photo": c.photo, "width": c.width, "height": c.height,
+             "points": [_point_json(p) for p in c.points]} for c in annotations.calibrations]
+
+
 def encode(annotations) -> str:
-    """Canonical text: keys in format order, two-space indentation, no trailing newline. Refuses an invalid value."""
-    calibration = annotations.calibration
+    """Canonical version 2 text: keys in format order, two-space indentation, no trailing newline. Refuses an invalid
+    value, so a written file is always readable by `decode`."""
     root = {
         "format": FORMAT,
         "version": VERSION,
         "session": annotations.session,
         "truthSha256": annotations.truth_sha256,
-        "calibration": None if calibration is None else {
-            "photo": calibration.photo, "width": calibration.width, "height": calibration.height,
-            "points": [_point_json(p) for p in calibration.points]},
+        "calibrations": _calibrations_json(annotations),
         "darts": [{"number": d.number, "status": d.status.value if isinstance(d.status, Status) else d.status,
                    "tip": None if d.tip is None else _point_json(d.tip)} for d in annotations.darts],
     }
@@ -248,6 +330,24 @@ def encode(annotations) -> str:
         raise AnnotationError(f"$: cannot encode: {error}") from error
     decode(text)
     return text
+
+
+def segments_sha256(annotations) -> str:
+    """SHA-256 of the encoded segment list (sorted keys, no spaces): identifies the calibrations a drift measure used,
+    whatever the darts (CV18, CV20)."""
+    text = json.dumps(_calibrations_json(annotations), sort_keys=True, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def segment_for(annotations, dart_number):
+    """(index, Calibration) of the segment that applies to the dart: the last one with `from_dart <= dart_number`;
+    None when there is none (CV20). The only implementation: every tool imports it."""
+    found = None
+    for index, segment in enumerate(annotations.calibrations):
+        if segment.from_dart > dart_number:
+            break
+        found = (index, segment)
+    return found
 
 
 def write_atomic(path, annotations) -> None:
@@ -281,9 +381,10 @@ def _discard(temp):
 def validate_against(annotations, session) -> list:
     """Check against the session's truth (truth.Session); raise AnnotationError on an error, return the warnings.
 
-    Errors: other session name, dart number absent from the truth, dart not judged (CV5), calibration photo that is
-    not a photo of the session, tip outside the truth photo size. Warning: `truthSha256` differs from the truth file
-    (the session may have been copied again; editing stays allowed).
+    Errors: other session name, dart number absent from the truth, dart not judged (CV5), segment photo that is not a
+    photo of the session, segment after the first whose `fromDart` is not a judged dart or whose photo is not that
+    dart's photo (CV20), tip outside the truth photo size. Warning: `truthSha256` differs from the truth file (the
+    session may have been copied again; editing stays allowed).
     """
     if annotations.session != session.session:
         _fail("$.session", f"expected '{session.session}'")
@@ -297,10 +398,24 @@ def validate_against(annotations, session) -> list:
         if annotation.tip is not None:
             _point({"x": annotation.tip[0], "y": annotation.tip[1]}, f"$.darts[{i}].tip",
                    session.photo_width, session.photo_height)
-    if annotations.calibration is not None:
-        photos = {dart.photo.file for dart in darts.values() if dart.photo is not None}
-        if annotations.calibration.photo not in photos:
-            _fail("$.calibration.photo", f"'{annotations.calibration.photo}' is not a photo of the session")
+    _segments_against(annotations.calibrations, darts)
     if annotations.truth_sha256 != session.sha256:
         return [f"$.truthSha256: differs from the truth file ({session.sha256}); the session was copied again"]
     return []
+
+
+def _segments_against(segments, darts):
+    photos = {dart.photo.file for dart in darts.values() if dart.photo is not None}
+    for i, segment in enumerate(segments):
+        path = f"$.calibrations[{i}]"
+        if segment.photo not in photos:
+            _fail(f"{path}.photo", f"'{segment.photo}' is not a photo of the session")
+        if i == 0:
+            continue  # the first segment may use any photo of the session, as version 1 did
+        dart = darts.get(segment.from_dart)
+        if dart is None:
+            _fail(f"{path}.fromDart", f"dart {segment.from_dart} does not exist in the truth file")
+        if not dart.judged:
+            _fail(f"{path}.fromDart", f"dart {segment.from_dart} is not judged (voided or no photo, CV5)")
+        if segment.photo != dart.photo.file:
+            _fail(f"{path}.photo", f"expected '{dart.photo.file}', the photo of dart {segment.from_dart} (CV20)")

@@ -33,6 +33,29 @@ must stay reproducible, offline and cheap to review, and a trained model that ne
 9. Annotation tool: a local `http.server` on `127.0.0.1` with a French page served from the package, no CDN. Alternative
    rejected: a Tk tool.
 
+## Annotation format v2 and migration
+
+Context: after part A, Kosmo found that the tripod can drift during a session (D15), so one clicked calibration per
+session is not enough. Decisions (rule CV20, `docs/camera/annotation-format.md`):
+
+- The annotation file moves to version 2: the single `calibration` becomes `calibrations`, an ordered list of
+  segments `{fromDart, photo, width, height, points}`. The first starts at dart 1, `fromDart` is strictly ascending,
+  and each segment applies from its `fromDart` until the next one; a later segment starts at a judged dart and is
+  clicked on that dart's photo. One function, `annotations.segment_for`, picks the segment of a dart for every tool.
+- The reader knows both versions and always returns the version 2 model. The version 1 rules are kept unchanged;
+  `migrate_v1` turns a version 1 `calibration` into the single segment from dart 1 (`null` into an empty list) and
+  copies every other field, `truthSha256` included, so the stale-truth warning keeps working. Alternative rejected:
+  a separate one-shot migration command, one more step for Kosmo and a window where his files are unreadable.
+- The writer writes version 2 only. A version 1 file is never rewritten by opening, listing or browsing it; the
+  annotation tool writes version 2 on the first saved change (CV16). Alternative rejected: rewriting on open, which
+  would modify files Kosmo only looked at.
+- At most `MAX_SEGMENTS` = 64 segments per file, a named constant next to `MAX_BYTES`, so a file stays far below the
+  1 MiB cap; any other version, lower or higher, is still rejected and any later change bumps the version.
+- Proof of the policy, in `tools/camera/tests/test_annotations.py`: the version 1 golden example migrates to the
+  version 2 golden example byte for byte; a version 1 file written by the part A tool itself (`flow.apply` and
+  `write_atomic` at 8d69f64) and 50 seeded random version 1 files round-trip through migrate, encode and decode to
+  their original version 1 content.
+
 ## Consequences
 
 The tools add no dependency to the apps. The pinned wheels cover Linux x86_64 and cp313 only. The eval data is guarded
