@@ -63,3 +63,23 @@ session copied to a temp folder).
 sonnet. Why: flow, states and security rules specified, Python tests.
 
 ## Implementation notes
+- Code in `tools/camera/kosmo_camera/annotate/`: `flow.py` (pure), `jpeg_size.py`, `server.py` (`SessionStore` holds every
+  rule and state, the handler only routes and checks headers), `__main__.py`. Test helpers: `tests/annotate_support.py`.
+- Flow details not in the task text: the format cannot hold a partial calibration, so points 1 to 3 live in
+  `Cursor.pending`, kept in server memory (lost on restart, not a file change). "Précédente" on the first dart reopens
+  the calibration (cursor `calibration`, four pending points); "Effacer" then removes the last point (calibration back
+  to null in the file) and a click sets it again; a click with four points set is ignored. `goto` (list) needs a
+  complete calibration. After a click or status the cursor goes to the next dart in order (annotated or not), after
+  the last one to the first dart not annotated, else `complete`.
+- "No calibration photo" and "nothing to annotate" are the same condition (no judged dart with a photo): one state
+  `ignored`, label "Ignorée : aucune fléchette jugée", not openable (view without cursor), write answers 409.
+- Other states: `truth_invalid` (also when the truth session differs from the folder name), `annotation_rejected`,
+  `annotation_too_large`: all read-only (409 on write, file untouched); the stale warning keeps the stored `truthSha256`.
+- D8: the click size is the real JPEG size of the cursor photo (`jpeg_size`); calibration width/height are that real
+  size; `validate_against` then checks tips against the truth photo size (400 if the JPEG is larger than the truth says).
+- Save error: the new annotations stay in memory (`SessionStore.unsaved`), the answer carries `error` (French) and the
+  session view, and the next action is applied on top and written. Action answers: `{saved|error, session}`.
+- `make_server` refuses an annotations folder inside the captures folder. Static files are served from
+  `annotate/static/` (fixed list `index.html`, `app.js`, `style.css`, added by T6b; absent: 404 "Page absente").
+- Manual run: golden-like session in a temp folder, server on port 18765, `curl` calibration 4 clicks and one tip
+  gave `Enregistré à ...` and the file `<session>.json`; POST without `Origin` gave 403, `..%2f..%2fx` gave 404.
