@@ -29,6 +29,8 @@ under `captures-eval/` passed to `compute_split` raises). Constants from `config
 - Fallback to block mode for 3 sessions, for one big session plus small ones (share out of range), for eval under
   100 darts; block mode flagged; blocks of 5 volleys, last block shorter; a volley belongs to exactly one block.
 - Boundaries: eval share exactly 0.25 and 0.35 accepted; exactly 2 sessions per set accepted.
+- Block mode leakage: no volley appears in both sets; every volley's darts are all in one set (a block never
+  splits a volley between dev and eval).
 - Sessions with 0 judged darts are kept in dev and counted.
 - Lock: matching hash passes; one changed byte, wrong mode, malformed lock (unknown key, short hash) fail.
 - Printed output contains no session name (CV15).

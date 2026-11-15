@@ -233,7 +233,7 @@ Then on the PC (steps detailed in `docs/camera/training.md`). No capture campaig
 - K2 Annotate all existing sessions with the tool (about 1 h). What he should see: relaunch with
   `python3.13 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations`, open
   `http://127.0.0.1:8765` in Windows; the session list shows progress and calibration status; calibration asks the 4
-  points in order 1 to 4 on a diagram; each dart photo shows its true value ("T20"); voided entries are skipped; one
+  points in order 1 to 4 on a diagram that highlights the next point; each dart photo shows its true value ("T20"); voided entries are skipped; one
   click sets the tip and shows the next dart; "Enregistré à HH:MM:SS" after each action; closing and reopening a
   session resumes at the first dart not annotated, with earlier tips drawn on the same spots; files appear in
   `~/kosmo-data/annotations/<session>.json`, the captures folder is unchanged.
@@ -262,8 +262,6 @@ Then on the PC (steps detailed in `docs/camera/training.md`). No capture campaig
 
 ## Tasks
 
-| Id | Title | Task file | Depends on | Model | Why this model |
-|---|---|---|---|---|---|
 Part A, annotation first (decision K0; Kosmo can start K1 and K2 as soon as it is delivered):
 
 | Id | Title | Task file | Depends on | Model | Why this model |
@@ -322,7 +320,7 @@ be built; K1 and K2 run once part A is delivered (see D11), K3 to K6 once part B
 | D4 | No OpenCV; numpy DLT and PyAV (already pulled by `rfdetr`). Only `pytest` added as a direct dependency. | - |
 | D5 | Annotation tool UI in French only (it is for Kosmo); started with `python3.13`. | CV16 |
 | D6 | CUDA build `cu130` for the GPU image. | - |
-| D7 | Design review S5: the container keeps uid 0 inside, no `USER`. With rootless Docker, container root maps to Kosmo's own unprivileged uid; a non-root `USER` maps to a subordinate uid that cannot write `~/kosmo-runs` without changing its permissions. Root inside has no extra power (`--cap-drop ALL`, `no-new-privileges`, `--read-only`, `--network none`). Submitted to main with this evidence. | - |
+| D7 | Design review S5: the container keeps uid 0 inside, no `USER`. With rootless Docker, container root maps to Kosmo's own unprivileged uid; a non-root `USER` maps to a subordinate uid that cannot write `~/kosmo-runs` without changing its permissions. Root inside has no extra power (`--cap-drop ALL`, `no-new-privileges`, `--read-only`, `--network none`). Accepted by the security reviewer at the design review of 1377af2. | - |
 | D8 | Pixel coordinates in stored JPEG pixel order, EXIF orientation ignored everywhere; the server checks clicks against the real JPEG size (U3). | CV16 |
 | D9 | Constants in `defaults.json` only, read by `config.py` (A1). | - |
 | D10 | Requirements pinned with hashes, installed with `--require-hashes` (S6). | - |

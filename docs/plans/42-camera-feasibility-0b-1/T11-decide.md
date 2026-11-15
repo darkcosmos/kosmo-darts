@@ -6,7 +6,7 @@ or a miss, plus the predicted calibration, as the input of every measure.
 
 ## Files
 - Added `tools/camera/kosmo_camera/decide.py`: `Thresholds(tau_low, tau_sure, match_radius_mm=6.0)`;
-  `calibrate(points) -> Calibration | None` (best point per `calN` class above `tau_low`, `None` if one is missing,
+  `calibrate(points) -> Calibration | None` (best point per `calN` class with score `>=` `tau_low`, `None` if one is missing,
   H from T8); `decide_volley(photos, detector, thresholds) -> list[DartDecision]` where `DartDecision` holds the dart
   number, announced `(segment, multiplier)` or miss, `flagged`, the chosen tip pixel and mm, score, calibration
   result. Old darts: candidates at a distance `<=` `match_radius_mm` of a tip announced earlier in the volley.
