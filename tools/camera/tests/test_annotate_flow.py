@@ -301,3 +301,129 @@ def test_flow_saves_version_2_with_one_segment_from_dart_1_cv20(tmp_path):
 
 def test_truth_dict_helper_gives_a_readable_truth(tmp_path):
     assert truth_dict()["session"] == NAME
+
+
+# ---- recalibration from a judged dart (T6c, CV20) --------------------------------------------------------------------
+
+NEW = ((11.0, 12.0), (13.0, 14.0), (15.0, 16.0), (17.0, 18.0))
+
+
+def _at_dart(annotations, session, number):
+    return flow.apply(annotations, session, Action("goto", number=number), None)[1]
+
+
+def _recalibrate(annotations, session, number):
+    cursor = _at_dart(annotations, session, number)
+    return flow.apply(annotations, session, Action("recalibrate"), cursor)
+
+
+def _tips(annotations):
+    return [(d.number, d.tip) for d in annotations.darts]
+
+
+def test_recalibrate_from_a_dart_takes_four_clicks_and_saves_the_segment_with_that_photo_cv20(tmp_path):
+    session = session_of(tmp_path)
+    tips = [DartAnnotation(1, Status.VISIBLE, (1.0, 2.0)), DartAnnotation(4, Status.VISIBLE, (3.0, 4.0))]
+    annotations = calibrated(session, tips)
+    _, cursor = _recalibrate(annotations, session, 3)
+    assert cursor == Cursor(flow.RECALIBRATION, 3, "dart-003.jpg")
+    for count, (x, y) in enumerate(NEW, start=1):
+        updated, cursor = flow.apply(annotations, session, Action("click", x, y, size=(2000, 1000)), cursor)
+        if count < 4:
+            assert updated == annotations and cursor.pending == NEW[:count]
+    assert updated.calibrations[1] == Calibration(3, "dart-003.jpg", 2000, 1000, NEW)
+    assert updated.calibrations[0] == annotations.calibrations[0]
+    assert cursor == Cursor(flow.DART, 3, "dart-003.jpg")
+    assert _tips(updated) == _tips(annotations)  # tips never move
+
+
+def test_fifth_click_of_a_full_recalibration_is_ignored(tmp_path):
+    session = session_of(tmp_path)
+    annotations = _two_segments(session)
+    annotations, cursor = _recalibrate(annotations, session, 3)
+    assert cursor.pending == _two_segments(session).calibrations[1].points
+    assert flow.apply(annotations, session, click(5.0, 5.0), cursor) == (annotations, cursor)
+
+
+def test_recalibrate_on_an_existing_start_shows_its_points_and_clear_removes_them_one_by_one_cv20(tmp_path):
+    session = session_of(tmp_path)
+    annotations = _two_segments(session, [DartAnnotation(4, Status.VISIBLE, (3.0, 4.0))])
+    points = annotations.calibrations[1].points
+    annotations, cursor = _recalibrate(annotations, session, 3)
+    assert cursor.kind == flow.RECALIBRATION and cursor.pending == points
+    annotations, cursor = flow.apply(annotations, session, Action("clear"), cursor)
+    assert annotations.calibrations == _two_segments(session).calibrations[:1]  # removed at once (saved)
+    assert cursor.pending == points[:3]
+    for left in (2, 1, 0):
+        _, cursor = flow.apply(annotations, session, Action("clear"), cursor)
+        assert cursor.pending == points[:left]
+    unchanged, cursor = flow.apply(annotations, session, Action("clear"), cursor)
+    assert unchanged == annotations and cursor == Cursor(flow.DART, 3, "dart-003.jpg")
+    assert _tips(annotations) == [(4, (3.0, 4.0))]
+
+
+def test_clicking_again_replaces_the_segment_at_the_same_dart_cv20(tmp_path):
+    session = session_of(tmp_path)
+    annotations, cursor = _recalibrate(_two_segments(session), session, 3)
+    for _ in range(4):
+        annotations, cursor = flow.apply(annotations, session, Action("clear"), cursor)
+    for x, y in NEW:
+        annotations, cursor = flow.apply(annotations, session, Action("click", x, y, size=SIZE), cursor)
+    assert [c.from_dart for c in annotations.calibrations] == [1, 3] and annotations.calibrations[1].points == NEW
+
+
+@pytest.mark.parametrize("leave", [Action("next"), Action("previous"), Action("goto", number=4)])
+def test_leaving_with_unsaved_points_drops_them_and_changes_nothing(tmp_path, leave):
+    session = session_of(tmp_path)
+    annotations = calibrated(session)
+    cursor = _at_dart(annotations, session, 3)
+    _, cursor = flow.apply(annotations, session, Action("recalibrate"), cursor)
+    for x, y in NEW[:2]:
+        _, cursor = flow.apply(annotations, session, click(x, y), cursor)
+    assert cursor.pending == NEW[:2]
+    same, left = flow.apply(annotations, session, leave, cursor)
+    assert same == annotations and left.kind == flow.DART and left.pending == ()
+
+
+def test_recalibrate_needs_a_dart_cursor_and_the_first_dart_opens_segment_0(tmp_path):
+    session = session_of(tmp_path)
+    annotations = calibrated(session)
+    for cursor in (Cursor(flow.CALIBRATION, photo="dart-001.jpg", pending=POINTS), Cursor(flow.COMPLETE)):
+        with pytest.raises(FlowError):
+            flow.apply(annotations, session, Action("recalibrate"), cursor)
+    with pytest.raises(FlowError):  # a voided entry is never a cursor: goto refuses it
+        flow.apply(annotations, session, Action("goto", number=2), None)
+    _, cursor = _recalibrate(annotations, session, 1)
+    assert cursor.kind == flow.CALIBRATION and cursor.pending == POINTS
+    with pytest.raises(FlowError):
+        flow.apply(empty(session), session, Action("recalibrate"), Cursor(flow.DART, 3, "dart-003.jpg"))
+
+
+def test_marks_are_refused_on_the_recalibration_screen(tmp_path):
+    session = session_of(tmp_path)
+    annotations, cursor = _recalibrate(calibrated(session), session, 3)
+    for kind in ("hidden", "off_board"):
+        with pytest.raises(FlowError):
+            flow.apply(annotations, session, Action(kind), cursor)
+
+
+def test_a_new_segment_goes_in_order_between_existing_ones(tmp_path):
+    session = session_of(tmp_path, judged=(1, 3, 4, 6), voided=(2,), no_photo=(5,))
+    annotations = _two_segments(session)  # segments from 1 and 3
+    annotations, cursor = _recalibrate(annotations, session, 4)
+    for x, y in NEW:
+        annotations, cursor = flow.apply(annotations, session, Action("click", x, y, size=SIZE), cursor)
+    assert [c.from_dart for c in annotations.calibrations] == [1, 3, 4]
+
+
+def test_the_fourth_click_at_the_segment_cap_is_a_conflict_and_changes_nothing_cv20(tmp_path):
+    session = session_of(tmp_path)
+    base = calibrated(session)
+    filler = tuple(Calibration(100 + i, "dart-003.jpg", *SIZE, POINTS) for i in range(an.MAX_SEGMENTS - 1))
+    full = Annotations(NAME, session.sha256, base.calibrations + filler, ())
+    cursor = _at_dart(full, session, 3)
+    _, cursor = flow.apply(full, session, Action("recalibrate"), cursor)
+    for x, y in NEW[:3]:
+        _, cursor = flow.apply(full, session, click(x, y), cursor)
+    with pytest.raises(flow.FlowConflict, match=r"Nombre maximal de recalibrations atteint \(64\)"):
+        flow.apply(full, session, click(*NEW[3]), cursor)

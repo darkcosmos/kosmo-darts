@@ -1,4 +1,5 @@
 """Annotation server (T6a, CV16, D8): routes, write-route attacks, error states, read-only captures, JPEG size."""
+import hashlib
 import json
 import os
 import re
@@ -12,6 +13,7 @@ import pytest
 
 from annotate_support import NAME, SIZE, jpeg_bytes, make_session, stdlib_pythons, tree_listing
 from kosmo_camera import annotations as an
+from kosmo_camera import drift_file
 from kosmo_camera.annotate import server as server_module
 from kosmo_camera.annotate.__main__ import main
 from kosmo_camera.annotate.jpeg_size import JpegError, jpeg_size, read_size
@@ -29,8 +31,9 @@ class Tool:
         self.static_dir = static_dir
         self.server = None
 
-    def start(self):
-        self.server = make_server(self.captures, self.annotations, 0, self.static_dir, clock=lambda: "12:34:56")
+    def start(self, drift=None):
+        self.server = make_server(self.captures, self.annotations, 0, self.static_dir, clock=lambda: "12:34:56",
+                                  drift=drift)
         self.port = self.server.server_address[1]
         threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True).start()
         return self
@@ -167,7 +170,9 @@ def test_session_list_and_open_with_progress_and_resume_cursor(tool):
     tool.start()
     status, body = tool.json("GET", "/api/sessions")
     assert body["sessions"] == [{"name": NAME, "state": "ok", "message": None, "warning": None, "label": None,
-                                 "progress": {"done": 0, "total": 3}, "calibrated": False}]
+                                 "progress": {"done": 0, "total": 3}, "calibrated": False,
+                                 "driftLabel": None, "driftStale": False}]
+    assert body["driftWarning"] is None
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
     assert view["cursor"] == {"kind": "calibration", "number": None, "photo": "dart-001.jpg", "pending": []}
     assert [d["number"] for d in view["darts"]] == [1, 3, 4] and view["skipped"] == [2, 5]
@@ -577,3 +582,207 @@ def test_help_works_with_the_stdlib_only(tmp_path, python):
                             env={"PATH": os.environ.get("PATH", "")})
     assert result.returncode == 0, result.stderr
     assert "--captures" in result.stdout and "--annotations" in result.stdout and "--port" in result.stdout
+    assert "--drift" in result.stdout
+
+
+# ---- recalibration and drift flags (T6c, CV16, CV20) -----------------------------------------------------------------
+
+NEW_POINTS = [(11, 12), (13, 14), (15, 16), (17, 18)]
+
+
+def _go_to(tool, number):
+    status, result = tool.act("goto", number=number)
+    assert status == 200, result
+    return result
+
+
+def _recalibrate_at(tool, number, points=NEW_POINTS):
+    _go_to(tool, number)
+    tool.act("recalibrate")
+    for x, y in points:
+        status, result = tool.act("click", x=x, y=y)
+    return status, result
+
+
+def test_recalibration_from_a_dart_is_saved_with_its_photo_and_real_jpeg_size_cv20(tool):
+    make_session(tool.captures, jpeg_size=(2000, 1000))
+    tool.start()
+    tool.act("click", x=10, y=20)  # partial calibration, then the real flow
+    for x, y in POINTS[1:]:
+        tool.act("click", x=x, y=y)
+    tool.act("click", x=100.5, y=200.5)  # tip of dart 1
+    status, result = _recalibrate_at(tool, 3)
+    assert status == 200 and result["saved"] == "Enregistré à 12:34:56"
+    saved = an.read(annotation_file(tool))
+    assert [(c.from_dart, c.photo, c.width, c.height) for c in saved.calibrations] == [
+        (1, "dart-001.jpg", 2000, 1000), (3, "dart-003.jpg", 2000, 1000)]
+    assert [d.tip for d in saved.darts] == [(100.5, 200.5)]
+    assert result["session"]["cursor"]["kind"] == "dart" and result["session"]["cursor"]["number"] == 3
+    assert [s["fromDart"] for s in result["session"]["segments"]] == [1, 3]
+    status, result = tool.act("recalibrate")
+    assert status == 200 and result["session"]["cursor"]["kind"] == "recalibration"
+    assert result["session"]["cursor"]["pending"] == [list(p) for p in NEW_POINTS]
+
+
+def test_clear_on_a_saved_recalibration_removes_it_at_once_cv20(tool):
+    make_session(tool.captures)
+    tool.start()
+    tool.calibrate()
+    _recalibrate_at(tool, 3)
+    tool.act("recalibrate")
+    status, result = tool.act("clear")
+    assert status == 200 and result["saved"] == "Enregistré à 12:34:56"
+    assert [c.from_dart for c in an.read(annotation_file(tool)).calibrations] == [1]
+    assert len(result["session"]["cursor"]["pending"]) == 3
+
+
+def test_clear_of_the_calibration_screen_is_refused_while_later_segments_exist_cv20(tool):
+    make_session(tool.captures)
+    tool.start()
+    tool.calibrate()
+    _recalibrate_at(tool, 3)
+    before = annotation_file(tool).read_bytes()
+    _go_to(tool, 1)
+    status, result = tool.act("recalibrate")
+    assert result["session"]["cursor"]["kind"] == "calibration"
+    status, result = tool.act("clear")
+    assert status == 400 and result["error"] == "Supprimez d'abord les recalibrations suivantes."
+    assert annotation_file(tool).read_bytes() == before
+
+
+def test_the_fourth_click_at_the_segment_cap_answers_409_and_the_file_is_unchanged_cv20(tool):
+    make_session(tool.captures, judged=tuple(range(1, 70)), voided=(), no_photo=())
+    tool.start()
+    tool.calibrate()
+    saved = an.read(annotation_file(tool))
+    filler = tuple(an.Calibration(n, f"dart-{n:03d}.jpg", *SIZE, tuple((float(n), 1.0) for _ in range(4)))
+                   for n in range(4, 4 + an.MAX_SEGMENTS - 1))
+    an.write_atomic(annotation_file(tool), an.Annotations(saved.session, saved.truth_sha256,
+                                                           saved.calibrations + filler, ()))
+    before = annotation_file(tool).read_bytes()
+    _go_to(tool, 3)
+    tool.act("recalibrate")
+    for x, y in NEW_POINTS[:3]:
+        assert tool.act("click", x=x, y=y)[0] == 200
+    status, result = tool.act("click", x=17, y=18)
+    assert status == 409 and result["error"] == "Nombre maximal de recalibrations atteint (64)"
+    assert annotation_file(tool).read_bytes() == before
+
+
+def _sha(tool):
+    return an.segments_sha256(an.read(annotation_file(tool)))
+
+
+def _flags(session=NAME, label="S01", sha="0" * 64, max_mm=0.4, beyond=(), suggested=(), unmeasurable=()):
+    return drift_file.SessionFlags(session, label, sha, max_mm, tuple(beyond), tuple(suggested), tuple(unmeasurable))
+
+
+def _write_drift(path, *flags):
+    path.write_text(drift_file.encode(drift_file.DriftFile(1.0, tuple(flags))), encoding="utf-8")
+
+
+def _list(tool):
+    status, body = tool.json("GET", "/api/sessions")
+    assert status == 200
+    return body
+
+
+@pytest.mark.parametrize("flags, label", [
+    (dict(), "Dérive OK (max 0,4 mm)"),
+    (dict(max_mm=None), "Dérive OK"),
+    (dict(beyond=[3, 4], suggested=[3]), "À recalibrer à partir de la fléchette 3"),
+    (dict(beyond=[1, 3], suggested=[1, 3]), "À recalibrer à partir des fléchettes 1, 3"),
+    (dict(unmeasurable=[4]), "Dérive OK (max 0,4 mm) ; 1 photo non mesurable"),
+    (dict(beyond=[3], suggested=[3], unmeasurable=[1, 4]),
+     "À recalibrer à partir de la fléchette 3 ; 2 photos non mesurables"),
+])
+def test_session_list_labels_come_from_the_drift_file_cv16(tool, flags, label):
+    make_session(tool.captures)
+    drift = tool.root / "drift.json"
+    tool.start(drift)
+    tool.calibrate()
+    _write_drift(drift, _flags(sha=_sha(tool), **flags))
+    body = _list(tool)
+    assert body["sessions"][0]["driftLabel"] == label and body["sessions"][0]["driftStale"] is False
+    assert body["driftWarning"] is None
+
+
+def test_session_absent_from_the_drift_file_is_not_measured_and_unlisted_ones_are_ignored(tool):
+    make_session(tool.captures)
+    drift = tool.root / "drift.json"
+    _write_drift(drift, _flags(session="20250101-000000"))
+    tool.start(drift)
+    body = _list(tool)
+    assert [s["driftLabel"] for s in body["sessions"]] == ["Dérive non mesurée"] and body["driftWarning"] is None
+
+
+def test_stale_flags_keep_the_suggested_darts_with_the_stale_mention_and_mark_each_dart_u7(tool):
+    make_session(tool.captures)
+    drift = tool.root / "drift.json"
+    tool.start(drift)
+    tool.calibrate()
+    _write_drift(drift, _flags(sha=_sha(tool), beyond=[3, 4], suggested=[3], unmeasurable=[1]))
+    status, view = tool.json("GET", f"/api/sessions/{NAME}")
+    assert view["driftStale"] is False
+    assert [d["drift"] for d in view["darts"]] == ["unmeasurable", "suggested", "beyond"]
+    _recalibrate_at(tool, 4)  # the segments change after the measure
+    body = _list(tool)
+    assert body["sessions"][0]["driftLabel"] == ("À recalibrer à partir de la fléchette 3 ; 1 photo non mesurable "
+                                                 "(mesure périmée : relancer la mesure)")
+    assert body["sessions"][0]["driftStale"] is True
+    status, view = tool.json("GET", f"/api/sessions/{NAME}")
+    assert view["driftStale"] is True and [d["drift"] for d in view["darts"]] == ["unmeasurable", "suggested", "beyond"]
+
+
+def test_darts_without_flags_have_a_null_drift(tool):
+    make_session(tool.captures)
+    tool.start()
+    status, view = tool.json("GET", f"/api/sessions/{NAME}")
+    assert [d["drift"] for d in view["darts"]] == [None, None, None] and view["driftStale"] is False
+
+
+@pytest.mark.parametrize("content", [b"{not json", b"", b"x" * (drift_file.MAX_BYTES + 1), None])
+def test_unreadable_oversized_or_missing_drift_file_warns_once_and_the_tool_serves_cv16(tool, content):
+    make_session(tool.captures)
+    drift = tool.root / "drift.json"
+    if content is not None:
+        drift.write_bytes(content)
+    tool.start(drift)
+    body = _list(tool)
+    assert body["driftWarning"].startswith("Mesure de dérive illisible : ")
+    assert [s["driftLabel"] for s in body["sessions"]] == [None]
+    status, view = tool.json("GET", f"/api/sessions/{NAME}")
+    assert status == 200 and [d["drift"] for d in view["darts"]] == [None, None, None]
+    assert tool.calibrate()["saved"]
+
+
+def test_the_flag_file_is_read_again_at_every_list_and_never_written_cv16(tool):
+    make_session(tool.captures)
+    drift = tool.root / "drift.json"
+    tool.start(drift)
+    tool.calibrate()
+    _write_drift(drift, _flags(sha=_sha(tool), beyond=[3], suggested=[3]))
+    assert _list(tool)["sessions"][0]["driftLabel"].startswith("À recalibrer")
+    _write_drift(drift, _flags(sha=_sha(tool), max_mm=0.2))
+    digest = hashlib.sha256(drift.read_bytes()).hexdigest()
+    assert _list(tool)["sessions"][0]["driftLabel"] == "Dérive OK (max 0,2 mm)"
+    _recalibrate_at(tool, 3)
+    tool.act("recalibrate")
+    tool.act("clear")
+    tool.json("GET", f"/api/sessions/{NAME}")
+    assert hashlib.sha256(drift.read_bytes()).hexdigest() == digest
+    assert sorted(p.name for p in tool.root.iterdir()) == ["annotations", "captures", "drift.json", "static"]
+
+
+def test_drift_option_is_passed_to_the_server(tmp_path, monkeypatch):
+    seen = {}
+
+    def fake(captures, annotations, port, drift=None):
+        seen["drift"] = drift
+        raise ValueError("stop")
+
+    monkeypatch.setattr("kosmo_camera.annotate.__main__.make_server", fake)
+    (tmp_path / "c").mkdir()
+    args = ["--captures", str(tmp_path / "c"), "--annotations", str(tmp_path / "a")]
+    assert main(args + ["--drift", str(tmp_path / "d.json")]) == 2 and seen["drift"] == tmp_path / "d.json"
+    assert main(args) == 2 and seen["drift"] is None

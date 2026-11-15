@@ -56,7 +56,9 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
 - CV16 Annotation tool: stdlib only, `127.0.0.1` only, no external resource, captures read-only, writes only in the
   annotations folder, atomic; every route resolves the session name against the listed sessions; never overwrites
   an annotation file that the strict reader rejects (a version 1 file is accepted and written back as version 2 on
-  the first change, CV20).
+  the first change, CV20). The drift flag file (`--drift`, CV18) is read-only for the tool: read again at every
+  session list and view, never written; a missing, invalid or oversized file gives one warning and no flags, and flags
+  measured on other segments than the current ones stay shown marked "(mesure périmée : relancer la mesure)".
 - CV17 Sessions in `~/kosmo-data/captures-eval/` (confirmation campaign, later) are always eval: never in the split,
   never in training or tuning; `measure --set campaign` reads them under the same `frozen.json` guard.
 - CV18 Drift of a judged photo: compared with the reference photo of its segment (CV20), both decoded to luma in

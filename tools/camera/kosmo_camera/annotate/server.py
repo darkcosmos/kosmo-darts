@@ -16,6 +16,7 @@ from typing import Optional
 from urllib.parse import unquote, urlsplit
 
 from kosmo_camera import annotations as annotation_file
+from kosmo_camera import drift_file
 from kosmo_camera.annotate import flow
 from kosmo_camera.annotate.jpeg_size import JpegError, jpeg_size
 from kosmo_camera.truth import TruthError, read_truth, session_folders
@@ -34,6 +35,41 @@ IGNORED = "ignored"
 TRUTH_INVALID = "truth_invalid"
 TOO_LARGE = "annotation_too_large"
 REJECTED = "annotation_rejected"
+STALE_LABEL = "(mesure périmée : relancer la mesure)"
+NOT_MEASURED_LABEL = "Dérive non mesurée"
+
+
+@dataclass(frozen=True)
+class DriftState:
+    """The drift flag file as read for one request (CV16: read-only, never written by the tool)."""
+    sessions: dict  # session name -> drift_file.SessionFlags
+    warning: Optional[str] = None
+    configured: bool = False
+
+
+NO_DRIFT = DriftState({})
+
+
+def _count_label(count, singular, plural):
+    return f"{count} {singular if count == 1 else plural}"
+
+
+def _numbers_text(numbers):
+    return ", ".join(str(n) for n in numbers)
+
+
+def _flag_labels(flags):
+    """List labels of one session (CV16): where to recalibrate, or the maximum drift, plus unmeasurable photos."""
+    if flags.beyond:
+        start = ("de la fléchette" if len(flags.suggested) == 1 else "des fléchettes")
+        labels = [f"À recalibrer à partir {start} {_numbers_text(flags.suggested)}"]
+    elif flags.max_drift_mm is None:
+        labels = ["Dérive OK"]
+    else:
+        labels = [f"Dérive OK (max {flags.max_drift_mm:.1f} mm)".replace(".", ",")]
+    if flags.unmeasurable:
+        labels.append(_count_label(len(flags.unmeasurable), "photo non mesurable", "photos non mesurables"))
+    return labels
 
 
 class HttpError(Exception):
@@ -66,8 +102,9 @@ def _clock():
 class SessionStore:
     """Sessions of a captures folder and their annotation files, with the in-memory state of the open sessions."""
 
-    def __init__(self, captures, annotations_dir, clock=_clock):
+    def __init__(self, captures, annotations_dir, clock=_clock, drift=None):
         self.captures = Path(captures)
+        self.drift_path = None if drift is None else Path(drift)
         self.annotations_dir = Path(annotations_dir)
         self.clock = clock
         self.lock = threading.RLock()
@@ -126,6 +163,29 @@ class SessionStore:
                    "Vérifiez les points." if warnings else None)
         return Loaded(name, folder, OK, warning=warning, truth=truth, plan=plan, annotations=annotations)
 
+    def read_drift(self) -> DriftState:
+        """The flag file, read afresh at every request; unreadable gives one warning and no flags (S9)."""
+        if self.drift_path is None:
+            return NO_DRIFT
+        try:
+            flags = drift_file.read(self.drift_path)
+        except drift_file.DriftFileError as error:
+            return DriftState({}, f"Mesure de dérive illisible : {error}", True)
+        return DriftState({f.session: f for f in flags.sessions}, None, True)
+
+    @staticmethod
+    def _drift_view(loaded, drift):
+        """(label, stale, flags) of a session: stale when the segments changed since the measure (U7)."""
+        if not drift.configured or drift.warning is not None:
+            return None, False, None
+        flags = drift.sessions.get(loaded.name)
+        if flags is None:
+            return NOT_MEASURED_LABEL, False, None
+        stale = (loaded.annotations is not None
+                 and flags.segments_sha256 != annotation_file.segments_sha256(loaded.annotations))
+        label = " ; ".join(_flag_labels(flags))
+        return (f"{label} {STALE_LABEL}" if stale else label), stale, flags
+
     # ---- views -----------------------------------------------------------------------------------------------------
 
     @staticmethod
@@ -135,27 +195,32 @@ class SessionStore:
         numbers = {n for n, _ in loaded.plan.darts}
         return {"done": len({d.number for d in loaded.annotations.darts} & numbers), "total": len(numbers)}
 
-    def summary(self, loaded) -> dict:
+    def summary(self, loaded, drift=NO_DRIFT) -> dict:
+        label, stale, _ = self._drift_view(loaded, drift)
         return {"name": loaded.name, "state": loaded.state, "message": loaded.message, "warning": loaded.warning,
                 "label": IGNORED_LABEL if loaded.state == IGNORED else None, "progress": self._progress(loaded),
-                "calibrated": bool(loaded.annotations.calibrations) if loaded.state == OK else None}
+                "calibrated": bool(loaded.annotations.calibrations) if loaded.state == OK else None,
+                "driftLabel": label, "driftStale": stale}
 
     def sessions(self) -> list:
         with self.lock:
-            return [self.summary(self.load(name)) for name in self.listing()]
+            drift = self.read_drift()
+            return [self.summary(self.load(name), drift) for name in self.listing()], drift.warning
 
-    def view(self, loaded, cursor) -> dict:
-        view = self.summary(loaded)
+    def view(self, loaded, cursor, drift=None) -> dict:
+        drift = self.read_drift() if drift is None else drift
+        view = self.summary(loaded, drift)
         view["readOnly"] = loaded.state != OK
         if loaded.state != OK:  # read-only states show their message, with no photo flow
             return view
         by_number = {d.number: d for d in loaded.annotations.darts}
         view["photoSize"] = [loaded.truth.photo_width, loaded.truth.photo_height]
+        flags = self._drift_view(loaded, drift)[2]
         by_dart = {d.number: (_value_label(d), v.index) for v in loaded.truth.volleys for d in v.darts}
         view["darts"] = [{"number": number, "photo": photo, "value": by_dart[number][0], "volley": by_dart[number][1],
                           "status": by_number[number].status.value if number in by_number else None,
                           "tip": list(by_number[number].tip) if number in by_number and by_number[number].tip
-                          else None} for number, photo in loaded.plan.darts]
+                          else None, "drift": _dart_drift(flags, number)} for number, photo in loaded.plan.darts]
         view["skipped"] = list(loaded.plan.skipped)
         view["calibrationPhoto"] = loaded.plan.first_photo
         segments = loaded.annotations.calibrations  # the page shows segment 0, from dart 1 (CV20)
@@ -163,6 +228,8 @@ class SessionStore:
         view["calibration"] = None if calibration is None else {
             "photo": calibration.photo, "width": calibration.width, "height": calibration.height,
             "points": [list(p) for p in calibration.points]}
+        view["segments"] = [{"fromDart": c.from_dart, "photo": c.photo, "points": [list(p) for p in c.points]}
+                            for c in segments]
         view["cursor"] = {"kind": cursor.kind, "number": cursor.number, "photo": cursor.photo,
                           "pending": [list(p) for p in cursor.pending]}
         return view
@@ -193,6 +260,8 @@ class SessionStore:
             try:
                 updated, new_cursor = flow.apply(loaded.annotations, loaded.truth, action, cursor)
                 annotation_file.validate_against(updated, loaded.truth)
+            except flow.FlowConflict as error:
+                raise HttpError(409, str(error)) from error
             except (flow.FlowError, annotation_file.AnnotationError) as error:
                 raise HttpError(400, str(error)) from error
             self.cursors[name] = new_cursor
@@ -253,6 +322,17 @@ class SessionStore:
             return (folder / file).read_bytes()
         except OSError as error:
             raise HttpError(404, "Photo introuvable.") from error
+
+
+def _dart_drift(flags, number):
+    """"suggested", "beyond", "unmeasurable" or None for one dart (the strongest flag wins)."""
+    if flags is None:
+        return None
+    for name, numbers in (("suggested", flags.suggested), ("beyond", flags.beyond),
+                          ("unmeasurable", flags.unmeasurable)):
+        if number in numbers:
+            return name
+    return None
 
 
 def _value_label(dart) -> str:
@@ -345,8 +425,8 @@ def _make_handler(store, static_dir):
             if len(parts) == 2 and parts[0] == "static":
                 return self._static(parts[1])
             if parts == ["api", "sessions"]:
-                with store.lock:
-                    return self._json(200, {"sessions": store.sessions()})
+                sessions, warning = store.sessions()
+                return self._json(200, {"sessions": sessions, "driftWarning": warning})
             if len(parts) == 3 and parts[:2] == ["api", "sessions"]:
                 return self._json(200, store.open_session(parts[2]))
             if len(parts) == 3 and parts[0] == "photo":
@@ -403,10 +483,10 @@ class AnnotationServer(ThreadingHTTPServer):
         super().__init__((HOST, port), _make_handler(store, Path(static_dir)))
 
 
-def make_server(captures, annotations_dir, port=DEFAULT_PORT, static_dir=STATIC_DIR, clock=_clock):
+def make_server(captures, annotations_dir, port=DEFAULT_PORT, static_dir=STATIC_DIR, clock=_clock, drift=None):
     """Bind the server on 127.0.0.1 (raises OSError when the port is in use)."""
     captures, annotations_dir = Path(captures).resolve(), Path(annotations_dir).resolve()
     if annotations_dir == captures or captures in annotations_dir.parents:
         raise ValueError("Le dossier d'annotations ne doit pas être dans le dossier des captures (lecture seule).")
     annotations_dir.mkdir(parents=True, exist_ok=True)
-    return AnnotationServer(SessionStore(captures, annotations_dir, clock), port, static_dir)
+    return AnnotationServer(SessionStore(captures, annotations_dir, clock, drift), port, static_dir)

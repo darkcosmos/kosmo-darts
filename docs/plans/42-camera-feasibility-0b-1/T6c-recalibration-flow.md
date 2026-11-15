@@ -57,3 +57,11 @@ exit 0.
 sonnet. Why: flow, undo and flag rules specified, Python tests, same patterns as T6a.
 
 ## Implementation notes
+- Flow: `RECALIBRATION` cursor, `FlowConflict(FlowError)` (server answers 409 at `MAX_SEGMENTS`), `_segment_at` through
+  `segment_for`. The T5b refusal of "Effacer" on the calibration screen while later segments exist is kept as it is
+  (removing segment 0 would leave no segment from dart 1); a saved recalibration is cleared from its own screen.
+- Server: `SessionStore(..., drift=path)`, `read_drift` on every call; `/api/sessions` answers
+  `{"sessions": [...], "driftWarning": str|null}`; each session has `driftLabel` (full French label, stale mention
+  included) and `driftStale`; the session view adds per-dart `drift`, `driftStale` and `segments`
+  (`fromDart`, `photo`, `points`) for T6d (old points of the recalibration screen). `--drift` in `__main__.py`.
+- Deviation: none. CV16 sentence added in `docs/rules/camera.md`.

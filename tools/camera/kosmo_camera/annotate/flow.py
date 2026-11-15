@@ -10,16 +10,22 @@ import math
 from dataclasses import dataclass, replace
 from typing import Optional
 
-from kosmo_camera.annotations import CALIBRATION_POINTS, Annotations, Calibration, DartAnnotation, Status
+from kosmo_camera.annotations import (CALIBRATION_POINTS, MAX_SEGMENTS, Annotations, Calibration, DartAnnotation,
+                                      Status, segment_for)
 
 CALIBRATION = "calibration"
 DART = "dart"
+RECALIBRATION = "recalibration"  # new segment from dart `number` (CV20), points in `pending`
 COMPLETE = "complete"
-KINDS = ("click", "hidden", "off_board", "clear", "next", "previous", "goto")
+KINDS = ("click", "hidden", "off_board", "clear", "next", "previous", "goto", "recalibrate")
 
 
 class FlowError(ValueError):
     """The action is not possible in the current state; the message is in French (shown to Kosmo)."""
+
+
+class FlowConflict(FlowError):
+    """The action would break a cap of the file (CV20): answered 409 by the server."""
 
 
 @dataclass(frozen=True)
@@ -32,9 +38,9 @@ class Plan:
 @dataclass(frozen=True)
 class Cursor:
     kind: str  # CALIBRATION, DART or COMPLETE
-    number: Optional[int] = None  # dart number when kind is DART
+    number: Optional[int] = None  # dart number when kind is DART or RECALIBRATION
     photo: Optional[str] = None  # photo shown for this cursor
-    pending: tuple = ()  # calibration points clicked so far, when kind is CALIBRATION
+    pending: tuple = ()  # points clicked so far, when kind is CALIBRATION or RECALIBRATION
 
 
 @dataclass(frozen=True)
@@ -126,6 +132,53 @@ def _calibration_click(annotations, plan, action, cursor):
     return updated, _first_open(updated, plan)
 
 
+def _segment_at(annotations, number):
+    """Index of the segment that starts exactly at dart `number`, else None (lookup through `segment_for`, A15)."""
+    found = segment_for(annotations, number)
+    if found is not None and found[1].from_dart == number:
+        return found[0]
+    return None
+
+
+def _recalibrate(annotations, plan, cursor):
+    """R on a judged dart: the first judged dart is the calibration screen, else a recalibration from that dart."""
+    if cursor.kind != DART:
+        raise FlowError("Aucune fléchette sélectionnée.")
+    if not _calibrated(annotations):
+        raise FlowError("Calibrez d'abord le cadran.")
+    if cursor.number == plan.darts[0][0]:
+        return annotations, Cursor(CALIBRATION, photo=plan.first_photo, pending=annotations.calibrations[0].points)
+    index = _segment_at(annotations, cursor.number)
+    pending = () if index is None else annotations.calibrations[index].points
+    return annotations, Cursor(RECALIBRATION, cursor.number, cursor.photo, pending)
+
+
+def _recalibration_click(annotations, plan, action, cursor):
+    if len(cursor.pending) >= CALIBRATION_POINTS:
+        return annotations, cursor  # four points already set: "Effacer" first
+    points = cursor.pending + (_check_point(action),)
+    if len(points) < CALIBRATION_POINTS:
+        return annotations, replace(cursor, pending=points)
+    index = _segment_at(annotations, cursor.number)
+    if index is None and len(annotations.calibrations) >= MAX_SEGMENTS:
+        raise FlowConflict(f"Nombre maximal de recalibrations atteint ({MAX_SEGMENTS})")
+    width, height = action.size
+    segment = Calibration(cursor.number, cursor.photo, int(width), int(height), points)
+    others = tuple(c for c in annotations.calibrations if c.from_dart != cursor.number)
+    segments = tuple(sorted(others + (segment,), key=lambda c: c.from_dart))
+    return replace(annotations, calibrations=segments), _dart_cursor(plan, cursor.number)
+
+
+def _recalibration_clear(annotations, plan, cursor):
+    index = _segment_at(annotations, cursor.number)
+    if index is not None:  # saved segment: removed from the file, its other points stay pending
+        segments = annotations.calibrations[:index] + annotations.calibrations[index + 1:]
+        return replace(annotations, calibrations=segments), replace(cursor, pending=cursor.pending[:-1])
+    if cursor.pending:
+        return annotations, replace(cursor, pending=cursor.pending[:-1])
+    return annotations, _dart_cursor(plan, cursor.number)
+
+
 def _dart_mark(annotations, plan, action, cursor):
     if cursor.kind != DART:
         raise FlowError("Aucune fléchette sélectionnée.")
@@ -139,7 +192,9 @@ def _dart_mark(annotations, plan, action, cursor):
     return updated, _after(updated, plan, cursor.number)
 
 
-def _clear(annotations, cursor):
+def _clear(annotations, plan, cursor):
+    if cursor.kind == RECALIBRATION:
+        return _recalibration_clear(annotations, plan, cursor)
     if cursor.kind == DART:
         darts = tuple(d for d in annotations.darts if d.number != cursor.number)
         return replace(annotations, darts=darts), cursor
@@ -159,7 +214,7 @@ def _move(annotations, plan, cursor, forward):
         return cursor
     if cursor.kind == COMPLETE:
         return cursor if forward or not numbers else _dart_cursor(plan, numbers[-1])
-    index = numbers.index(cursor.number)
+    index = numbers.index(cursor.number)  # DART or RECALIBRATION: leaving drops the unsaved points
     if forward:
         return _dart_cursor(plan, numbers[index + 1]) if index + 1 < len(numbers) else cursor
     if index > 0:
@@ -178,7 +233,7 @@ def apply(annotations, session, action, cursor=None) -> tuple:
         raise FlowError("Aucune fléchette jugée dans cette session.")
     cursor = cursor if cursor is not None else resume(annotations, session)
     if action.kind == "clear":
-        return _clear(annotations, cursor)
+        return _clear(annotations, plan, cursor)
     if action.kind in ("next", "previous"):
         return annotations, _move(annotations, plan, cursor, action.kind == "next")
     if action.kind == "goto":
@@ -187,6 +242,12 @@ def apply(annotations, session, action, cursor=None) -> tuple:
         if action.number not in dict(plan.darts):
             raise FlowError("Fléchette inconnue.")
         return annotations, _dart_cursor(plan, action.number)
+    if action.kind == "recalibrate":
+        return _recalibrate(annotations, plan, cursor)
+    if cursor.kind == RECALIBRATION:
+        if action.kind != "click":
+            raise FlowError("Aucune fléchette sélectionnée.")
+        return _recalibration_click(annotations, plan, action, cursor)
     if cursor.kind == CALIBRATION:
         if action.kind != "click":
             raise FlowError("Calibrez d'abord le cadran.")

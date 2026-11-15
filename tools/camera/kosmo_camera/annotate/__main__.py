@@ -12,6 +12,7 @@ def main(argv=None) -> int:
                                      description="Outil d'annotation des photos de capture (local, 127.0.0.1).")
     parser.add_argument("--captures", required=True, help="dossier des captures (lecture seule)")
     parser.add_argument("--annotations", required=True, help="dossier des fichiers d'annotations (écriture)")
+    parser.add_argument("--drift", help="fichier de dérive drift.json (lecture seule, facultatif)")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"port local (défaut {DEFAULT_PORT})")
     args = parser.parse_args(argv)
     captures = Path(args.captures).expanduser()
@@ -19,7 +20,8 @@ def main(argv=None) -> int:
         print(f"Dossier des captures introuvable : {captures}", file=sys.stderr)
         return 2
     try:
-        server = make_server(captures, Path(args.annotations).expanduser(), args.port)
+        server = make_server(captures, Path(args.annotations).expanduser(), args.port,
+                             drift=Path(args.drift).expanduser() if args.drift else None)
     except ValueError as error:
         print(str(error), file=sys.stderr)
         return 2
