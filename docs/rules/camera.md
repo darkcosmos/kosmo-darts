@@ -69,7 +69,8 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   `p_i + t0` in the photo, phase-correlated with a 3-point parabolic sub-pixel fit per axis: `d_i = t0 + r_i`.
   (3) Drift px = max `|d_i|`; drift mm = CV9 error with `H_true` = homography of the points `p_i + d_i` and `H_pred` =
   segment homography (the error the stale calibration would cause). The reference photo itself has drift 0 without
-  computation. No usable reference gives status "unmeasurable" with one reason: `uncalibrated` (session without
+  computation. The box margin (15 %), the 16 px minimum box side and the low-pass width (0.08) are fixed by the
+  method, not tunables, so they are not in `defaults.json`. No usable reference gives status "unmeasurable" with one reason: `uncalibrated` (session without
   calibration), `size_mismatch` (photo size differs from the segment), `border` (a patch not inside both images),
   `low_peak` (a correlation peak below `DRIFT_MIN_PEAK`: occlusion or change), `unreadable` (missing, truncated or
   oversized file: Pillow's decompression bomb limit is kept). Drift is annotation quality control, independent of any

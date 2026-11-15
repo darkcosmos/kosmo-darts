@@ -232,10 +232,6 @@ def _decode_luma(path):
         return None, UNREADABLE
 
 
-def _photo_name(number):
-    return f"dart-{number:03d}.jpg"
-
-
 def _reference_drift(segment):
     points = tuple((float(x), float(y)) for x, y in segment.points)
     return PhotoDrift(OK, None, _NO_DRIFT_SHIFTS, 0.0, 0.0, points)
@@ -252,7 +248,7 @@ def measure_session(session_dir, annotations, params=DriftParams()) -> SessionDr
             photos[dart.number] = _unmeasurable(UNCALIBRATED)
             continue
         index, segment = found
-        name = _photo_name(dart.number)
+        name = ann.photo_name(dart.number)
         if name == segment.photo:
             photos[dart.number] = _reference_drift(segment)
             continue
@@ -284,10 +280,15 @@ def suggested_starts(session_drift) -> tuple:
     return tuple(starts)
 
 
+def count_beyond(drifts) -> int:
+    """Number of beyond photos (CV19) over all sessions."""
+    return sum(len(_numbers(session_drift, BEYOND)) for session_drift in drifts)
+
+
 def require_clean(drifts, accept_drift) -> int:
     """CV19 guard of `dataset` and `measure`: the number of beyond photos, or DriftError when there are some and the
     run does not accept them."""
-    count = sum(len(_numbers(session_drift, BEYOND)) for session_drift in drifts)
+    count = count_beyond(drifts)
     if count and not accept_drift:
         raise DriftError(_NOT_CLEAN.format(count=count))
     return count
@@ -412,7 +413,7 @@ def main(argv=None) -> int:
         print(str(error), file=sys.stderr)
         return 2
     print(report)
-    print(f"Tout sous le seuil : {'oui' if require_clean(drifts, True) == 0 else 'non'}")
+    print(f"Tout sous le seuil : {'oui' if count_beyond(drifts) == 0 else 'non'}")
     return 0
 
 

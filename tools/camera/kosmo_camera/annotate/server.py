@@ -202,7 +202,8 @@ class SessionStore:
                 "calibrated": bool(loaded.annotations.calibrations) if loaded.state == OK else None,
                 "driftLabel": label, "driftStale": stale}
 
-    def sessions(self) -> list:
+    def sessions_with_warning(self) -> tuple:
+        """The session summaries and the drift flag file warning (or None)."""
         with self.lock:
             drift = self.read_drift()
             return [self.summary(self.load(name), drift) for name in self.listing()], drift.warning
@@ -425,7 +426,7 @@ def _make_handler(store, static_dir):
             if len(parts) == 2 and parts[0] == "static":
                 return self._static(parts[1])
             if parts == ["api", "sessions"]:
-                sessions, warning = store.sessions()
+                sessions, warning = store.sessions_with_warning()
                 return self._json(200, {"sessions": sessions, "driftWarning": warning})
             if len(parts) == 3 and parts[:2] == ["api", "sessions"]:
                 return self._json(200, store.open_session(parts[2]))

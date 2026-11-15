@@ -28,6 +28,13 @@ VERSION = 2  # the only version written
 VERSION_1 = 1  # still read, then migrated (CV20)
 CALIBRATION_POINTS = 4  # CV2: cal1 to cal4
 _PHOTO = re.compile(r"dart-(\d{3}|[1-9]\d{3,})\.jpg")
+
+
+def photo_name(number: int) -> str:
+    """The dart photo name of the capture format ('dart-NNN.jpg'); matches `_PHOTO` and the truth `photo.file`."""
+    return f"dart-{number:03d}.jpg"
+
+
 _SESSION = re.compile(r"\d{8}-\d{6}(-[2-9]|-[1-9]\d+)?")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 

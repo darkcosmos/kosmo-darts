@@ -266,6 +266,13 @@ def test_dart_number_below_1_is_rejected():
         _decode_modified(mutate)
 
 
+@pytest.mark.parametrize("number", [1, 42, 999, 1000])
+def test_photo_name_is_a_valid_dart_photo_name(number):
+    from kosmo_camera.annotations import _PHOTO, photo_name
+    assert _PHOTO.fullmatch(photo_name(number))
+    assert photo_name(7) == "dart-007.jpg"
+
+
 @pytest.mark.parametrize("name", ["../dart-001.jpg", "dart-01.jpg", "dart-0001.jpg", "dart-001.png", "volley-001.mp4"])
 def test_calibration_photo_name_must_be_a_dart_photo(name):
     def mutate(data):

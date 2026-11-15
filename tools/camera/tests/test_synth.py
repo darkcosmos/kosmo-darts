@@ -1,9 +1,12 @@
 """Synthetic boards and sessions (T7). Rules CV1, CV2, CV5, CV10, CV11, CV20."""
 import random
 
-import av
-import numpy
 import pytest
+
+pytest.importorskip("av")
+pytest.importorskip("PIL")
+numpy = pytest.importorskip("numpy")
+av = pytest.importorskip("av")
 
 from kosmo_camera import annotations, synth
 from kosmo_camera.board import CALIBRATION_POINTS_MM, SECTOR_ORDER, zone_at

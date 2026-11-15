@@ -12,9 +12,12 @@ import sys
 from dataclasses import replace
 from pathlib import Path
 
-import numpy
 import pytest
-from PIL import Image
+
+pytest.importorskip("av")
+pytest.importorskip("PIL")
+numpy = pytest.importorskip("numpy")
+from PIL import Image  # noqa: E402
 
 from kosmo_camera import annotations as ann
 from kosmo_camera import config, drift, drift_file, geometry, synth
@@ -389,6 +392,12 @@ def test_require_clean_returns_zero_on_a_clean_set_and_ignores_unmeasurable_phot
     drifts = [_session("20261101-100000", {1: "ok", 2: "unmeasurable"})]
     assert drift.require_clean(drifts, accept_drift=False) == 0
     assert drift.require_clean([], accept_drift=False) == 0
+
+
+def test_count_beyond_counts_only_beyond_photos_over_all_sessions():
+    drifts = [_session("20261101-100000", {1: "ok", 2: "beyond", 3: "unmeasurable"}), _session("20261102-090000", {1: "beyond"})]
+    assert drift.count_beyond(drifts) == 2
+    assert drift.count_beyond([]) == 0
 
 
 # ---- report and flag file -----------------------------------------------------------------------------------------
