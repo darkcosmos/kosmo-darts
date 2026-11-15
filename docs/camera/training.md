@@ -23,7 +23,7 @@ blocs, et le résultat est alors marqué « plus optimiste » partout où il app
 Étape K1, dans le dossier `tools/camera/` du dépôt, depuis WSL :
 
 ```bash
-python3.13 -m kosmo_camera.split --captures ~/kosmo-data/captures --lock ~/kosmo-runs/split-lock.json
+python3 -m kosmo_camera.split --captures ~/kosmo-data/captures --lock ~/kosmo-runs/split-lock.json
 ```
 
 - La commande affiche le mode (session ou blocs, « plus optimiste »), les unités et les fléchettes jugées par
@@ -47,7 +47,7 @@ python3.13 -m kosmo_camera.split --captures ~/kosmo-data/captures --lock ~/kosmo
 Lancer l'outil dans WSL, depuis le dossier `tools/camera/` du dépôt (comme pour K1) :
 
 ```bash
-python3.13 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations
+python3 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations
 ```
 
 Le terminal affiche `Outil d'annotation prêt : http://127.0.0.1:8765/`. Ouvrez cette adresse dans le navigateur de
@@ -94,13 +94,12 @@ déjà enregistré est repris.
 dépôt :
 
 ```bash
-docker build -f tools/camera/Dockerfile -t kosmo-camera:gpu --build-arg NANO_SHA256=<sha256> tools/camera
+docker build -f tools/camera/Dockerfile -t kosmo-camera:gpu tools/camera
 ```
 
-- Le premier build échoue volontairement : il affiche `SHA-256 of rf-detr-nano.pth: <sha256>` et le message
-  `NANO_SHA256 is empty or different`. Ce SHA-256 est celui des poids COCO téléchargés. Collez-le dans le chat.
-  Le développeur l'inscrit ensuite dans le `Dockerfile`.
-- Relancez le build avec `--build-arg NANO_SHA256=<sha256>` pour le SHA-256 collé.
+- Le SHA-256 des poids COCO est déjà inscrit dans le `Dockerfile` (`NANO_SHA256`). Si les poids téléchargés sont
+  différents, le build échoue avec `NANO_SHA256 is empty or different` et affiche le SHA-256 reçu : collez-le dans le
+  chat, ne le contournez pas.
 - Le build vérifie aussi la somme MD5 des poids.
 
 ## GPU check

@@ -5,7 +5,7 @@ The stdlib server of the annotation tool (decision 5) and the per-dart flow in P
 10 s per dart and every rule is tested without a browser. This file is the single description of the flow and states.
 
 ## Files
-- Added in `tools/camera/kosmo_camera/annotate/`: `__init__.py`, `__main__.py` (`python3.13 -m kosmo_camera.annotate
+- Added in `tools/camera/kosmo_camera/annotate/`: `__init__.py`, `__main__.py` (`python3 -m kosmo_camera.annotate
   --captures DIR --annotations DIR [--port 8765]`), `flow.py` (pure state transitions), `jpeg_size.py` (stdlib SOF
   parser), `server.py` (`ThreadingHTTPServer` on `127.0.0.1`).
 - Added tests `tools/camera/tests/test_annotate_flow.py`, `test_annotate_server.py`.
@@ -53,7 +53,7 @@ use (message on the terminal and exit code 2), save error (nothing lost on scree
   write attempt; captures folder unchanged (hashes); the socket is bound to `127.0.0.1`.
 - Session with no judged dart (all voided, or all `photo: null`): present in the session list with the "Ignorée"
   label, no "0/0" progress, and its open and write routes answer 4xx without creating a file (CV3).
-- `python3.13 -I -S -m kosmo_camera.annotate --help` works (stdlib only).
+- `python3 -I -S -m kosmo_camera.annotate --help` works (stdlib only).
 
 ## Done when
 Python checks of root "Test plan" green, `kosmo-detekt` exit 0. Notes record a manual run (`curl` on a T4 golden

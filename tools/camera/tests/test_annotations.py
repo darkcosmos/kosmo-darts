@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from annotate_support import stdlib_pythons
 from kosmo_camera import annotations as an
 from kosmo_camera.annotations import AnnotationError, Annotations, Calibration, DartAnnotation, Status
 from kosmo_camera.truth import read_truth
@@ -420,9 +421,10 @@ def test_write_atomic_refuses_an_invalid_value_and_keeps_the_file(tmp_path):
     assert path.read_bytes() == before
 
 
-def test_import_closure_is_stdlib_only():
+@pytest.mark.parametrize("python", stdlib_pythons())
+def test_import_closure_is_stdlib_only(python):
     root = Path(__file__).resolve().parent.parent
     # -I ignores PYTHONPATH, so the package root is put on sys.path by the command itself.
     code = f"import sys; sys.path.insert(0, {str(root)!r}); import kosmo_camera.annotations"
-    result = subprocess.run([sys.executable, "-I", "-S", "-c", code], capture_output=True, text=True)
+    result = subprocess.run([python, "-I", "-S", "-c", code], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr

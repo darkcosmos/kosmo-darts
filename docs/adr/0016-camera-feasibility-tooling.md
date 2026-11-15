@@ -17,7 +17,7 @@ must stay reproducible, offline and cheap to review, and a trained model that ne
    pinned with exact versions and SHA-256 hashes and installed with `--require-hashes`. Alternative rejected: one file
    with CUDA torch (multi-GB in the sandbox).
 2. Stdlib-only core (`config`, `truth`, `split`, `annotations`, `board`): the annotation tool runs with a bare
-   `python3.13` in WSL, outside the container and the venv. Everything using numpy, PIL, PyAV, torch or LiteRT lives
+   `python3` (3.14 in Kosmo's WSL, also valid on 3.13) in WSL, outside the container and the venv. Everything using numpy, PIL, PyAV, torch or LiteRT lives
    in other modules.
 3. Keypoints as objects: the detector (RF-DETR Nano) finds 5 classes (`tip`, `cal1` to `cal4`), each a fixed square
    box centred on the point. Alternative rejected: a dedicated keypoint model, which would leave the object-detection

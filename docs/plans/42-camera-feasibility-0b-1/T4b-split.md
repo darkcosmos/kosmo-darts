@@ -11,7 +11,7 @@ with counts only, and let every later tool check that the locked split is used (
   volley range and set, `counts` with `ignoredSessions`), `decode(bytes)` (strict), `read_lock(path)` and `check_lock(split_bytes, lock)`
   (`split-lock.json`: format, version, `mode`, 64-hex `splitSha256`, unit and judged-dart counts per set; strict),
   `set_of(session, volley_index, split) -> "dev" | "eval"`, `list_sessions(root)` (folders with a `truth.json`).
-  Command `python3.13 -m kosmo_camera.split --captures DIR --out FILE` writes the split file (default
+  Command `python3 -m kosmo_camera.split --captures DIR --out FILE` writes the split file (default
   `~/kosmo-runs/split.json`) and prints mode, flag "more optimistic" in block mode, units, judged darts and eval
   share per set, the number of ignored sessions (0 judged darts, CV3), the criteria met or failed, and the SHA-256. No session name printed.
 - Added tests `tools/camera/tests/test_split.py`.

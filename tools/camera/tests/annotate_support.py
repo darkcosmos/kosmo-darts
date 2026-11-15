@@ -2,6 +2,7 @@
 import copy
 import hashlib
 import json
+import os
 from pathlib import Path
 
 DATA = Path(__file__).parent / "data"
@@ -62,3 +63,15 @@ def tree_listing(root):
         rel = str(path.relative_to(root))
         result[rel] = hashlib.sha256(path.read_bytes()).hexdigest() if path.is_file() else "dir"
     return result
+
+
+def stdlib_pythons():
+    """Interpreters that must run the stdlib core: the test one, plus the system python3 when it is another one
+    (Kosmo's WSL runs the stdlib tools with the system python3, 3.14)."""
+    import shutil
+    import sys
+    found = [sys.executable]
+    system = shutil.which("python3", path="/usr/bin:/bin")
+    if system and not any(os.path.realpath(system) == os.path.realpath(p) for p in found):
+        found.append(system)
+    return found

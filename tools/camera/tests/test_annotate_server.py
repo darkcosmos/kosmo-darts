@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from annotate_support import NAME, SIZE, jpeg_bytes, make_session, tree_listing
+from annotate_support import NAME, SIZE, jpeg_bytes, make_session, stdlib_pythons, tree_listing
 from kosmo_camera import annotations as an
 from kosmo_camera.annotate import server as server_module
 from kosmo_camera.annotate.__main__ import main
@@ -516,12 +516,13 @@ def test_missing_captures_folder_exits_2(tmp_path, capsys):
     assert "introuvable" in capsys.readouterr().err
 
 
-def test_help_works_with_the_stdlib_only(tmp_path):
+@pytest.mark.parametrize("python", stdlib_pythons())
+def test_help_works_with_the_stdlib_only(tmp_path, python):
     root = Path(__file__).resolve().parent.parent
     # -I ignores PYTHONPATH and the current folder, so the package root is put on sys.path by the command itself.
     code = ("import sys, runpy; sys.path.insert(0, %r); sys.argv = ['kosmo_camera.annotate', '--help']; "
             "runpy.run_module('kosmo_camera.annotate', run_name='__main__')" % str(root))
-    result = subprocess.run([sys.executable, "-I", "-S", "-c", code], capture_output=True, text=True,
+    result = subprocess.run([python, "-I", "-S", "-c", code], capture_output=True, text=True,
                             env={"PATH": os.environ.get("PATH", "")})
     assert result.returncode == 0, result.stderr
     assert "--captures" in result.stdout and "--annotations" in result.stdout and "--port" in result.stdout

@@ -1,4 +1,4 @@
-"""Entry point: python3.13 -m kosmo_camera.annotate --captures DIR --annotations DIR [--port 8765]."""
+"""Entry point: python3 -m kosmo_camera.annotate --captures DIR --annotations DIR [--port 8765]."""
 import argparse
 import errno
 import sys
@@ -8,7 +8,7 @@ from kosmo_camera.annotate.server import DEFAULT_PORT, HOST, make_server
 
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(prog="python3.13 -m kosmo_camera.annotate",
+    parser = argparse.ArgumentParser(prog="python3 -m kosmo_camera.annotate",
                                      description="Outil d'annotation des photos de capture (local, 127.0.0.1).")
     parser.add_argument("--captures", required=True, help="dossier des captures (lecture seule)")
     parser.add_argument("--annotations", required=True, help="dossier des fichiers d'annotations (écriture)")

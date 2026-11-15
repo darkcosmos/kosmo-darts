@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 
+from annotate_support import stdlib_pythons
 from kosmo_camera import truth
 from kosmo_camera.truth import TruthError, read_truth
 
@@ -263,9 +264,10 @@ def test_stamp_requires_non_negative_nanos_and_iso_utc(tmp_path):
         _read_modified(tmp_path, bad_utc)
 
 
-def test_import_closure_is_stdlib_only():
+@pytest.mark.parametrize("python", stdlib_pythons())
+def test_import_closure_is_stdlib_only(python):
     root = Path(__file__).resolve().parent.parent
     # -I ignores PYTHONPATH, so the package root is put on sys.path by the command itself.
     code = f"import sys; sys.path.insert(0, {str(root)!r}); import kosmo_camera.truth, kosmo_camera.config"
-    result = subprocess.run([sys.executable, "-I", "-S", "-c", code], capture_output=True, text=True)
+    result = subprocess.run([python, "-I", "-S", "-c", code], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr

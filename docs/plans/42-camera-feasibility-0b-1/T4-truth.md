@@ -23,7 +23,7 @@ fields, segment and multiplier outside rule D2 of `docs/rules/x01.md`. Stdlib on
 - Rejections: version 1 and 3, other format, duplicate key, unknown field, missing field, triple bull, segment 21,
   text over 10 MiB (the file is not read past the cap), truncated text.
 - Killed session (`endedAt` null, last volley `end` null) reads.
-- Import closure: `python3.13 -I -S -c "import kosmo_camera.truth, kosmo_camera.config"` with `PYTHONPATH` succeeds.
+- Import closure: `python3 -I -S -c "import kosmo_camera.truth, kosmo_camera.config"` with `PYTHONPATH` succeeds.
 
 ## Done when
 Python checks of root "Test plan" green, `kosmo-detekt` exit 0.

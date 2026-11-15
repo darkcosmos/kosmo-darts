@@ -40,7 +40,7 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   2.3.0, `ai-edge-quantizer` 0.10.1, `torch` 2.14.1, `torchvision` 0.29.2, `numpy` 2.5.4, `pillow` 13.0.0, `av` 19.0.2
   (all pulled by `rfdetr` or `litert-torch` except `pytest` 9.2.0: no extra library).
 - **Stdlib-only core**: `config.py`, `truth.py`, `split.py`, `annotations.py`, `board.py` import only the standard library, so the
-  annotation tool runs in WSL with a bare `python3.13`, outside the container and without the venv (decision 5).
+  annotation tool runs in WSL with a bare `python3` (3.14 in Kosmo's WSL, which has no python3.13; the stdlib core must work on 3.13 and 3.14), outside the container and without the venv (decision 5).
   Everything with numpy, PIL, av, torch or LiteRT lives in other modules.
 - **Detector** (issue): RF-DETR Nano from COCO weights, "keypoints as objects": 5 classes, `tip` and `cal1` to `cal4`,
   each a fixed square box centred on the point (side `BOX_FRACTION` = 2.5 % of the longer image side, a training
@@ -86,7 +86,7 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   package, no CDN, no web font). The per-dart flow, the states and every security rule are written once, in
   `42-camera-feasibility-0b-1/T6a-annotation-server.md` (server and flow) and `T6b-annotation-page.md` (page); the
   flow logic is Python (`annotate/flow.py`), so it is tested without a browser.
-- **Dev/eval split** (CV3, decision K0): computed once on the real session list by `python3.13 -m kosmo_camera.split`
+- **Dev/eval split** (CV3, decision K0): computed once on the real session list by `python3 -m kosmo_camera.split`
   (stdlib, runs in WSL before annotation), which prints counts only. Session mode first; if the balance criteria of
   CV3 fail (real session count unknown to the squad), block mode, flagged "more optimistic" everywhere it appears.
   The split file stays in `~/kosmo-runs/`; the repository keeps its SHA-256 in `tools/camera/config/split-lock.json`
@@ -231,20 +231,20 @@ side unchanged, and the PR's "Local checks" says so.
 
 For each of the two PRs (D11): no change to the apps: on the Pixel 7, install the CI debug APK; Kosmo Darts and
 Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/training.md`). No capture campaign before the preliminary report (K0).
-- K1 (PR A) Split (WSL, no container): `python3.13 -m kosmo_camera.split --captures ~/kosmo-data/captures --lock ~/kosmo-runs/split-lock.json`. It prints
+- K1 (PR A) Split (WSL, no container): `python3 -m kosmo_camera.split --captures ~/kosmo-data/captures --lock ~/kosmo-runs/split-lock.json`. It prints
   the mode (session or block, "plus optimiste"), units and judged darts per set, and the split SHA-256; Kosmo pastes
   that output plus the content of `~/kosmo-runs/split-lock.json` (counts and hash only). The squad commits that
   content byte for byte as `tools/camera/config/split-lock.json` (block mode only after Kosmo's OK).
 - K2 (PR A) Annotate all existing sessions with the tool (about 1 h). What he should see: relaunch with
-  `python3.13 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations`, open
+  `python3 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations`, open
   `http://127.0.0.1:8765` in Windows; the session list shows progress and calibration status; calibration asks the 4
   points in order 1 to 4 on a diagram that highlights the next point; each dart photo shows its true value ("T20"); voided entries are skipped; one
   click sets the tip and shows the next dart; "Enregistré à HH:MM:SS" after each action; closing and reopening a
   session resumes at the first dart not annotated, with earlier tips drawn on the same spots; files appear in
   `~/kosmo-data/annotations/<session>.json`, the captures folder is unchanged.
 - K3 (PR A, while annotating) Build the image once with network, run `python -m kosmo_camera.gpu_check` in it: GPU
-  name and `cuda available: True`; paste the COCO weights SHA-256 the first build prints (T10a); developer-fix pins
-  it in the `Dockerfile` (in PR A if pasted before merge, else in PR B).
+  name and `cuda available: True`; the COCO weights SHA-256 is pinned in the `Dockerfile` (done after Kosmo's first
+  build), so the build now passes directly.
 - K4 (PR A, during part B) Check the licences of the public set candidates (`docs/camera/datasets.md`), download the
   accepted ones.
 - K5 (PR B) Rebuild the image (it carries the PR B code), run `gpu-check`, then run on dev: dataset, train, export, measure, tune; paste the dev report. The squad iterates on dev reports only,
@@ -269,14 +269,15 @@ closing it):
   official page, and the documented deviation "Python 3.13, not 3.14" (Kosmo's decision).
 - Justifications the issue asks for: calibration points (CV2), calibration limit (CV9).
 - Residual risks stated: `requirements-*.txt` pinned with `--hash` (S6, wheels for Linux x86_64 cp313 only); COCO
-  weights are a pickle checked by MD5 then trusted on first download until `NANO_SHA256` is pinned (S5).
-- Committed by developer-fix from Kosmo's pasted output before merge: `split-lock.json` (K1) and, if pasted,
-  `NANO_SHA256` (K3).
+  weights are a pickle checked by MD5 and pinned by SHA-256 (`NANO_SHA256`, from Kosmo's first build, S5).
+- Committed by developer-fix from Kosmo's pasted output: `split-lock.json` (K1: session mode, dev 2 units / 368 darts,
+  eval 2 units / 137 darts) and `NANO_SHA256` (K3). K3 result: GPU check OK on NVIDIA GeForce RTX 4070 SUPER 12 GB,
+  driver 610.57, torch 2.14.1+cu130, cuda available True.
 
 PR B (new branch from an up-to-date `main` once PR A is merged, tasks T3, T7, T8, T9, T10, T11, T12, T13, T13b, T14;
 `Closes #42`):
 - How to verify: K5, K6 (image rebuilt first).
-- Versions table only if a pin changes in part B; `NANO_SHA256` pinned here if PR A merged without it.
+- Versions table only if a pin changes in part B.
 - Justifications the issue asks for: input size and FP32 versus FP16 for the Pixel 7, then the confidence threshold
   from the dev report.
 
@@ -341,7 +342,7 @@ part B), K5 and K6 once PR B is.
 | D2 | 4 calibration points on the outer double corners 5|20, 13|6, 17|3, 8|11; calibration limit 2.0 mm. | CV2, CV9 |
 | D3 | Detection and calibration metrics on photos, events on video (different crop and scale). | CV9 to CV12 |
 | D4 | No OpenCV; numpy DLT and PyAV (already pulled by `rfdetr`). Only `pytest` added as a direct dependency. | - |
-| D5 | Annotation tool UI in French only (it is for Kosmo); started with `python3.13`. | CV16 |
+| D5 | Annotation tool UI in French only (it is for Kosmo); started with `python3`. | CV16 |
 | D6 | CUDA build `cu130` for the GPU image. | - |
 | D7 | Design review S5: the container keeps uid 0 inside, no `USER`. With rootless Docker, container root maps to Kosmo's own unprivileged uid; a non-root `USER` maps to a subordinate uid that cannot write `~/kosmo-runs` without changing its permissions. Root inside has no extra power (`--cap-drop ALL`, `no-new-privileges`, `--read-only`, `--network none`). Accepted by the security reviewer at the design review of 1377af2. | - |
 | D8 | Pixel coordinates in stored JPEG pixel order, EXIF orientation ignored everywhere; the server checks clicks against the real JPEG size (U3). | CV16 |

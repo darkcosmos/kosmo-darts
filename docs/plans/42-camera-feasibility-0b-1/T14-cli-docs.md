@@ -14,7 +14,7 @@ feasibility report that developer-fix fills from Kosmo's reports.
 - Changed `docs/camera/training.md` (commands in the K1 to K6 order of root "How Kosmo verifies"): "Build the image"
   and "GPU check" (written by T2 in PR A) switch to the `gpu-check` subcommand and say to rebuild the image for
   PR B; new sections "Run" (the exact `docker run` line of root plan "Approach, Training image" with `--tmpfs /tmp:rw,size=8g` and
-  `--shm-size=4g`), "Annotate" (`python3.13 -m kosmo_camera.annotate`, open `http://127.0.0.1:8765` in Windows),
+  `--shm-size=4g`), "Annotate" (`python3 -m kosmo_camera.annotate`, open `http://127.0.0.1:8765` in Windows),
   "Dev loop" and "Eval run" (steps K1 to K6 of the root plan), "What to paste in the PR" (the Markdown report only).
 - Added `docs/camera/feasibility-report.md`: template with sections Summary (go or no-go), Data, Model (SHA-256,
   size, rebuild command, input size, FP32 or FP16 and why for the Pixel 7), Calibration points and limit (why),
