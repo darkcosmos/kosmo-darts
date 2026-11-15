@@ -41,3 +41,18 @@ Python checks of root "Test plan" green (generation fast enough: whole suite und
 sonnet. Why: test fixture generator from fixed geometry.
 
 ## Implementation notes
+- Code in `tools/camera/kosmo_camera/synth.py`; fixtures in `tests/conftest.py` (`synthetic_session`: session-scoped, 2 volleys of 3,
+  dart 2 voided, dart 5 without photo, segments (1, 4), drift from dart 4; `synthetic_board`: callable).
+- No OpenCV in the environment: the warp is Pillow's perspective transform; the homography is built with numpy.
+  Tips and calibration pixels come from `View.homography(size)`; `project` / `unproject` map board mm and pixels.
+- `View` (yaw, pitch, distance, roll in degrees and mm; drift_dx, drift_dy, drift_roll applied after the warp);
+  `Drift(from_dart, dx, dy, roll)` is absolute, the last drift with `from_dart <= n` applies (not cumulative).
+- `SessionSpec(darts=(DartSpec(segment, multiplier, voided, photo), ...), segments=(1, 4), ...)`; darts are split in
+  volleys of `darts_per_volley`; every dart sits at `zone_centre_mm`. Photo n shows the darts of its volley up to n.
+- Timeline per volley (video ms): dart j arrives at 500+1000j (frame = ms/100), entry 300 ms later, photo entry+42,
+  voidedAt entry+400, removal last entry+800 (`video_empty_from` = first empty frame), end = removal+700.
+- `make_session` writes annotations to `<dir>/annotations/<name>.json` (not in the session folder). The first segment
+  uses the first judged dart's photo, later ones the photo of their `fromDart` (CV20).
+- Returned `SyntheticSession` holds per-dart true views, homographies, tips, calibration pixels, positions_mm,
+  arrival frames and frame counts. A "Done when" note: `python3 -I -S` is not usable, the venv python runs the tests.
+- Not done: no empty volley, no HIDDEN status; mp4 bytes are deterministic with thread_count 1 (tested).
