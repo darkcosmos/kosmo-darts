@@ -40,3 +40,14 @@ to main (issue rule: Kosmo decides).
 sonnet. Why: library wiring with a specified output contract.
 
 ## Implementation notes
+- Export with litert-torch 0.10.0 works on CPU (about 108 MB float32 file, about 12 s). Go.
+- Output contract: `boxes [1,300,4]` cxcywh normalised, `logits [1,300,6]`: 5 classes plus a trailing no-object slot.
+  Slot k is `CLASS_NAMES[k]`: the dataset builder (later task) must use 0-based category ids in that order, and
+  `Detector` ignores slot 5. Resolution 384 (Nano), checked by `model_spec.check_resolution` (multiple of 32).
+- Deviation: no letterbox. Preprocessing is a squash bilinear resize (half-pixel, no antialias) as rfdetr trains and
+  predicts, so x and y scale independently; decode tests cover non-square images. Own numpy resize (portable to Kotlin).
+- `LiteRtDetector.detect` returns one Point per query (best of the 5 classes), sorted by score, no threshold
+  (`min_score` filtering belongs to the per-dart decision task). `run_raw` gives raw tensors for tests.
+- `export.py`: `build_nano`, `export_model(model, ...)` (parity test needs the model), `export_litert`, CLI
+  `python -m kosmo_camera.export`. Parity test: eager reference needs `net.eval(); net.export()` then 300-query output.
+- `model_spec` imports `rfdetr.config` at load (needs the venv; stdlib tools must not import it).
