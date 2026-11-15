@@ -41,3 +41,16 @@ haiku. Why: copy of a given file with checksum, an enum value, a mapping, listed
 choice.
 
 ## Implementation notes
+- Checked: `sfx.zip` from the given URL, `jar tf` lists the single entry `sfx_closed_sector.ogg`; extracted with
+  `jar xf` into an empty directory. Size 51,006 bytes; SHA-256 `0e10525b020682abed7835aa4a8c021435d22dd4485e61297c8fde2a2146e4bc`
+  (matches the pin); starts with `OggS`; `vorbis` at offset 29. Copied unchanged to
+  `app/src/main/res/raw/sfx_closed_sector.ogg`.
+- Enum value `SoundEffect.SECTOR_CLOSING` sits after `CLOSED_SECTOR`, before `VICTORY`; mapped in
+  `SoundPoolPlayer.resourceOf` to `R.raw.sfx_closed_sector`. No other `when` over `SoundEffect` exists in `app/src/main`.
+- Test fakes: `AudioFakes.DEFAULT_DURATIONS` gives `SECTOR_CLOSING` 3,000 ms. `SoundPoolPlayerTest` expects the new
+  resource in enum order and the full-volume loop covers it.
+- Docs: CREDITS row and bullet as in the root plan; glossary line 11 ("eight sound effects") and AN24 updated (eight sounds, seven earlier ones
+  generated with ElevenLabs). E5 (historical owner evolution, `docs/rules/announcements.md`) still reads "seven sounds"
+  and was left unchanged, as a record of PR #33.
+- `docs/sounds/CREDITS.md` intro (line 3) still says "The sound effects of `app/src/main/res/raw/` were generated with
+  ElevenLabs"; the task said nothing else is claimed, so it was not touched.

@@ -8,7 +8,7 @@ the prefix AN so that they never collide with the X01 rules (`docs/rules/x01.md`
 Vocabulary:
 - *Cue*: a semantic event produced by `:game-engine` (dart hit, bust, turn start...). It carries no text and no sound.
 - *Voice*: an announcement spoken by Android's text-to-speech (TTS) engine.
-- *Sound*: one of the seven sound effects of `app/src/main/res/raw/`.
+- *Sound*: one of the eight sound effects of `app/src/main/res/raw/`.
 - *Usable voice*: see AN12.
 
 ## Owner evolutions after the tests on the Pixel (PR #33 review, 2026-10-19)
@@ -173,9 +173,11 @@ They complete or replace the issue body; in case of contradiction they prevail.
 
 ## Credits
 
-- AN24. The seven sounds of `app/src/main/res/raw/` (since A.2, `sfx_victory` replaced `sfx_game_shot` and
-  `sfx_big_fish`; `sfx_closed_cricket_sector` was added for Cricket, AN30) were all generated with ElevenLabs (A.3) and are listed in `docs/sounds/CREDITS.md` with their
-  tool, plan and generation date. The ElevenLabs
+- AN24. The eight sounds of `app/src/main/res/raw/` (since A.2, `sfx_victory` replaced `sfx_game_shot` and
+  `sfx_big_fish`; `sfx_closed_cricket_sector` was added for Cricket, AN30; `sfx_closed_sector` was added for the
+  Cricket closing hit, AN33) are listed in `docs/sounds/CREDITS.md`. The seven earlier sounds were all generated with
+  ElevenLabs (A.3) and are listed there with their tool, plan and generation date. `sfx_closed_sector` has the same
+  licence as the other sounds, as stated by the owner in issue #82; no tool or plan is claimed for it. The ElevenLabs
   free plan requires the mention "elevenlabs.io", which is also in the app (AN13). The files are used as delivered on
   the `assets/sound-effects` branch; its normalization commit evened out their levels (E5). The app applies no gain, except the reduced volume of `sfx_victory` (A.3, AN9).
   `docs/sounds/CREDITS.md` does not describe the normalization: the owner withdrew that request (PR #33 comment,
