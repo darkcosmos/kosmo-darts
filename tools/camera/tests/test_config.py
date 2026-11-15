@@ -30,6 +30,11 @@ def test_committed_defaults_load_and_are_exposed_as_constants():
     assert (config.SPLIT_ACCEPTED_MIN, config.SPLIT_ACCEPTED_MAX) == (0.25, 0.35)
     assert config.SPLIT_MIN_SESSIONS_PER_SET == 2
     assert config.SPLIT_MIN_EVAL_DARTS == 100
+    # docs/camera/training.md "Groups"
+    assert (config.LIGHT_DARK_BELOW, config.LIGHT_MEDIUM_MAX) == (70.0, 140.0)
+    assert (config.ANGLE_FRONT_MAX_DEGREES, config.ANGLE_OBLIQUE_MAX_DEGREES) == (15.0, 35.0)
+    assert (config.DISTANCE_FAR_MAX, config.DISTANCE_MID_MAX) == (0.35, 0.6)
+    assert (config.ZOOM_1X_BELOW, config.ZOOM_2X_MAX) == (1.5, 3.0)
 
 
 def test_unknown_key_raises(tmp_path):
