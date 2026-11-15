@@ -100,6 +100,14 @@ class CueScriptTest {
     }
 
     @Test
+    fun `AN33 a closing hit is the closing sound with its dart call`() {
+        assertEquals(
+            AudioAction.DartSound(SoundEffect.SECTOR_CLOSING, "call 60"),
+            ofCricket(CricketCue.ClosingHit(Dart.triple(20))),
+        )
+    }
+
+    @Test
     fun `AN23 AN29 the Cricket undo cue is an undo`() {
         assertEquals(AudioAction.Undo, ofCricket(CricketCue.DartUndone))
     }

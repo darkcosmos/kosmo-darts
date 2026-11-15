@@ -6,7 +6,7 @@ This document is the single source of truth for the Cricket tests: tests cite th
 ids (CR1, CR2, ...) are stable. They use the prefix CR so that they never collide with the X01 rules
 (`docs/rules/x01.md`), the match rules (`docs/rules/match.md`), the persistence rules (`docs/rules/persistence.md`),
 the announcement rules (`docs/rules/announcements.md`), the visit total rules (`docs/rules/visit-total.md`) or the
-player rules (`docs/rules/players.md`). CR17 to CR19 are reserved for later engine rules.
+player rules (`docs/rules/players.md`). CR18 and CR19 are reserved for later engine rules.
 
 Vocabulary:
 - *Target*: a sector in play: 20, 19, 18, 17, 16, 15 and the Bull (the outer bull `25` and the bull `Bull` together).
@@ -61,13 +61,18 @@ Vocabulary:
   it. A *closed-sector hit* is a dart with at least one mark on a target that was already dead **before** this dart
   (owner sound request, AN30). Consequences (owner example, 3 players: P1 closed 20 with three single 20s, P2 with T20
   then D20):
-  - the dart of P3 that gives him his third mark on 20 makes 20 dead, but it is not a closed-sector hit: it is a
-    normal hit, because 20 was not dead before it;
+  - the dart of P3 that gives him his third mark on 20 makes 20 dead, but it is not a closed-sector hit, because 20
+    was not dead before it: it is a *closing hit* (CR17);
   - every later dart on 20, by P1, P2 or P3, the rest of P3's visit included, is a closed-sector hit;
   - a dart that closes a target for the thrower while an opponent still has it open is a normal hit, and so is any
     scoring (Standard) or point-giving (Cut-throat) surplus dart;
-  - undoing the dart that made a target dead makes it live again (CR11), and its row and sound follow;
+  - undoing the dart that made a target dead makes it live again (CR11), and its row and sound follow: the
+    same dart thrown again is a closing hit again (owner Q7);
   - with 25-Bull off, the Bull is not a target, so 25 and Bull darts are never closed-sector hits.
+- CR17. Closing hit (owner issue #82): a dart with at least one mark on a target that was live before it and is dead
+  after it (CR15). In a solo game, the dart that gives the player his third mark on a target (owner Q5). With 25-Bull
+  off, 25 and Bull darts are never closing hits. A closing hit may also win the leg (CR9); its cue is then a normal hit
+  (AN33).
 - CR16. Match tie-break (M10, M20): points in the last leg, in the CR12 direction, then board marks in the last leg
   (more is better).
 

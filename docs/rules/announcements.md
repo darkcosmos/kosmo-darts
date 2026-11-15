@@ -222,14 +222,19 @@ Cricket has its own cue type, `CricketCue`, so that the X01 cues (bust, 180, tur
 are.
 
 - AN29. The Cricket cues are produced by `CricketCues` at the same hook points as the X01 ones (AN7): a *hit* (at
-  least one mark on a target that was not dead before the dart), a *closed-sector hit* (AN30), a *miss* (0 marks,
+  least one mark on a target that was not dead before the dart and that is not a non-winning closing hit), a
+  *closing hit* (CR17, AN33, when the dart does not win), a *closed-sector hit* (AN30), a *miss* (0 marks,
   CR2), an *undo* (AN6, AN23), a *turn start* and a *win*.
 - AN30. `sfx_closed_cricket_sector` plays instead of the hit sound for a closed-sector hit (CR15: a dart with at
   least one mark on a target already closed by every player before this dart; the dart that completes the closure
-  plays the hit sound). The cue is decided on the game as it was before the dart, so an undone closing dart, thrown
-  again, is a normal hit. Any other dart with marks plays the hit sound, and a dart with 0 marks plays the miss
+  is a closing hit, AN33). The cue is decided on the game before and after the dart, so an undone closing dart,
+  thrown again, is a closing hit again. Any other dart with marks plays the hit sound, and a dart with 0 marks plays the miss
   sound. With "Call each dart" on, a closed-sector hit is still called after its sound (AN25).
 - AN31. The turn start is the phrase of AN4 and AN8 without the checkout suffix. The leg, set and victory voice
   (AN27) and the victory sound (only on a match win, A.2) follow the outcome of the winning dart (M7). The winner
   is the player the dart makes win, who may not be the thrower (CR9).
+- AN33. `sfx_closed_sector` plays instead of the hit sound for a closing hit (CR17). It is a dart sound (AN10) and
+  its full length (3 s) is kept: the dart call (AN25) and the next announcement wait for its end (owner Q3). When the
+  closing dart wins the leg, it plays no closing sound: it is a hit, so `sfx_dart_hit` and its dart call, then the win
+  (AN27, AN31), like any winning dart (owner Q4, option b). Undo and resume are unchanged (AN23, AN7; owner Q7).
 - AN32. In Cricket there is no turn score, no 180, no bust and no remaining-score announcement.

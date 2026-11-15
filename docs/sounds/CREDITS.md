@@ -1,6 +1,6 @@
 # Sound effects credits
 
-The sound effects of `app/src/main/res/raw/` were generated with ElevenLabs (https://elevenlabs.io), on the free plan,
+The seven sound effects of `app/src/main/res/raw/` other than `sfx_closed_sector.ogg` were generated with ElevenLabs (https://elevenlabs.io), on the free plan,
 in October 2026. The free plan requires the mention "elevenlabs.io": it is shown at the bottom of the "Settings"
 screen ("Sound effects generated with elevenlabs.io" / « Effets sonores générés avec elevenlabs.io », rule AN13 of
 `docs/rules/announcements.md`).

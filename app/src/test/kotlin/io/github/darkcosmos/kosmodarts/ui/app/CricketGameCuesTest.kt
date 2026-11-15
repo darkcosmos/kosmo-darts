@@ -45,6 +45,65 @@ class CricketGameCuesTest {
         return cues
     }
 
+    private val annClosesTwenty = duel.throwing(Dart.triple(20), Dart.single(20), Dart.single(20))
+
+    @Test
+    fun `AN33 Kosmo's case through the game events gives the closing cue, then the closed-sector cue`() {
+        val start = inGame(annClosesTwenty, isAwaiting = true)
+
+        assertEquals(
+            listOf(CricketCue.ClosingHit(Dart.triple(20))),
+            cuesOf(start, AppEvent.NextPlayerTapped, AppEvent.CricketDartTapped(Dart.triple(20))),
+        )
+        assertEquals(
+            listOf(CricketCue.ClosedSectorHit(Dart.single(20))),
+            cuesOf(start, AppEvent.NextPlayerTapped, AppEvent.CricketDartTapped(Dart.triple(20)), dartTapped(20)),
+        )
+    }
+
+    @Test
+    fun `AN33 AN31 a winning closing dart gives the hit cue then the win cue`() {
+        val beforeWinningDart = duel.throwing(
+            Dart.triple(20), Dart.triple(20), Dart.triple(20),
+            Dart.triple(20), Dart.triple(19), Dart.triple(18),
+            Dart.triple(19), Dart.triple(18), Dart.triple(17),
+            Dart.triple(17), Dart.triple(16), Dart.triple(15),
+            Dart.triple(16), Dart.triple(15), Dart.MISS,
+            Dart.BULL, Dart.OUTER_BULL, Dart.MISS,
+            Dart.BULL,
+        )
+
+        assertEquals(
+            listOf(CricketCue.DartHit(Dart.OUTER_BULL), CricketCue.Win(0, "Ann", LegOutcome.LEG)),
+            cuesOf(inGame(beforeWinningDart), AppEvent.CricketDartTapped(Dart.OUTER_BULL)),
+        )
+    }
+
+    @Test
+    fun `AN7 AN33 resume gives no cue, then the dart that closes a target gives the closing cue`() {
+        val resumed = AppState(screen = CricketSaveFixtures.saved(annClosesTwenty).toScreen())
+
+        assertEquals(emptyList<CricketCue>(), cricketGameCues(AppState(), AppEvent.ResumeTapped, resumed))
+        assertEquals(
+            listOf(CricketCue.ClosingHit(Dart.triple(20))),
+            cuesOf(resumed, AppEvent.NextPlayerTapped, AppEvent.CricketDartTapped(Dart.triple(20))),
+        )
+    }
+
+    @Test
+    fun `AN6 undo of the closing dart gives only the undo cue`() {
+        val start = inGame(annClosesTwenty, isAwaiting = true)
+
+        assertEquals(
+            listOf(CricketCue.DartUndone),
+            cuesOf(
+                start,
+                AppEvent.NextPlayerTapped,
+                AppEvent.CricketDartTapped(Dart.triple(20)),
+                AppEvent.UndoTapped,
+            ),
+        )
+    }
     @Test
     fun `AN29 a dart gives its hit or miss cue`() {
         assertEquals(listOf(CricketCue.DartHit(Dart.single(20))), cuesOf(inGame(), dartTapped(20)))

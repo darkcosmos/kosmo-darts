@@ -5,6 +5,7 @@ import io.github.darkcosmos.kosmodarts.audio.SoundEffect.DART_CANCEL
 import io.github.darkcosmos.kosmodarts.audio.SoundEffect.DART_HIT
 import io.github.darkcosmos.kosmodarts.audio.SoundEffect.DART_MISS
 import io.github.darkcosmos.kosmodarts.audio.SoundEffect.ONE_EIGHTY
+import io.github.darkcosmos.kosmodarts.audio.SoundEffect.SECTOR_CLOSING
 import io.github.darkcosmos.kosmodarts.audio.SoundEffect.VICTORY
 import io.github.darkcosmos.kosmodarts.engine.match.LegOutcome
 import io.github.darkcosmos.kosmodarts.engine.x01.X01Cue
@@ -277,6 +278,31 @@ class AnnouncementPlayerTest {
         clock.advanceBy(5_000)
 
         assertEquals(listOf(Heard.Sound(DART_HIT, 0), Heard.Speech("Triple 20", 510)), timeline.heard)
+    }
+
+    /** AN33, AN10, AN25: the call and the next announcement wait for the end of the 3 s closing sound. */
+    @Test
+    fun `AN33 AN10 the dart call and the next announcement wait for the end of the closing sound`() {
+        callsOn()
+        player.play(AudioAction.DartSound(SECTOR_CLOSING, "Triple 20"))
+        announce(AudioStep.Speech("start Bob"))
+        clock.advanceBy(20_000)
+
+        assertEquals(Heard.Sound(SECTOR_CLOSING, 0), timeline.heard[0])
+        assertEquals(Heard.Speech("Triple 20", 3_000), timeline.heard[1])
+        assertEquals(listOf("Triple 20", "start Bob"), timeline.speech)
+    }
+
+    @Test
+    fun `AN23 AN33 undo during the closing sound stops it and plays the cancel sound`() {
+        callsOn()
+        player.play(AudioAction.DartSound(SECTOR_CLOSING, "Triple 20"))
+        clock.advanceBy(1_000)
+        player.play(AudioAction.Undo)
+        clock.advanceBy(20_000)
+
+        assertEquals(listOf(Heard.Sound(SECTOR_CLOSING, 0), Heard.Sound(DART_CANCEL, 1_000)), timeline.heard)
+        assertEquals(1, sounds.stopAllCount)
     }
 
     /** AN25, AN14: no call when "Call each dart" is off (the default) or when the voice is off. */

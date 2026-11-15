@@ -40,3 +40,8 @@ committed.
 sonnet. Why: the rule is fully specified in the plan with its tests; one engine cue plus its wiring.
 
 ## Implementation notes
+- No deviation. `CricketCues.afterDart` decides `ClosingHit` with `after.isClosedSectorHit(dart)` (target dead after)
+  and no winner; a closed-sector hit is still decided on `before`. `CueScript.of` is the only `when` over `CricketCue`.
+- `docs/sounds/CREDITS.md` line 3 narrowed to the seven earlier sounds (orchestrator request); E5 in
+  `docs/rules/announcements.md` left unchanged (historical row).
+- `AudioFakes.kt` and `SoundPoolPlayerTest.kt` were already done by T1.

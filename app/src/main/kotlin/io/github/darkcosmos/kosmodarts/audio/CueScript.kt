@@ -57,7 +57,8 @@ object CueScript {
     fun of(cue: CricketCue, phrases: Phrases): AudioAction = when (cue) {
         is CricketCue.DartHit -> AudioAction.DartSound(SoundEffect.DART_HIT, phrases.dartCall(cue.dart))
         is CricketCue.ClosedSectorHit -> AudioAction.DartSound(SoundEffect.CLOSED_SECTOR, phrases.dartCall(cue.dart))
-        CricketCue.DartMiss -> AudioAction.DartSound(SoundEffect.DART_MISS)
+        is CricketCue.ClosingHit -> AudioAction.DartSound(SoundEffect.SECTOR_CLOSING, phrases.dartCall(cue.dart))
+        CricketCue.DartMiss ->AudioAction.DartSound(SoundEffect.DART_MISS)
         CricketCue.DartUndone -> AudioAction.Undo
         is CricketCue.TurnStart -> speech(phrases.turnStart(cue.name, cue.isGameStart))
         is CricketCue.Win -> win(cue.name, cue.outcome, phrases)
