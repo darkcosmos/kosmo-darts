@@ -114,7 +114,9 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
 - CV3 Split of `captures/`, about 70/30 dev/eval, computed once. Key of a unit: SHA-256 of `"kosmo-0b1-split-v1:"`
   plus the session name (block mode: plus `":"` and the block index). Session mode: walk the sessions in key order and
   put a session in eval while the eval share of judged darts (CV5) is below 30 % and adding it keeps the share at or
-  below 35 % (otherwise skip it). Accepted if the eval share is between 25 % and 35 %, each set has at least 2
+  below 35 % (otherwise skip it). Sessions with no judged dart (CV5) are ignored: they are in no set, are not walked
+  in either mode and do not count for "at least 2 sessions per set"; the split file and the `split` output give their number only
+  (Kosmo, 2026-11-15). Accepted if the eval share is between 25 % and 35 %, each set has at least 2 judged
   sessions and eval has at least 100 judged darts. Otherwise block mode: each session cut into blocks of
   `SPLIT_BLOCK_VOLLEYS` (5) consecutive volleys, same walk over blocks; flagged "more optimistic" (same tripod,
   lighting and calibration clicks on both sides). The split file is canonical JSON (sorted keys); its SHA-256 is
@@ -202,7 +204,8 @@ the cases. Summary:
 - T3 (slow, fixed seeds): untrained Nano with 5 classes exports to `.tflite`, LiteRT runs it, decoded output shapes;
   LiteRT and PyTorch top-10 boxes within 1e-3 and logits within 0.1.
 - T4: truth reader on golden v2 text from `docs/camera/capture-format.md`, rejections.
-- T4b: CV3 session walk, balance criteria and fallback to block mode, determinism, lock check, CV17 exclusion.
+- T4b: CV3 session walk, balance criteria and fallback to block mode, sessions with no judged dart ignored (no set,
+  not counted for the 2-session criterion), determinism, lock check, CV17 exclusion.
 - T5: annotation round trip, strict rejections, consistency with the truth file, size cap.
 - T6a: flow transitions, autosave round trip, session resolution on every route, write-route attacks (encoded `..`,
   `/`, backslash, NUL, unlisted name), body and header checks, error states (CV16).
@@ -210,6 +213,7 @@ the cases. Summary:
 - T7: synthetic board render reproducible from a seed, known tips land in known zones.
 - T8: DLT exact on 4 points, CV9 metric at exactly 2.0 mm and with fewer than 4 points, groups (CV14).
 - T9: COCO output, box size, eval unit refused (CV4), public class map.
+- T10a: CPU and GPU requirements in sync and hashed, Dockerfile static checks, `gpu_check` exit codes.
 - T10 (slow, fixed seed): 2-iteration training on CPU from random weights on synthetic data produces a checkpoint.
 - T11: CV6 and CV7 on fake detector outputs, boundaries (6.0 mm, `tau_low`, ties, same-class duplicates).
 - T12: CV10 and CV11 on generated videos: arrival in window, false arrival, person occlusion, empty board.
@@ -225,44 +229,60 @@ side unchanged, and the PR's "Local checks" says so.
 
 ## How Kosmo verifies
 
-No change to the apps: on the Pixel 7, install the CI debug APK; Kosmo Darts and Kosmo Capture behave as before.
-Then on the PC (steps detailed in `docs/camera/training.md`). No capture campaign before the preliminary report (K0).
-- K1 Split (WSL, no container): `python3.13 -m kosmo_camera.split --captures ~/kosmo-data/captures`. It prints the
+For each of the two PRs (D11): no change to the apps: on the Pixel 7, install the CI debug APK; Kosmo Darts and
+Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/training.md`). No capture campaign before the preliminary report (K0).
+- K1 (PR A) Split (WSL, no container): `python3.13 -m kosmo_camera.split --captures ~/kosmo-data/captures`. It prints the
   mode (session or block, "plus optimiste"), units and judged darts per set, and the split SHA-256; paste that output.
   The squad commits `split-lock.json` (block mode only after Kosmo's OK).
-- K2 Annotate all existing sessions with the tool (about 1 h). What he should see: relaunch with
+- K2 (PR A) Annotate all existing sessions with the tool (about 1 h). What he should see: relaunch with
   `python3.13 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations`, open
   `http://127.0.0.1:8765` in Windows; the session list shows progress and calibration status; calibration asks the 4
   points in order 1 to 4 on a diagram that highlights the next point; each dart photo shows its true value ("T20"); voided entries are skipped; one
   click sets the tip and shows the next dart; "Enregistré à HH:MM:SS" after each action; closing and reopening a
   session resumes at the first dart not annotated, with earlier tips drawn on the same spots; files appear in
   `~/kosmo-data/annotations/<session>.json`, the captures folder is unchanged.
-- K3 Build the image once with network, run `gpu-check`: GPU name and `cuda available: True`; paste the COCO weights
-  SHA-256 the first build prints (T10).
-- K4 Check the licences of the public set candidates (`docs/camera/datasets.md`), download the accepted ones.
-- K5 Run on dev: dataset, train, export, measure, tune; paste the dev report. The squad iterates on dev reports only,
+- K3 (PR A, while annotating) Build the image once with network, run `python -m kosmo_camera.gpu_check` in it: GPU
+  name and `cuda available: True`; paste the COCO weights SHA-256 the first build prints (T10a); developer-fix pins
+  it in the `Dockerfile` (in PR A if pasted before merge, else in PR B).
+- K4 (PR A, during part B) Check the licences of the public set candidates (`docs/camera/datasets.md`), download the
+  accepted ones.
+- K5 (PR B) Rebuild the image (it carries the PR B code), run `gpu-check`, then run on dev: dataset, train, export, measure, tune; paste the dev report. The squad iterates on dev reports only,
   then commits `frozen.json`.
-- K6 Run `measure --set eval` once; paste the preliminary report. The squad fills `feasibility-report.md`: path
+- K6 (PR B) Run `measure --set eval` once; paste the preliminary report. The squad fills `feasibility-report.md`: path
   proposal, or the confirmation campaign to capture into `~/kosmo-data/captures-eval/` (CV17).
 
 ## PR material (for developer-fix)
 
+Two PRs (decision D11). Common to both: review order (A2), one commit or more per task, never mixing tasks; the PR
+description lists its tasks in the order of the table below with their commits; "How to verify" starts with the
+unchanged apps on the Pixel 7, then the K-steps of that PR.
+
+PR A (branch `feat/camera-feasibility-0b-1`, tasks T1, T4, T4b, T5, T6a, T6b, T10a, T2; refers to #42 without
+closing it):
+- How to verify: K1, K2, K3 (and K4 to start during part B).
 - Proposed owner changes: new job `camera-tools` in `.github/workflows/android.yml`: `ubuntu-26.04`,
   `actions/setup-python` with `3.13`, `pip install -r tools/camera/requirements-cpu.txt`, `python -m pytest
   tools/camera -m "not slow"`; no artifact (no data). Optional second step for the slow tests.
 - Versions table: every top-level pin (Python 3.13.18, `rfdetr`, `litert-torch`, `ai-edge-litert`,
   `ai-edge-quantizer`, `torch`, `torchvision`, `av`, `numpy`, `pillow`, `pytest`, base image) with its PyPI or
   official page, and the documented deviation "Python 3.13, not 3.14" (Kosmo's decision).
-- Justifications the issue asks for: calibration points (CV2), calibration limit (CV9), input size and FP32 versus
-  FP16 for the Pixel 7, then the confidence threshold from the dev report.
-- Review order (A2): one commit or more per task, never mixing tasks; the PR description lists the tasks in the
-  order of the table below with their commits.
+- Justifications the issue asks for: calibration points (CV2), calibration limit (CV9).
 - Residual risks stated: `requirements-*.txt` pinned with `--hash` (S6, wheels for Linux x86_64 cp313 only); COCO
   weights are a pickle checked by MD5 then trusted on first download until `NANO_SHA256` is pinned (S5).
+- Committed by developer-fix from Kosmo's pasted output before merge: `split-lock.json` (K1) and, if pasted,
+  `NANO_SHA256` (K3).
+
+PR B (new branch from an up-to-date `main` once PR A is merged, tasks T3, T7, T8, T9, T10, T11, T12, T13, T13b, T14;
+`Closes #42`):
+- How to verify: K5, K6 (image rebuilt first).
+- Versions table only if a pin changes in part B; `NANO_SHA256` pinned here if PR A merged without it.
+- Justifications the issue asks for: input size and FP32 versus FP16 for the Pixel 7, then the confidence threshold
+  from the dev report.
 
 ## Tasks
 
-Part A, annotation first (decision K0; Kosmo can start K1 and K2 as soon as it is delivered):
+Part A / PR A, annotation, image and GPU check first (decisions K0 and D11; Kosmo starts K1, K2 and K3 as soon as it
+is delivered):
 
 | Id | Title | Task file | Depends on | Model | Why this model |
 |---|---|---|---|---|---|
@@ -272,9 +292,10 @@ Part A, annotation first (decision K0; Kosmo can start K1 and K2 as soon as it i
 | T5 | Annotation format, reader and writer, doc | `42-camera-feasibility-0b-1/T5-annotation-format.md` | T4 | opus | New stored format (case 1): schema, strict reader, version policy |
 | T6a | Annotation server and per-dart flow | `42-camera-feasibility-0b-1/T6a-annotation-server.md` | T5 | sonnet | Flow, states and security rules specified, Python tests |
 | T6b | Annotation page | `42-camera-feasibility-0b-1/T6b-annotation-page.md` | T6a | sonnet | Page from a specified flow and layout |
-| T2 | Kosmo docs: split, annotation, campaign protocol, bins, datasets | `42-camera-feasibility-0b-1/T2-kosmo-docs.md` | T4b, T6b | haiku | Documentation copied from this plan, no design choice |
+| T10a | GPU training image and GPU check | `42-camera-feasibility-0b-1/T10a-gpu-image.md` | T1 | sonnet | Container and hashed requirements wiring with given flags, URL and hashes; not haiku because the GPU hashes are generated from the `cu130` index and checked against the CPU file |
+| T2 | Kosmo docs: split, annotation, image and GPU check, campaign protocol, bins, datasets | `42-camera-feasibility-0b-1/T2-kosmo-docs.md` | T4b, T6b, T10a | haiku | Documentation copied from this plan and the T10a `Dockerfile`, no design choice |
 
-Part B, training and measurement:
+Part B / PR B, training and measurement:
 
 | Id | Title | Task file | Depends on | Model | Why this model |
 |---|---|---|---|---|---|
@@ -282,15 +303,16 @@ Part B, training and measurement:
 | T7 | Synthetic boards and sessions for tests | `42-camera-feasibility-0b-1/T7-synthetic.md` | T4, T5 | sonnet | Test fixture generator from fixed geometry |
 | T8 | Homography, calibration metric, groups | `42-camera-feasibility-0b-1/T8-geometry-groups.md` | T7 | sonnet | Formulas specified in CV9 and CV14 |
 | T9 | COCO dataset builder and public import | `42-camera-feasibility-0b-1/T9-dataset.md` | T4b, T8 | sonnet | Specified conversion and CV4 guard |
-| T10 | Training, training image, GPU check | `42-camera-feasibility-0b-1/T10-training-image.md` | T3, T9 | sonnet | Wrapper and container wiring with given flags |
+| T10 | Training | `42-camera-feasibility-0b-1/T10-training.md` | T3, T9, T10a | sonnet | Wrapper around a library training call with given parameters and tests |
 | T11 | Per-dart decision | `42-camera-feasibility-0b-1/T11-decide.md` | T3, T8 | sonnet | Rules CV5 to CV7 specified, fake detector tests |
 | T12 | Arrival and empty-board events on video | `42-camera-feasibility-0b-1/T12-events.md` | T11 | sonnet | Algorithm and rules CV10, CV11 specified |
 | T13 | Metrics, tuning, frozen thresholds and eval guard | `42-camera-feasibility-0b-1/T13-metrics-report.md` | T12 | sonnet | Statistics and strict reader specified in CV4, CV8 to CV14 |
 | T13b | Preliminary report | `42-camera-feasibility-0b-1/T13b-report.md` | T13 | sonnet | Report content and verdict rule D12 fully specified |
 | T14 | CLI, training doc commands, report template | `42-camera-feasibility-0b-1/T14-cli-docs.md` | T10, T13b | sonnet | Wiring of existing pieces and their documentation |
 
-17 tasks, one `opus` task (T5). Execution order: part A in table order, then part B. No task needs Kosmo's machine to
-be built; K1 and K2 run once part A is delivered (see D11), K3 to K6 once part B is.
+18 tasks (8 in part A, 10 in part B), one `opus` task (T5). Execution order: part A in table order, PR A, then part B
+in table order, PR B (D11). No task needs Kosmo's machine to be built; K1 to K3 run once PR A is delivered (K4 during
+part B), K5 and K6 once PR B is.
 
 ## Decisions
 
@@ -324,7 +346,8 @@ be built; K1 and K2 run once part A is delivered (see D11), K3 to K6 once part B
 | D8 | Pixel coordinates in stored JPEG pixel order, EXIF orientation ignored everywhere; the server checks clicks against the real JPEG size (U3). | CV16 |
 | D9 | Constants in `defaults.json` only, read by `config.py` (A1). | - |
 | D10 | Requirements pinned with hashes, installed with `--require-hashes` (S6). | - |
-| D11 | Proposal to main (process): deliver part A (T1 to T2) as a first PR so Kosmo annotates while part B is built; part B as a second PR from a new branch. If main keeps one PR, the order and per-task commits of "PR material" apply. | - |
+| D11 | Kosmo, 2026-11-15 (P3): two PRs. PR A: T1, T4, T4b, T5, T6a, T6b, T10a, T2 (T10a taken out of T10: image and `gpu_check`, depends on T1 only), so Kosmo builds the image and checks the GPU while he annotates; `docs/camera/datasets.md` ships in PR A so licences are checked during part B. PR B: the rest, from a new branch, T10 reduced to training. | - |
+| D13 | Kosmo, 2026-11-15: sessions with no judged dart (CV5) are ignored by the split: in no set, not counted for "at least 2 sessions per set". Tested in T4b. | CV3 |
 | D12 | Verdict per threshold: "clearly below" when the whole 95 % interval misses the target; else "close or above" (preliminary report, K0). | CV8 to CV11 |
 
 ## Open questions
@@ -332,4 +355,4 @@ be built; K1 and K2 run once part A is delivered (see D11), K3 to K6 once part B
 - P1 (information for main, not blocking): Roboflow Universe, Hugging Face, Kaggle and Zenodo are not reachable
   from the sandbox, so no public dataset page or licence could be opened. `docs/camera/datasets.md` (T2) gives
   search links and acceptance criteria (CC BY 4.0 only, DeepDarts excluded); the tooling works with zero public sets.
-- P3 (main, process): one PR or two (D11).
+- P3: decided, two PRs (D11).

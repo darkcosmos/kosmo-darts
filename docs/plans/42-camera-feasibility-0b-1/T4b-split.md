@@ -8,19 +8,19 @@ with counts only, and let every later tool check that the locked split is used (
 - Added `tools/camera/kosmo_camera/split.py` (stdlib only): `unit_key(session, block=None)`, `compute_split(sessions)
   -> Split` (session mode, then block mode if the CV3 criteria fail), `encode(split) -> bytes` (canonical JSON:
   sorted keys, 2-space indent, `format` `"kosmo-camera-split"`, `version` 1, `mode`, `units` with session name, block
-  volley range and set, `counts`), `decode(bytes)` (strict), `read_lock(path)` and `check_lock(split_bytes, lock)`
+  volley range and set, `counts` with `ignoredSessions`), `decode(bytes)` (strict), `read_lock(path)` and `check_lock(split_bytes, lock)`
   (`split-lock.json`: format, version, `mode`, 64-hex `splitSha256`, unit and judged-dart counts per set; strict),
   `set_of(session, volley_index, split) -> "dev" | "eval"`, `list_sessions(root)` (folders with a `truth.json`).
   Command `python3.13 -m kosmo_camera.split --captures DIR --out FILE` writes the split file (default
   `~/kosmo-runs/split.json`) and prints mode, flag "more optimistic" in block mode, units, judged darts and eval
-  share per set, the criteria met or failed, and the SHA-256. No session name printed.
+  share per set, the number of ignored sessions (0 judged darts, CV3), the criteria met or failed, and the SHA-256. No session name printed.
 - Added tests `tools/camera/tests/test_split.py`.
 
 ## Depends on
 T4.
 
 ## Rules
-CV3, CV4, CV5 (judged darts from the truth file only, so the split runs before annotation), CV15, CV17 (a session
+CV3 (including ignored sessions), CV4, CV5 (judged darts from the truth file only, so the split runs before annotation), CV15, CV17 (a session
 under `captures-eval/` passed to `compute_split` raises). Constants from `config.py`.
 
 ## Tests
@@ -31,7 +31,10 @@ under `captures-eval/` passed to `compute_split` raises). Constants from `config
 - Boundaries: eval share exactly 0.25 and 0.35 accepted; exactly 2 sessions per set accepted.
 - Block mode leakage: no volley appears in both sets; every volley's darts are all in one set (a block never
   splits a volley between dev and eval).
-- Sessions with 0 judged darts are kept in dev and counted.
+- Sessions with 0 judged darts (CV5) are ignored (CV3): 10 judged sessions plus 3 empty ones give the same `units`
+  and sets as the 10 alone, and `counts.ignoredSessions` = 3; with 3 judged sessions plus 2 empty ones, session mode
+  still fails "at least 2 sessions per set" exactly as with the 3 alone (empty sessions never count); `set_of` on an
+  ignored session raises; printed output shows the ignored count, no name.
 - Lock: matching hash passes; one changed byte, wrong mode, malformed lock (unknown key, short hash) fail.
 - Printed output contains no session name (CV15).
 

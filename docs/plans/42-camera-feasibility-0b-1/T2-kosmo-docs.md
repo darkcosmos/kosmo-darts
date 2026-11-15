@@ -1,8 +1,10 @@
 # T2: Kosmo docs: split, annotation, campaign protocol, group bins, datasets
 
 ## Goal
-Give Kosmo, with part A, what he needs first: how to split and annotate the existing captures, then the group bins,
-the protocol of a later confirmation campaign and the public dataset candidates to check. Prose for Kosmo in French (policy), headings and commands in English.
+Give Kosmo, with part A (PR A), what he needs first: how to split and annotate the existing captures, how to build
+the training image and check the GPU (T10a), then the group bins, the protocol of a later confirmation campaign and
+the public dataset candidates, whose licences he checks while part B is built. Prose for Kosmo in French (policy),
+headings and commands in English.
 
 ## Files
 - Added `docs/camera/training.md` with these sections only (T14 adds the commands later):
@@ -13,6 +15,9 @@ the protocol of a later confirmation campaign and the public dataset candidates 
     never used to train or tune (CV4) and that the split never changes once locked.
   - "Annotate": step K2 of root "How Kosmo verifies" (launch, URL, where files go, what he should see), the keys of
     T6b, how to stop (`Ctrl+C`) and resume.
+  - "Build the image" and "GPU check": step K3 of root "How Kosmo verifies" with the build command and the run flags
+    of the T10a `Dockerfile` header (no data mount), the command `python -m kosmo_camera.gpu_check`, what he should
+    see (GPU name, `cuda available: True`), and what to paste (the SHA-256 the first build prints).
   - "Confirmation campaign protocol" (later, only if the preliminary report asks for it): sessions into
     `captures-eval/`; one dart entered right after each throw; after the last dart, remove the darts, leave the field,
     press "Volée suivante" within 3 s (CV11); no other person in front of the board; counts, positions and lightings
@@ -30,13 +35,13 @@ the protocol of a later confirmation campaign and the public dataset candidates 
   set is added (Kosmo gives the page, the squad adds a row and a class map for T9).
 
 ## Depends on
-T4b, T6b.
+T4b, T6b, T10a.
 
 ## Rules
-CV3, CV4, CV11, CV14, CV17. Values copied from the root plan; no new value.
+CV3, CV4, CV11, CV14, CV17, decision 10. Values copied from the root plan and the T10a `Dockerfile`; no new value.
 
 ## Tests
-None (documentation). Check every value against the root plan "Rules" and "Approach", and every command against `--help` of T4b and T6a.
+None (documentation). Check every value against the root plan "Rules" and "Approach", every command against `--help` of T4b and T6a, and the image commands against the T10a `Dockerfile` header.
 
 ## Done when
 Python checks of root "Test plan" green (unchanged), `kosmo-detekt` exit 0.
