@@ -1,0 +1,49 @@
+{
+  "format": "kosmo-camera-annotations",
+  "version": 1,
+  "session": "20261031-140322",
+  "truthSha256": "24c0d987d33c4c93aba546caf5d77fa49ee86b3eb2dc62c4763734f3d5083fcf",
+  "calibration": {
+    "photo": "dart-001.jpg",
+    "width": 4080,
+    "height": 3072,
+    "points": [
+      {
+        "x": 2040.5,
+        "y": 610.25
+      },
+      {
+        "x": 3301.0,
+        "y": 1290.0
+      },
+      {
+        "x": 2702.75,
+        "y": 2650.0
+      },
+      {
+        "x": 1102.0,
+        "y": 2300.5
+      }
+    ]
+  },
+  "darts": [
+    {
+      "number": 1,
+      "status": "VISIBLE",
+      "tip": {
+        "x": 2010.5,
+        "y": 640.0
+      }
+    },
+    {
+      "number": 2,
+      "status": "HIDDEN",
+      "tip": null
+    },
+    {
+      "number": 3,
+      "status": "OFF_BOARD",
+      "tip": null
+    }
+  ]
+}

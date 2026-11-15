@@ -38,3 +38,20 @@ Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
 opus. Why: case "new stored format" (schema, strict reader, version policy used by every later tool).
 
 ## Implementation notes
+- API in `tools/camera/kosmo_camera/annotations.py`: frozen dataclasses `Annotations(session, truth_sha256,
+  calibration, darts)`, `Calibration(photo, width, height, points)`, `DartAnnotation(number, status, tip)`; points and
+  tips are `(x, y)` float tuples; `Status` is an `enum.Enum`. `encode` re-decodes its own text, so `encode` and
+  `write_atomic` refuse an invalid value before touching the disk.
+- Golden text: `tools/camera/tests/data/annotations-v1-golden.json`, equal to the only `json` block of
+  `docs/camera/annotation-format.md` (tested).
+- Extra strictness beyond the task list: dart numbers strictly ascending (encode writes them as given, so callers
+  keep `darts` sorted), `session` follows the capture name pattern (CP1), `truthSha256` is 64 lowercase hex,
+  calibration `photo` matches `dart-NNN.jpg` (CP3; also blocks path separators), nesting depth cap 8, BOM refused.
+- Coordinates valid from 0 to width/height inclusive. Decode checks calibration points against the calibration
+  `width`/`height` and tips only for `>= 0`; `validate_against` checks tips against the truth `photo.width/height`
+  (the outline has no per-dart photo size). T6a adds the real JPEG size check (D8) and should check that the
+  calibration `width`/`height` equal the real JPEG size.
+- `validate_against` returns a list of warning strings (only the `truthSha256` mismatch); errors raise
+  `AnnotationError` with a JSON path. The calibration photo may be any photo of the session (voided entries included).
+- `write_atomic`: `tempfile.mkstemp` in the target folder (`.<name>.*.tmp`), fsync, `os.replace`; the temp file is
+  removed on any failure; `OSError` becomes `AnnotationError("... cannot write ...")`.
