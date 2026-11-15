@@ -1,5 +1,7 @@
 # T13: Metrics, tuning, frozen thresholds and eval guard
 
+Status: on hold (D30): CV9 becomes per photo; revised at plan update P2 (root plan "Tasks").
+
 ## Goal
 Aggregate per-dart, per-volley and per-event results into the rates, intervals and breakdowns the issue asks for,
 tune the thresholds on out-of-training dev predictions, select the version by the paired McNemar test (D26), and

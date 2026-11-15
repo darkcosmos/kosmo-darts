@@ -39,6 +39,18 @@ tune `tau_low`/`tau_sure` and the pseudo-label thresholds; the final model is th
 whole dev set with the same hyperparameters. Q2 and Q3 are closed (D26, D27), the `datasets.md` attribution format
 confirmed (D28).
 
+Kosmo's stop of K5 on 2026-11-15 (D30, absolute priority of PR B): the drift measure is not reliable. Median drift
+per session S01 13 px / 1.8 mm, S02 311 px / 46.9 mm, S03 268 px / 41.9 mm, S04 122 px / 18.5 mm; 419 of 425
+photos beyond the threshold (49 `border`, 31 `low_peak`), flags from dart 2 in every session, and the net move Kosmo
+saw in the 18:24 eval session (darts 57 to 59) is not visible. His "few pixels" were screen pixels: the true drift is
+unknown. Two hypotheses: H1, the measure is wrong (phase correlation on a periodic 18-degree wire pattern can lock
+onto a neighbouring wire; darts accumulate during the volley); H2, tapping the value on the tripod-mounted phone
+triggers the photo and tilts the phone. PR B therefore first gets ground truth per photo (control clicks, format v3,
+CV25, CV26), a numeric diagnosis with a decision rule fixed in advance (CV28, CV29), a local visual check page, a
+tool rebuilt around Kosmo's journey, and ADR 0017 (the game app calibrates on every image and recalibrates by
+itself). The correction (robust measure, per-photo calibration, or both) is planned at plan update P2 from the
+diagnosis and validated on the control clicks before any compensation (CV30). T9 to T14 wait, except T11 and T12.
+
 ## Scope and out of scope
 
 In scope:
@@ -47,10 +59,14 @@ In scope:
   (CV23), training, export, LiteRT detector, per-dart decision, arrival
   and empty-board events, metrics and report, CLI), the stdlib-only annotation tool, the GPU training image
   (`Dockerfile`, pinned requirements), CPU tests on generated boards.
-- Docs: `docs/rules/camera.md` (rules CV1 to CV24 below), `docs/camera/annotation-format.md` (version 2 added in
-  PR B),
+- Docs: `docs/rules/camera.md` (rules CV1 to CV30 below), `docs/camera/annotation-format.md` (version 2 added in
+  PR B, version 3 with control clicks after D30),
   `docs/camera/datasets.md`, `docs/camera/training.md`, `docs/camera/feasibility-report.md` (template, then filled),
-  `docs/adr/0016-camera-feasibility-tooling.md`.
+  `docs/adr/0016-camera-feasibility-tooling.md`, `docs/adr/0017-per-image-calibration.md` (product requirement for
+  phases 1 to 3, D30 point 6).
+- After D30: control clicks (CV25, CV26), video frames before the entry (CV27, PyAV already pinned), diagnosis
+  (CV28, CV29), visual check page, journey-based tool screens; conditional corrections T16a to T16c (finalized at
+  P2).
 - `.gitignore`: `.venv/`, `__pycache__/`, `.pytest_cache/`, `*.tflite`, `*.pth` (no model or weights committed).
 
 Out of scope: any Kotlin, any change to `:app`, `:capture`, `:game-engine`; inference time on the Pixel 7 (0b-2); the
@@ -92,6 +108,36 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   with our own pre- and post-processing, the exact chain 0b-2 will port to Kotlin. `LiteRtDetector.detect` returns one
   point per query (best of the 5 classes) in image pixels, sorted by score, unthresholded. `RFDETRInference` is not
   used for measures.
+- **Status after D30**: the two bullets below ("Tripod drift", "Drift threshold") describe the batch 1 measure,
+  delivered and kept as code, but not validated: its results are information only, no compensation and no flag
+  guard apply (CV18, CV19 status), and the threshold choice D18 is suspended until P2 (Q13). Segments (CV20) stay.
+- **Calibration control** (D30 point 1, CV25, CV26): Kosmo clicks the 4 calibration points of chosen photos in a
+  "Contrôle de calibration" mode, independent of the segments, stored as `controls` in annotation format v3 (strict
+  reader, lossless v2 migration). Sample, fixed by rule and computed, never chosen by hand: every judged eval photo
+  (reference for CV9 per photo), dev judged-dart ranks 1, 11, 21, ... plus the last, every segment reference photo
+  (click repeatability), and the video frame about 1 s before the entry for the dev sample plus darts 55 to 60 of
+  every eval session (this includes the 18:24 session without naming it). Alternative rejected: a random sample
+  (not reproducible across tool restarts without storing a seed, and no guarantee on the reference photos).
+- **Video frame before the entry** (CV27): the container extracts, for each sampled dart, the last frame at or
+  before `entry.videoPositionMs` − `VIDEO_BEFORE_ENTRY_MS` (1000) from `volley-NNN.mp4` with PyAV (pinned, no new
+  library) to JPEG plus a `frames.json` manifest; the stdlib tool only serves listed files. Alternative rejected:
+  decoding in the tool (would need PyAV in WSL, breaks decision 5).
+- **Diagnosis** (D30 point 2, CV28): per photo control, true drift `T` (clicks versus segment calibration), error
+  `E` of the automatic measure (its shifted points versus the clicks), `E_seeded` (patches seeded with the clicked
+  points: separates coarse-search failure from patch failure), peak ratios, repeatability `R`; on the video side the
+  photo to frame offset `O` through a per-session similarity `M` fitted on paired clicks, the durable move `V` and
+  the motion during capture `W`. Numbers and roles only in the report (Kosmo pastes it); `diagnostic.json` local.
+- **Diagnosis decision rule** (CV29, written before any number is seen): see CV29. "Suite proposée": H1 only:
+  T16a then compensation per CV30; H2 or H3 or "photos déplacées" with a correct measure: T16b with the current
+  method validated per CV30, else T16c; H1 and moved photos: T16a used as the per-photo calibration (T16b); non
+  concluant: Kosmo redoes part of the control clicks (repeatability) before any change. H2 also produces the
+  Capture proposal of "PR material" (an issue draft, no Capture code in this PR).
+- **Visual check** (D30 point 3): the annotation tool, on 127.0.0.1 with the stdlib, alternates reference photo and
+  measured photo with the registration of choice (automatic, control clicks, none) applied by CSS `matrix3d` from a
+  homography computed in Python; images never leave the PC.
+- **Journey** (D30 point 5): per session the steps calibration, tips, control photo, control video with their
+  state; exactly one active instruction computed by the server (`journey.py`), never a stale one; information (drift
+  of the unvalidated measure) in a separate grey box; the recalibration screen explains what a recalibration is.
 - **Tripod drift** (D15, CV18 to CV20): the clicked calibration becomes a list of segments (format v2): a segment
   starts at a dart number and applies until the next segment. `drift.py` (numpy; JPEG decoding by Pillow, already
   pinned, no new dependency) measures, for each judged photo, how far the board moved relative to the reference photo
@@ -306,7 +352,9 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   predictions of the dev cross-validation (CV24), never on a photo seen in training by the model that predicts it;
   `frozen.json` holds the pair so tuned and the SHA-256 of the retained version's `full` model. `measure --set eval` needs a
   valid `frozen.json` (strict: format, version, `tau_low`, `tau_sure`, 64-hex `modelSha256`, no other key) with a
-  matching model SHA-256; the report records the model, `frozen.json` and split hashes.
+  matching model SHA-256; the report records the model, `frozen.json` and split hashes. Eval control clicks (CV25)
+  are reference data for CV9 and the diagnosis only: never a training label, never an input of a parameter choice
+  (CV30 tunes on dev controls; eval controls confirm).
 - CV5 Darts judged: non-voided entries with a photo; entries with `photo: null` are counted apart, not judged.
 - CV6 Announcement per dart as in "Approach, Per dart" (`TAU_LOW`, `TAU_SURE`, `MATCH_RADIUS_MM`).
 - CV7 Outcome per dart: correct (announced value equals truth, not flagged), flagged, or unflagged error. A truth miss
@@ -317,7 +365,9 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   with the predicted one; success if the largest error is at most `CAL_MAX_ERROR_MM` = 2.0 mm and all 4 points were
   found. Target 99 %. Why 2 mm: a quarter of the 8 mm treble and double rings, so a calibration error alone cannot
   move a dart centred in a ring out of it; to be confirmed by the report. A volley whose first photo has no reference
-  calibration (CV19) is not evaluated and is counted.
+  calibration (CV19) is not evaluated and is counted. After D30 (ADR 0017, details fixed at P2): on eval the
+  reference homography of a photo is that of its control clicks (CV25), and CV9 is also reported per photo on every
+  judged eval photo (automatic calibration of each photo against its control clicks), not only per volley.
 - CV10 Arrival of dart k (non-voided, segment not 0, both entry positions in the video) is detected if an arrival
   event falls between the previous non-voided entry (volley start for the first) and entry k. Every other arrival
   event is false. Targets: >= 98 % detected, false events <= 1 % of evaluated darts.
@@ -337,12 +387,19 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   training run folder (D25). The drift flag file `drift.json` (CV18) holds session names and is,
   like the split file, a local working file in `~/kosmo-runs/`: never pasted, never committed. Public dataset slugs,
   licences and image counts (CV21) and the pseudo-label figures (CV23: thresholds, counts, px distances) are allowed
-  in reports: they name public sets, not Kosmo's sessions; no public `file_name` is printed.
+  in reports: they name public sets, not Kosmo's sessions; no public `file_name` is printed. After D30 the
+  diagnostic report names sessions by role only (`dev 1`, `dev 2`, `eval 1`, `eval 2`, CV3 key order within each
+  set, `control.roles`); the S01 labels stay only in the batch 1 `drift` report (pending Q8). `frames.json`, the
+  extracted frames folder and `diagnostic.json` hold session names and are local working files like `drift.json`.
 - CV16 Annotation tool: stdlib only, `127.0.0.1` only, no external resource, captures read-only, writes only in the
   annotations folder, atomic; every route resolves the session name against the listed sessions; never overwrites
   an annotation file that the strict reader rejects (a version 1 file is accepted and written back as version 2 on
   the first change, CV20). It reads the optional drift flag file read-only through its strict stdlib reader; a missing,
-  invalid or oversized file gives a warning in the session list, never an error. Details in T6a and T6c.
+  invalid or oversized file gives a warning in the session list, never an error. Details in T6a and T6c. After D30:
+  a version 2 file is written back as version 3 on the first change (CV25); optional read-only inputs `--split`
+  with `--lock` (control sample, roles), `--frames` (video frames, served only when listed in `frames.json`) and
+  `--diagnostic` (visual check), each through a strict reader, each missing input giving one "indisponible" line,
+  never an error. Drift flags are shown as information only (CV19 status). Details in T15d, T15e, T15k.
 - CV17 Sessions in `~/kosmo-data/captures-eval/` (confirmation campaign, later) are always eval: never in the split,
   never in training or tuning; `measure --set campaign` reads them under the same `frozen.json` guard.
 - CV18 Drift of a judged photo (D15): compared with the reference photo of its segment (CV20), both decoded to luma
@@ -358,6 +415,8 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   `low_peak` (a correlation peak below `DRIFT_MIN_PEAK`: occlusion or change), `unreadable`. Drift is annotation
   quality control, independent of any model, so it reads every session, dev and eval, without the split lock (CV4
   unaffected). The `drift` command writes a numbers-only report (CV15) and the local flag file `drift.json`.
+  CV18 status (D30): not validated. Its results are information only until a measure passes the CV30 gate; the
+  report starts with "Mesure de dérive non validée (diagnostic en cours) : ne pas recalibrer d'après ce rapport".
 - CV19 Drift threshold and compensation: a photo is "beyond" when drift mm > `DRIFT_MAX_MM` (1.0 mm =
   `CAL_MAX_ERROR_MM` / 2, Kosmo, D18). Reference calibration of a photo = its compensated points `p_i + d_i`
   when measured and not beyond; none otherwise. Used for the `cal1`-`cal4` training labels (T9), CV9, CV12 and CV14.
@@ -365,6 +424,8 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   reason. `dataset` and `measure` refuse to run while a judged photo of their set is beyond (message: run `drift`,
   recalibrate, run `drift` again); `--accept-drift` overrides and the run records the count. CV7 (and CV8) never use
   the clicked calibration: no dart or session is excluded from the main criterion.
+  CV19 status (D30): suspended. No compensation, no "beyond" guard, no K5 recalibration loop until plan update P2
+  replaces this rule (T16b) on the diagnosis (CV29) and the gate (CV30); the value of D18 is reopened (Q13).
 - CV20 Calibration segments (annotation format version 2): `calibrations` is an ordered list of segments
   `{fromDart, photo, width, height, points}`, at most `MAX_SEGMENTS` (64); the first starts at dart 1, `fromDart` strictly ascending, each applies
   from its `fromDart` until the next one. A version 1 file is read by the kept v1 reader and migrated without loss
@@ -434,6 +495,50 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   another chain or map, from the wrong version (`sans` for calibration, `A` for tips) or whose model is not the
   current `full` export of that version, and drops an image whose SHA-256 differs. Constants `PSEUDO_MAX_MM` 2.0, `PSEUDO_MIN_PRECISION` 0.99, `PSEUDO_MIN_SUPPORT` 30,
   `PSEUDO_LOW_QUANTILE` 0.01 in `defaults.json`.
+- CV25 Control clicks (D30, annotation format version 3): `controls` is a list of `{dart, source, width, height,
+  points}` plus `positionMs` when `source` is `video`; `source` is `photo` or `video`; `points` holds exactly 4
+  entries in CV2 order, each `[x, y]` in stored pixels of that image or `null` (hidden); sorted by dart then photo
+  before video, at most one control per (dart, source), at most `MAX_CONTROLS` (1024). A control belongs to a judged
+  dart (CV5); a video control needs a volley video and a non-null `entry.videoPositionMs`. Controls are independent
+  of segments (CV20) and never change them. A version 2 file is migrated without loss (`controls: []`); writers
+  write version 3 only. Use: CV9 reference and diagnosis (CV28); on dev, label source only through T16b (P2).
+- CV26 Control sample (computed, never chosen by hand; roles of CV15): photo controls: every judged eval photo;
+  per dev session the judged darts of rank 1, 1 + `CONTROL_DEV_STRIDE` (10), ... in dart order, plus the last
+  judged dart, plus the reference photo of every segment; video controls: the dev photo sample, plus the judged
+  darts `CONTROL_EVAL_VIDEO_FIRST` (55) to `CONTROL_EVAL_VIDEO_LAST` (60) of every eval session (pending Q7).
+  Order of work: session list order, then dart order, photo before video.
+- CV27 Video frame before the entry: target `entry.videoPositionMs` − `VIDEO_BEFORE_ENTRY_MS` (1000); the frame
+  used is the last decoded frame whose time is at or before the target; reasons for no frame, counted:
+  `no_position`, `before_start` (target before the first frame), `too_close` (the target precedes the previous
+  entry's `photo` stamp: the phone may still be moving from the previous tap), `past_end`, `video_missing`, `video_unreadable`,
+  `orientation_mismatch` (frame and photo orientations differ). Saved as JPEG (quality 95) with its size and
+  SHA-256 in `frames.json`.
+- CV28 Diagnosis measures (all in mm with the CV9 metric unless stated): per complete photo control of dart k with
+  segment calibration `S`: `T` = CV9(`H(controls)`, `H(S)`), true drift; `E` = CV9(`H(controls)`, `H(auto)`), with
+  `auto` the CV18 shifted points even when beyond (unmeasurable counts as a failure, reason kept); `E_seeded` the
+  same with patches centred on the clicked points; coarse error px = |`t0` − mean(clicked − segment points)|; peak
+  ratio = second peak / first peak (second peak outside `PEAK_EXCLUSION` cells); `R` = CV9(`H(controls)`, `H(S)`)
+  on segment reference photos (click repeatability). Video side: `M` = least-squares similarity from photo px to
+  video px fitted per session on paired complete controls (residual median and p95 reported; refused below
+  `MAP_MIN_PAIRS` or above `MAP_MAX_RESIDUAL_PX`); `O` = CV9(`H(photo controls)`, `H(M⁻¹(video controls))`): move
+  between the untouched phone and the photo; `V` = move of the untouched frame against the first video control of
+  its segment (durable move); `W` = largest move during the capture window (frames every `VIDEO_WINDOW_STEP_MS`
+  from `entry` to the `photo` stamp), only with a video method validated per CV30 on the video controls. Report:
+  counts, median and p95 with CV13 intervals, per role and overall. Limit stated: a constant tilt present in every
+  photo is absorbed by `M`.
+- CV29 Diagnosis decision rule (fixed before any number is seen; constants in `defaults.json`): "non concluant" if
+  `R` p95 > `CLICK_REPEAT_MAX_MM` (0.35) or fewer than `DIAG_MIN_CONTROLS` (30) complete dev photo controls; else
+  H1 "mesure fausse" if the share of photos with `E` ≤ `VALIDATION_MAX_MM` (0.5) is below `VALIDATION_MIN_SHARE`
+  (0.95); "photos déplacées" if at least `DIAG_MIN_SHARE` (0.10) of photos have `T` > `DIAG_MOVE_MM` (1.0); H2
+  "le téléphone bouge à la frappe" if at least `DIAG_MIN_SHARE` of the darts with `O` have `O` > `DIAG_MOVE_MM`
+  and at least `DIAG_MIN_VIDEO` (10) darts have `O`, else "H2 non mesurable"; H3 "la cible bouge entre les
+  fléchettes" likewise with `V`. The lines are independent (several may hold); "Suite proposée" as in "Approach,
+  Diagnosis decision rule". `W` is reported as support, it decides nothing.
+- CV30 Validation gate: an automatic calibration or drift measure is validated when its error against the control
+  clicks is at most `VALIDATION_MAX_MM` on at least `VALIDATION_MIN_SHARE` of the complete dev photo controls, its
+  parameters having been chosen on dev controls only, then confirmed on the eval photo controls (pending Q12). No
+  compensation and no automatic per-photo calibration is used for labels or measures before the gate passes; a
+  failed gate is reported with its numbers.
 
 ## Files and types added or changed
 
@@ -472,6 +577,17 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   alternatives of "Approach, Cross-validation by session"); T9c adds the calibration pseudo-labels with the options of "Approach, Calibration
   points on public images" (loss masking rejected: no class mask in `rfdetr` 1.12.1); T9d adds the constrained v17
   tips; T13 adds the sequential paired McNemar selection of CV22 (D26).
+- After D30 (T15a to T15l; T16a to T16c conditional): `annotations.py` v3 (`Control`, `controls_sha256`,
+  `control_for`, `MAX_CONTROLS` 1024; T15b), `control.py` and `frames_file.py` (stdlib; T15c), `video_frames.py`
+  (PyAV; T15c), `annotate/journey.py` (stdlib; T15e), `annotate/homography.py` (stdlib; T15k), `diagnose.py` and
+  `diagnostic_file.py` (T15i, T15j), `drift.py` gains `phase_shift_detail` and `measure_photo_detail` with
+  `measure_photo` unchanged (T15i). `defaults.json` gains `CONTROL_DEV_STRIDE` 10, `CONTROL_EVAL_VIDEO_FIRST` 55,
+  `CONTROL_EVAL_VIDEO_LAST` 60, `VIDEO_BEFORE_ENTRY_MS` 1000 (T15c), `VALIDATION_MAX_MM` 0.5,
+  `VALIDATION_MIN_SHARE` 0.95, `PEAK_EXCLUSION` 3, `CLICK_REPEAT_MAX_MM` 0.35, `DIAG_MIN_CONTROLS` 30 (T15i),
+  `VIDEO_WINDOW_STEP_MS` 100, `DIAG_MOVE_MM` 1.0, `DIAG_MIN_SHARE` 0.10, `DIAG_MIN_VIDEO` 10, `MAP_MIN_PAIRS` 3,
+  `MAP_MAX_RESIDUAL_PX` 2.0 (T15j), each pinned once in `test_config.py`. Format caps next to their readers:
+  `frames_file.MAX_BYTES` 4 MiB, `diagnostic_file.MAX_BYTES` 4 MiB. ADR 0016 gains the section "Annotation format
+  v3: control clicks" (T15b); `docs/adr/0017-per-image-calibration.md` is added by T15a from "ADR 0017 text".
 - Added tests `tools/camera/tests/` (pytest; marker `slow` for export and training smoke tests).
 - Added docs listed in "Scope". Changed `.gitignore`. Nothing else changes (`git diff origin/main -- app capture
   game-engine .github` stays empty).
@@ -486,7 +602,14 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   `.tflite`, per-run JSON results, reports). Nothing written in the repository by the tools. The `split` command
   prints counts and the split SHA-256 only; `drift` prints the report path and "Tout sous le seuil : oui|non".
 - `drift.json` (local, CV15): per session its name, label `Sxx`, `segmentsSha256`, max drift and the dart numbers
-  beyond, suggested and unmeasurable; read by the annotation tool on the same machine only.
+  beyond, suggested and unmeasurable; read by the annotation tool on the same machine only (information only after
+  D30).
+- After D30, local working files holding session names, never pasted or committed (CV15): `~/kosmo-runs/frames/`
+  (`frames.json` and `<session>/video-NNN.jpg`, frames of Kosmo's own videos, T15c) and
+  `~/kosmo-runs/diagnostic/diagnostic.json` (per photo the automatic and clicked points and the CV28 values, T15i,
+  T15j). Exposed: `diagnostic-report.md` only (numbers and roles, pasted by Kosmo). Control clicks live in the
+  annotation files (`~/kosmo-data/annotations/`), like the tips. The visual check page shows Kosmo's own photos on
+  127.0.0.1 only.
 - Run folder `~/kosmo-runs/chaine/` (local, CV24, A19): `chain.json` (split SHA-256, fold plan by role with judged
   darts per role, hyperparameters, `defaults.json` and map SHA-256), datasets, models, predictions, pseudo files,
   `not-built/` and `compare/`; no file of it carries a session name (roles and dart numbers only, CV15).
@@ -515,6 +638,14 @@ points } ]` instead of `calibration`. Reader knows versions 1 and 2 and always r
 version 2 only; a v1 file on disk is rewritten as v2 only when the tool saves a change. `truthSha256` is copied
 unchanged by the migration.
 
+Version 3 (T15b, CV25): `version: 3`, root keys `format`, `version`, `session`, `truthSha256`, `calibrations`,
+`controls`, `darts` (exactly these). `controls: [ { dart, source: "photo"|"video", positionMs (video only), width,
+height, points: [ {x, y} | null x4 in CV2 order ] } ]`, sorted by dart then photo before video, unique per (dart,
+source), at most 1024. Reader knows versions 1, 2 and 3 and returns the v3 model (v1 and v2 get `controls: []`);
+writer writes version 3 only, on the first saved change. Controls never alter `calibrations`; `segments_sha256` is
+unchanged by controls and `controls_sha256` covers them, so the T8b flag file stays valid when only controls change.
+`truthSha256` copied unchanged.
+
 ## Screens and states (annotation tool, French)
 
 Session list, calibration screen, darts screen, the per-dart flow (one click sets the tip and moves on, autosave on
@@ -524,6 +655,45 @@ markers, contrast). The tool does not show dev or eval: Kosmo annotates every se
 PR B (T6c flow and server, T6d page): action "Recalibrer à partir de cette fléchette" (key R) on the darts screen,
 recalibration screen "Recalibration à partir de la fléchette N : point k sur 4", and drift flags in the session list
 and on flagged darts, read from `drift.json` (`--drift FILE`, optional).
+
+After D30 (T15d to T15g, T15k). Exact French strings; each lives once as a constant (server for instructions,
+`app.js` for labels):
+- **Session list** (T15g): one card per session: name, role when `--split` is given (pending Q9), badge `À faire`
+  / `En cours` / `Terminée` / `Ignorée`, step rows `Calibration : faite|à faire`, `Pointes : 120 / 185`,
+  `Contrôle photo : 12 / 37`, `Contrôle vidéo : 0 / 8` or `Contrôle vidéo : indisponible (images vidéo absentes)`;
+  below, a grey box titled `Information` with the drift line `Mesure de dérive non validée : information seulement`
+  (when `--drift` is given) and the "indisponible" lines.
+- **Instruction banner** (T15g): one line at the top of every screen, the only element styled as an instruction.
+  "Instructions" table, the first matching row of the session in focus wins (`journey.next_step`):
+
+  | Condition | Instruction |
+  | --- | --- |
+  | no calibration | `Cliquer les 4 points de calibration de la photo de la fléchette 1` |
+  | tips left | `Pointer les fléchettes : prochaine fléchette N` |
+  | photo controls left | `Contrôle de calibration : photo de la fléchette N (touche K)` |
+  | video controls left, frames present | `Contrôle de calibration : image vidéo de la fléchette N (touche K)` |
+  | video controls left, no frames | `Images vidéo absentes : lancer l'extraction (K7.2)` |
+  | session done, others left | `Session terminée : passer à la session suivante` |
+  | everything done | `Tout est fait pour cette étape` |
+
+  On the control screen the banner shows the control title instead; on the recalibration screen, the
+  recalibration title. No stale text: the banner is recomputed from the server state after every save.
+- **Control screen** (T15f): title `Contrôle de calibration : photo de la fléchette N, point k sur 4` (or `image
+  vidéo de la fléchette N`), CV2 diagram with point k highlighted, progress `Photos contrôlées : 12 / 37 · Images
+  vidéo : 0 / 8`, buttons `Point caché (H)`, `Effacer (U)`, `Quitter le contrôle (Échap)`, saved line `Enregistré
+  à HH:MM:SS`; entry button `Contrôle de calibration (K)` on the darts screen. View zoomed x4 on the server's
+  `zoomCentre`, nothing drawn there. Errors: `Nombre maximal de contrôles atteint (1024)`; without `--split`:
+  `Contrôle : indisponible (option --split absente)`.
+- **Recalibration screen** (T15g, explanation always shown above the image): `Recalibrer veut dire : la cible ou
+  le téléphone a bougé à partir de cette fléchette. Les 4 points cliqués ici remplacent la calibration pour cette
+  fléchette et les suivantes, jusqu'à la prochaine recalibration. Les fléchettes déjà pointées ne changent pas.
+  Ne recalibrer que si le déplacement se voit à l'œil.` The texts `Dérive au-delà du seuil` and `À recalibrer à
+  partir de` are removed.
+- **Visual check** (T15k): title `Contrôle visuel : fléchette N (référence : fléchette M)`, the two images
+  alternating every 700 ms, line `Décalage automatique : 3,2 px (0,4 mm) · d'après les clics : 0,6 mm · écart :
+  0,2 mm`, choices `1 Automatique`, `2 Clics de contrôle`, `3 Aucun`, `Espace : pause`, `← → : photo
+  précédente / suivante`; `Non mesurable` when a registration is missing; `Diagnostic périmé : relancer le
+  diagnostic (K7.4)`; without the option: `Contrôle visuel : indisponible (option --diagnostic absente)`.
 
 ## Test plan
 
@@ -616,6 +786,25 @@ the cases. Summary:
   the next step; `measure --set dev` uses the predictions and fold models, never a `full` model.
 - T14b: every subcommand of `--help` appears in `training.md`, every command in `training.md` parses with the CLI,
   the "Trois entraînements" block holds the 13 steps in K5.6 order, each with a duration and a paste instruction.
+- After D30 (each task file lists its cases):
+  - T15a: ADR 0017 file present with its sections; training.md K5 marked suspended (doc test).
+  - T15b: v3 golden round trip byte for byte; v2 golden and the v2 file written by the batch 1 tool (ab85842)
+    migrate without loss; 50 seeded v2 files round-tripped; strict rejections (5 points, unknown source,
+    `positionMs` on a photo control or missing on a video one, duplicate (dart, source), unsorted, non-judged dart,
+    video control without video or entry position, 1025 controls); worst case under `MAX_BYTES` (CV25).
+  - T15c: sample on scripted sessions (ranks, last dart, reference photos, eval all, darts 55 to 60, voided and
+    photo-less never sampled); `frame_at` on a generated video (exact frame, each missing reason); `frames.json`
+    strict reader (cap, cap + 1); privacy of printed lines (CV26, CV27, CV15).
+  - T15d: control flow (K, H, U, leave, next item, cap 409), frame route serves only listed files and resists the
+    T6a attacks, `zoomCentre` rule, missing `--split` or `--frames` (CV25, CV16).
+  - T15e: journey states and the "Instructions" table row by row, no instruction when the state is stale, info
+    lines kept apart (D30 point 5).
+  - T15f, T15g, T15k (static): strings once, keys bound, unique banner, removed strings absent, T6b scan.
+  - T15h, T15l: commands of K7.0 to K7.6 parse with their parsers; container flags kept (S10).
+  - T15i: `T`, `E`, `E_seeded`, `R` on synthetic sessions, the periodic trap, peak ratio by hand, partial
+    controls, `measure_photo` unchanged, report privacy (CV28, CV15).
+  - T15j: mapping recovered and refused, `O`, `V`, `W`, each CV29 line at its boundary, "non concluant" (CV29).
+  - T15k: homography against known transforms, server route and stale diagnostic.
 
 Python checks for every task (T5 of the design review): `.venv/bin/python -m pytest tools/camera -q` (plus `-m slow
 -q` where the task says so) and `.venv/bin/python -m compileall -q tools/camera`. No Python linter is added (D4).
@@ -664,6 +853,45 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     `~/kosmo-runs/drift/drift-report.md`.
   - The K5.2 `docker run` line is shown in `training.md` as one copy-paste block with the same wording, keeping
     `--network none`, `--cap-drop ALL`, `no-new-privileges`, `--read-only` and `~/kosmo-data` mounted `:ro` (S10).
+  - K5 (suspended, D30), paragraph written in `training.md` by T15a, then replaced by the K7 section (T15h):
+    « Étape K5 suspendue le 15/11/2026 : la mesure de dérive n'est pas fiable (presque toutes les photos sortent
+    au-delà du seuil, et le déplacement vu à l'œil à partir de la fléchette 57 de la session d'éval de 18h24
+    n'apparaît pas). Ne recalibrez plus d'après le rapport de dérive. Les recalibrations déjà faites sont gardées.
+    La suite est l'étape K7 (contrôle de calibration). »
+- K7 (PR B batch 3, after D30; in plain French in `training.md`, section "Contrôle de calibration", T15h and T15l).
+  Batch 3a (T15a to T15h) is pushed first so Kosmo clicks while T15i to T15l are built:
+  - K7.0 Dans votre clone : `git fetch origin`, puis `git switch feat/camera-feasibility-0b-1-detection` et
+    `git pull`. (1 min)
+  - K7.1 Reconstruire l'image depuis la racine du dépôt : `docker build -f tools/camera/Dockerfile -t
+    kosmo-camera:gpu tools/camera`. (2 à 5 min)
+  - K7.2 Extraire les images vidéo prises environ 1 s avant chaque saisie (pas de carte graphique nécessaire) :
+    `docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,size=2g -v ~/kosmo-data:/data:ro -v ~/kosmo-runs:/runs:rw kosmo-camera:gpu python -m kosmo_camera.video_frames --captures /data/captures --annotations /data/annotations --split /runs/split.json --out /runs/frames`.
+    Elle affiche le nombre d'images extraites et manquantes par raison. Rien à coller. (2 à 5 min)
+  - K7.3 Relancer l'outil d'annotation dans WSL, depuis `tools/camera/` :
+    `python3 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations --split ~/kosmo-runs/split.json --frames ~/kosmo-runs/frames`,
+    puis ouvrir `http://127.0.0.1:8765`. Le bandeau en haut donne la seule consigne en cours. Appuyer sur K
+    (« Contrôle de calibration ») : pour chaque photo demandée, cliquer les 4 points de calibration dans l'ordre 1
+    à 4, comme pour la calibration ; l'image est déjà agrandie autour du point demandé ; H si le point est caché,
+    U pour effacer le dernier point, Échap pour quitter (rien n'est perdu de ce qui est enregistré). Même travail
+    ensuite sur les images vidéo. Environ 190 photos et 45 images vidéo, à environ 20 s chacune : 1 h 15 au total,
+    en plusieurs fois si vous voulez (l'outil reprend où vous étiez). Rien à coller.
+  - K7.4 Lancer le diagnostic (pas de carte graphique nécessaire) :
+    `docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,size=2g -v ~/kosmo-data:/data:ro -v ~/kosmo-runs:/runs:rw kosmo-camera:gpu python -m kosmo_camera.diagnose --captures /data/captures --annotations /data/annotations --split /runs/split.json --runs /runs --frames /runs/frames`.
+    Elle affiche le chemin du rapport. (5 à 15 min)
+  - K7.5 Coller dans le chat le contenu de `~/kosmo-runs/diagnostic/diagnostic-report.md` (des chiffres et des
+    rôles « dev 1 », « eval 2 », aucun nom de session). Ne jamais coller `diagnostic.json` ni `frames.json`.
+  - K7.6 Contrôle visuel : relancer l'outil comme en K7.3 en ajoutant
+    `--diagnostic ~/kosmo-runs/diagnostic/diagnostic.json`, appuyer sur V. Les deux photos alternent ; touche 1
+    recalage automatique, 2 recalage d'après vos clics, 3 sans recalage ; Espace pour figer ; flèches pour changer
+    de photo. Dire dans le chat ce que vous voyez (par exemple « avec 1 l'image saute, avec 2 elle est immobile »).
+    (10 min)
+  - K7.C Checklist (ce que seul Kosmo peut vérifier, le JavaScript ne tourne pas dans le bac à sable) : une seule
+    consigne affichée à la fois et jamais une consigne déjà faite ; chaque carte de session dit ce qui est fait et
+    ce qui reste ; aucun « Dérive au-delà du seuil » ni « À recalibrer » ; l'écran de recalibration explique ce que
+    fait une recalibration ; en contrôle, l'image est agrandie près du point demandé sans aucun repère dessiné ; H,
+    U, Échap et K marchent ; « Enregistré à HH:MM:SS » après chaque point ; après Échap puis K, reprise sur la bonne
+    photo et le bon point ; la progression « Photos contrôlées » augmente ; en contrôle visuel, l'alternance, les
+    touches 1, 2, 3, Espace et les flèches marchent et les chiffres s'affichent.
 - K5b (complete PR B branch, after T14b; commands in `training.md` "Run", "Trois entraînements" and "Dev loop"):
   - K5.5 `git pull`, rebuild the image (entry point `python -m kosmo_camera` now), run `gpu-check`.
   - K5.6 Three trainings with cross-validation (D21, D23, D25, D26, CV22 to CV24): the 13 numbered steps of
@@ -707,7 +935,8 @@ closing it):
   driver 610.57, torch 2.14.1+cu130, cuda available True.
 
 PR B (branch `feat/camera-feasibility-0b-1-detection` from `main` after PR A, tasks T3, T5b, T7, T8, T8b, T6c,
-T6d, T9p, T9, T9b, T9o, T9c, T9d, T10, T11, T12, T13, T13b, T14, T14b; `Closes #42`). Batch 1 (T5b to T6d) is pushed on this branch before the
+T6d, T9p, T15a to T15l, T11, T12, then after P2 the retained T16 tasks and T9, T9b, T9o, T9c, T9d, T10, T13, T13b,
+T14, T14b as revised; `Closes #42`). Batch 1 (T5b to T6d) is pushed on this branch before the
 PR, without opening it (D19); no extra PR. The batch 1 hand-back states the full pytest count (as in PR A, T4).
 - How to verify: K5.0 to K5.4 (from batch 1: image rebuilt, drift loop before any training), K5.5 to K5.7 (public
   data comparison, then dev loop), then K6.
@@ -734,7 +963,45 @@ PR, without opening it (D19); no extra PR. The batch 1 hand-back states the full
   Kosmo's pasted comparison section); the strict rules of D24, confirmed by Kosmo (D27), with images dropped per
   rule; the attribution lines with their modification mentions (D28).
 - Kosmo's pasted numbers recorded in the PR: the last drift report (all under the threshold), the comparison
-  section, then the dev report.
+  section, then the dev report. After D30: the K5 figures that stopped the loop (Goal), the diagnostic report (K7.5)
+  with its CV29 verdict, the CV30 gate result, and the per-photo CV9 measure of the eval set (ADR 0017). "How to
+  verify" gains K7.0 to K7.6 and K7.C; K5.0 to K5.4 are listed as suspended.
+- Justifications after D30: why control clicks rather than trusting the measure; the decision rule fixed before the
+  numbers (CV29); the correction chosen at P2 and its validation (CV30); D18 replaced (Q13).
+- Capture proposal (only if the verdict says H2; an issue draft in French for Kosmo, no Capture code in this PR):
+  options (a) photo taken a fixed delay after the tap, delay sized from the settling time of `W` (recommended: no
+  change of the capture flow, one constant); (b) photo taken from the video frame just before the tap (no touch
+  effect, but video resolution and compression); (c) zero-shutter-lag capture (`CAPTURE_MODE_ZERO_SHUTTER_LAG`,
+  frame from the buffer before the tap; depends on device support); (d) entering darts without touching the camera
+  phone (second phone or remote entry: protocol change). Kosmo chooses (Q13).
+- Proposed owner changes: none new (ADR 0017 is a `docs/adr/` file, not protected).
+
+## ADR 0017 text
+
+T15a copies this text into `docs/adr/0017-per-image-calibration.md` (English, like ADR 0016):
+
+- Title: "ADR 0017: Per-image calibration and automatic recalibration in the game app (camera phases 1 to 3)".
+- Status: Proposed (Kosmo's requirement of 2026-11-15, D30 point 6). Date: 2026-11-15.
+- Context: in phase 0b-1 the phone on its tripod moved during Kosmo's captures (D15). A calibration clicked once per
+  session and reused was wrong on part of the photos, and a drift measure against one reference photo per segment
+  was not reliable (D30). In real games the tripod is bumped, games are interrupted and resumed, and the player
+  must not have to manage the camera.
+- Decision: in phases 1 to 3 the game app (1) calibrates the board on every image it scores, never reusing a
+  calibration from another image as truth; (2) detects a displacement of the board in the image (tripod bumped,
+  phone moved, game interrupted then resumed) and recalibrates automatically, with no action from Kosmo; the game
+  state (configuration and ordered darts) is kept across a recalibration; (3) when an image cannot be calibrated,
+  its dart is not scored automatically: it is flagged "à vérifier" for manual entry, never guessed.
+- Verification: each phase that ships camera scoring is tested with deliberate tripod displacements: a small
+  nudge, a rotation of the phone on the tripod, a full repositioning of the tripod, and a game interrupted then
+  resumed after moving the tripod; for each, darts after the move are scored with the same criteria as before it.
+- Phase 0b-1: its report measures the automatic calibration of every eval photo against Kosmo's control clicks
+  (CV9 per photo, CV25), not only one photo per volley.
+- Alternatives rejected: one calibration at the start of a game (breaks at the first bump, the 0b-1 finding);
+  asking the player to recalibrate (Kosmo stands at the board, phone in one hand: no camera handling during a
+  game); a drift threshold with compensation from a reference image (not reliable in 0b-1, D30).
+- Consequences: the detector must find the calibration points on every image (already a model class, CV2); the
+  cost per image includes calibration (measured in 0b-2 on the Pixel 7); test protocols of phases 1 to 3 include
+  the displacement cases above.
 
 ## Tasks
 
@@ -779,6 +1046,32 @@ then the branch is pushed and Kosmo runs K5.0 to K5.4 while batch 2 (T9p to T14b
 | T14 | CLI: run chain of 13 steps (`dataset`, `train`, `predict`, `pseudo-cal`, `pseudo-tip`, `compare`), `drift`, `tune`, `measure`, `export`, entry point | `42-camera-feasibility-0b-1/T14-cli-docs.md` | T6d, T9d, T10, T13b | sonnet | Wiring of existing pieces with end-to-end tests |
 | T14b | `training.md` ("Trois entraînements" numbered block, dev loop, eval run) and report template | `42-camera-feasibility-0b-1/T14b-training-doc.md` | T14 | haiku | Documentation copied from this plan and the T14 `--help`, no design choice; split out of T14 (size) |
 
+Part B, batch 3 (D30, absolute priority; T9, T9b, T9o, T9c, T9d, T10, T13, T13b, T14, T14b on hold until plan update
+P2; T9p done at 474ebdc):
+
+| Id | Title | Task file | Depends on | Model | Why this model |
+|---|---|---|---|---|---|
+| T15a | ADR 0017 and K5 suspended in `training.md` | `42-camera-feasibility-0b-1/T15a-adr-per-image-calibration.md` | - | haiku | Text copied from "ADR 0017 text" and "How Kosmo verifies", no design choice |
+| T15b | Annotation format v3 (control clicks), lossless v2 migration, doc | `42-camera-feasibility-0b-1/T15b-annotation-format-v3.md` | T5b | opus | Changed stored format with its migration (case 1) on Kosmo's real files |
+| T15c | Control sample, roles, video frame extraction and `frames.json` | `42-camera-feasibility-0b-1/T15c-control-sample-frames.md` | T15b, T4b | sonnet | Sample and frame rules fully specified in CV26 and CV27, generated-video tests |
+| T15d | Tool: control flow and server (options, frame route, cap) | `42-camera-feasibility-0b-1/T15d-control-flow.md` | T15b, T15c, T6c | sonnet | Flow and security rules specified, same patterns as T6a and T6c |
+| T15e | Tool: journey state and the single instruction | `42-camera-feasibility-0b-1/T15e-journey-state.md` | T15d | sonnet | State holder from the "Instructions" table, Python tests |
+| T15f | Tool page: control screen | `42-camera-feasibility-0b-1/T15f-control-page.md` | T15d | sonnet | Page from a specified screen and strings, same patterns as T6b |
+| T15g | Tool page: session cards, instruction banner, recalibration explained | `42-camera-feasibility-0b-1/T15g-journey-page.md` | T15e, T15f | sonnet | Page from specified screens and strings |
+| T15h | `training.md`: K7.0 to K7.3, checklist K7.C, K5 retired | `42-camera-feasibility-0b-1/T15h-control-steps-doc.md` | T15c, T15g | haiku | Documentation copied from this plan; doc test moved |
+| - | Push batch 3a (no PR), main tells Kosmo: K7.0 to K7.3 | - | T15h | - | - |
+| T15i | Diagnosis, photo side: `T`, `E`, `E_seeded`, `R`, error location, `diagnostic.json` | `42-camera-feasibility-0b-1/T15i-diagnose-photos.md` | T15c, T8b | sonnet | Every quantity defined in CV28 on top of T8 and T8b, synthetic tests |
+| T15j | Diagnosis, video side (`M`, `O`, `V`, `W`) and CV29 verdict | `42-camera-feasibility-0b-1/T15j-diagnose-video-verdict.md` | T15i, T15c | opus | Algorithm with an open design (the photo to video mapping, its validity test, video registration) |
+| T15k | Tool page: visual check, homography in Python | `42-camera-feasibility-0b-1/T15k-visual-check-page.md` | T15i, T15g | sonnet | Screen and route from a specified layout, textbook 4-point homography |
+| T15l | `training.md`: K7.4 to K7.6 | `42-camera-feasibility-0b-1/T15l-diagnosis-steps-doc.md` | T15h, T15j, T15k | haiku | Documentation copied from this plan; doc test extended |
+| - | Push batch 3b (no PR), main tells Kosmo: K7.4 to K7.6 | - | T15l | - | - |
+| T11 | Per-dart decision (unchanged row above) | `42-camera-feasibility-0b-1/T11-decide.md` | T3, T8 | sonnet | Not blocked by D30 |
+| T12 | Arrival and empty-board events (unchanged row above) | `42-camera-feasibility-0b-1/T12-events.md` | T11 | sonnet | Not blocked by D30 |
+| - | Plan update P2 (developer-plan) from Kosmo's pasted diagnosis: retained T16 tasks, held tasks revised, Q13 | - | K7.5 | - | - |
+| T16a | CONDITIONAL (H1): robust registration, validated per CV30 | `42-camera-feasibility-0b-1/T16a-robust-registration.md` | T15j, P2 | opus | Algorithm with an open design, chosen from the diagnosis |
+| T16b | CONDITIONAL (photos moved): per-photo calibration in the label build, CV19 replaced | `42-camera-feasibility-0b-1/T16b-per-photo-calibration.md` | T15j, T16a if H1, P2 | sonnet | Source order fixed at P2 wired into the label build |
+| T16c | CONDITIONAL (no validated automatic calibration): assisted manual calibration of every dev photo | `42-camera-feasibility-0b-1/T16c-assisted-calibration-all-dev.md` | T16b, T15g, P2 | sonnet | Extra sample option and progress string on the T15 patterns |
+
 28 tasks (8 in part A, 20 in part B), two `opus` tasks (T5, T5b). Execution order: part A in table order, PR A, then
 part B in table order, one task at a time (D11, D19): batch 1 T5b, T7, T8, T8b, T6c, T6d, push (done, 7a6f5b5),
 then batch 2 T9p, T9, T9b, T9o, T9c, T9d, T10, T11, T12, T13, T13b, T14, T14b. T9b no longer waits for Kosmo (his
@@ -789,6 +1082,15 @@ CI command `python -m pytest -q -m "not slow"` in `tools/camera`, so a pushed pa
 of batch 1 only after main confirms the code-phase approval of its head; batch 2 developers fetch and realign on the
 remote branch first and never rewrite pushed commits. PR B opens after T14b. K1 to K3 ran on PR A, K4 during part B, K5 from batch 1, K5b and K6 from the complete branch.
 
+After D30 (supersedes the batch 2 order above): 28 + 12 batch 3 tasks + 3 conditional = 43 task files; `opus`
+tasks: T5, T5b (done), T15b, T15j, plus T16a if built (5 at most, 2 still to build for sure). Execution order, one
+task at a time: T9p (done, 474ebdc, to review first), then T15a, T15b, T15c, T15d, T15e, T15f, T15g, T15h, push
+batch 3a after main confirms the code-phase approval of its head (Kosmo does K7.0 to K7.3, about 1 h 15 of clicks),
+then T15i, T15j, T15k, T15l, push batch 3b (Kosmo does K7.4 to K7.6 and pastes the report), then T11 and T12 while
+Kosmo works, then plan update P2 on the diagnosis (Kosmo reviews it before any code), then the retained T16 tasks
+and the held tasks as revised at P2. T9b does not depend on labels but stays on hold by Kosmo's priority (D30).
+Labels or calibration feed T9, T9o, T9c, T9d, T10, T13, T13b; T14 and T14b chain and document them.
+
 ## Decisions
 
 | Id | Decision | Rules |
@@ -796,7 +1098,7 @@ remote branch first and never rewrite pushed commits. PR B opens after T14b. K1 
 | Py | Python 3.13 everywhere (sandbox, image, CI); deviation from "latest stable" because `rfdetr` and `litert-torch` do not install together on 3.14. `download-r2.pytorch.org` allowlisted. | - |
 | B1 | (Issue) RF-DETR Nano first; keypoint model only on Kosmo's decision after a report. | - |
 | B2 | (Issue) LiteRT only, measures on the `.tflite` with `ai-edge-litert`; ONNX Runtime only as fallback on Kosmo's decision. | CV4 |
-| B4 | (Issue) Kosmo clicks tips and the 4 calibration points once per session; amended by D15: once per calibration segment, a new segment where the drift measure asks for it. | CV2, CV12, CV20 |
+| B4 | (Issue) Kosmo clicks tips and the 4 calibration points once per session; amended by D15: once per calibration segment, a new segment where the drift measure asks for it. Amended by D30: segments only where a move is visible, plus control clicks on sampled photos (CV25, CV26). | CV2, CV12, CV20, CV25 |
 | B5 | Superseded by K0. (Issue) Existing captures are dev; new dedicated sessions (>= 500 darts) are eval. | - |
 | K0 | Kosmo, 2026-11-15: no capture campaign before a first result; existing captures split about 70/30 by session (block mode, "more optimistic", if too coarse); preliminary report with limits; path proposal or targeted campaign into `captures-eval/`; annotation tool first. Supersedes B5, D1, P2. | CV3, CV11, CV17 |
 | B6 | (Issue) >= 95 % correct without flag and <= 1 % unflagged errors. | CV8 |
@@ -825,10 +1127,10 @@ remote branch first and never rewrite pushed commits. PR B opens after T14b. K1 
 | D13 | Kosmo, 2026-11-15: sessions with no judged dart (CV5) are ignored by the split: in no set, not counted for "at least 2 sessions per set". Tested in T4b; the annotation tool lists such a session as "Ignorée" (design review U9, T6a). | CV3, CV16 |
 | D14 | Design review A5: two-step image. PR A delivers the image with `gpu_check` only (no entry point); PR B adds training and the `python -m kosmo_camera` entry point, and Kosmo rebuilds it (K5). Recorded in the ADR (T1). | - |
 | D12 | Verdict per threshold: "clearly below" when the whole 95 % interval misses the target; else "close or above" (preliminary report, K0). | CV8 to CV11 |
-| D15 | Kosmo, 2026-11-15 (tripod drift found after K2): in PR B, before training: drift measure per photo against the calibration photo of its segment, in px and mm through the homography, report per session (max drift, darts beyond a threshold tied to `CAL_MAX_ERROR_MM`); sub-threshold drift compensated in the `cal1`-`cal4` labels and the mm measures; annotation format v2 with calibration segments (v1 reader kept, lossless migration); tool action "Recalibrer à partir de cette fléchette" and session list flags from the drift measure; order measure, recalibrate, measure again (all under the threshold), then training; no session excluded since CV7 does not use the clicked calibration. Squad's design: phase correlation with numpy FFT (JPEG decoding by Pillow, already pinned), flag file `drift.json` local like the split file, ordering enforced by a guard in `dataset` and `measure` with an explicit `--accept-drift` override recorded in the run. Threshold value: D18. | CV9, CV12, CV14 to CV16, CV18 to CV20 |
+| D15 | Kosmo, 2026-11-15 (tripod drift found after K2): in PR B, before training: drift measure per photo against the calibration photo of its segment, in px and mm through the homography, report per session (max drift, darts beyond a threshold tied to `CAL_MAX_ERROR_MM`); sub-threshold drift compensated in the `cal1`-`cal4` labels and the mm measures; annotation format v2 with calibration segments (v1 reader kept, lossless migration); tool action "Recalibrer à partir de cette fléchette" and session list flags from the drift measure; order measure, recalibrate, measure again (all under the threshold), then training; no session excluded since CV7 does not use the clicked calibration. Squad's design: phase correlation with numpy FFT (JPEG decoding by Pillow, already pinned), flag file `drift.json` local like the split file, ordering enforced by a guard in `dataset` and `measure` with an explicit `--accept-drift` override recorded in the run. Threshold value: D18. Amended by D30: the "few pixels" were screen pixels, the true drift is unknown; measure not validated, compensation and guard suspended (CV18, CV19 status). | CV9, CV12, CV14 to CV16, CV18 to CV20 |
 | D16 | T3 result (a9576aa): export works with `litert-torch` 0.10.0; logits `[1,300,6]` with a trailing no-object slot; category ids 0-based in `CLASS_NAMES` order; squash resize to 384x384 (no letterbox). T9, T10 and T11 rely on this contract. | CV4 |
 | D17 | Design review of 5c4d06f: PR B records format v2 and the drift decisions in two sections of ADR 0016 (T5b, T8b; A13); caps `MAX_SEGMENTS` = 64 and `drift_file.MAX_BYTES` = 1 MiB, surfaced in the tool as "Mesure de dérive illisible : <cause>" (S9, A14); one `segment_for` (A15); `DRIFT_MAX_MM` read from config in every test, pinned once in `test_config.py` (A16, T1); Pillow decompression bomb, truncated or mismatched photos become a status, `Image.MAX_IMAGE_PIXELS` kept (S8); stale flags stay shown with "(mesure périmée)" (U7); picker marker, old points as hollow labelled crosses, recalibration button on its own row (U8 to U10); per-candidate threshold table in the drift report (U11). | CV16, CV18 to CV20 |
-| D18 | Kosmo, 2026-11-15 (Q1): « Seuil de dérive : B, 1,0 mm. » `DRIFT_MAX_MM` = 1.0 in `defaults.json`, still one named constant pinned only in `test_config.py`; the "Seuils candidats" table stays in the drift report for information. | CV19 |
+| D18 | Kosmo, 2026-11-15 (Q1): « Seuil de dérive : B, 1,0 mm. » `DRIFT_MAX_MM` = 1.0 in `defaults.json`, still one named constant pinned only in `test_config.py`; the "Seuils candidats" table stays in the drift report for information. Suspended by D30: compensation under the threshold is not applied; its replacement is decided at P2 (Q13). | CV19 |
 | D19 | Kosmo, 2026-11-15: « Plan de la PR B validé, avec un ajustement d'ordre : réalise d'abord T5b, T8, T8b, T6c et T6d, pousse la branche et préviens-moi dès qu'ils sont faits. Je lance alors la mesure de dérive et je recalibre depuis la branche, pendant que tu continues T9 à T14. Pas de PR supplémentaire. » Batch 1 = T5b, T7 (needed by T8), T8, T8b, T6c, T6d; then push of the PR B branch without a PR and main tells Kosmo; batch 2 = T9 to T14 (and T9b). Batch 1 runs `drift` as `python -m kosmo_camera.drift` in the container (no entry point before T14) and T8b adds `config/` to the image; T6d documents the batch 1 steps in `training.md`. | CV18 to CV20 |
 | D20 | Kosmo, 2026-11-15: « Jeux publics : acceptés les jeux affichant la licence CC BY 4.0 sur Roboflow Universe : dartsdetectfulldart (SchoolPXL) : https://universe.roboflow.com/schoolpxl/dartsdetectfulldart ; dart tip detection (PJATK) : https://universe.roboflow.com/pjatk-ni0m7/dart-tip-detection ; mat24_dartsv2 (school) : https://universe.roboflow.com/school-asc0d/mat24_dartsv2 ; dart_detection3 (DartsKEY01) : https://universe.roboflow.com/dartskey01/dart_detection3 ; dart-tip-detection-6d3mw (DartsDetector) : https://universe.roboflow.com/dartsdetector/dart-tip-detection-6d3mw, seulement si sa page affiche CC BY 4.0 au téléchargement. Exclu : bullseyebot (Hugging Face), aucune licence. Toute décision antérieure contraire est remplacée par celle-ci. docs/camera/datasets.md : une ligne par jeu avec lien direct, licence, attribution exacte et statut. Je télécharge ces jeux au format COCO JSON dans ~/kosmo-data/public/<slug>/ et je te transmets la liste des catégories de chaque jeu pour la table de correspondance (T9). » Supersedes decision 8 and the search rows of `datasets.md` (P1). Replaced by D23 where they differ (set list and statuses, slug = folder name, class map, use of the sets); still in force: CC BY 4.0 only, bullseyebot excluded, one `datasets.md` row per set, committed map. | CV15, CV21 |
 | D21 | Kosmo, 2026-11-15: « L'apport des jeux publics est mesuré, pas supposé : entraînement avec et sans jeux publics, comparaison sur dev uniquement (jamais eval). La meilleure version est retenue, et le choix et ses chiffres figurent dans le rapport. » Squad's design: same seed and Kosmo part, public images in train only, comparison on the dev photos of the shared valid subset (the dev photos not used for training by either version), selection rule CV22, `compare` subcommand (T13, T13b, T14); eval run once on the retained version (K6). Comparison set replaced by D25 (out-of-training predictions of the cross-validation), selection rule by D26. | CV4, CV22 |
@@ -840,6 +1142,8 @@ remote branch first and never rewrite pushed commits. PR B opens after T14b. K1 
 | D27 | Kosmo, 2026-11-15 (Q3, verbatim): « 2. Q3 : option 1, règles strictes confirmées (mat24 : image écartée si une boîte Dart ne contient aucune Dart-Tip ; v17 : image écartée si une même pointe prédite sert deux boîtes ou si une pointe prédite avec confiance n'est dans aucune boîte). Le rapport compte les images écartées par règle. » D24's three rules are final (no provisional branch left in T9p or T9d); images dropped per rule in the pseudo-label figures and the report. | CV21, CV23 |
 | D28 | Kosmo, 2026-11-15 (verbatim): « 3. Attribution dans datasets.md : format confirmé « <jeu> par <auteur>, <lien>, CC BY 4.0 », complété par « modifié : boîtes reconstruites autour de la pointe » (et « pointes obtenues par pseudo-étiquetage » pour v17), comme l'exige CC BY. » Cells written by T9b: accepted rows `<jeu> par <auteur>, <lien>, CC BY 4.0 ; modifié : boîtes reconstruites autour de la pointe`; the v17 row `<jeu> par <auteur>, <lien>, CC BY 4.0 ; modifié : pointes obtenues par pseudo-étiquetage, boîtes reconstruites autour de la pointe`; rejected rows `non utilisé`. The mention of the added calibration labels is Q6. | CV21 |
 | D29 | Design review of e03b9dc (minors): T9 split into T9p (public import, CV21) and T9 (builder, fold plan, run chain), T9b after T9p (A18); one run folder with fixed paths and per-step hash checks naming the step to redo (A19); letter glosses for A and B in the compare output and report, "Trois entraînements" as one numbered block in K5.6 order with durations, paste points and the "version non construite" line (U); PR states that `tauCalHigh`, `tauCalLow`, `tauTip` come only from Kosmo's run and that "not built" is a valid outcome (T1); T9d test with two overlapping boxes sharing one point (T2); Q2 and Q3 answers change rule and test together in the task files (T3). T14 split into T14 (CLI) and T14b (docs) for size. | CV22 to CV24 |
+| D30 | Kosmo, 2026-11-15, stop of K5 (figures in "Goal"; absolute priority of PR B; T9 to T14 on hold except T11 and T12; verbatim, line breaks flattened): « 1. Vérité de calibration photo par photo : mode « calibration de contrôle » dans l'outil d'annotation, où Kosmo clique les 4 points de calibration d'une photo donnée (indépendamment des segments). Échantillon : toutes les photos du jeu eval (pour mesurer la calibration automatique photo par photo, CV9), plus environ 1 photo sur 10 dans chaque session dev, plus les fléchettes 55 à 60 de la session d'éval de 18h24. Format d'annotation étendu proprement (lecteur strict, migration sans perte), aucun nom de session dans les sorties partagées. 2. Diagnostic chiffré qui tranche H1/H2 : (a) dérive vraie par photo, d'après les clics de contrôle, comparée à la mesure automatique (erreur par photo, médiane et p95) ; (b) pour les photos de contrôle, décalage entre la photo et l'image de la vidéo de la volée environ 1 s avant entry.videoPositionMs (téléphone non touché), mesuré par la même méthode validée, et contrôlé sur quelques photos par des clics sur l'image vidéo si nécessaire ; (c) pour H1, l'emplacement de l'erreur (recherche grossière ou vignettes) et le rapport entre le premier et le deuxième pic de corrélation. Rapport en chiffres seulement, colle-le par Kosmo dans le chat. 3. Page de contrôle visuel locale pour Kosmo (127.0.0.1, bibliothèque standard ; images jamais sorties du PC) : alternance photo de référence / photo mesurée, recalage appliqué, décalage affiché. 4. Correction selon le résultat : si H1, mesure robuste (rejet des pics ambigus, masquage des fléchettes connues grâce aux pointes cliquées, zones statiques, borne de décalage plausible), validée sur les clics de contrôle (erreur au plus 0,5 mm sur au moins 95 % de l'échantillon) avant toute compensation ; si H2, calibration photo par photo (automatique validée sur les clics de contrôle, ou manuelle assistée) et proposition de correction de Kosmo Capture (par exemple photo prise depuis la vidéo juste avant la frappe, ou avec un délai après la frappe). Aucune compensation automatique tant que la validation n'est pas atteinte. 5. Ergonomie de l'outil refaite autour du parcours : état de chaque session (ce qui est fait, ce qui reste), une seule consigne active à la fois, jamais de consigne périmée affichée comme active, recalibration expliquée à l'écran. 6. Exigence produit, à inscrire dès maintenant dans docs/camera (ADR) pour les phases 1 à 3 : l'appli de jeu calibre sur chaque image, détecte un déplacement de la cible (trépied heurté, partie interrompue puis reprise) et se recalibre automatiquement, sans action de Kosmo ; elle sera testée par des déplacements volontaires du trépied. Le rapport de la 0b-1 mesure la calibration automatique photo par photo contre les clics de contrôle du jeu eval. Mets à jour le plan (nouvelles tâches avec modèles), soumets-le à la revue, puis arrête-toi pour que Kosmo le relise avant de coder. » EXIF orientation is ruled out. | CV4, CV9, CV15, CV16, CV18, CV19, CV25 to CV30 |
+| D31 | Squad's design for D30 (plan change of 2026-11-15, for design review): control clicks as `controls` in annotation format v3, independent of segments, `controls_sha256` apart from `segments_sha256` (CV25); sample computed by rule, "about 1 in 10" read as ranks 1, 11, 21 ... plus the last dart plus every segment reference photo (repeatability), "darts 55 to 60 of the 18:24 session" covered by darts 55 to 60 of every eval session so no session name is needed (CV26); video frames extracted by the container with PyAV into a local `frames.json` folder, the stdlib tool only serves listed files (CV27); measures `T`, `E`, `E_seeded`, `R`, `O`, `V`, `W` and the decision rule fixed before the numbers (CV28, CV29); "validée" read as error at most 0.5 mm on at least 95 % of dev controls with parameters tuned on dev only, confirmed on eval (CV30); the `drift` command and flags kept as information, never an instruction; the tool zooms on the expected area but draws no marker and shows no measure while Kosmo clicks (no anchoring); exactly one instruction computed by the server; homography of the visual check in Python, applied by CSS `matrix3d`; Kosmo's recalibrations already made are kept (Q11); roles `dev 1`, `dev 2`, `eval 1`, `eval 2` in reports (Q8); ADR 0017 numbered after ADR 0016 in `docs/adr/` (where the project's ADRs live; `docs/camera/` links to it from `training.md`); conditional tasks T16a to T16c finalized at P2. | CV15, CV25 to CV30 |
 
 ## Open questions
 
@@ -867,3 +1171,25 @@ remote branch first and never rewrite pushed commits. PR B opens after T14b. K1 
 - P4 (information for Kosmo, not blocking): "stdlib + numpy" is read as "no new library": the drift computation is
   numpy only, but JPEG decoding needs Pillow, already pinned and in the image. So `drift` runs in the container, not
   with the bare `python3` of WSL; the annotation tool stays stdlib and only reads `drift.json`.
+- Q7 (Kosmo, blocking for T15c; recommendation in the plan until answered): scope of the video frame clicks: 1) the
+  dev photo sample plus darts 55 to 60 of every eval session, about 45 frames, 15 min (recommended: enough pairs
+  for the mapping `M` in every session and covers the 18:24 move); 2) 3 frames per session only (5 min, but `O`
+  rests on too few darts for the 10 % rule: "H2 non mesurable" likely); 3) no video clicks (nothing to validate the
+  automatic video method on, so H2 cannot be decided). Kosmo wrote « quelques photos ... si nécessaire »: the
+  squad finds it necessary because `M` (photo and video differ in crop and scale, D3) needs paired clicks.
+- Q8 (Kosmo, not blocking): names in the diagnostic report: 1) roles only (`dev 1`, `eval 2`; recommended, as CV15
+  and D25); 2) roles plus the `S01` labels of the drift report, so Kosmo can relate them to the K5 figures.
+- Q9 (Kosmo, not blocking): show the role (`dev 1`, `eval 2`) on the session cards of the tool: 1) yes (recommended:
+  Kosmo knows which sessions are the reference set; the tool is local); 2) no (the tool stays blind to dev/eval as
+  in PR A).
+- Q10 (Kosmo, not blocking): click repeatability threshold `CLICK_REPEAT_MAX_MM` = 0.35 mm (p95): above it the
+  diagnosis says "non concluant" and asks Kosmo to redo part of the clicks. 1) 0.35 mm (recommended: below the
+  0.5 mm validation limit, else the clicks cannot judge a 0.5 mm measure); 2) 0.5 mm; 3) no threshold.
+- Q11 (Kosmo, not blocking): recalibrations already made during K5: 1) keep them (recommended: they are real
+  clicks, harmless if the board did not move, and serve as repeatability checks); 2) remove them and start from one
+  segment per session.
+- Q12 (Kosmo, not blocking): validation gate CV30: 1) parameters chosen on dev controls, gate passed on dev and
+  confirmed on eval controls (recommended: eval stays unbiased); 2) dev only (eval controls used only for CV9 in
+  the final report).
+- Q13 (Kosmo, after the diagnosis, at P2): replacement of D18 (sub-threshold compensation) and, if H2, the Kosmo
+  Capture change among options (a) to (d) of "PR material".

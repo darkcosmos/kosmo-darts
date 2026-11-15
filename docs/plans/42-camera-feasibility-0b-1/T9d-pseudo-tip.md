@@ -1,5 +1,7 @@
 # T9d: Constrained tip pseudo-labels of v17 (CV23)
 
+Status: on hold (D30): depends on T9o; revised at plan update P2 (root plan "Tasks").
+
 ## Goal
 Turn each whole-dart box of `dart-tip-detection-v17i-coco` into a tip label predicted by MA (the `A/full` export,
 trained on all dev photos, D25) under Kosmo's constraint, drop the whole image otherwise, report the figures per

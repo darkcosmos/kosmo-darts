@@ -1,5 +1,7 @@
 # T14: CLI and run chain
 
+Status: on hold (D30): chains the held tasks; revised at plan update P2 (root plan "Tasks").
+
 ## Goal
 One command line for Kosmo with every step, including the 13-step run chain of root "Approach, Three trainings, run
 chain" (D25, D26, A19). The training doc and the report template are T14b.

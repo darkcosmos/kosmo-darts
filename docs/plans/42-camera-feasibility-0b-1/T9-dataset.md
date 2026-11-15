@@ -1,5 +1,7 @@
 # T9: Fold plan, run chain and COCO dataset builder per fold
 
+Status: on hold (D30): needs per-photo labels; revised at plan update P2 (root plan "Tasks").
+
 ## Goal
 Build the RF-DETR training datasets (COCO layout) of the cross-validation by session (root CV24, D25): folds `cv1`,
 `cv2`, `full` per version, from annotated dev photos and the public import of T9p, never from eval; and the run

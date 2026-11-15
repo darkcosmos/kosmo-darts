@@ -1,5 +1,7 @@
 # T10: Training (PR B)
 
+Status: on hold (D30): trains on per-photo labels; revised at plan update P2 (root plan "Tasks").
+
 ## Goal
 Train RF-DETR Nano on each fold dataset of a version inside Kosmo's offline GPU container, export each model, and
 record what and how long (root "Approach, Cross-validation by session" and "Three trainings, run chain", D25). The

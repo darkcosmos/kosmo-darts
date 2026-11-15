@@ -1,5 +1,7 @@
 # T9c: Calibration-point pseudo-labels of public images (CV23)
 
+Status: on hold (D30): depends on T9o; revised at plan update P2 (root plan "Tasks").
+
 ## Goal
 Give every public image of versions A and B the `cal1`..`cal4` labels predicted by M0 (the `sans/full` export,
 trained on both dev sessions; thresholds from the `sans` out-of-training predictions, D25), or drop it, so public images never teach that calibration points are background (root "Approach,

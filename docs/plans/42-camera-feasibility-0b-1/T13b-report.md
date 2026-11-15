@@ -1,5 +1,7 @@
 # T13b: Preliminary report
 
+Status: on hold (D30): the report gains the per-photo calibration measure (ADR 0017); revised at plan update P2.
+
 ## Goal
 Write the numbers-only preliminary report of decision K0 (Markdown to paste, JSON for the squad), with its limits
 section, the verdict per threshold and either a path proposal or the confirmation campaign specification.

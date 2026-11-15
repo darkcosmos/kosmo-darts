@@ -1,5 +1,7 @@
 # T9o: Out-of-training predictions of the cross-validation (CV24)
 
+Status: on hold (D30): needs per-photo labels; revised at plan update P2 (root plan "Tasks").
+
 ## Goal
 Give every judged dev photo exactly one prediction made by the fold model that did not train on it, and store them
 in a strict local file read by T9c, T9d and T13 (root "Approach, Cross-validation by session", D25).
