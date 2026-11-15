@@ -11,7 +11,7 @@ on an already-dead sector (AN30, unchanged). Kosmo: two separate requests (D1).
 
 In scope:
 - A new Cricket cue, the *closing hit*, decided in `:game-engine` from the game before and after the dart.
-- A closing dart that wins the leg gives the win cue alone (D5).
+- A closing dart that wins the leg keeps the normal hit sound and call, then the win, with no closing sound (D5).
 - A new sound effect `SECTOR_CLOSING`, playing `res/raw/sfx_closed_sector.ogg` (the issue's file, unchanged).
 - Rules: CR15 updated, new CR17, AN29, AN30 and AN24 updated, new AN33; `docs/sounds/CREDITS.md` gets the new file.
 - JVM tests citing those rules, including Kosmo's exact scenario (D2).
@@ -29,11 +29,11 @@ Out of scope:
 1. Engine, `CricketCues.afterDart(before: CricketGame, after: CricketGame)`. With `target` the CR2 target of the dart:
    - 0 marks (CR2): `DartMiss`;
    - `target in before.state.deadTargets` (CR15): `ClosedSectorHit` (AN30, unchanged);
-   - `target in after.state.deadTargets` (live before, dead after): new `ClosingHit(dart)` (CR17, AN33);
-   - otherwise `DartHit`.
-   Then, when `after.state.winnerIndex != null`: a `ClosingHit` dart cue is dropped and the result is `[Win]` alone
-   (D5); any other dart cue is followed by `Win` as today (AN31). The match overload keeps adding the leg outcome to
-   `Win` (AN27), so `[Win(outcome = LEG)]` alone for a leg won by a closing dart. No new state, no stored data.
+   - `target in after.state.deadTargets` (live before, dead after) and `after.state.winnerIndex == null`: new
+     `ClosingHit(dart)` (CR17, AN33);
+   - otherwise `DartHit` (a winning closing dart included, D5).
+   The win cue still follows the dart cue (AN31), so a winning closing dart gives `[DartHit, Win]`, exactly as any
+   winning dart today; the match overload keeps adding the leg outcome to `Win` (AN27). No new state, no stored data.
 2. App: `SoundEffect.SECTOR_CLOSING` -> `R.raw.sfx_closed_sector`; `CueScript.of(CricketCue.ClosingHit)` ->
    `AudioAction.DartSound(SECTOR_CLOSING, phrases.dartCall(dart))`: a dart sound (AN10: plays at once, may overlap,
    never queued), followed by the dart call when "Call each dart" is on (AN25).
@@ -46,8 +46,9 @@ Alternatives considered:
   (CLAUDE.md, "Architecture").
 - Reuse `ClosedSectorHit` with a flag: rejected, two events with two sounds read better as two cue types, and `when`
   exhaustiveness forces every renderer to handle the new one.
-- Drop the dart sound of a winning closing dart in `:app` (`CueScript` or `GameCues`): rejected, which cues an action
-  produces is decided by `CricketCues` (AN29), and keeping it there makes the rule a `:game-engine` JVM test.
+- Produce `ClosingHit` for a winning closing dart and swap it for the hit sound in `:app` (`CueScript` or
+  `GameCues`): rejected, which cues an action produces is decided by `CricketCues` (AN29), and keeping it there makes
+  the rule a `:game-engine` JVM test.
 
 ## Files and types added or changed
 
@@ -73,8 +74,8 @@ and the history archive are unchanged. Nothing leaves the device.
 
 No screen change. Audio only:
 - closing dart, no win: `sfx_closed_sector` instead of `sfx_dart_hit`, then its dart call if "Call each dart" is on;
-- closing dart that wins: the win alone (match: `sfx_victory` with the victory voice; leg or set: the voice line;
-  voice off on a leg or set: silence), no dart sound and no dart call (D5);
+- closing dart that wins: `sfx_dart_hit` and its dart call, then the win (match: `sfx_victory` with the victory voice;
+  leg or set: the voice line), exactly as any winning dart today; no closing sound (D5);
 - later dart with marks on that dead sector: `sfx_closed_cricket_sector` (unchanged);
 - sounds off: no sound (existing setting).
 
@@ -86,18 +87,19 @@ T2, `docs/rules/cricket.md`:
   is a closing hit again (owner Q7).
 - CR17 (new, engine section; CR17 to CR19 were reserved): a *closing hit* is a dart with at least one mark on a target
   that was live before it and is dead after it (CR15). In a solo game, the dart that gives the player his third mark on
-  a target (owner Q5). With 25-Bull off, 25 and Bull darts are never closing hits. The reserved sentence becomes "CR18
-  and CR19 are reserved".
+  a target (owner Q5). With 25-Bull off, 25 and Bull darts are never closing hits. A closing hit may also win the leg
+  (CR9); its cue is then a normal hit (AN33). The reserved sentence becomes "CR18 and CR19 are reserved".
 
 T2, `docs/rules/announcements.md`:
-- AN29: the cue list adds the *closing hit* (CR17); a *hit* is a dart with at least one mark on a target live both
-  before and after it.
+- AN29: the cue list adds the *closing hit* (CR17, when the dart does not win); a *hit* is a dart with at least one
+  mark on a target that was live before it and that is not a non-winning closing hit.
 - AN30: "the dart that completes the closure plays the hit sound" becomes "the dart that completes the closure is a
   closing hit (AN33)"; the undone-closing-dart sentence says it is a closing hit again when thrown again.
 - AN33 (new, Cricket section): `sfx_closed_sector` plays instead of the hit sound for a closing hit (CR17). It is a
   dart sound (AN10) and its full length (3 s) is kept: the dart call (AN25) and the next announcement wait for its end
-  (owner Q3). When the closing dart wins the leg, only the win plays (AN27, AN31): no closing sound, no dart sound, no
-  dart call (owner Q4). Undo and resume are unchanged (AN23, AN7; owner Q7).
+  (owner Q3). When the closing dart wins the leg, it plays no closing sound: it is a hit, so `sfx_dart_hit` and its
+  dart call, then the win (AN27, AN31), like any winning dart (owner Q4, option b). Undo and resume are unchanged
+  (AN23, AN7; owner Q7).
 
 T1, `docs/rules/announcements.md`:
 - Line 11 and AN24: eight sounds; `sfx_closed_sector` was added for the Cricket closing hit (AN33), with the same
@@ -126,11 +128,14 @@ Engine, `CricketCuesTest` (JVM, `:game-engine`); each name cites its rules:
   once` (its `T20` is now a closing hit, its next `D20` still a closed-sector hit).
 - `CR17 the Bull closed by 25 then BULL is a closing hit`; `CR17 CR2 with 25-Bull off, 25 and BULL are misses, never
   closing hits`.
-- `AN33 AN31 a closing dart that wins gives the win cue alone` (solo single game: `[Win(MATCH)]`); update the existing
-  `AN31 the winning dart gives its dart cue then the win cue`, whose last dart closes the solo Bull, to a winning dart
-  that is a normal hit (2 players, Anna closes her last target while Bob still has it open and she leads:
-  `[DartHit, Win]`), and keep it.
-- `AN33 AN27 a leg won by a closing dart gives the leg win cue alone` (match overload, `Win(outcome = LEG)`).
+- The existing `AN31 the winning dart gives its dart cue then the win cue` (solo, its last dart `25` closes the Bull,
+  so it is a winning closing dart) stays unchanged and green: `[DartHit(25), Win(MATCH)]`; add `AN33` to its name.
+- `AN33 AN31 a 2-player closing dart that wins gives the hit cue then the win, never the closing cue` (Anna leads on
+  points and her dart closes the last target that Bob had already closed: `[DartHit, Win]`).
+- `AN33 AN27 a leg won by a closing dart gives the hit cue then the leg win cue` (match overload,
+  `[DartHit, Win(outcome = LEG)]`).
+- `CR9 AN31 a winning dart that closes a target only for the thrower stays a hit then the win` (Bob still has it
+  open; unchanged behavior).
 - `CR17 AN30 undo of the closing dart makes the target live; thrown again it is a closing hit again` (replaces the
   existing "is a normal hit" expectation).
 - A miss on the last open player's turn stays `DartMiss`.
@@ -141,7 +146,7 @@ App (JVM/Robolectric, `:app`):
 - `AnnouncementPlayerTest`: `AN33 AN10 the dart call and the next announcement wait for the end of the 3 s closing
   sound` (fake length 3_000L); `AN23 AN33 undo during the closing sound stops it and plays the cancel sound`.
 - `CricketGameCuesTest`: `AN33 Kosmo's case through the game events gives the closing cue, then the closed-sector
-  cue`; `AN33 AN31 a winning closing dart gives only the win cue`; `AN7 AN33 resume gives no cue, then the dart that
+  cue`; `AN33 AN31 a winning closing dart gives the hit cue then the win cue`; `AN7 AN33 resume gives no cue, then the dart that
   closes a target gives the closing cue` (a save where only Anna closed 20, via `CricketSaveFixtures` or the save
   codec); `AN6 undo of the closing dart gives only the undo cue`.
 
@@ -162,9 +167,11 @@ On his Pixel 7, debug APK of the CI for the latest commit, after uninstalling th
    again. T20 again: the closing sound again.
 5. In Settings, turn on "Call each dart": on a closing dart, the closing sound plays (about 3 s), then the voice says
    the dart.
-6. Finish a game where the winning dart closes the last sector for everybody: only the victory plays (victory sound
-   and voice), no closing sound. In a match, a leg won this way: only "Manche pour ...".
-7. Solo Cricket: each sector closed plays the closing sound; a later dart on it plays the old sound.
+6. Finish a game where the winning dart closes the last sector for everybody: the usual dart sound (and its call if
+   on), then the victory (sound and voice), no closing sound. In a match, a leg won this way: the usual dart sound,
+   then "Manche pour ...".
+7. Solo Cricket: each sector closed plays the closing sound, except the last one, which wins (usual dart sound, then
+   the victory); a later dart on a closed sector plays the old sound.
 8. Cricket with 25-Bull off: 25 and Bull are misses, no closing sound.
 9. Leave a game where only A has closed 20, force-stop the app, resume it: nothing plays on resume; B's T20 plays the
    closing sound.
@@ -175,7 +182,7 @@ On his Pixel 7, debug APK of the CI for the latest commit, after uninstalling th
 | Id | Title | Task file | Depends on | Model | Why this model |
 |---|---|---|---|---|---|
 | T1 | New sound file, `SECTOR_CLOSING` effect, credits and AN24 | `82-cricket-sector-closing-sound/T1-sound-asset.md` | - | haiku | Copy of a given file with checksum, an enum value, a mapping, listed tests and given doc text; no design choice |
-| T2 | Closing-hit cue, win-only rule, rendering, rules CR15/CR17/AN29/AN30/AN33 and tests | `82-cricket-sector-closing-sound/T2-closing-hit-cue.md` | T1 | sonnet | Rule fully specified here with its test list; one engine cue plus wiring |
+| T2 | Closing-hit cue (none on a winning dart), rendering, rules CR15/CR17/AN29/AN30/AN33 and tests | `82-cricket-sector-closing-sound/T2-closing-hit-cue.md` | T1 | sonnet | Rule fully specified here with its test list; one engine cue plus wiring |
 
 No `opus` task.
 
@@ -190,11 +197,10 @@ No `opus` task.
   `SoundEffect.SECTOR_CLOSING` (plan).
 - D4 (Kosmo, Q3): "on laisse la durée": the 3 s file is used as is; the dart call and the next announcement wait for
   its end.
-- D5 (Kosmo, Q4): "sur victoire c'est uniquement victoire seule": a closing dart that wins the leg plays only the win
-  (AN27: victory sound and voice for a match or single game, the voice line for a leg or set), with no closing sound.
-  Plan reading of "seule": no dart sound and no dart call either for that dart. A winning dart that is not a closing
-  hit is unchanged (dart sound, call, then win).
-- D6 (Kosmo, Q5): solo, the closing sound plays at each sector the player closes.
+- D5 (Kosmo, Q4 "sur victoire c'est uniquement victoire seule", then "option b"): on a closing dart that wins the leg,
+  only the closing sound is dropped: the normal dart sound and its dart call still play, then the win (AN27), as for
+  any winning dart. The engine gives `[DartHit, Win]`, never `ClosingHit`, for such a dart.
+- D6 (Kosmo, Q5): solo, the closing sound plays at each sector the player closes (the last one wins, so D5 applies).
 - D7 (Kosmo, Q7): undo unchanged (AN23); undoing the closing dart reopens the row and plays the cancel sound; thrown
   again, it plays the closing sound again. Nothing plays on resume (AN7).
 - D8 (Kosmo, Q6): licence: "Même licence que les autres sons". CREDITS and AN24 record exactly that, attributed to the
