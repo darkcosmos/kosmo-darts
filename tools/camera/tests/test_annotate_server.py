@@ -531,7 +531,7 @@ def test_handler_failure_answers_a_json_500_and_the_thread_survives(tool, monkey
     def boom(self):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(server_module.SessionStore, "sessions", boom)
+    monkeypatch.setattr(server_module.SessionStore, "sessions_with_warning", boom)
     status, body = tool.json("GET", "/api/sessions")
     assert status == 500 and "error" in body
     monkeypatch.undo()
