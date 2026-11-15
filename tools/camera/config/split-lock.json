@@ -1,0 +1,16 @@
+{
+  "counts": {
+    "dev": {
+      "darts": 368,
+      "units": 2
+    },
+    "eval": {
+      "darts": 137,
+      "units": 2
+    }
+  },
+  "format": "kosmo-camera-split-lock",
+  "mode": "session",
+  "splitSha256": "56583910ac63ffebf2acc90f4935eb58a19e1c8784e5684398ab516a26008cbc",
+  "version": 1
+}
