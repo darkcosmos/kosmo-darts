@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from kosmo_camera import config
-from kosmo_camera.truth import TruthError, read_truth
+from kosmo_camera.truth import TruthError, read_truth, session_folders
 
 SPLIT_FORMAT = "kosmo-camera-split"
 LOCK_FORMAT = "kosmo-camera-split-lock"
@@ -72,10 +72,8 @@ def list_sessions(root) -> list:
     if EVAL_FOLDER in root.resolve().parts:
         raise SplitError("the confirmation campaign folder is never part of the split (CV17)")
     found = []
-    for folder in sorted(p for p in root.iterdir() if p.is_dir()):
-        truth = folder / "truth.json"
-        if truth.is_file():
-            found.append(from_truth(read_truth(truth), folder))
+    for folder in session_folders(root).values():
+        found.append(from_truth(read_truth(folder / "truth.json"), folder))
     return found
 
 
@@ -137,8 +135,7 @@ def _criteria(units, counts):
 
 def _session_units(judged):
     items = [(unit_key(s), Unit(s.name, None, None, "dev"), s.judged) for s in judged]
-    units = _walk(items)
-    return units
+    return _walk(items)
 
 
 def _block_units(judged):

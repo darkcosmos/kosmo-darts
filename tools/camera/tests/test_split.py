@@ -246,3 +246,14 @@ def test_list_sessions_and_command_print_no_session_name_cv15(tmp_path, capsys):
     assert "mode:" in printed and "ignored sessions" in printed and "split sha256:" in printed
     sp.check_lock(out.read_bytes(), sp.read_lock(lock))
     assert sp.main(["--captures", str(captures), "--out", str(out)]) == 1  # computed once
+
+
+def test_server_and_split_list_the_same_sessions(tmp_path):
+    from annotate_support import make_session
+    from kosmo_camera.annotate.server import SessionStore
+    make_session(tmp_path, "s-one")
+    make_session(tmp_path, "s-two")
+    (tmp_path / "no-truth").mkdir()
+    (tmp_path / "a-file.txt").write_text("x")
+    store = SessionStore(tmp_path, tmp_path / "annotations", lambda: "00:00:00")
+    assert {s.name for s in sp.list_sessions(tmp_path)} == set(store.listing()) == {"s-one", "s-two"}

@@ -18,7 +18,7 @@ from urllib.parse import unquote, urlsplit
 from kosmo_camera import annotations as annotation_file
 from kosmo_camera.annotate import flow
 from kosmo_camera.annotate.jpeg_size import JpegError, jpeg_size
-from kosmo_camera.truth import TruthError, read_truth
+from kosmo_camera.truth import TruthError, read_truth, session_folders
 
 HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
@@ -29,7 +29,11 @@ STATIC_FILES = {"index.html": "text/html; charset=utf-8", "app.js": "text/javasc
 _PHOTO_FILE = re.compile(r"dart-\d{3,}\.jpg")
 _ACTION_KEYS = ("action", "x", "y", "number")
 IGNORED_LABEL = "Ignorée : aucune fléchette jugée"
-OK, IGNORED, TRUTH_INVALID, TOO_LARGE, REJECTED = "ok", "ignored", "truth_invalid", "annotation_too_large", "annotation_rejected"
+OK = "ok"
+IGNORED = "ignored"
+TRUTH_INVALID = "truth_invalid"
+TOO_LARGE = "annotation_too_large"
+REJECTED = "annotation_rejected"
 
 
 class HttpError(Exception):
@@ -37,6 +41,10 @@ class HttpError(Exception):
         super().__init__(message)
         self.status = status
         self.message = message
+
+
+def _refuse_method():
+    raise HttpError(405, "Méthode non autorisée.")
 
 
 @dataclass(frozen=True)
@@ -70,11 +78,7 @@ class SessionStore:
 
     def listing(self) -> dict:
         """Name to folder of every sub-folder holding a truth.json (rescanned at each call)."""
-        found = {}
-        for folder in sorted(p for p in self.captures.iterdir() if p.is_dir()):
-            if (folder / "truth.json").is_file():
-                found[folder.name] = folder
-        return found
+        return session_folders(self.captures)
 
     def resolve_session(self, name) -> Path:
         """The single gate of every route: the folder of a listed session, else 404."""
@@ -354,7 +358,7 @@ def _make_handler(store, static_dir):
             self._guarded(self._post)
 
         def _method_not_allowed(self):
-            self._guarded(lambda: (_ for _ in ()).throw(HttpError(405, "Méthode non autorisée.")))
+            self._guarded(_refuse_method)
 
         do_PUT = do_DELETE = do_PATCH = do_OPTIONS = _method_not_allowed  # noqa: N815
 

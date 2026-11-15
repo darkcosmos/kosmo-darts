@@ -323,3 +323,12 @@ def read_truth(path) -> Session:
         shown = version if isinstance(version, int) and not isinstance(version, bool) else repr(version)
         raise TruthError(f"$.version: unsupported version {shown}")
     return _session(root, hashlib.sha256(data).hexdigest())
+
+
+def session_folders(root) -> dict:
+    """Name to folder of every sub-folder of `root` holding a truth.json (one definition for the split and the server)."""
+    found = {}
+    for folder in sorted(p for p in Path(root).iterdir() if p.is_dir()):
+        if (folder / "truth.json").is_file():
+            found[folder.name] = folder
+    return found
