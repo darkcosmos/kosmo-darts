@@ -5,10 +5,12 @@
 # Build, from the repository root (the first build fails once with the weights SHA-256: rebuild with it, see below):
 #   docker build -f tools/camera/Dockerfile -t kosmo-camera:gpu --build-arg NANO_SHA256=<sha256> tools/camera
 #
-# Run (decision 10: CDI access to the GPU only, no network, no capability, data read-only, runs writable, tmpfs caches):
+# Run (decision 10: CDI access to the GPU only, no network, no capability, runs writable, tmpfs caches):
 #   docker run --rm --device nvidia.com/gpu=all --network none --cap-drop ALL --security-opt no-new-privileges \
-#     --read-only --tmpfs /tmp:rw,size=2g -v ~/kosmo-data:/data:ro -v ~/kosmo-runs:/runs:rw \
+#     --read-only --tmpfs /tmp:rw,size=2g -v ~/kosmo-runs:/runs:rw \
 #     kosmo-camera:gpu python -m kosmo_camera.gpu_check
+#
+# The GPU check needs no data. Tools that read data add the optional mount -v ~/kosmo-data:/data:ro (read-only).
 #
 # No USER on purpose (D7): with rootless Docker, uid 0 inside is Kosmo's own uid.
 # Residual risk: the weights are a pickle, trusted on first download after the MD5 check, then pinned by SHA-256 and

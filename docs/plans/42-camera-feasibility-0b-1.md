@@ -231,9 +231,10 @@ side unchanged, and the PR's "Local checks" says so.
 
 For each of the two PRs (D11): no change to the apps: on the Pixel 7, install the CI debug APK; Kosmo Darts and
 Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/training.md`). No capture campaign before the preliminary report (K0).
-- K1 (PR A) Split (WSL, no container): `python3.13 -m kosmo_camera.split --captures ~/kosmo-data/captures`. It prints the
-  mode (session or block, "plus optimiste"), units and judged darts per set, and the split SHA-256; paste that output.
-  The squad commits `split-lock.json` (block mode only after Kosmo's OK).
+- K1 (PR A) Split (WSL, no container): `python3.13 -m kosmo_camera.split --captures ~/kosmo-data/captures --lock ~/kosmo-runs/split-lock.json`. It prints
+  the mode (session or block, "plus optimiste"), units and judged darts per set, and the split SHA-256; Kosmo pastes
+  that output plus the content of `~/kosmo-runs/split-lock.json` (counts and hash only). The squad commits that
+  content byte for byte as `tools/camera/config/split-lock.json` (block mode only after Kosmo's OK).
 - K2 (PR A) Annotate all existing sessions with the tool (about 1 h). What he should see: relaunch with
   `python3.13 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations`, open
   `http://127.0.0.1:8765` in Windows; the session list shows progress and calibration status; calibration asks the 4

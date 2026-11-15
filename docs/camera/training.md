@@ -23,14 +23,20 @@ blocs, et le résultat est alors marqué « plus optimiste » partout où il app
 Étape K1, dans le dossier `tools/camera/` du dépôt, depuis WSL :
 
 ```bash
-python3.13 -m kosmo_camera.split --captures ~/kosmo-data/captures
+python3.13 -m kosmo_camera.split --captures ~/kosmo-data/captures --lock ~/kosmo-runs/split-lock.json
 ```
 
 - La commande affiche le mode (session ou blocs, « plus optimiste »), les unités et les fléchettes jugées par
   ensemble, et le SHA-256 du découpage (`split sha256`).
 - Le fichier de découpage est écrit dans `~/kosmo-runs/split.json`. La commande refuse de l'écraser : elle ne se lance
   qu'une fois. Le découpage ne change plus une fois verrouillé.
-- Collez dans le chat la sortie complète de la commande. Elle ne contient aucun nom de session.
+- Le fichier de verrouillage est écrit dans `~/kosmo-runs/split-lock.json` (modes, décomptes et empreinte, aucun nom
+  de session).
+- Collez dans le chat la sortie complète de la commande, puis le contenu du fichier `~/kosmo-runs/split-lock.json`
+  (par exemple avec `cat ~/kosmo-runs/split-lock.json`). L'équipe le commit tel quel, octet pour octet, dans
+  `tools/camera/config/split-lock.json`. Aucun des deux ne contient de nom de session.
+- Pour recommencer après une erreur, et seulement tant que le verrouillage n'est pas commité : supprimez
+  `~/kosmo-runs/split.json` et `~/kosmo-runs/split-lock.json`, puis relancez la commande.
 - L'ensemble « eval » n'est jamais utilisé pour entraîner, régler ou choisir un seuil (CV4).
 - Le mode blocs n'est verrouillé qu'après votre accord.
 
@@ -38,7 +44,7 @@ python3.13 -m kosmo_camera.split --captures ~/kosmo-data/captures
 
 Étape K2 : annoter toutes les sessions existantes avec l'outil. Compter environ une heure.
 
-Lancer l'outil dans WSL :
+Lancer l'outil dans WSL, depuis le dossier `tools/camera/` du dépôt (comme pour K1) :
 
 ```bash
 python3.13 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations
@@ -46,7 +52,8 @@ python3.13 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotatio
 
 Le terminal affiche `Outil d'annotation prêt : http://127.0.0.1:8765/`. Ouvrez cette adresse dans le navigateur de
 Windows. L'outil n'écoute que sur votre machine (127.0.0.1). Si le port 8765 est déjà pris, l'outil le dit et s'arrête ; ajoutez
-`--port <numéro>` à la commande pour en choisir un autre.
+`--port <numéro>` à la commande pour en choisir un autre. Si Windows n'arrive pas à ouvrir cette adresse depuis WSL,
+signalez-le dans le chat avec le message affiché : ne cherchez pas de contournement.
 
 Ce que vous devez voir :
 
@@ -67,13 +74,16 @@ Touches de l'outil :
 |---|---|
 | `H` | Cachée (fléchette non visible) |
 | `O` | Hors cible |
-| `U` | Effacer (retire le dernier point posé) |
+| `U` | Effacer (la pointe de la fléchette courante, ou le dernier point en calibration) |
 | `N` | Suivante |
 | `P` | Précédente |
-| `+` / `-` | Zoom avant / arrière |
+| `+` ou `=` / `-` | Zoom avant / arrière (sur un clavier AZERTY, `+` et `0` demandent Maj ; `=` évite Maj) |
 | `0` | Vue entière |
-| Flèches | Déplacer la vue |
+| Flèches | Déplacer la vue (la molette zoome à l'endroit du curseur : déplacer la vue est rarement utile) |
 | `Échap` | Retour à la liste des sessions |
+
+Les quatre points de calibration ne sont enregistrés qu'après le quatrième clic : si vous quittez avant (`Ctrl+C`
+ou relance), ils sont perdus et la calibration est à refaire.
 
 Pour arrêter l'outil, appuyez sur `Ctrl+C` dans le terminal. Pour reprendre, relancez la même commande : le travail
 déjà enregistré est repris.
