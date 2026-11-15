@@ -6,13 +6,17 @@ Ship the issue's sound unchanged as a new `SoundEffect.SECTOR_CLOSING`, loaded b
 
 ## Files
 - `app/src/main/res/raw/sfx_closed_sector.ogg`: download
-  https://github.com/user-attachments/files/34870749/sfx.zip with `curl` into a new empty scratchpad directory,
-  extract with `jar xf` (no `unzip` in the sandbox), check 51,006 bytes, SHA-256
+  https://github.com/user-attachments/files/34870749/sfx.zip with `curl` into a new empty scratchpad directory;
+  list it first with `jar tf` and go on only if the single entry is `sfx_closed_sector.ogg` (no other entry, no `/`,
+  no `..`, design review S1); extract with `jar xf` in another new empty directory (no `unzip` in the sandbox);
+  check 51,006 bytes, SHA-256
   `0e10525b020682abed7835aa4a8c021435d22dd4485e61297c8fde2a2146e4bc` (`sha256sum`), "OggS" and "vorbis" headers
   (`head -c`, `od`), then copy it unchanged. If the download is blocked, stop and report.
 - `app/.../audio/SoundEffect.kt`: `SECTOR_CLOSING` with KDoc "AN33: the Cricket dart that closes a target for the
   last player (CR17)"; class KDoc "eight sound effects".
-- `app/.../audio/SoundPoolPlayer.kt`: `resourceOf` mapping to `R.raw.sfx_closed_sector`.
+- `app/.../audio/SoundPoolPlayer.kt`: `resourceOf` mapping to `R.raw.sfx_closed_sector`; add the new value to every
+  `when` over `SoundEffect` (`grep -rn 'SoundEffect\.' app/src`), and update any other "seven sounds" wording found
+  by `grep -rni 'seven' app/src docs/rules` (design review architecture note).
 - Tests: `audio/AudioFakes.kt` (length `3_000L`), `audio/SoundPoolPlayerTest.kt`.
 - `docs/sounds/CREDITS.md`: the row and the bullet given in the root plan, "Rule changes", word for word in substance;
   no claim about the file's tool or plan.

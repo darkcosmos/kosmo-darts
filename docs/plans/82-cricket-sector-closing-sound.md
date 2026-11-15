@@ -163,8 +163,9 @@ On his Pixel 7, debug APK of the CI for the latest commit, after uninstalling th
    the usual dart sound; the 20 row shows "closed by all".
 2. B: 20. Expected: the old "closed sector" sound. On A's next turn, D20: the old sound again.
 3. B: T19 (A has no mark on 19): the usual dart sound (only B has closed 19).
-4. "Annuler" on the dart of step 1 (B's T20; undo the darts after it first): the cancel sound, the 20 row is live
-   again. T20 again: the closing sound again.
+4. Start a new game (or come right after step 1, before step 2): A: T20, 20, 20, "Joueur suivant"; B: T20 (closing
+   sound). Tap "Annuler" once: the cancel sound, the 20 row is live again (CR11). B: T20 again: the closing sound
+   again.
 5. In Settings, turn on "Call each dart": on a closing dart, the closing sound plays (about 3 s), then the voice says
    the dart.
 6. Finish a game where the winning dart closes the last sector for everybody: the usual dart sound (and its call if
@@ -205,6 +206,14 @@ No `opus` task.
   again, it plays the closing sound again. Nothing plays on resume (AN7).
 - D8 (Kosmo, Q6): licence: "Même licence que les autres sons". CREDITS and AN24 record exactly that, attributed to the
   owner in issue #82, with no claim added by the squad about the file's tool or plan.
+- D9 (design review S1): T1 lists the zip with `jar tf` and extracts it only if its single entry is
+  `sfx_closed_sector.ogg` (no other entry, no path); the pinned size and SHA-256 of the `.ogg` remain the integrity check.
+- D10 (design review U1): verification step 4 starts from a fresh game or right after step 1, with one "Annuler" on
+  B's closing T20.
+- D11 (design review, architecture note): the new `SoundEffect` and `CricketCue` values are added to every `when`
+  over them, and every "seven sounds" wording found by grep is updated (T1, T2).
+- D12: plan approved by all four reviewers in design review (0 blocking); minors S1 and U1 and the architecture note
+  folded in as D9 to D11.
 
 ## Open questions
 

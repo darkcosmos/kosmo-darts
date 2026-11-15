@@ -10,7 +10,9 @@ D4 to D7).
   `CricketCues.afterDart`: miss, closed-sector hit (dead before), closing hit (live before, dead after, no winner),
   hit (a winning closing dart included); the win cue still follows the dart cue.
 - `game-engine/src/test/.../engine/cricket/CricketCuesTest.kt`.
-- `app/.../audio/CueScript.kt`: `ClosingHit` -> `DartSound(SECTOR_CLOSING, phrases.dartCall(dart))`; KDoc AN33.
+- `app/.../audio/CueScript.kt`: `ClosingHit` -> `DartSound(SECTOR_CLOSING, phrases.dartCall(dart))`; KDoc AN33. Add
+  the new cue to every `when` over `CricketCue` (`grep -rn 'CricketCue\.' app/src game-engine/src`) (design review
+  architecture note).
 - `app/src/test/.../audio/CueScriptTest.kt`, `audio/AnnouncementPlayerTest.kt`, `ui/app/CricketGameCuesTest.kt`.
 - `docs/rules/cricket.md` (CR15, new CR17, reserved sentence) and `docs/rules/announcements.md` (AN29, AN30, new
   AN33): as in the root plan, "Rule changes", T2 part.
