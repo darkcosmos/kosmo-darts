@@ -42,12 +42,24 @@ const TEXT = {
   busy: "Enregistrement en cours.",
   networkError: "Le serveur ne répond pas.",
   warningPrefix: "Attention : ",
+  btnRecalibrate: "Recalibrer à partir de cette fléchette (R)",
+  recalibrationTitle: "Recalibration à partir de la fléchette {number} : point {n} sur 4",
+  recalibrationHint: "Effacer (U) retire le dernier point ; sans point, retour à la fléchette",
+  recalibrationDone: "Les quatre points sont placés. Effacer (U) retire le dernier point pour le refaire.",
+  oldPoint: "ancien {n}",
+  driftSuggestedBanner: "Dérive au-delà du seuil : recalibrer à partir d'ici (R)",
+  driftBeyond: "Dérive",
+  driftUnmeasurable: "Dérive non mesurable",
+  calibratedSegments: "Calibrée ({count} segments)",
+  staleMeasure: "(mesure périmée)",
+  pickerSuggested: "{number} !",
+  pickerSuggestedLabel: "Fléchette {number}, à recalibrer",
 };
 
 const WIRES = ["5|20", "13|6", "17|3", "8|11"]; // CV2 order
 const WIRE_ANGLES = [-9, 81, 171, 261]; // degrees clockwise from the top, 20 on top
 const BOARD_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
-const KEY_ACTIONS = { h: "hidden", o: "off_board", u: "clear", n: "next", p: "previous" };
+const KEY_ACTIONS = { h: "hidden", o: "off_board", u: "clear", n: "next", p: "previous", r: "recalibrate" };
 const MAGNIFIER_SIZE = 160;
 const MAGNIFICATION = 4;
 const PAN_STEP = 60;
@@ -144,6 +156,12 @@ function sessionLine(item) {
   }
   line.insertBefore(info, line.firstChild);
   line.insertBefore(name, line.firstChild);
+  if (item.driftLabel) {
+    const drift = document.createElement("div");
+    drift.className = item.driftStale ? "session-info session-stale" : "session-info";
+    setText(drift, item.driftLabel);
+    line.insertBefore(drift, info.nextSibling);
+  }
   if (item.warning) {
     const warning = document.createElement("div");
     warning.className = "session-warning";
@@ -165,6 +183,9 @@ async function showList() {
   clearChildren(list);
   try {
     const data = await request("GET", "/api/sessions");
+    if (data.driftWarning) {
+      setStatus(TEXT.warningPrefix + data.driftWarning, "error");
+    }
     if (data.sessions.length === 0) {
       const empty = document.createElement("li");
       setText(empty, TEXT.noSession);
@@ -308,16 +329,20 @@ function renderPanel() {
   const view = state.view;
   const cursor = view.cursor;
   const done = dartsOfView().filter((d) => d.status !== null).length;
-  setText($("progress"), fill(TEXT.progress, { done, total: dartsOfView().length }));
+  setText($("progress"), `${fill(TEXT.progress, { done, total: dartsOfView().length })} - ${calibrationStatus(view)}`);
   const banner = $("banner");
-  const message = state.blocked || view.warning || null;
+  const suggested = cursor.kind === "dart" && currentDart().drift === "suggested";
+  const message = state.blocked || view.warning || (suggested ? TEXT.driftSuggestedBanner : null);
   banner.hidden = !message;
-  banner.className = state.blocked ? "error" : "";
-  setText(banner, message ? (state.blocked ? message : TEXT.warningPrefix + message) : "");
+  banner.className = state.blocked ? "error" : (!view.warning && suggested ? "drift" : "");
+  const shown = state.blocked || !view.warning ? message : TEXT.warningPrefix + message;
+  setText(banner, message ? shown : "");
   const diagram = $("diagram");
-  diagram.hidden = cursor.kind !== "calibration";
+  diagram.hidden = cursor.kind !== "calibration" && cursor.kind !== "recalibration";
   if (cursor.kind === "calibration") {
     renderCalibrationPanel(cursor);
+  } else if (cursor.kind === "recalibration") {
+    renderRecalibrationPanel(cursor);
   } else if (cursor.kind === "dart") {
     renderDartPanel(currentDart());
   } else {
@@ -342,9 +367,54 @@ function renderCalibrationPanel(cursor) {
   drawDiagram(placed);
 }
 
+function calibrationStatus(view) {
+  const count = view.segments ? view.segments.length : 0;
+  return count > 1 ? fill(TEXT.calibratedSegments, { count }) : TEXT.calibrated;
+}
+
+// Segment in force before dart `number`: the last one that starts earlier (segments come in ascending order, CV20).
+function previousSegment(view, number) {
+  const earlier = (view.segments || []).filter((segment) => segment.fromDart < number);
+  return earlier.length > 0 ? earlier[earlier.length - 1] : null;
+}
+
+function renderRecalibrationPanel(cursor) {
+  const placed = cursor.pending.length;
+  const next = Math.min(placed + 1, 4);
+  setText($("value"), String(next));
+  setText($("entry"), fill(TEXT.recalibrationTitle, { number: cursor.number, n: next }));
+  setText($("state"), TEXT.recalibrationHint);
+  setText($("instruction"), placed >= 4
+    ? TEXT.recalibrationDone
+    : fill(TEXT.calibrationHelp, { n: next, wires: WIRES[next - 1] }));
+  drawDiagram(placed);
+}
+
+function driftText(dart) {
+  const names = { beyond: TEXT.driftBeyond, unmeasurable: TEXT.driftUnmeasurable };
+  return names[dart.drift] || "";
+}
+
 function stateText(dart) {
   const names = { VISIBLE: TEXT.stateVisible, HIDDEN: TEXT.stateHidden, OFF_BOARD: TEXT.stateOffBoard };
-  return dart.status === null ? TEXT.stateNone : names[dart.status];
+  const base = dart.status === null ? TEXT.stateNone : names[dart.status];
+  const drift = driftText(dart);
+  return drift ? `${base} - ${drift}` : base;
+}
+
+// Picker label of a dart: "59 !" for a dart to recalibrate (text, not colour only), "(mesure périmée)" when stale.
+function pickerText(dart, stale) {
+  const suggested = dart.drift === "suggested";
+  let label = dart.status === null ? String(dart.number) : fill(TEXT.pickerDone, { number: dart.number });
+  let aria = fill(TEXT.pickerLabel, { number: dart.number });
+  if (suggested) {
+    label = fill(TEXT.pickerSuggested, { number: dart.number });
+    aria = fill(TEXT.pickerSuggestedLabel, { number: dart.number });
+    if (stale) {
+      aria = `${aria} ${TEXT.staleMeasure}`;
+    }
+  }
+  return { label, aria };
 }
 
 function renderDartPanel(dart) {
@@ -375,6 +445,11 @@ function renderActions() {
     button.disabled = off || !enabled;
     box.appendChild(button);
   });
+  const recalibrate = $("recalibrate-actions");
+  clearChildren(recalibrate);
+  const recalibrateButton = makeButton(TEXT.btnRecalibrate, () => perform({ action: "recalibrate" }));
+  recalibrateButton.disabled = off || kind !== "dart";
+  recalibrate.appendChild(recalibrateButton);
   const zoom = $("zoom-actions");
   clearChildren(zoom);
   zoom.appendChild(makeButton(TEXT.zoomIn, () => zoomCentered(ZOOM_STEP)));
@@ -391,10 +466,10 @@ function renderPicker() {
   const off = state.busy || state.blocked !== null;
   const cursor = state.view.cursor;
   dartsOfView().forEach((dart) => {
-    const label = dart.status === null ? String(dart.number) : fill(TEXT.pickerDone, { number: dart.number });
-    const button = makeButton(label, () => perform({ action: "goto", number: dart.number }),
-      cursor.kind === "dart" && cursor.number === dart.number ? "current" : "");
-    button.setAttribute("aria-label", fill(TEXT.pickerLabel, { number: dart.number }));
+    const text = pickerText(dart, state.view.driftStale);
+    const button = makeButton(text.label, () => perform({ action: "goto", number: dart.number }),
+      cursor.number === dart.number && (cursor.kind === "dart" || cursor.kind === "recalibration") ? "current" : "");
+    button.setAttribute("aria-label", text.aria);
     button.disabled = off;
     picker.appendChild(button);
   });
@@ -457,6 +532,25 @@ function drawCross(context, point, text) {
   label(context, text, p.x + 12, p.y - 10);
 }
 
+// Hollow cross (outline only, light core removed) for the points of the previous segment, labelled "ancien k".
+function drawHollowCross(context, point, text) {
+  const p = toScreen(point);
+  context.lineCap = "round";
+  context.strokeStyle = "#ffe14d";
+  context.lineWidth = 5;
+  context.beginPath();
+  context.moveTo(p.x - 10, p.y - 10);
+  context.lineTo(p.x + 10, p.y + 10);
+  context.moveTo(p.x + 10, p.y - 10);
+  context.lineTo(p.x - 10, p.y + 10);
+  context.stroke();
+  context.globalCompositeOperation = "destination-out";
+  context.lineWidth = 2;
+  context.stroke();
+  context.globalCompositeOperation = "source-over";
+  label(context, text, p.x + 12, p.y + 22);
+}
+
 function drawHollowCircle(context, point, text) {
   const p = toScreen(point);
   outlined(context, () => {
@@ -498,6 +592,12 @@ function drawStage() {
   const view = state.view;
   const cursor = view.cursor;
   if (cursor.kind === "calibration") {
+    cursor.pending.forEach((point, index) => drawCross(context, point, String(index + 1)));
+  } else if (cursor.kind === "recalibration") {
+    const previous = previousSegment(view, cursor.number);
+    if (previous) {
+      previous.points.forEach((point, index) => drawHollowCross(context, point, fill(TEXT.oldPoint, { n: index + 1 })));
+    }
     cursor.pending.forEach((point, index) => drawCross(context, point, String(index + 1)));
   } else if (cursor.kind === "dart") {
     if (view.calibration && view.calibration.photo === cursor.photo) {

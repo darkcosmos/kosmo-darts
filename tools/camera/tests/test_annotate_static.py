@@ -9,7 +9,8 @@ import pytest
 
 STATIC = Path(__file__).parent.parent / "kosmo_camera" / "annotate" / "static"
 FILES = ("index.html", "app.js", "style.css")
-ACTION_KEYS = {"btnHidden": "H", "btnOffBoard": "O", "btnClear": "U", "btnNext": "N", "btnPrevious": "P"}
+ACTION_KEYS = {"btnHidden": "H", "btnOffBoard": "O", "btnClear": "U", "btnNext": "N", "btnPrevious": "P",
+               "btnRecalibrate": "R"}
 ENGLISH_WORDS = re.compile(r"\b(next|previous|hidden|clear|cancel|loading|error|back|save|saved|dart|darts"
                            r"|the|and|please|click|off board|undo|none|yes|no)\b", re.IGNORECASE)
 
@@ -68,7 +69,8 @@ def test_each_action_button_label_ends_with_its_key_letter():
 
 def test_the_key_handler_maps_the_same_letters_to_the_same_actions():
     source = read("app.js")
-    for letter, action in (("h", "hidden"), ("o", "off_board"), ("u", "clear"), ("n", "next"), ("p", "previous")):
+    for letter, action in (("h", "hidden"), ("o", "off_board"), ("u", "clear"), ("n", "next"), ("p", "previous"),
+                           ("r", "recalibrate")):
         assert re.search(rf'{letter}:\s*"{action}"', source), letter
 
 
@@ -148,3 +150,73 @@ def test_double_click_guard_finished_label_and_view_reset_are_present():
     text = read("app.js")
     assert "CLICK_GUARD_MS" in text and "lastActionAt" in text
     assert "Terminée" in text and "viewKey" in text
+
+
+# ---- recalibration page and drift flags (T6d; static checks only: no browser nor node in the sandbox) -------------------
+
+def key_actions():
+    match = re.search(r"const KEY_ACTIONS = \{(.*?)\};", read("app.js"))
+    assert match
+    return dict(re.findall(r'(\w+):\s*"(\w+)"', match.group(1)))
+
+
+def test_key_actions_match_the_flow_action_names_and_no_letter_is_used_twice():
+    from kosmo_camera.annotate import flow
+    mapping = key_actions()
+    assert mapping["r"] == "recalibrate"
+    assert set(mapping.values()) <= set(flow.KINDS)
+    assert len(re.findall(r'\b(\w):\s*"\w+"', re.search(r"const KEY_ACTIONS = \{(.*?)\};", read("app.js")).group(1))) \
+        == len(mapping)
+    assert len(set(mapping.values())) == len(mapping)
+    labels = {letter: table_label for table_label, letter in ACTION_KEYS.items()}
+    assert sorted(labels) == sorted(letter.upper() for letter in mapping)
+
+
+def test_string_table_has_the_recalibration_and_drift_strings():
+    table = string_table()
+    assert table["btnRecalibrate"] == "Recalibrer à partir de cette fléchette (R)"
+    assert table["recalibrationTitle"] == "Recalibration à partir de la fléchette {number} : point {n} sur 4"
+    assert table["recalibrationHint"] == "Effacer (U) retire le dernier point ; sans point, retour à la fléchette"
+    assert table["driftSuggestedBanner"] == "Dérive au-delà du seuil : recalibrer à partir d'ici (R)"
+    assert table["driftBeyond"] == "Dérive" and table["driftUnmeasurable"] == "Dérive non mesurable"
+    assert table["calibratedSegments"] == "Calibrée ({count} segments)"
+    assert table["staleMeasure"] == "(mesure périmée)"
+    assert table["pickerSuggested"] == "{number} !"
+    assert table["pickerSuggestedLabel"] == "Fléchette {number}, à recalibrer"
+    assert table["oldPoint"] == "ancien {n}"
+
+
+def test_old_points_are_drawn_as_hollow_crosses_labelled_ancien_k():
+    source = read("app.js")
+    assert "function drawHollowCross" in source
+    assert re.search(r"fill\(TEXT\.oldPoint,\s*\{\s*n:\s*index \+ 1\s*\}\)", source)
+    assert "previousSegment(view, cursor.number)" in source
+
+
+def test_picker_label_building_keeps_the_marker_and_the_stale_suffix():
+    source = read("app.js")
+    body = re.search(r"function pickerText\(dart, stale\) \{(.*?)\n\}\n", source, re.DOTALL).group(1)
+    assert "TEXT.pickerSuggested" in body and "TEXT.pickerSuggestedLabel" in body
+    assert re.search(r"if \(stale\) \{\s*aria = `\$\{aria\} \$\{TEXT\.staleMeasure\}`;", body)
+    assert "pickerText(dart, state.view.driftStale)" in source
+
+
+def test_the_recalibration_row_is_full_width_and_at_least_48px_high():
+    html, css = read("index.html"), read("style.css")
+    assert 'id="recalibrate-actions"' in html
+    assert html.index("recalibrate-actions") < html.index("zoom-actions")
+    rule = re.search(r"#recalibrate-actions button\s*\{([^}]*)\}", css).group(1)
+    assert int(re.search(r"min-height:\s*(\d+)px", rule).group(1)) >= 48
+    assert re.search(r"width:\s*100%", rule) and "white-space: normal" in rule
+
+
+def test_list_reads_the_sessions_object_and_the_drift_warning_and_uses_text_content_only():
+    source = read("app.js")
+    assert "data.sessions" in source and "data.driftWarning" in source
+    assert "item.driftLabel" in source
+
+
+def test_warning_colour_has_a_contrast_of_at_least_4_5_on_background_and_panel():
+    declared = colors()
+    assert contrast(declared["--warn"], declared["--bg"]) >= 4.5
+    assert contrast(declared["--warn"], declared["--panel"]) >= 4.5

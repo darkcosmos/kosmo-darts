@@ -117,6 +117,62 @@ Ce qu'il faut voir : le tableau `nvidia-smi` avec le nom du GPU (RTX 4070, 12 Go
 la ligne `cuda available: True`, puis `device name:` avec le nom du GPU. Si la ligne dit `cuda available: False`,
 collez toute la sortie dans le chat et arrêtez-vous là.
 
+## Dérive et recalibration
+
+Étape K5 : le trépied bouge un peu entre les photos, donc la calibration cliquée une fois ne vaut plus pour toute la
+session. La mesure de dérive dit à partir de quelle fléchette recalibrer ; vous recalibrez dans l'outil, puis vous
+mesurez de nouveau, jusqu'à ce que tout soit sous le seuil (1,0 mm). Les commandes ci-dessous se copient telles quelles.
+
+K5.0. Dans votre clone, récupérez la branche :
+
+```bash
+git fetch origin
+git switch feat/camera-feasibility-0b-1-detection
+```
+
+K5.1. Reconstruisez l'image depuis la racine du dépôt (avec réseau, elle contient maintenant le code de dérive), puis
+relancez la commande de la section « GPU check » sans la changer :
+
+```bash
+docker build -f tools/camera/Dockerfile -t kosmo-camera:gpu tools/camera
+```
+
+K5.2. Mesurez la dérive de toutes les sessions (pas besoin du GPU : pas de réseau, aucune capacité système, système
+de fichiers en lecture seule, `~/kosmo-data` monté en lecture seule) :
+
+```bash
+docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,size=2g -v ~/kosmo-data:/data:ro -v ~/kosmo-runs:/runs:rw kosmo-camera:gpu python -m kosmo_camera.drift --captures /data/captures --annotations /data/annotations --runs /runs
+```
+
+Ce qu'il faut voir : le chemin du rapport, puis la ligne « Tout sous le seuil : oui » ou « Tout sous le seuil : non ».
+La commande écrit `~/kosmo-runs/drift/drift-report.md` (rapport chiffré, sessions nommées S01, S02...) et
+`~/kosmo-runs/drift/drift.json` (fichier local lu par l'outil, il contient les noms de sessions : ne le collez pas).
+
+K5.3. Relancez l'outil d'annotation dans WSL, depuis `tools/camera/`, avec le fichier de dérive :
+
+```bash
+python3 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations --drift ~/kosmo-runs/drift/drift.json
+```
+
+Ce qu'il faut voir :
+
+- Dans la liste, chaque session porte une ligne de dérive : « À recalibrer à partir de la fléchette 59 » (ou « des
+  fléchettes ... »), « Dérive OK (max 0,4 mm) », « Dérive non mesurée » ou « photo non mesurable ». La session
+  d'évaluation de 18 h 24 doit demander la fléchette 59.
+- Dans une session, la fléchette à recalibrer est marquée d'un point d'exclamation dans la rangée des numéros
+  (« 59 ! ») et son écran affiche « Dérive au-delà du seuil : recalibrer à partir d'ici (R) ».
+- Sur chaque fléchette à recalibrer, appuyez sur `R` ou sur le bouton « Recalibrer à partir de cette fléchette (R) »
+  (large bouton sous les autres). L'écran « Recalibration à partir de la fléchette N : point k sur 4 » montre les
+  anciens points en croix creuses étiquetées « ancien 1 » à « ancien 4 » ; cliquez les 4 nouveaux points dans l'ordre.
+  La barre d'état affiche « Enregistré à HH:MM:SS ».
+- `Effacer` (`U`) retire le dernier point ; sur une recalibration déjà enregistrée, il la retire du fichier tout de
+  suite. Sans point, il ramène à la fléchette.
+- Après une recalibration, les indications de la session restent affichées avec « (mesure périmée) » tant que la
+  mesure n'est pas relancée : les autres fléchettes à recalibrer ne sont pas perdues.
+
+K5.4. Relancez la commande K5.2. Répétez K5.3 et K5.4 jusqu'à « Tout sous le seuil : oui », puis collez dans le chat
+le dernier rapport, `~/kosmo-runs/drift/drift-report.md`.
+
 ## Confirmation campaign protocol
 
 Ce protocole ne s'applique que si le rapport préliminaire demande une campagne de confirmation (CV17). Aucune prise de

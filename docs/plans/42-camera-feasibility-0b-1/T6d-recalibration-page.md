@@ -55,3 +55,19 @@ with a fake `drift.json`, server started, `curl` of `/api/sessions` shows the fl
 sonnet. Why: page changes from a specified flow and French strings, same patterns as T6b.
 
 ## Implementation notes
+- Page (`app.js`, `index.html`, `style.css`): `KEY_ACTIONS` has `r`; the R button sits in its own row `#recalibrate-actions`
+  (full width, `min-height: 48px`, wrapping allowed). `renderRecalibrationPanel`, `previousSegment` (last segment with
+  `fromDart` < n) and `drawHollowCross` draw "ancien 1" to "ancien 4"; `pickerText` builds the "59 !" label, its
+  `aria-label` and the "(mesure périmée)" suffix when `view.driftStale`. List: `driftLabel` line (the server already
+  appends its own stale text there) and `data.driftWarning` shown in the status bar. New `--warn` colour (contrast tested).
+- Deviation: the list item carries no segment count, so "Calibrée ({count} segments)" is shown in the session panel
+  progress line (from `view.segments`), not in the session list. Beyond/unmeasurable darts show "Dérive" / "Dérive non
+  mesurable" appended to the dart state line; `suggested` shows the banner (below blocked and warning messages).
+- JavaScript could not be run here (no browser, no `node`): static tests only; Kosmo checks the page in K5.3.
+- Manual run: session with a fake `drift.json` (stale hash), server started, `curl /api/sessions` returned
+  `{sessions: [... driftLabel "À recalibrer à partir de la fléchette 3 ; 1 photo non mesurable (mesure périmée ...)",
+  driftStale true], driftWarning: null}`; `/static/app.js` served with the R action.
+- Doc: section "Dérive et recalibration" in `docs/camera/training.md` (K5.0 to K5.4), commands checked against
+  `--help` of `drift` and the annotate parser; `test_training_doc.py` parses them with the real parsers (patched
+  `parse_args`). `drift --help` needs numpy: run in `.venv`.
+- Checks: pytest `-m "not slow"` 629 passed; slow 3 passed; compileall ok; kosmo-detekt exit 0.
