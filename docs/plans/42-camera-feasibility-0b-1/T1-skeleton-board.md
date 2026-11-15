@@ -49,3 +49,12 @@ succeeds; Python checks of root "Test plan" green; `kosmo-detekt` exit 0; `git s
 sonnet. Why: configuration plus geometry mirrored from existing Kotlin, tests listed.
 
 ## Implementation notes
+- `requirements-cpu.txt`: 89 pins, one hash each, generated from the dry-run report. Torch family pinned as
+  `torch==2.14.1+cpu`, `torchvision==0.29.2+cpu`, `torchao==0.18.0+cpu` (local version of the PyTorch CPU index);
+  `python-dateutil` resolved to 4.0.0.
+- `config.py`: `SCHEMA` (key to type), `load_defaults(path)`, `ConfigError`; constants `BOX_FRACTION`, `VALID_RATIO`,
+  `MATCH_RADIUS_MM`, `CAL_MAX_ERROR_MM`, `TAU_LOW`, `TAU_SURE`, `SPLIT_*`. Later tasks add keys to `SCHEMA` and the
+  JSON together. Integer keys refuse floats and booleans.
+- `board.py`: `zone_at`, `SECTOR_ORDER`, radii, `CALIBRATION_POINTS_MM` (tuples, math angles 99, 9, 279, 189).
+  Segment 0 returns multiplier "SINGLE". Tests run from `tools/camera/` (`pytest.ini` lives there).
+- ADR and rules written in the same commit; `requirements-gpu.txt` is for the image task (T10a).

@@ -16,6 +16,13 @@ captures/
 *.keystore
 *.jks
 
+# Camera tooling
+.venv/
+__pycache__/
+.pytest_cache/
+*.tflite
+*.pth
+
 # IDE
 .idea/
 *.iml
