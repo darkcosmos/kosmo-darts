@@ -33,8 +33,11 @@ download after the MD5 check, loaded in an offline, read-only, capability-free c
 ## Tests
 - Requirements: CPU and GPU files list the same packages with the same versions apart from the three torch packages
   and their local suffix and hashes; every package line is pinned with `==` and has at least one `--hash`.
-- Dockerfile static checks: base image tag exact, MD5 present, `NANO_SHA256` empty makes the check fail,
-  `--require-hashes` used, no `pip install` without `-r`, the run flags of decision 10 in the header comment.
+- Dockerfile static checks: base image tag exact, MD5 present, `--require-hashes` used, no `pip install` without
+  `-r`, the run flags of decision 10 in the header comment.
+- Hash check: the weights check is a `sh` script in the Dockerfile `RUN` (extracted by the test, run with `sh` on a
+  temp file): exits non-zero and prints the SHA-256 when `NANO_SHA256` is empty or does not match, exits 0 when it
+  matches. Kosmo sees the real check at his first build (K3).
 - `gpu_check` with `torch.cuda.is_available` patched to `False` and `nvidia-smi` absent: prints the absence and
   `cuda available: False`, exits 1; patched to `True` with a fake device name: exits 0.
 

@@ -38,7 +38,8 @@ list (exact string after URL decoding, else 404); file paths are built from the 
 States with French messages, shown in the session list and the session screen: unreadable or invalid `truth.json`
 (cause), annotation file rejected by the strict reader (cause; the session is read-only and the file never
 overwritten), annotation file over 1 MiB, stale annotation (`truthSha256` differs: warning, editing allowed), no
-calibration photo (no judged dart with a photo), nothing to annotate (every entry voided or without photo), port in
+calibration photo (no judged dart with a photo), nothing to annotate (every entry voided or without photo: the session ignored by the split, CV3; listed, never
+hidden, with the label "Ignorée : aucune fléchette jugée" instead of a progress count, not openable), port in
 use (message on the terminal and exit code 2), save error (nothing lost on screen, retry on the next action).
 
 ## Tests
@@ -50,6 +51,8 @@ use (message on the terminal and exit code 2), save error (nothing lost on scree
 - Coordinates outside the real JPEG size (fixture JPEG headers of known size) refused.
 - Each error state above reaches the session list with its message; a rejected annotation file is unchanged after a
   write attempt; captures folder unchanged (hashes); the socket is bound to `127.0.0.1`.
+- Session with no judged dart (all voided, or all `photo: null`): present in the session list with the "Ignorée"
+  label, no "0/0" progress, and its open and write routes answer 4xx without creating a file (CV3).
 - `python3.13 -I -S -m kosmo_camera.annotate --help` works (stdlib only).
 
 ## Done when

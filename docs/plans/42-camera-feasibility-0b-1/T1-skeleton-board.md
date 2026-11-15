@@ -21,7 +21,8 @@ Create `tools/camera/` with the pinned CPU environment and pytest, the stdlib bo
 - Added `tools/camera/tests/test_board.py`, `test_config.py`.
 - Added `docs/rules/camera.md` (CV1 to CV17, wording from the root plan "Rules"), `docs/adr/0016-camera-feasibility-
   tooling.md` (two environments on 3.13, stdlib core, keypoints as objects, measures on the `.tflite` only, no OpenCV,
-  no model in the repo; alternatives from root "Approach").
+  no model in the repo; the training image delivered in PR A for the GPU check and rebuilt in PR B with the
+  training code and entry point, D11; alternatives from root "Approach").
 - Changed `.gitignore`: `.venv/`, `__pycache__/`, `.pytest_cache/`, `*.tflite`, `*.pth`.
 
 ## Depends on

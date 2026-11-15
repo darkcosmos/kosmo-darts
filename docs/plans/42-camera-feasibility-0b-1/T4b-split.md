@@ -33,7 +33,8 @@ under `captures-eval/` passed to `compute_split` raises). Constants from `config
   splits a volley between dev and eval).
 - Sessions with 0 judged darts (CV5) are ignored (CV3): 10 judged sessions plus 3 empty ones give the same `units`
   and sets as the 10 alone, and `counts.ignoredSessions` = 3; with 3 judged sessions plus 2 empty ones, session mode
-  still fails "at least 2 sessions per set" exactly as with the 3 alone (empty sessions never count); `set_of` on an
+  still fails "at least 2 sessions per set" exactly as with the 3 alone (empty sessions never count), so the
+  encoded and printed mode is "block" with the "more optimistic" flag set; `set_of` on an
   ignored session raises; printed output shows the ignored count, no name.
 - Lock: matching hash passes; one changed byte, wrong mode, malformed lock (unknown key, short hash) fail.
 - Printed output contains no session name (CV15).
