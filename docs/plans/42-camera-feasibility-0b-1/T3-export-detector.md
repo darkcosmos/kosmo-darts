@@ -25,12 +25,14 @@ CV4 (measures use only the `.tflite`), root plan "Approach, Export" and "Measure
 ## Tests
 - Slow: untrained Nano exports; file exists, SHA-256 and size match the file; LiteRT loads it; input shape matches
   `RESOLUTION`; outputs 300 boxes and 5 class logits.
-- Slow: on one generated image, LiteRT and eager PyTorch top-10 boxes agree within 1e-3 (bound of the `rfdetr` page).
+- Slow: random weights after `torch.manual_seed(42)`, one generated image from a fixed numpy seed (`7`): for the 10
+  highest-scoring queries, LiteRT and eager PyTorch agree within 1e-3 absolute on boxes and 0.1 on class logits (the
+  regression bounds quoted on the `rfdetr` LiteRT page), both written as constants in the test.
 - Decode (fast, fake output tensors): cxcywh to pixel centre with letterbox offsets, sigmoid, score order, an image
   not matching the aspect ratio.
 
 ## Done when
-`.venv/bin/python -m pytest tools/camera -q` and `.venv/bin/python -m pytest tools/camera -m slow -q` green;
+Python checks of root "Test plan" with `-m slow` green;
 `kosmo-detekt` exit 0. If the export fails with `litert-torch` 0.10.0: stop, commit nothing broken, report the error
 to main (issue rule: Kosmo decides).
 

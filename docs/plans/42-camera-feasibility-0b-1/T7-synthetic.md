@@ -29,7 +29,7 @@ CV1, CV2, CV5 (voided entries and a null photo in the generated sessions), CV10 
 - Video: frame count and duration match the spec; the dart appears at the planned frame (pixel difference in its box).
 
 ## Done when
-`.venv/bin/python -m pytest tools/camera -q` green (generation fast enough: whole suite under 2 minutes),
+Python checks of root "Test plan" green (generation fast enough: whole suite under 2 minutes),
 `kosmo-detekt` exit 0.
 
 ## Model

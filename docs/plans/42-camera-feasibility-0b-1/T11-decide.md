@@ -9,7 +9,9 @@ or a miss, plus the predicted calibration, as the input of every measure.
   `calibrate(points) -> Calibration | None` (best point per `calN` class above `tau_low`, `None` if one is missing,
   H from T8); `decide_volley(photos, detector, thresholds) -> list[DartDecision]` where `DartDecision` holds the dart
   number, announced `(segment, multiplier)` or miss, `flagged`, the chosen tip pixel and mm, score, calibration
-  result. Old darts: candidates within `match_radius_mm` of a tip announced earlier in the volley.
+  result. Old darts: candidates at a distance `<=` `match_radius_mm` of a tip announced earlier in the volley.
+  Scores compare with `>=` (`tau_low` and `tau_sure` included). Several candidates of one class: highest score wins;
+  equal scores: first in detector output order (stable sort). Default values from `config.py`.
 - Added tests `tools/camera/tests/test_decide.py` with a `FakeDetector` returning scripted points.
 
 ## Depends on
@@ -22,7 +24,9 @@ Flagged when the best new candidate score is in `[tau_low, tau_sure)` or when th
 
 ## Tests
 - Three darts in a volley: each photo shows the earlier tips; each decision picks the new one.
-- Candidate at 5.9 mm of an old tip is old, at 6.1 mm is new.
+- Candidate at 5.9 mm and at exactly 6.0 mm of an old tip is old, at 6.1 mm is new.
+- Score exactly `tau_low` gives a flagged candidate (not ignored).
+- Two `cal2` points on one photo: the higher score is used; two new tips with equal scores: the first one wins.
 - Score at `tau_sure` announced unflagged; just below flagged; below `tau_low` ignored, so a miss is announced.
 - Truth miss with no new candidate gives a miss (CV7 correct case); with a candidate above `tau_sure`, an announced
   value (the error case is counted in T13).
@@ -31,7 +35,7 @@ Flagged when the best new candidate score is in `[tau_low, tau_sure)` or when th
 - On a synthetic session with a perfect fake detector (truth points), every dart is correct and unflagged.
 
 ## Done when
-`.venv/bin/python -m pytest tools/camera -q` green, `kosmo-detekt` exit 0.
+Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
 
 ## Model
 sonnet. Why: rules CV5 to CV7 specified, fake detector tests.
