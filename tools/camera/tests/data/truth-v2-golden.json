@@ -1,0 +1,112 @@
+{
+  "format": "kosmo-capture-truth",
+  "version": 2,
+  "session": "20261031-140322",
+  "app": {
+    "id": "io.github.darkcosmos.kosmodarts.capture",
+    "version": "0.1.0"
+  },
+  "device": {
+    "manufacturer": "Gööglé",
+    "model": "Pixel \"7\" \\ a\u0001",
+    "sdk": 37
+  },
+  "clock": "elapsedRealtimeNanos",
+  "startedAt": {
+    "utc": "2026-10-31T14:03:22.123Z",
+    "monotonicNanos": 5000000000
+  },
+  "endedAt": {
+    "utc": "2026-10-31T14:03:28.223Z",
+    "monotonicNanos": 11100000000
+  },
+  "endReason": "STOP",
+  "video": {
+    "requestedQuality": "UHD",
+    "width": 3840,
+    "height": 2160
+  },
+  "photo": {
+    "width": 4080,
+    "height": 3072,
+    "timestampSource": "REALTIME"
+  },
+  "zoom": {
+    "requestedRatio": 2.4,
+    "ratio": 2.4
+  },
+  "volleys": [
+    {
+      "index": 1,
+      "video": "volley-001.mp4",
+      "start": {
+        "utc": "2026-10-31T14:03:22.123Z",
+        "monotonicNanos": 5000000000
+      },
+      "end": {
+        "utc": "2026-10-31T14:03:26.123Z",
+        "monotonicNanos": 9000000000,
+        "videoPositionMs": 3850
+      },
+      "empty": false,
+      "darts": [
+        {
+          "number": 1,
+          "segment": 20,
+          "multiplier": "TRIPLE",
+          "voided": false,
+          "entry": {
+            "utc": "2026-10-31T14:03:23.123Z",
+            "monotonicNanos": 6000000000,
+            "videoPositionMs": 850
+          },
+          "voidedAt": null,
+          "photo": {
+            "file": "dart-001.jpg",
+            "utc": "2026-10-31T14:03:23.165Z",
+            "monotonicNanos": 6042000000,
+            "videoPositionMs": 892
+          },
+          "gravity": {
+            "x": 0.1,
+            "y": -9.8,
+            "z": 0.25
+          }
+        },
+        {
+          "number": 2,
+          "segment": 5,
+          "multiplier": "SINGLE",
+          "voided": true,
+          "entry": {
+            "utc": "2026-10-31T14:03:24.123Z",
+            "monotonicNanos": 7000000000,
+            "videoPositionMs": 1850
+          },
+          "voidedAt": {
+            "utc": "2026-10-31T14:03:25.123Z",
+            "monotonicNanos": 8000000000,
+            "videoPositionMs": 2850
+          },
+          "photo": null,
+          "gravity": null
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "video": "volley-002.mp4",
+      "start": {
+        "utc": "2026-10-31T14:03:26.123Z",
+        "monotonicNanos": 9000000000
+      },
+      "end": {
+        "utc": "2026-10-31T14:03:28.123Z",
+        "monotonicNanos": 11000000000,
+        "videoPositionMs": 1900
+      },
+      "empty": true,
+      "darts": []
+    }
+  ]
+}
