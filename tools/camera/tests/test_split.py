@@ -257,3 +257,13 @@ def test_server_and_split_list_the_same_sessions(tmp_path):
     (tmp_path / "a-file.txt").write_text("x")
     store = SessionStore(tmp_path, tmp_path / "annotations", lambda: "00:00:00")
     assert {s.name for s in sp.list_sessions(tmp_path)} == set(store.listing()) == {"s-one", "s-two"}
+
+
+def test_committed_lock_is_valid_and_has_the_k1_counts_without_any_session_name():
+    path = Path(__file__).parent.parent / "config" / "split-lock.json"
+    lock = sp.read_lock(path)
+    assert lock["mode"] == "session"
+    assert lock["counts"]["dev"] == {"units": 2, "darts": 368}
+    assert lock["counts"]["eval"] == {"units": 2, "darts": 137}
+    assert lock["splitSha256"] == "56583910ac63ffebf2acc90f4935eb58a19e1c8784e5684398ab516a26008cbc"
+    assert path.read_bytes().endswith(b"}\n") and set(lock) == {"format", "version", "mode", "splitSha256", "counts"}
