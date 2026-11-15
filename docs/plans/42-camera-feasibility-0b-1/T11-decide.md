@@ -36,6 +36,10 @@ Flagged when the best new candidate score is in `[tau_low, tau_sure)` or when th
 - Missing `cal3` on one photo: flagged, value from the previous calibration; on the first photo: flagged, no value.
 - Voided entry between two darts and a dart with null photo are skipped.
 - On a synthetic session with a perfect fake detector (truth points), every dart is correct and unflagged.
+- Contract (D16): fake raw tensors `boxes [1,300,4]` and `logits [1,300,6]` decoded by T3's `detector.decode(boxes,
+  logits, width, height)` (the path `LiteRtDetector.detect` uses) for a non-square image: a query whose highest logit is slot 5 still yields its best of slots 0 to 4
+  (slot 5 never a class), and a box centre maps to x and y with independent scales (squash from 384x384), then
+  feeds `decide_volley` (T4 of the design review).
 - Same session with its annotation calibration segments removed or shifted: identical decisions (CV7 independent
   of the clicked calibration).
 

@@ -39,7 +39,12 @@ adapt so that slot k is `CLASS_NAMES[k]` (T3 contract).
 - T7 session with a 3 px drift from dart 4 (under threshold): calibration box centres of photos 4+ equal the
   drifted true points within 0.3 px after resizing; a second segment is honoured; a beyond photo refuses the build,
   and with `accept_drift` is dropped and counted; an unmeasurable photo is dropped and counted.
-- COCO `categories` ids 0 to 4 named `tip`, `cal1`..`cal4`; every annotation's `category_id` in that range.
+- COCO `categories` ids 0 to 4 named `tip`, `cal1`..`cal4`, equal to `model_spec.CLASS_NAMES` order; every
+  annotation's `category_id` in that range (T4 of the design review).
+- Written images keep the source aspect ratio (no padding or letterbox; the model squashes to
+  `model_spec.RESOLUTION`, 384).
+- Source check (A15): `flow.py`, `drift.py` and `dataset.py` import `segment_for` from `annotations` and define no
+  function of their own walking `fromDart` (AST scan of the three files).
 - Public import: class map applied, `drop-image` honoured, unknown class raises.
 - Source folders unchanged (hashes before and after).
 

@@ -14,7 +14,9 @@ read Kosmo's existing v1 files without loss, and keep the annotation tool workin
   separators=(",", ":"))`, used by T8b and T6c).
 - v2 strict rules: top-level keys exactly `format, version, session, truthSha256, calibrations, darts`;
   `calibrations` an array (may be empty); each item keys exactly `fromDart, photo, width, height, points`;
-  `fromDart` integer >= 1, first item exactly 1, strictly ascending; `photo`, `width`, `height`, `points` as v1.
+  `fromDart` integer >= 1, first item exactly 1, strictly ascending; `photo`, `width`, `height`, `points` as v1;
+  at most `MAX_SEGMENTS` = 64 items (named constant next to `MAX_BYTES`; the tool's recalibration answers 409 with a
+  French message at the cap).
   `validate_against`: every `photo` named in the truth; for items after the first, `fromDart` is a judged dart (CV5)
   and `photo` is that dart's photo. Version policy as v1 (any other version rejected, any change bumps it).
 - Changed `tools/camera/kosmo_camera/annotate/flow.py` and `server.py`: mechanical port to `calibrations`: the
@@ -23,6 +25,11 @@ read Kosmo's existing v1 files without loss, and keep the annotation tool workin
 - Changed `docs/camera/annotation-format.md`: title and policy for versions 1 and 2, new section "Version 2"
   (fields, segment semantics, migration table v1 to v2), example as v2; the v1 section kept as reference.
 - Changed `docs/rules/camera.md`: adds CV20 and the v1 sentence of CV16 (root plan "Rules").
+- Changed `docs/adr/0016-camera-feasibility-tooling.md`: new section "Annotation format v2 and migration" with the
+  content listed in root plan "Files and types added or changed" (ADR bullet, A13).
+- Added `tools/camera/tests/data/annotations-v1-tool-written.json`: written, before any code change, by the PR A
+  tool path (`flow.apply` plus `annotations.write_atomic` at 8d69f64, on a golden-like session: calibration and
+  three darts of each status); its generation is described in the notes.
 - Added `tools/camera/tests/data/annotations-v2-golden.json` (the doc's v2 example); tests in `test_annotations.py`,
   `test_annotate_flow.py`, `test_annotate_server.py`.
 
@@ -36,6 +43,8 @@ CV20, CV16, CV2, CV5, D8. `truthSha256` is copied unchanged by the migration; th
 - v1 golden decoded then encoded equals the v2 golden byte for byte (lossless); v2 golden equals its doc block.
 - 50 seeded random valid v1 files: migrate, encode, decode, then a test-only inverse gives the original v1 dict.
 - v1 with `calibration: null` gives `calibrations: []` and encodes back.
+- The tool-written v1 fixture decodes, migrates and round-trips to the same v1 dict (T2 of the design review).
+- 64 segments accepted, 65 rejected (`MAX_SEGMENTS` read from the module, not hardcoded).
 - v2 rejections, each with its JSON path: first `fromDart` 2, equal or descending `fromDart`, `fromDart` 0 or float,
   unknown key in a segment, `calibration` key in v2, `calibrations` key in v1, version 3, version 0.
 - `validate_against`: second segment on a voided dart or with another dart's photo rejected.

@@ -17,11 +17,14 @@ sessions and darts need it (D15), in the Python flow and server so every rule is
   - `next`, `previous`, `goto`: leave; pending points of an unsaved segment are dropped (no file change).
 - Changed `tools/camera/kosmo_camera/annotate/server.py` and `__main__.py`: option `--drift FILE` (optional);
   the file is read through `drift_file.decode` on every `GET /api/sessions` and session view, never written;
-  missing, invalid or over 1 MiB gives one list warning "Mesure de dérive illisible : <cause>" and no flags.
-  Per session (absent from the file: "Dérive non mesurée"; `segmentsSha256` differs from the current file: "Mesure
-  de dérive périmée : relancer la mesure"; `beyond` not empty: "À recalibrer à partir de la fléchette 59" or "... des
-  fléchettes 12, 59" from `suggested`; else "Dérive OK (max 0,4 mm)"; plus "N photos non mesurables" when N > 0). The
-  session view gives each dart `drift: "suggested" | "beyond" | "unmeasurable" | null` (null when stale or absent).
+  missing, invalid or over `drift_file.MAX_BYTES` gives one list warning "Mesure de dérive illisible : <cause>"
+  and no flags. Per session (absent from the file: "Dérive non mesurée"; `beyond` not empty: "À recalibrer à partir
+  de la fléchette 59" or "... des fléchettes 12, 59" from `suggested`; else "Dérive OK (max 0,4 mm)"; plus "N photos
+  non mesurables" when N > 0). When `segmentsSha256` differs from the current file (a recalibration since the
+  measure), the same labels stay shown followed by "(mesure périmée : relancer la mesure)", so the other suggested
+  darts are not lost (U7). The session view gives each dart `drift: "suggested" | "beyond" | "unmeasurable" | null`
+  and `driftStale: bool`. Segment lookups go through `annotations.segment_for` (A15); at `MAX_SEGMENTS` the 4th
+  click answers 409 "Nombre maximal de recalibrations atteint (64)", file unchanged (S9).
 - Changed `docs/rules/camera.md`: CV16 drift file sentence (root plan "Rules").
 - Changed tests `test_annotate_flow.py`, `test_annotate_server.py`.
 
@@ -39,9 +42,12 @@ segment photo size is the real JPEG size (D8). The tool never reads photos for d
 - Leaving with 2 pending points: file unchanged, no segment. A 5th click ignored.
 - Recalibrate on a voided entry is impossible (not a dart cursor); on the first dart it opens segment 0.
 - Tips of darts after 59 unchanged by any recalibration step.
-- Flags: each list label above; stale `segmentsSha256`; invalid, oversized and missing file give the warning and the
-  tool still serves; the flag file is unchanged after a session of actions (hash); unlisted session in the file
-  ignored.
+- Flags: each list label above; stale `segmentsSha256` keeps the suggested darts with "(mesure périmée : relancer la
+  mesure)" and `driftStale` true; invalid, oversized (`MAX_BYTES` + 1) and missing file give the warning and the
+  tool still serves; unlisted session in the file ignored.
+- Flag file replaced between two `GET /api/sessions` calls: the second shows the new flags; the flag file is
+  byte-identical after a session of actions (hash, T3 of the design review).
+- 64 segments: a new recalibration's 4th click answers 409, file unchanged.
 
 ## Done when
 Python checks of root "Test plan" green, `python3 -I -S -m kosmo_camera.annotate --help` works, `kosmo-detekt`

@@ -18,15 +18,23 @@ Kosmo's recalibration loop (D15).
 - Added `tools/camera/kosmo_camera/drift_file.py` (stdlib only): `encode`/`decode` of `drift.json`
   (`format` `"kosmo-camera-drift"`, `version` 1, `thresholdMm`, `sessions`: `session`, `label`, `segmentsSha256`,
   `maxDriftMm` or null, `beyond`, `suggested`, `unmeasurable`: ascending dart numbers); strict like T5 (unknown keys,
-  duplicates, types, 1 MiB cap); `write_atomic` as `annotations.write_atomic`.
+  duplicates, types, `MAX_BYTES` = 1 MiB named in the module); `write_atomic` as `annotations.write_atomic`.
+- Segment of a dart: `annotations.segment_for` only (A15). JPEG decoding: `Image.MAX_IMAGE_PIXELS` kept as is;
+  `DecompressionBombError`, `OSError`/truncated data and a decoded size different from the segment give the
+  `unreadable` or `size_mismatch` status, never an exception out of `measure_session` (S8).
 - Outputs, overwritten atomically each run (fixed path so the tool can point at it): `<runs>/drift/drift.json` and
   `<runs>/drift/drift-report.md`. Report: threshold and why (one line, CV19), parameters, then one row per session
   label `S01`... (session-name order): judged photos, segments, measured, unmeasurable per reason, max and median
-  drift px and mm, darts beyond (count), suggested start darts (numbers); totals; "Tout sous le seuil : oui|non".
-- Changed `tools/camera/config/defaults.json` (`DRIFT_MAX_MM` 1.0 unless Kosmo answers Q1 otherwise,
-  `DRIFT_COARSE_PX` 512, `DRIFT_PATCH_FRACTION` 0.06, `DRIFT_MIN_PEAK` 0.2), `config.py` and `test_config.py`.
+  drift px and mm, darts beyond (count), suggested start darts (numbers); totals; a table "Seuils candidats" with,
+  for each value of `DRIFT_CANDIDATES_MM`, the sessions and darts beyond (U11, Q1); "Tout sous le seuil : oui|non".
+- Changed `tools/camera/config/defaults.json` (`DRIFT_MAX_MM`: Kosmo's Q1 answer, 1.0 only if main confirms the
+  recommendation; `DRIFT_CANDIDATES_MM` [0.5, 1.0, 2.0], `DRIFT_COARSE_PX` 512, `DRIFT_PATCH_FRACTION` 0.06,
+  `DRIFT_MIN_PEAK` 0.2), `config.py` and `test_config.py` (the one test that pins each value, so a change is
+  intentional; every other test reads them through `config.py`, A16).
 - Changed `docs/rules/camera.md`: adds CV18, CV19; amends CV3 (`drift` exempt from the lock), CV9, CV12, CV14,
   CV15 (root plan "Rules").
+- Changed `docs/adr/0016-camera-feasibility-tooling.md`: new section "Tripod drift" with the content listed in root
+  plan "Files and types added or changed" (ADR bullet, A13).
 - Added tests `tools/camera/tests/test_drift.py`, `test_drift_file.py`.
 
 ## Depends on
@@ -41,7 +49,11 @@ CV18, CV19, CV15, CV5, D8. Shift sign: content position in the photo minus in th
 - T7 sessions with planned drift (none, 3 px translation, 0.5 degree roll, a later net move): each `d_i` within
   0.25 px of the truth; `drift_mm` within 0.05 mm of `calibration_error_mm` of the true views; reference photo 0.
 - Each unmeasurable reason: no calibration, other photo size, patch past the border, occluder on one corner
-  (`low_peak`), truncated JPEG. Status boundary: `drift_mm` exactly `DRIFT_MAX_MM` is ok, just above is beyond.
+  (`low_peak`), truncated JPEG, and a decompression bomb (`Image.MAX_IMAGE_PIXELS` patched low in the test only):
+  each a status, the run continues. Status boundary, with the threshold read from `config.py` (no literal):
+  `drift_mm` exactly `DRIFT_MAX_MM` is ok, just above is beyond.
+- Report: "Seuils candidats" table on a synthetic session with known drifts gives the expected counts per value.
+- `drift.json` of exactly `MAX_BYTES` read, one byte more rejected.
 - Compensation: `reference_points` equal segment points plus shifts; none when beyond or unmeasurable.
 - `suggested_starts`: beyond darts 12, 13, 14, 20 give 12, 20; an unmeasurable 13 does not split the run.
 - `require_clean`: raises when beyond, returns the count with `accept_drift`; clean set returns 0.

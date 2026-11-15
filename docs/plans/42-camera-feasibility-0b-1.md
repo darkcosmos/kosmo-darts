@@ -213,7 +213,7 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   recalibrate, run `drift` again); `--accept-drift` overrides and the run records the count. CV7 (and CV8) never use
   the clicked calibration: no dart or session is excluded from the main criterion.
 - CV20 Calibration segments (annotation format version 2): `calibrations` is an ordered list of segments
-  `{fromDart, photo, width, height, points}`; the first starts at dart 1, `fromDart` strictly ascending, each applies
+  `{fromDart, photo, width, height, points}`, at most `MAX_SEGMENTS` (64); the first starts at dart 1, `fromDart` strictly ascending, each applies
   from its `fromDart` until the next one. A version 1 file is read by the kept v1 reader and migrated without loss
   (a v1 `calibration` becomes the single segment from dart 1; `null` becomes an empty list). Writers write version 2
   only. Details in T5b.
@@ -223,14 +223,26 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
 - Added `tools/camera/`: `requirements-cpu.txt`, `requirements-gpu.txt`, `pytest.ini`, `Dockerfile`, `README.md`
   (pointer to `docs/camera/training.md`), `config/defaults.json` (every constant: `BOX_FRACTION`, split ratio and
   criteria, `SPLIT_BLOCK_VOLLEYS`, `MATCH_RADIUS_MM`, `CAL_MAX_ERROR_MM`, initial `TAU_LOW`/`TAU_SURE`, group bins,
-  event parameters, drift parameters `DRIFT_MAX_MM`, `DRIFT_COARSE_PX`, `DRIFT_PATCH_FRACTION`, `DRIFT_MIN_PEAK`
-  added by T8b; read only through `config.py`). Later, committed by developer-fix from Kosmo's pasted numbers:
+  event parameters, drift parameters `DRIFT_MAX_MM` (the single place of the Q1 value; no code or test embeds it),
+  `DRIFT_CANDIDATES_MM` (0.5, 1.0, 2.0: the report's per-candidate table for Q1), `DRIFT_COARSE_PX`,
+  `DRIFT_PATCH_FRACTION`, `DRIFT_MIN_PEAK` added by T8b; read only through `config.py`). Format caps stay next to
+  their readers, like `annotations.MAX_BYTES`: `annotations.MAX_SEGMENTS` = 64 (T5b) and `drift_file.MAX_BYTES` =
+  1 MiB (T8b), each tested at the cap and just above. Later, committed by developer-fix from Kosmo's pasted numbers:
   `config/split-lock.json` (mode, split file SHA-256, unit and judged-dart counts; no session name) and
   `config/frozen.json` (thresholds and model hash only, A3), before the eval run.
 - Added package `tools/camera/kosmo_camera/`: `config.py`, `board.py`, `truth.py`, `split.py`, `annotations.py` (v2 in
   T5b), `geometry.py`, `groups.py`, `synth.py`, `drift.py`, `drift_file.py`, `dataset.py`, `public_import.py`, `model_spec.py`, `train.py`, `gpu_check.py`, `export.py`,
   `detector.py`, `decide.py`, `video.py`, `events.py`, `metrics.py`, `tune.py`, `frozen.py`, `report.py`, `cli.py`, `__main__.py`,
-  `annotate/` (`flow.py`, `server.py`, `jpeg_size.py`, `static/`). The ADR is written by T1.
+  `annotate/` (`flow.py`, `server.py`, `jpeg_size.py`, `static/`). The segment of a dart is found by one function,
+  `annotations.segment_for` (T5b), imported by `flow.py`, `drift.py` and `dataset.py`, never re-implemented (checked
+  by a source test in T9).
+- ADR: `docs/adr/0016-camera-feasibility-tooling.md`, written by T1 (PR A). PR B adds two sections to it (A13):
+  T5b "Annotation format v2 and migration" (v1 to v2 change, CV20 segments, reader of both versions, v2-only
+  writer, rewrite only on the first saved change, segment cap, and the proof of the policy: v1 golden to v2 golden
+  byte for byte, a v1 file written by the PR A tool, 50 seeded v1 files round-tripped); T8b "Tripod drift" (method
+  CV18 with the alternatives rejected in "Approach, Tripod drift", compensation labels derived from the reference
+  photo of the segment, threshold as one constant pending Q1, `drift.json` as a local, regenerable, name-bearing file
+  written in the container and read by the stdlib tool, never pasted or committed, CV15).
 - Added tests `tools/camera/tests/` (pytest; marker `slow` for export and training smoke tests).
 - Added docs listed in "Scope". Changed `.gitignore`. Nothing else changes (`git diff origin/main -- app capture
   game-engine .github` stays empty).
@@ -345,7 +357,10 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     and prints "Tout sous le seuil : oui|non".
   - K5.3 Relaunch the annotation tool with `--drift ~/kosmo-runs/drift/drift.json`: the session list shows the
     sessions to recalibrate and from which darts (the 18h24 eval session should ask from dart 59); on each suggested
-    dart press "Recalibrer à partir de cette fléchette" (R) and click the 4 points; "Enregistré à HH:MM:SS".
+    dart press "Recalibrer à partir de cette fléchette" (R) and click the 4 points; "Enregistré à HH:MM:SS". After a
+    recalibration the session's flags stay shown with "(mesure périmée)" until `drift` runs again, so the other
+    suggested darts of that session are not lost. "Effacer" (U) on a saved recalibration removes its last point and
+    the segment from the file at once.
   - K5.4 Run `drift` again; repeat K5.3 and K5.4 until "Tout sous le seuil : oui"; paste the last drift report.
   - K5.5 Then on dev: dataset, train, export, measure, tune; paste the dev report. The squad iterates on dev reports
     only, then commits `frozen.json`.
@@ -463,6 +478,7 @@ PR A is delivered (K4 during part B), K5 (drift loop first) and K6 once PR B is.
 | D12 | Verdict per threshold: "clearly below" when the whole 95 % interval misses the target; else "close or above" (preliminary report, K0). | CV8 to CV11 |
 | D15 | Kosmo, 2026-11-15 (tripod drift found after K2): in PR B, before training: drift measure per photo against the calibration photo of its segment, in px and mm through the homography, report per session (max drift, darts beyond a threshold tied to `CAL_MAX_ERROR_MM`); sub-threshold drift compensated in the `cal1`-`cal4` labels and the mm measures; annotation format v2 with calibration segments (v1 reader kept, lossless migration); tool action "Recalibrer à partir de cette fléchette" and session list flags from the drift measure; order measure, recalibrate, measure again (all under the threshold), then training; no session excluded since CV7 does not use the clicked calibration. Squad's design: phase correlation with numpy FFT (JPEG decoding by Pillow, already pinned), flag file `drift.json` local like the split file, ordering enforced by a guard in `dataset` and `measure` with an explicit `--accept-drift` override recorded in the run. Threshold value pending Q1. | CV9, CV12, CV14 to CV16, CV18 to CV20 |
 | D16 | T3 result (a9576aa): export works with `litert-torch` 0.10.0; logits `[1,300,6]` with a trailing no-object slot; category ids 0-based in `CLASS_NAMES` order; squash resize to 384x384 (no letterbox). T9, T10 and T11 rely on this contract. | CV4 |
+| D17 | Design review of 5c4d06f: PR B records format v2 and the drift decisions in two sections of ADR 0016 (T5b, T8b; A13); caps `MAX_SEGMENTS` = 64 and `drift_file.MAX_BYTES` = 1 MiB, surfaced in the tool as "Mesure de dérive illisible : <cause>" (S9, A14); one `segment_for` (A15); `DRIFT_MAX_MM` read from config in every test, pinned once in `test_config.py` (A16, T1); Pillow decompression bomb, truncated or mismatched photos become a status, `Image.MAX_IMAGE_PIXELS` kept (S8); stale flags stay shown with "(mesure périmée)" (U7); picker marker, old points as hollow labelled crosses, recalibration button on its own row (U8 to U10); per-candidate threshold table in the drift report (U11). | CV16, CV18 to CV20 |
 
 ## Open questions
 
@@ -474,7 +490,9 @@ PR A is delivered (K4 during part B), K5 (drift loop first) and K6 once PR B is.
   "Approach, Drift threshold"). Options: A) 0.5 mm (a quarter of `CAL_MAX_ERROR_MM`: safest labels, but most
   "few pixels" drifts will ask for a recalibration); B) 1.0 mm, recommended (half: compensation handles the small
   drifts, a real move asks for a recalibration); C) 2.0 mm (fewest clicks; a drift that alone fails CV9 would be
-  compensated without a click).
+  compensated without a click). The first drift report gives, for each of these three values, the number of
+  sessions and darts beyond (`DRIFT_CANDIDATES_MM`), so Kosmo can answer with his own numbers; his answer changes
+  `DRIFT_MAX_MM` only.
 - P4 (information for Kosmo, not blocking): "stdlib + numpy" is read as "no new library": the drift computation is
   numpy only, but JPEG decoding needs Pillow, already pinned and in the image. So `drift` runs in the container, not
   with the bare `python3` of WSL; the annotation tool stays stdlib and only reads `drift.json`.
