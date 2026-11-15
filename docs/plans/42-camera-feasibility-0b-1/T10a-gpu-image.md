@@ -25,9 +25,8 @@ T1.
 
 ## Rules
 Decisions 9 and 10, D6, D7 (no `USER`: uid 0 inside rootless Docker is Kosmo's own uid; reasons in root
-"Decisions"), D10. `repo.roboflow.com` is not reachable from the sandbox: the SHA-256 is pinned from the MD5-checked
-file at Kosmo's first build (step K3); until then the build fails with the printed hash and the message to report it
-(an empty `NANO_SHA256` always fails). Notes state the residual risk: the weights are a pickle, trusted on first
+"Decisions"), D10. `repo.roboflow.com` is not reachable from the sandbox: the SHA-256 was pinned from the MD5-checked
+file at Kosmo's first build (step K3, `d8d6b9ee...57440d`); an empty or different `NANO_SHA256` still fails the build. Notes state the residual risk: the weights are a pickle, trusted on first
 download after the MD5 check, loaded in an offline, read-only, capability-free container.
 
 ## Tests
@@ -52,5 +51,5 @@ sonnet. Why: container and requirements wiring with given flags, URL and hashes;
 - Deviation: `torchvision==0.29.1+cu130` (not 0.29.2): the cu130 index has no 0.29.2+cu130 (latest 0.29.1). torch 2.14.1+cu130 and torchao 0.18.0+cu130 match the CPU file. All other pins identical to `requirements-cpu.txt`.
 - `requirements-gpu.txt` also pins the wheels that the cu130 torch pulls in (nvidia-* runtime wheels, triton 3.8.0, cuda-bindings, cuda-pathfinder, cuda-toolkit) from PyPI. Generated 2026-11-15 with `pip install --dry-run --report` against the cu130 index (+ PyPI) on linux x86_64 cp313; one SHA-256 per wheel.
 - Dockerfile: weights check is the `RUN <<'EOF'` heredoc (needs BuildKit, default in current Docker; `# syntax=docker/dockerfile:1`). The script reads `W` (default `/opt/weights/rf-detr-nano.pth`) and `NANO_SHA256`; tests run it with `sh` on a temp file, substituting the MD5. Added `PYTHONDONTWRITEBYTECODE`, `PIP_DISABLE_PIP_VERSION_CHECK` env and `--tmpfs /tmp` in the run command header (read-only root). Weights download uses python urllib (slim has no curl).
-- Not verifiable here: `python:3.13.18-slim` tag existence, the repo.roboflow.com download, the image build. `NANO_SHA256` is pinned at Kosmo's first build (K3).
+- Not verifiable here: `python:3.13.18-slim` tag existence, the repo.roboflow.com download, the image build. `NANO_SHA256` is now pinned from Kosmo's first build (K3, GPU check OK on an RTX 4070 SUPER).
 - Versions table for the PR (official source checked): torch 2.14.1+cu130, torchvision 0.29.1+cu130, torchao 0.18.0+cu130 (https://download.pytorch.org/whl/cu130/); nvidia-* wheels, triton 3.8.0, cuda-bindings 13.5.0, cuda-pathfinder 1.9.0, cuda-toolkit 13.0.3.0 (https://pypi.org); python:3.13.18-slim (Docker Hub official image); RF-DETR nano weights (https://repo.roboflow.com/rfdetr/nano_coco/checkpoint_best_regular.pth, MD5 from rfdetr 1.12.1).

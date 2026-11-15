@@ -2,8 +2,8 @@
 # Training image of the camera tooling (ADR 0016, decisions 6, 7, 9, 10 and 14). GPU check only for now: no entry
 # point; the training entry point comes with PR B and the image is rebuilt then.
 #
-# Build, from the repository root (the first build fails once with the weights SHA-256: rebuild with it, see below):
-#   docker build -f tools/camera/Dockerfile -t kosmo-camera:gpu --build-arg NANO_SHA256=<sha256> tools/camera
+# Build, from the repository root (the weights SHA-256 is pinned in NANO_SHA256 below; a different file fails the build):
+#   docker build -f tools/camera/Dockerfile -t kosmo-camera:gpu tools/camera
 #
 # Run (decision 10: CDI access to the GPU only, no network, no capability, runs writable, tmpfs caches):
 #   docker run --rm --device nvidia.com/gpu=all --network none --cap-drop ALL --security-opt no-new-privileges \
@@ -17,7 +17,7 @@
 # loaded only in an offline, read-only, capability-free container.
 FROM python:3.13.18-slim
 
-ARG NANO_SHA256=""
+ARG NANO_SHA256="d8d6b9ee57d4d0ed2b1f305163624712a0532cb7bce0c747317984fc5457440d"
 ENV HOME=/tmp TORCH_HOME=/tmp/torch HF_HOME=/tmp/hf MPLCONFIGDIR=/tmp/mpl HF_HUB_OFFLINE=1 \
     PYTHONDONTWRITEBYTECODE=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 
