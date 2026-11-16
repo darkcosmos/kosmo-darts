@@ -1,6 +1,6 @@
 # T13b: Preliminary report
 
-Status: on hold (D30): the report gains the per-photo calibration measure (ADR 0017); revised at plan update P2.
+HELD by D30: revised at P2; the drift summary is replaced and the report gains the per-photo CV9 measure (ADR 0017).
 
 ## Goal
 Write the numbers-only preliminary report of decision K0 (Markdown to paste, JSON for the squad), with its limits

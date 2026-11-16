@@ -1,6 +1,6 @@
 # T9d: Constrained tip pseudo-labels of v17 (CV23)
 
-Status: on hold (D30): depends on T9o; revised at plan update P2 (root plan "Tasks").
+HELD by D30: revised at P2; depends on T9o and T9c (root plan "Tasks").
 
 ## Goal
 Turn each whole-dart box of `dart-tip-detection-v17i-coco` into a tip label predicted by MA (the `A/full` export,

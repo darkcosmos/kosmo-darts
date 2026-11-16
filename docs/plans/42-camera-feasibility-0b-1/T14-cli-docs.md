@@ -1,6 +1,6 @@
 # T14: CLI and run chain
 
-Status: on hold (D30): chains the held tasks; revised at plan update P2 (root plan "Tasks").
+HELD by D30: the drift guard parts ("refused while beyond") are replaced at P2; chains the held tasks.
 
 ## Goal
 One command line for Kosmo with every step, including the 13-step run chain of root "Approach, Three trainings, run

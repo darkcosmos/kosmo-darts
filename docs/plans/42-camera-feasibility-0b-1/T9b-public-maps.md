@@ -1,6 +1,6 @@
 # T9b: Public class map and datasets list from Kosmo's message (D23)
 
-Status: on hold (D30, Kosmo's priority), although it does not depend on labels; revised at plan update P2.
+HELD by D30: Kosmo's priority only, it does not depend on labels; revised at P2.
 
 ## Goal
 Commit the real class map and the six `datasets.md` rows exactly as below, copied from Kosmo's message (root D23).

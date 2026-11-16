@@ -1,6 +1,6 @@
 # T13: Metrics, tuning, frozen thresholds and eval guard
 
-Status: on hold (D30): CV9 becomes per photo; revised at plan update P2 (root plan "Tasks").
+HELD by D30: the drift guard and compensation parts (CV9, CV12, CV14 via CV19) are replaced at P2; CV9 becomes per photo.
 
 ## Goal
 Aggregate per-dart, per-volley and per-event results into the rates, intervals and breakdowns the issue asks for,

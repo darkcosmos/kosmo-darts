@@ -21,7 +21,8 @@ whether the board moves durably between darts (H3), and print the verdict of the
     "Approach, Diagnosis decision rule").
 - Changed `diagnostic_file.py`: optional per photo `videoMm` (`O`) and per session `mapping` residuals.
 - Changed `defaults.json`, `config.py`, `test_config.py`: `VIDEO_WINDOW_STEP_MS` 100, `DIAG_MOVE_MM` 1.0,
-  `DIAG_MIN_SHARE` 0.10, `DIAG_MIN_VIDEO` 10, `MAP_MIN_PAIRS` 3, `MAP_MAX_RESIDUAL_PX` 2.0.
+  `DIAG_MIN_SHARE` 0.10, `DIAG_MIN_VIDEO` 10, `MAP_MIN_PAIRS` 3, `MAP_MAX_RESIDUAL_PX` 2.0; each pinned once, in
+  `test_config.py` only (T3).
 - Changed `docs/rules/camera.md`: CV28 video part, adds CV29.
 - Changed tests `test_diagnose.py`.
 
@@ -40,6 +41,10 @@ CV28, CV29, CV30, CV27, CV15. Every threshold is read from `config.py`; none is 
 - Video method not validated (frames made unregistrable): automatic `O`, `V`, `W` reported "non mesurable".
 - Verdict: each CV29 branch on scripted values, thresholds at the boundary (exactly `DIAG_MIN_SHARE`,
   exactly `VALIDATION_MIN_SHARE`), "non concluant" for `R` p95 above `CLICK_REPEAT_MAX_MM` and for 29 dev controls.
+- Combinations (T1, the CV29 lines are independent): H1 with "photos déplacées" (both lines, "Suite proposée" =
+  T16a used as per-photo calibration); H2 and H3 together; H1, H2 and H3 together; "non concluant" with values
+  that would also give H1 and H2: only "non concluant" is printed and no other line.
+- The T15i K5 regression session gives the H1 line.
 - Report privacy scan as T15i.
 
 ## Done when

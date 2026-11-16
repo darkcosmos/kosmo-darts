@@ -18,9 +18,16 @@ extract the video frame of each sampled dart about 1 s before its entry (CV27), 
   order (rotation metadata ignored, D8); `main()` for `python -m kosmo_camera.video_frames --captures DIR
   --annotations DIR --split FILE --out DIR`: for the video darts of every session writes
   `<out>/<session>/video-NNN.jpg` (Pillow, quality 95) and `<out>/frames.json`; prints counts only (frames
-  written, missing per reason).
+  written, missing per reason, the line "Images vidéo absentes : N" when N > 0).
+- Bounded work on Kosmo's videos (S13): `frame_at` stops after `VIDEO_MAX_DECODED_FRAMES` decoded frames per call
+  and refuses a video file above `VIDEO_MAX_BYTES`; either gives `video_unreadable`. Any PyAV or Pillow error while
+  opening, seeking or decoding (`av.error.FFmpegError`, `OSError`, `ValueError`, `MemoryError`) is caught per dart
+  and becomes `video_unreadable`; the run always goes on with the next dart and session and ends with exit 0
+  (non-zero only for a bad argument, split or lock).
 - Changed `tools/camera/config/defaults.json`, `config.py`, `test_config.py`: `CONTROL_DEV_STRIDE` 10,
-  `CONTROL_EVAL_VIDEO_FIRST` 55, `CONTROL_EVAL_VIDEO_LAST` 60, `VIDEO_BEFORE_ENTRY_MS` 1000.
+  `CONTROL_EVAL_VIDEO_FIRST` 55, `CONTROL_EVAL_VIDEO_LAST` 60, `VIDEO_BEFORE_ENTRY_MS` 1000,
+  `VIDEO_MAX_DECODED_FRAMES` 20000 (11 min at 30 fps, far above a volley), `VIDEO_MAX_BYTES` 512 MiB; each pinned
+  once in `test_config.py`.
 - Changed `docs/rules/camera.md`: adds CV26, CV27; CV15 sentence on `frames.json`.
 - Added tests `test_control.py`, `test_frames_file.py`, `test_video_frames.py` (videos generated with PyAV).
 
@@ -41,6 +48,9 @@ CV26, CV27, CV15, CV3, D8. Missing-frame reasons: `no_position`, `before_start`,
 - `frames.json` strict reader (unknown key, cap and cap + 1, bad file name); output folder holds only listed files.
 - `main()` in a subprocess on a T7 session with a generated video: files and manifest written, counts printed,
   no session name printed.
+- Bounds and corrupt input (S13): a truncated video and a file of random bytes give `video_unreadable` for their
+  darts while the next session's frames are still written, exit 0; `VIDEO_MAX_DECODED_FRAMES` patched to 5 on a
+  20-frame video gives `video_unreadable`; a session where every frame is missing is listed with only `missing`.
 
 ## Done when
 Python checks of root "Test plan" green (CI command too), `python3 -I -S -c "import kosmo_camera.control,

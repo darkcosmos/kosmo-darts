@@ -1,6 +1,6 @@
 # T9c: Calibration-point pseudo-labels of public images (CV23)
 
-Status: on hold (D30): depends on T9o; revised at plan update P2 (root plan "Tasks").
+HELD by D30: the compensated-calibration parts are replaced at P2; depends on T9o (root plan "Tasks").
 
 ## Goal
 Give every public image of versions A and B the `cal1`..`cal4` labels predicted by M0 (the `sans/full` export,

@@ -1,6 +1,6 @@
 # T14b: Training doc and feasibility report template
 
-Status: on hold (D30): documents the held tasks; revised at plan update P2 (root plan "Tasks").
+HELD by D30: revised at P2; documents the held tasks (root plan "Tasks").
 
 ## Goal
 Write Kosmo's run instructions in `docs/camera/training.md` (French) for the T14 CLI, with "Trois entraînements" as

@@ -8,19 +8,27 @@ alternate, registered by the automatic measure or by the control clicks, with th
 - Changed `tools/camera/kosmo_camera/annotate/server.py`: option `--diagnostic FILE` (read with the stdlib strict
   reader of `diagnostic_file.py`, T15i; sessions absent from the file are ignored, a session whose
   `segmentsSha256` or `controlsSha256` differs from the current annotation file is marked "Diagnostic périmé :
-  relancer le diagnostic (K7.4)"). Route `GET /api/visual/<session>`: per diagnosed photo `dart`,
-  `referencePhoto`, the two 3x3 matrices "Automatique" (from `autoPoints`) and "Clics de contrôle" (from
-  `controlPoints`) mapping the measured photo onto the reference photo, computed in Python (`homography.py`,
-  stdlib, 8x8 Gaussian elimination with partial pivoting, refuses a near-singular system), and the numbers
-  `autoPx`, `autoMm`, `trueMm`, `errorMm`. Same hardening as the existing routes (127.0.0.1 only, Host and token
-  checks, served files only from the session's capture folder).
+  relancer le diagnostic (K7.4)"). Route `GET /api/visual/<session>`: the session name is resolved through the
+  session listing like every T6a route (unlisted name, encoded `..`, `/`, backslash, NUL: 404 as T6a). For a
+  listed session it always answers 200 with a `state` the page shows in French (S12): `ok`, "Diagnostic périmé :
+  relancer le diagnostic (K7.4)", "Pas de diagnostic pour cette session : relancer le diagnostic (K7.4)"; with
+  `ok`, per diagnosed photo (dart order) `dart`, `referencePhoto`, the two 3x3 matrices "Automatique" (from
+  `autoPoints`) and "Clics de contrôle" (from `controlPoints`), each null with "Non mesurable" when its points are
+  missing or the system is near-singular, mapping the measured photo onto the reference photo, computed in Python
+  (`homography.py`, stdlib, 8x8 Gaussian elimination with partial pivoting), the numbers `autoPx`, `autoMm`,
+  `trueMm`, `errorMm`, `start` = index of the photo with the largest `errorMm`, and `nextAbove[i]` = index of the
+  next photo after `i` (wrapping) with `errorMm` > `VALIDATION_MAX_MM`, or null (U20, computed by the server
+  function `next_above`). Same hardening as the existing routes (127.0.0.1 only, Host and Origin checks as T6a,
+  served files only from the session's capture folder).
 - Added `tools/camera/kosmo_camera/annotate/homography.py` (stdlib only).
 - Changed `annotate/static/app.js`, `index.html`, `style.css`: screen "Contrôle visuel" (key V, button "Contrôle
   visuel (V)") of root plan "Screens and states", item "Visual check": the two images stacked, alternating every
   `VISUAL_PERIOD_MS` (700); Space pauses; keys 1, 2, 3 choose "Automatique", "Clics de contrôle", "Aucun" (applied
-  with CSS `matrix3d`); arrows go to the previous or next diagnosed photo; the line "Décalage automatique : … px
-  (… mm) · d'après les clics : … mm · écart : … mm"; "Non mesurable" when a matrix is missing. Without
-  `--diagnostic`: "Contrôle visuel : indisponible (option --diagnostic absente)".
+  with CSS `matrix3d`); opens on `start` (largest gap); arrows go to the previous or next diagnosed photo; key N
+  jumps to `nextAbove` ("Aucune autre photo au-delà de 0,5 mm" when null); position line "Photo i / n"; the line
+  "Décalage automatique : … px (… mm) · d'après les clics : … mm · écart : … mm"; "Non mesurable" when a matrix is
+  missing; the route `state` text when not `ok`. Without `--diagnostic`: "Contrôle visuel : indisponible (option
+  --diagnostic absente)".
 - Changed tests `test_annotate_server.py`, `test_annotate_static.py`; added `test_homography.py`.
 
 ## Depends on
@@ -32,10 +40,16 @@ CV16 (local only, 127.0.0.1, images never leave the PC), CV15 (`diagnostic.json`
 ## Tests
 - Homography: identity; a known translation, rotation, scale and perspective rebuilt from 4 points within 1e-9;
   collinear points refused.
-- Server: route with a diagnostic file written by the test; stale hashes give the "périmé" text; session not in
-  the file ignored; unknown session 404; Host or token wrong 403; `--diagnostic` with a file over the cap or with
-  an unknown key refused at start with a one-line message.
-- Static: strings, keys V, Space, 1, 2, 3, arrows bound; `matrix3d` built from the server numbers only; T6b scan.
+- Server: route with a diagnostic file written by the test; stale hashes give 200 with the "périmé" state; a
+  listed session absent from the file gives 200 with "Pas de diagnostic"; a photo with null `autoPoints` gives
+  "Non mesurable" for that matrix; the T6a path attacks (encoded `..`, `/`, backslash, NUL, unlisted name) on
+  `GET /api/visual/<session>` each 404 with no file read; Host or Origin wrong 403 (S12); `--diagnostic` with a
+  file over the cap or with an unknown key refused at start with a one-line message.
+- `next_above` and `start` on a scripted diagnostic (U20): errors [0.1, 0.9, 0.2, 0.7]: start 1, next above from 1
+  is 3, from 3 wraps to 1; with a single photo above: null from that photo, that photo from any other; none above:
+  null;
+  boundary exactly 0.5 is not above.
+- Static: strings, keys V, N, Space, 1, 2, 3, arrows bound; `matrix3d` built from the server numbers only; T6b scan.
 - What only Kosmo can check: root plan "How Kosmo verifies", checklist K7.C (visual check lines).
 
 ## Done when

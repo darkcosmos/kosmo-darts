@@ -27,7 +27,8 @@ as numbers only (D30 point 2 (a) and (c), CV28).
   per photo `dart`, `referencePhoto`, `autoPoints` or null with `reason`, `controlPoints`, `autoPx`, `autoMm`,
   `trueMm`, `errorMm`.
 - Changed `defaults.json`, `config.py`, `test_config.py`: `VALIDATION_MAX_MM` 0.5, `VALIDATION_MIN_SHARE` 0.95,
-  `PEAK_EXCLUSION` 3, `CLICK_REPEAT_MAX_MM` 0.35, `DIAG_MIN_CONTROLS` 30.
+  `PEAK_EXCLUSION` 3, `CLICK_REPEAT_MAX_MM` 0.35, `DIAG_MIN_CONTROLS` 30; each value pinned once, in
+  `test_config.py` only; every other test reads it from `config` (T3, as A16).
 - Changed `docs/rules/camera.md`: adds CV28 (photo part); CV15 sentence on `diagnostic.json`.
 - Added tests `test_diagnose.py`, `test_diagnostic_file.py`; changed `test_drift.py`.
 
@@ -41,6 +42,11 @@ CV28, CV9 metric, CV13, CV15, CV4 (reads every session like `drift`; nothing is 
 - T7 session with planned drift and exact "control clicks" (true points): `T` equals the planned drift mm within
   0.05; `E` small for small shifts. Periodic trap: a synthetic board shifted by one wire spacing near a corner,
   built so the coarse step locks on the wrong wire: `E` large, `E_seeded` small, location "recherche grossière".
+- K5 regression (T2), named `test_cv28_k5_wrong_shift_flags_measure`: a synthetic session where the board does
+  not move (true `T` 0) but the CV18 measure locks onto the neighbouring wire on most photos (periodic trap, darts
+  added during the volley), as in K5 (almost every photo "beyond", the real move not seen); a real 2 mm move from
+  dart 20 also planted: the diagnosis gives `E` above `VALIDATION_MAX_MM` on those photos, `T` about 0 before dart
+  20 and about 2 mm after, and the share feeding CV29 makes H1 "mesure fausse" (verdict line checked in T15j).
 - Second peak on a two-peak correlation: ratio equals the hand value.
 - `R` on reference photos with clicks offset by 1 px: equals the CV9 error of that offset.
 - Partial control: excluded from `T` and `E`, counted, visible points listed.

@@ -9,7 +9,8 @@ retire the K5 drift loop from the guide (D30, D31).
   calibration" holding K7.0 to K7.3 and the checklist K7.C, in French, copied from root plan "How Kosmo verifies"
   (commands as written there; the `docker run` line keeps `--network none`, `--cap-drop ALL`,
   `no-new-privileges`, `--read-only` and `~/kosmo-data` mounted `:ro`). One sentence says the former K5 loop is
-  retired and why (D30).
+  retired and why (D30). Until T15l, a line "K7.4 à K7.6 : le diagnostic arrive dans la prochaine livraison" so the
+  tool's final instruction (K7.4) points to an existing place.
 - Changed `tools/camera/tests/test_training_doc.py`: the same checks moved to the new section (no check dropped):
   the `video_frames` command parses with its parser, the annotate command (with `--split`, `--frames`) parses with
   its parser, the `docker run` block keeps the flags and read-only data mount, the steps K7.0 to K7.3 and the
