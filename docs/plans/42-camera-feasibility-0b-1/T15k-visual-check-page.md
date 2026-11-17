@@ -1,8 +1,9 @@
-# T15k: Tool page, visual check: reference and measured photo alternating, registration applied
+# T15k: Tool page, visual check: reference and measured photo alternating, alignment applied
 
 ## Goal
 Let Kosmo see with his own eyes, on his PC only, whether a photo moved: the reference photo and the measured photo
-alternate, registered by the automatic measure or by the control clicks, with the shift shown (D30 point 3).
+alternate, aligned by the automatic measure or by the control clicks, with the shift shown (D30 point 3). The
+French text says « alignement », never « recalage », which names the snap only (U30, D45).
 
 ## Files
 - Changed `tools/camera/kosmo_camera/annotate/server.py`: option `--diagnostic FILE` (read with the stdlib strict
@@ -12,8 +13,8 @@ alternate, registered by the automatic measure or by the control clicks, with th
   session listing like every T6a route (unlisted name, encoded `..`, `/`, backslash, NUL: 404 as T6a). For a
   listed session it always answers 200 with a `state` the page shows in French (S12): `ok`, "Diagnostic périmé :
   relancer le diagnostic (K7.4)", "Pas de diagnostic pour cette session : relancer le diagnostic (K7.4)"; with
-  `ok`, per diagnosed photo (dart order) `dart`, `referencePhoto`, the two 3x3 matrices "Automatique" (from
-  `autoPoints`) and "Clics de contrôle" (from `controlPoints`), each null with "Non mesurable" when its points are
+  `ok`, per diagnosed photo (dart order) `dart`, `referencePhoto`, the two 3x3 matrices `auto` (from
+  `autoPoints`) and `clicks` (from `controlPoints`), each null with "Non mesurable" when its points are
   missing or the system is near-singular, mapping the measured photo onto the reference photo, computed in Python
   (`homography.py`, stdlib, 8x8 Gaussian elimination with partial pivoting), the numbers `autoPx`, `autoMm`,
   `trueMm`, `errorMm`, `start` = index of the photo with the largest `errorMm`, and `nextAbove[i]` = index of the
@@ -23,7 +24,7 @@ alternate, registered by the automatic measure or by the control clicks, with th
 - Added `tools/camera/kosmo_camera/annotate/homography.py` (stdlib only).
 - Changed `annotate/static/app.js`, `index.html`, `style.css`: screen "Contrôle visuel" (key V, button "Contrôle
   visuel (V)") of root plan "Screens and states", item "Visual check": the two images stacked, alternating every
-  `VISUAL_PERIOD_MS` (700); Space pauses; keys 1, 2, 3 choose "Automatique", "Clics de contrôle", "Aucun" (applied
+  `VISUAL_PERIOD_MS` (700); Space pauses; keys 1, 2, 3 choose "Alignement automatique", "Alignement d'après les clics", "Aucun alignement" (applied
   with CSS `matrix3d`); opens on `start` (largest gap); arrows go to the previous or next diagnosed photo in dart
   order (the server's list order, index − 1 and + 1, no wrap past the ends); key N jumps to `nextAbove` ("Aucune
   autre photo au-delà de 0,5 mm" when null); position line "Photo i / n" with `i` = shown index + 1 in that same
@@ -38,7 +39,7 @@ T15i, T15g.
 
 ## Rules
 CV16 (local only, 127.0.0.1, images never leave the PC), CV15 (`diagnostic.json` local), CV28. U24 (D42): arrows
-and "Photo i / n" follow dart order.
+and "Photo i / n" follow dart order. U30 (D45): « alignement » wording.
 
 ## Tests
 - Homography: identity; a known translation, rotation, scale and perspective rebuilt from 4 points within 1e-9;
@@ -56,7 +57,8 @@ and "Photo i / n" follow dart order.
   sorted by `dart` (7, 19, 31); `start` and every `nextAbove` value index that sorted list, so "Photo i / n" of the
   page (i = index + 1) matches the dart rank; the page's arrow handlers use index − 1 and + 1 on that list only
   (static check: no other ordering in `app.js`), stopping at the ends.
-- Static: strings, keys V, N, Space, 1, 2, 3, arrows bound; `matrix3d` built from the server numbers only; T6b scan.
+- Static: strings, keys V, N, Space, 1, 2, 3, arrows bound; « recalage » and « recalé » absent from the visual
+  check strings (U30); `matrix3d` built from the server numbers only; T6b scan.
 - What only Kosmo can check: root plan "How Kosmo verifies", checklist K7.C (visual check lines).
 
 ## Done when

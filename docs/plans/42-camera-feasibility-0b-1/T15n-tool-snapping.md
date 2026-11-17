@@ -21,32 +21,42 @@ keep the tool starting without numpy and Pillow, and prepare the assisted flow t
 - Changed `kosmo_camera/synth.py`: `import av` moves into `_write_video` (comment: the snap tests run on 3.14
   without PyAV); behavior unchanged.
 - Added `tools/camera/kosmo_camera/annotate/snapping.py` (stdlib at import time): `Snapper` with `available`
-  (lazy `importlib.import_module("kosmo_camera.snap")`, `ImportError` gives unavailable, never a crash),
+  (lazy `importlib.import_module("kosmo_camera.snap")` and `kosmo_camera.luma`; only `ModuleNotFoundError` whose
+  name is numpy or PIL gives unavailable, any other import error propagates, A32),
   `snap(image_path, start)` and `propose(image_path, points)` (each point snapped from its old position; `null`
-  stays `null`); a luma cache keyed by resolved path and mtime, at most `SNAP_CACHE_IMAGES` images (LRU).
+  stays `null`); images decoded by `luma.decode_luma` only, an unreadable one leaves the point at the click,
+  `unsnapped` with reason `unreadable`, never an exception (S14); a luma cache keyed by resolved path and mtime, at
+  most `SNAP_CACHE_IMAGES` images (LRU).
   Paths come only from the session listing (T6a resolution), never from the request.
 - Changed `annotate/flow.py`, `annotate/server.py`: pending calibration and recalibration points become 4 slots
   with proposals and `snap` statuses as root "Screens and states", item "Assisted point screen": recalibration
-  proposals = the segment in force; a click replaces the nearest slot or fills the first empty one and is snapped
-  at once; keys 1 to 4 select, H hides, U undoes; Entrée (`save` action) writes the segment with its `snap` only
-  when 4 points are ready (snapped or clicked; `hide` refused with 409 on these screens, CV20); leaving drops pending
-  slots (U16). Snapper unavailable: `calibrate` and `save` refused with 409 "Recalage indisponible", tips
-  unchanged; `--help` prints « Recalage : disponible » or « Recalage : indisponible (numpy ou Pillow absent) ».
-- Changed `docs/adr/0016-camera-feasibility-tooling.md`: section "Assisted click" (decision 5 amended, the options
-  and their costs of root "Approach, Where the snapping runs", D43).
+  proposals = the segment in force; a click goes to the slot named by the pure function
+  `flow.click_target(slots, click, selected)` (CV31 click rule, U27, constant `CLICK_REPLACE_RADIUS_PX` 100 in
+  `defaults.json`, pinned once in `test_config.py`) and is snapped at once, or is refused with 409 and its text;
+  keys 1 to 4 select, U undoes; `hide` refused with 409 on these screens (CV20; the CV31 hide rule is T15d's); Entrée (`save` action, carrying the open item) writes the segment with its `snap` only when 4 points are
+  ready (snapped or clicked), else 409 « Points prêts : n / 4 », and 409 « Photo déjà enregistrée » when the item
+  is no longer open (U29); leaving drops pending slots (U16). Snapper unavailable: `calibrate` and `save` refused
+  with 409 "Recalage indisponible", tips unchanged; `--help` prints « Recalage : disponible » or « Recalage :
+  indisponible (numpy ou Pillow absent) ».
+- Changed `docs/adr/0016-camera-feasibility-tooling.md`: section "Assisted click" (ADR decision 2 and plan
+  decision 5 amended, the options and their costs of root "Approach, Where the snapping runs", D43), and decision 2
+  gains the line "Amended: see section Assisted click (D43, D44)" (A31). Changed `docs/rules/camera.md`: CV16 gains
+  the "After D39 and D43" sentence of root "Rules" (A31).
 - Changed tests `test_annotate_flow.py`, `test_annotate_server.py` (fake `Snapper`), `test_requirements.py`
-  (the two new files as root "Test plan", T15n entry), `test_synth.py` (import and render with `av` blocked);
-  added `test_annotate_snapping.py`.
+  (the two new files as root "Test plan", T15n entry), `test_synth.py` (import and render with `av` blocked),
+  `test_plan_docs.py` (A31 doc test), `test_drift.py` (static check adds `annotate/snapping.py`); added
+  `test_annotate_snapping.py`.
 
 ## Depends on
-T15b (`snap` in format v3), T15m (`snap.py`), T6c (recalibration flow).
+T15b (`snap` in format v3), T15m (`snap.py`, `luma.py`), T6c (recalibration flow).
 
 ## Rules
-CV16, CV25, CV31, S8, D8. The page change (insets, keys, strings) is T15f; this task only serves the data
+CV16, CV25, CV31, S8, S14, D8, D45 (A31, A32, U27, U29). The page change (insets, keys, strings) is T15f; this task only serves the data
 (`slots`: point, status, reason) and the actions. The page catches up in T15f; nothing is pushed before T15h.
 
 ## Tests
-- Root plan "Test plan", T15n entry, every case.
+- Root plan "Test plan", T15n entry, every case (click rule boundaries, save refusals, A32 availability, decode
+  failure with the real `luma.py`, A31 doc test failing when its line is removed, noted once by hand).
 - `--help` and module import in a subprocess with `-I -S` and numpy made unimportable (`sys.modules` blocker in a
   `sitecustomize`-free child): tool starts, unavailable path.
 - Real `snap.py` once end to end: calibration on a T7 photo with ring wires, rough clicks 5 px off, saved points

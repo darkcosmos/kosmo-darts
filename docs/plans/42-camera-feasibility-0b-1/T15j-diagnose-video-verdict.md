@@ -18,7 +18,8 @@ whether the board moves durably between darts (H3), and print the verdict of the
   - `V` (untouched frame versus the first video control of the same segment) and `W` (motion during the capture
     window: frames every `VIDEO_WINDOW_STEP_MS` from `entry` to `photo` `videoPositionMs`, registered against the
     CV27 frame; maximum and settling time) only with the validated video method.
-  - Report sections "(b) Photo et vidéo", "Verdict" (CV29 lines and the "Suite proposée" row of root plan
+  - Report section « Limites » (T15i) gains the CV28 video limit (a constant tilt in every photo is absorbed by
+    `M`). Report sections "(b) Photo et vidéo", "Verdict" (CV29 lines and the "Suite proposée" row of root plan
     "Approach, Diagnosis decision rule"); the two "non concluant" causes read `D` p95 and the complete snapped dev
     photo control count from T15i, never `R` (information since D39).
 - Changed `diagnostic_file.py`: optional per photo `videoMm` (`O`) and per session `mapping` residuals.

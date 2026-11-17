@@ -87,7 +87,7 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   annotation tool runs in WSL with a bare `python3` (3.14 in Kosmo's WSL, which has no python3.13; the stdlib core must work on 3.13 and 3.14), outside the container and without the venv (decision 5).
   Everything with numpy, PIL, av, torch or LiteRT lives in other modules. Amended by D43 and D44 (Q14, option 1):
   the tool imports
-  `snap.py` (numpy, Pillow) lazily from the small WSL tool venv of "Approach, Where the snapping runs"; the core
+  `snap.py` (numpy) and the shared decoder `luma.py` (numpy, Pillow; D45) lazily from the small WSL tool venv of "Approach, Where the snapping runs"; the core
   modules stay stdlib and the tool still starts without that venv (snapping then unavailable).
 - **Detector** (issue): RF-DETR Nano from COCO weights, "keypoints as objects": 5 classes, `tip` and `cal1` to `cal4`,
   each a fixed square box centred on the point (side `BOX_FRACTION` = 2.5 % of the longer image side, a training
@@ -139,13 +139,23 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   pinned once in `test_config.py`. Flow on the control screen: the 4 final points of the previous item of the same
   session and source (else, for the first photo item, the segment points of that dart; the first video item of a
   session has no proposal) are snapped on the new image and proposed; each point is shown in a zoomed inset with
-  its status; Entrée saves when every point is snapped, clicked or hidden; a click replaces the nearest point (or
-  fills the first empty one) and is snapped at once. Repeatability is measured by the machine, never by Kosmo's
+  its status; Entrée saves when every point is snapped, clicked or hidden; a click goes to the point named by the
+  click rule of CV31 (pure function `flow.click_target`, T15n) and is snapped at once. Repeatability is measured by the machine, never by Kosmo's
   hand (CV28 `D`): the diagnosis restarts the snap from `SNAP_REPEAT_DIRECTIONS` (8) starts offset by
   `SNAP_REPEAT_OFFSET_PX` (3) around each snapped point; dispersion = largest board-plane distance (mm, through the
   homography of that control) between the stored point and a restart result, a failed restart counting as
-  infinite; p95 over the snapped points, target at most `SNAP_REPEAT_MAX_MM` (0.25 mm).
-- **Where the snapping runs** (amends decision 5, D5 and CV16 "stdlib only"; D43, confirmed by Kosmo in Q14, D44): the
+  infinite; p95 over the snapped points, target at most `SNAP_REPEAT_MAX_MM` (0.25 mm). `D` measures
+  repeatability, not accuracy: restarts that all converge on the same wrong crossing give `D` = 0, so accuracy is
+  proven only by the T15m tests against the `board.py` truth, and the diagnosis report says so in its limits
+  (A35, T2, D45).
+- **One image decoder** (A33, S14, D45): `kosmo_camera/luma.py` (numpy and Pillow) holds the only JPEG-to-luma
+  decoder, moved from `drift.py` `_decode_luma` (T15m): file-size cap `luma.MAX_IMAGE_BYTES` (32 MiB, same value as
+  `public_import.MAX_IMAGE_BYTES`; checked before reading, never read past the cap), `Image.MAX_IMAGE_PIXELS` kept
+  and the decompression-bomb warning raised as an error, no `LOAD_TRUNCATED_IMAGES`; truncated, random or oversized
+  bytes, a bomb, or a size different from the expected one give `(None, reason)`, never an exception. `drift.py`,
+  the tool's snapping (T15n) and the diagnosis (T15i) all call it.
+- **Where the snapping runs** (amends plan decision 5, D5, CV16 "stdlib only" and ADR 0016 decision 2; D43,
+  confirmed by Kosmo in Q14, D44): the
   snap needs the image pixels and the standard library cannot decode JPEG. Chosen (simplest that keeps the tool in
   WSL): the tool server, still started in WSL on 127.0.0.1 with Kosmo's `python3` (3.14), runs the snap in-process
   from a venv holding only numpy and Pillow, the versions already pinned (`tools/camera/requirements-tool.txt`, exact
@@ -153,10 +163,10 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   --only-binary=:all:`; the wheels `numpy-2.5.4-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl` and
   `pillow-13.0.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl` and their cp313 twins are listed on
   PyPI, checked on 2026-11-17, and the sandbox's system Python 3.14.4 created a venv and installed both
-  binary-only), created once in K7.1b with Kosmo's WSL `python3` (3.14, D44). The stdlib core is unchanged: `snap.py` is imported lazily, so
+  binary-only), created once in K7.1b with Kosmo's WSL `python3` (3.14, D44). The stdlib core is unchanged: `snap.py` and `luma.py` are imported lazily, so
   `python3 -I -S -m kosmo_camera.annotate --help` still works without the venv; then calibration, recalibration and
   control are "Recalage indisponible" (tips annotation unchanged). The diagnosis (container) imports the same
-  `snap.py`. Alternatives: (1) the tool in the container (numpy and Pillow already there): no venv, but the tool
+  `snap.py` and `luma.py`. Alternatives: (1) the tool in the container (numpy and Pillow already there): no venv, but the tool
   needs a published port `-p 127.0.0.1:8765:8765`, a network other than `none` (outbound access for that
   container), a server bound to 0.0.0.0 inside the container, the annotations mounted read-write, a long `docker run`
   per start and rootless-port forwarding to the Windows browser that the sandbox cannot test; (2) a container
@@ -170,7 +180,8 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
 - **Video frame before the entry** (CV27): the container extracts, for each sampled dart, the last frame at or
   before `entry.videoPositionMs` − `VIDEO_BEFORE_ENTRY_MS` (1000) from `volley-NNN.mp4` with PyAV (pinned, no new
   library) to JPEG plus a `frames.json` manifest; the stdlib tool only serves listed files. Alternative rejected:
-  decoding in the tool (would need PyAV in WSL, breaks decision 5).
+  decoding in the tool (PyAV and the ffmpeg libraries bundled in its wheels would enlarge the WSL tool venv beyond
+  the two packages, numpy and Pillow, that D44 allows; A34).
 - **Diagnosis** (D30 point 2, CV28): per photo control, true drift `T` (clicks versus segment calibration), error
   `E` of the automatic measure (its shifted points versus the clicks), `E_seeded` (patches seeded with the clicked
   points: separates coarse-search failure from patch failure), peak ratios, agreement `R` of the segment clicks,
@@ -184,8 +195,9 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   clicks, then reruns the diagnosis. H2 also produces the
   Capture proposal of "PR material" (an issue draft, no Capture code in this PR).
 - **Visual check** (D30 point 3): the annotation tool, on 127.0.0.1 with the stdlib, alternates reference photo and
-  measured photo with the registration of choice (automatic, control clicks, none) applied by CSS `matrix3d` from a
-  homography computed in Python; images never leave the PC.
+  measured photo with the alignment of choice (automatic, from the control clicks, none; named "alignement" in
+  French so that "recalé / non recalé" names the snap only, U30) applied by CSS `matrix3d` from a homography
+  computed in Python; images never leave the PC.
 - **Journey** (D30 point 5): per session the steps calibration, tips, control photo, control video with their
   state; exactly one active instruction computed by the server (`journey.py`), never a stale one; information (drift
   of the unvalidated measure) in a separate grey box; the recalibration screen explains what a recalibration is.
@@ -452,10 +464,12 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   with `--lock` (control sample, roles), `--frames` (video frames, served only when listed in `frames.json`) and
   `--diagnostic` (visual check), each through a strict reader, each missing input giving one "indisponible" line,
   never an error. Drift flags are shown as information only (CV19 status). Details in T15d, T15e, T15k. After
-  D39 and D43: the stdlib-only rule covers every module except `snap.py`, imported lazily; without numpy and
-  Pillow the tool starts, shows "Recalage indisponible" and refuses calibration, recalibration and control clicks
-  (CV31); snapping reads only the photo or listed frame already served by the tool, through Pillow with
-  `Image.MAX_IMAGE_PIXELS` kept (S8), at most `SNAP_CACHE_IMAGES` (2) decoded images in memory. Details in T15n.
+  D39 and D43: the stdlib-only rule covers every module except `snap.py` and the shared decoder `luma.py`, both
+  imported lazily; without numpy and Pillow the tool starts, shows "Recalage indisponible" and refuses calibration,
+  recalibration and control clicks (CV31); snapping reads only the photo or listed frame already served by the
+  tool, through `luma.decode_luma` (file-size cap `luma.MAX_IMAGE_BYTES`, `Image.MAX_IMAGE_PIXELS` kept, S8), at
+  most `SNAP_CACHE_IMAGES` (2) decoded images in memory; an image that cannot be decoded leaves the point at the
+  click, `unsnapped` with reason `unreadable`, and never stops the tool. Details in T15n.
 - CV17 Sessions in `~/kosmo-data/captures-eval/` (confirmation campaign, later) are always eval: never in the split,
   never in training or tuning; `measure --set campaign` reads them under the same `frozen.json` guard.
 - CV18 Drift of a judged photo (D15): compared with the reference photo of its segment (CV20), both decoded to luma
@@ -590,8 +604,12 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   between the untouched phone and the photo; `V` = move of the untouched frame against the first video control of
   its segment (durable move); `W` = largest move during the capture window (frames every `VIDEO_WINDOW_STEP_MS`
   from `entry` to the `photo` stamp), only with a video method validated per CV30 on the video controls. Report:
-  counts, median and p95 with CV13 intervals, per role and overall. Limit stated: a constant tilt present in every
-  photo is absorbed by `M`.
+  counts, median and p95 with CV13 intervals, per role and overall. Limits stated (section « Limites » of the
+  diagnosis report): a constant tilt present in every photo is absorbed by `M`; and, in one plain French sentence,
+  « La dispersion D mesure la répétabilité du recalage (le même calcul relancé depuis des départs voisins retombe
+  au même point), pas son exactitude : un recalage qui se tromperait toujours de la même façon aurait une
+  dispersion nulle. » (A35, T2). A control image that the decoder cannot read (CV16) is counted per role and
+  source with reason `unreadable` and excluded like a partial control.
 - CV29 Diagnosis decision rule (fixed before any number is seen; constants in `defaults.json`): "non concluant" if
   the snapping dispersion `D` p95 > `SNAP_REPEAT_MAX_MM` (0.25; the dispersion, not Kosmo's hand, bounds the
   reference, Kosmo, Q10, D39) or fewer than `DIAG_MIN_CONTROLS` (30) complete snapped dev photo controls; each
@@ -616,9 +634,20 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   recalibration, control) is a designation; `snap.snap_point(luma, start)` returns the sub-pixel crossing of
   "Approach, Assisted click" within `SNAP_RADIUS_PX` of the start, status `snapped`, or the start itself with status
   `unsnapped` and one reason (`support`, `contrast`, `residual`, `angle`, `no_convergence`, `too_far`, `border`).
+  The tool adds the reason `unreadable` when `luma.decode_luma` cannot read the image (the point stays at the click).
   The stored point is the snapped point or the click (D8 pixels); its status goes to `snap` (CV25). Proposals (the
   previous item's points snapped on the new image) are never stored as such: a proposal that does not snap must be
-  clicked or hidden before Entrée saves. Repeatability `D` (CV28): restarts from `SNAP_REPEAT_DIRECTIONS` starts at
+  clicked or hidden before Entrée saves. Click rule (U27, pure function `flow.click_target(slots, click,
+  selected)`, T15n): a point selected with keys 1 to 4 takes the click; else the positioned point nearest to the
+  click within `CLICK_REPLACE_RADIUS_PX` (100 source px) is replaced; else the first point without a position, in
+  order 1 to 4, is filled; else (every point positioned, none within the radius) the click is refused with 409
+  « Clic loin des 4 points : choisir le point avec les touches 1 à 4, puis cliquer ». Hide rule (U25, control
+  only): `hide` applies to the selected point, then clears the selection; with no selection it hides the first
+  point `à cliquer`; with neither it is refused with 409 « Choisir le point à cacher : touche 1 à 4, puis H »,
+  so a stray `hide` never hides a point silently. Save rule (U29): `save` carries the open item (`dart` and
+  `source`, or the recalibration dart) and is refused with 409 when fewer than 4 points are ready (« Points prêts :
+  n / 4 ») or when that item is no longer the open one (« Photo déjà enregistrée »), so a repeated save never
+  writes the next item. Repeatability `D` (CV28): restarts from `SNAP_REPEAT_DIRECTIONS` starts at
   `SNAP_REPEAT_OFFSET_PX` around the stored point, board-plane mm through the control's homography, failed restart
   = infinite; target `SNAP_REPEAT_MAX_MM`. Constants `SNAP_*` in `defaults.json`, each pinned once in
   `test_config.py`; the same function serves the tool and the diagnosis.
@@ -663,7 +692,9 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   tips; T13 adds the sequential paired McNemar selection of CV22 (D26).
 - After D30 (T15a to T15l; T16a to T16c conditional): `annotations.py` v3 (`Control`, `controls_sha256`,
   `control_for`, `MAX_CONTROLS` 1024; T15b), `control.py` and `frames_file.py` (stdlib; T15c), `video_frames.py`
-  (PyAV; T15c), `snap.py` (numpy and Pillow, imported lazily by the tool; T15m), `requirements-tool.txt` (numpy
+  (PyAV; T15c), `snap.py` (numpy only, works on a luma array, imported lazily by the tool; T15m), `luma.py` (the
+  one JPEG-to-luma decoder, moved from `drift.py` `_decode_luma`, `MAX_IMAGE_BYTES` 32 MiB, used by `drift.py`, the
+  tool and the diagnosis; T15m, A33, S14), `requirements-tool.txt` (numpy
   and Pillow only, hashed, cp313 and cp314; T15n, D44), `requirements-tool-test.txt` (pytest and its four
   dependencies at the `requirements-cpu.txt` pins and hashes, for the Python 3.14 test runs only, never installed by
   Kosmo; T15n, D44), `synth.py` imports `av` inside `_write_video` only (T15n, D44), `annotate/snapping.py` (stdlib glue: lazy import, image cache,
@@ -677,12 +708,14 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   `SNAP_WINDOW_PX` 16, `SNAP_SIGMAS_PX` [1, 2, 3], `SNAP_MIN_ANGLE_DEG` 30, `SNAP_MIN_SUPPORT_PX` 8,
   `SNAP_MIN_CONTRAST` 4, `SNAP_MAX_RESIDUAL_PX` 0.75, `SNAP_CONVERGE_PX` 0.05, `SNAP_MAX_ITER` 5,
   `SNAP_REPEAT_DIRECTIONS` 8, `SNAP_REPEAT_OFFSET_PX` 3, `SNAP_REPEAT_MAX_MM` 0.25 (T15m; initial values, T15m may
-  tune them on synthetic boards only), `SNAP_CACHE_IMAGES` 2 (T15n),
+  tune them on synthetic boards only), `SNAP_CACHE_IMAGES` 2 and `CLICK_REPLACE_RADIUS_PX` 100 (T15n, U27),
   `VIDEO_WINDOW_STEP_MS` 100, `DIAG_MOVE_MM` 1.0, `DIAG_MIN_SHARE` 0.10, `DIAG_MIN_VIDEO` 10, `MAP_MIN_PAIRS` 3,
   `MAP_MAX_RESIDUAL_PX` 2.0 (T15j), each pinned once in `test_config.py`. Format caps next to their readers:
   `frames_file.MAX_BYTES` 4 MiB, `diagnostic_file.MAX_BYTES` 4 MiB. ADR 0016 gains the sections "Annotation format
-  v3: control clicks" (T15b, with the `snap` field) and "Assisted click" (T15n: decision 5 amended, the options of
-  "Approach, Where the snapping runs"); `docs/adr/0017-per-image-calibration.md` is added by T15a from "ADR 0017 text".
+  v3: control clicks" (T15b, with the `snap` field) and "Assisted click" (T15n: ADR decision 2 and plan decision 5
+  amended, the options of "Approach, Where the snapping runs"), and its decision 2 gains the line "Amended: see
+  section Assisted click (D43, D44)" (T15n, A31); `docs/rules/camera.md` CV16 gains the "After D39 and D43" sentence
+  of "Rules" (T15n, A31); `docs/adr/0017-per-image-calibration.md` is added by T15a from "ADR 0017 text".
 - Added tests `tools/camera/tests/` (pytest; marker `slow` for export and training smoke tests).
 - Added docs listed in "Scope". Changed `.gitignore`. Nothing else changes (`git diff origin/main -- app capture
   game-engine .github` stays empty).
@@ -764,7 +797,7 @@ After D30 (T15d to T15g, T15k). Exact French strings; each lives once as a const
   lines and `Aucune image vidéo utilisable pour cette session (N manquantes)`. The focus session's card (server
   field `focus`) shows `Prochaine étape :` with its instruction and a button `Continuer` (also Enter, but only
   when no other button or link has the keyboard focus, so Enter on a focused button keeps its own action; U23,
-  D42) that applies
+  D42; the assisted point screen has the opposite rule, U25: there Entrée always means « Enregistrer ») that applies
   the row's `action` (`calibrate`, `goto N`, `control`) through the existing flow route (U15).
 - **Three page elements** (T15g, U19): `#journey`, the one active instruction, the only element styled as an
   instruction; `#help`, the static key help of the screen (renamed from `#instruction`); `#banner`, alerts only
@@ -791,22 +824,40 @@ After D30 (T15d to T15g, T15k). Exact French strings; each lives once as a const
   save.
 - **Assisted point screen** (T15f; the control screen, and the calibration and recalibration screens, which keep
   their titles; CV31, D39): the image in full view (key 0 and the wheel zoom of T6b keep working) and, in the side
-  panel, 4 insets, one per point, each a x3 zoom of `SNAP_INSET_PX` (80, page constant) source px around its point,
-  labelled `1 : 5|20`, `2 : 13|6`, `3 : 17|3`, `4 : 8|11`, with a thin cross on the point and its status in text
-  (colour is never the only cue): `recalé`, `non recalé` (clicked, no clear crossing), `caché` (H), `à cliquer` (no
-  proposal, or a proposal that did not snap). The 4 points are also drawn as numbered crosses on the full view.
-  Line `Points prêts : n / 4 (Entrée pour enregistrer)`; Entrée saves only when n = 4 (U16 kept: nothing is
-  written before; leaving by Échap, next, previous or goto drops the changes). Click: replaces the nearest of the 4
-  points (or fills the first point `à cliquer` without a position), snapped at once. Keys 1 to 4 select a point:
-  the next click and H apply to it; H on no selection hides the first point `à cliquer`. U: undoes the last change
-  of the item; with no change, back to the previous item, whose saved control is removed from the file at once and
-  shown again as proposals (Entrée saves it again). Buttons `Enregistrer (Entrée)`, `Point caché (H)`, `Annuler
-  (U)`, `Quitter (Échap)`. Hint `Cliquer près du bon croisement : l'outil le recale. H seulement si une fléchette
-  cache le point` (U18: H four times then Entrée skips an unusable photo, counted as hidden). On the calibration and
-  recalibration screens H, its button and the second sentence of the hint are absent: a segment needs 4 points
-  (CV20); the server refuses `hide` there (T15n). Saved line
-  `Enregistré à HH:MM:SS`. Without numpy and Pillow: `Recalage indisponible : relancer l'outil avec
-  ~/kosmo-tool-venv/bin/python (K7.1b)`, no click accepted on this screen.
+  panel, 4 insets, one per point, in a 2 x 2 grid (points 1 and 2 on the first row, 3 and 4 on the second, gap
+  8 px), each a x3 zoom of `SNAP_INSET_PX` (60, page constant) source px around its point, so 180 x 180 CSS px; on
+  this screen the side panel is 400 px wide (U26), and the four insets, the line `Points prêts` and the button
+  `Enregistrer (Entrée)` are visible together without scrolling at 1080p. Insets are labelled `1 : 5|20`,
+  `2 : 13|6`, `3 : 17|3`, `4 : 8|11`, with a thin cross on the point and its status in text (colour is never the
+  only cue): `recalé`, `non recalé` (clicked, no clear crossing, or photo unreadable), `caché` (H), `à cliquer` (no
+  proposal, or a proposal that did not snap); each inset has an `aria-label` with its number and status (`Point
+  2, recalé`, U31). The 4 points are also drawn as numbered crosses on the full view. The CV2 board diagram that
+  highlights the next point (T6b) stays on the screens where points are filled in order: the first calibration,
+  and any item opened without proposals (the first video item of a session); it highlights the point the next
+  click fills (U27). Line `Points prêts : n / 4 (Entrée pour enregistrer)`; Entrée saves only when n = 4 (U16
+  kept: nothing is written before; leaving by Échap, next, previous or goto drops the changes; the server refuses
+  `save` below 4 with 409, CV31). Click: the click rule of CV31 (selected point, else nearest positioned point within
+  `CLICK_REPLACE_RADIUS_PX`, else first point without a position, else refused with its banner text), snapped at
+  once. Keys 1 to 4 select a point: the next click and H apply to it; H follows the hide rule of CV31 (selected
+  point, else first point `à cliquer`, else refused with « Choisir le point à cacher : touche 1 à 4, puis H »).
+  U: undoes the last change of the item; with no change, back to the previous item, whose saved control is removed
+  from the file at once and shown again as proposals (Entrée saves it again), and `#banner` says `Photo précédente
+  rouverte : son enregistrement est retiré jusqu'à Entrée` (U28). Buttons `Enregistrer (Entrée)`, `Point caché
+  (H)`, `Annuler (U)`, `Quitter (Échap)`. **Entrée rule (U25, D45; next to the list rule U23)**: on the assisted
+  point screen Entrée always means « Enregistrer », whichever button has the focus: one `keydown` handler on the
+  document calls `event.preventDefault()` for Entrée before acting, so a focused button never runs its own action
+  on Entrée, and every button of the screen calls `blur()` after its click (after a mouse click on `Point caché
+  (H)`, the next Entrée saves). **Repeat guard (U29)**: Entrée with `event.repeat` is ignored, and Entrée is
+  ignored for `SAVE_GUARD_MS` (300 ms, page constant next to `CLICK_GUARD_MS`) after each save, so a held key or
+  a quick double press never saves the next item unseen; the server's save rule (CV31) refuses a repeated `save`
+  of the same item. Hint `Cliquer près du bon croisement : l'outil le recale. H seulement si une fléchette
+  cache le point` (U18: an unusable photo is skipped with H four times then Entrée when its proposals are `à
+  cliquer`, otherwise 1 H 2 H 3 H 4 H then Entrée; counted as hidden). On the calibration and recalibration
+  screens H, its button and the second sentence of the hint are absent: a segment needs 4 points (CV20); the
+  server refuses `hide` there (T15n). An image the decoder cannot read: `#banner` says `Photo illisible : le
+  recalage est impossible pour cette photo`, every point is `à cliquer` or, once clicked, `non recalé` at the
+  click; the tool never freezes (S14). Saved line `Enregistré à HH:MM:SS`. Without numpy and Pillow: `Recalage
+  indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)`, no click accepted on this screen.
 - **Control screen** (T15f): title `Contrôle de calibration : photo de la fléchette N` (or `image vidéo de la
   fléchette N`), progress from templates `Photos contrôlées : D / T · Images vidéo : D / T`; entry button `Contrôle
   de calibration (K)` on every session screen, K accepted from every cursor including `Terminé` (with nothing
@@ -823,12 +874,13 @@ After D30 (T15d to T15g, T15k). Exact French strings; each lives once as a const
   partir de` are removed.
 - **Visual check** (T15k): title `Contrôle visuel : fléchette N (référence : fléchette M)`, the two images
   alternating every 700 ms, line `Décalage automatique : 3,2 px (0,4 mm) · d'après les clics : 0,6 mm · écart :
-  0,2 mm`, choices `1 Automatique`, `2 Clics de contrôle`, `3 Aucun`, `Espace : pause`, `← → : photo
+  0,2 mm`, choices `1 Alignement automatique`, `2 Alignement d'après les clics`, `3 Aucun alignement` (U30: the
+  visual check says « alignement », never « recalage », which names the snap only), `Espace : pause`, `← → : photo
   précédente / suivante`, `N : photo suivante au-delà de 0,5 mm` (`Aucune autre photo au-delà de 0,5 mm` when
   none), position `Photo i / n`; opens on the photo with the largest gap (U20); the arrows follow dart order and
   `i` is the rank of the shown photo in that same dart order (U24, D42), so N and the opening jump keep `i`
-  consistent; `Non mesurable` when a
-  registration is missing; route states shown in the page, never a bare error (S12): `Diagnostic périmé : relancer
+  consistent; `Non mesurable` when an
+  alignment is missing; route states shown in the page, never a bare error (S12): `Diagnostic périmé : relancer
   le diagnostic (K7.4)`, `Pas de diagnostic pour cette session : relancer le diagnostic (K7.4)`; without the
   option: `Contrôle visuel : indisponible (option --diagnostic absente)`.
 
@@ -935,8 +987,18 @@ the cases. Summary:
     snap from every start within `SNAP_RADIUS_PX` lands within 0.1 px of the true crossing (rendered from
     `board.py` geometry); a window with no crossing (plain sector, a single wire, a flat dark area) gives
     `unsnapped` with its reason; a start nearer a neighbouring crossing (inner double edge at low resolution) lands
-    on it and the restart dispersion of a point between two crossings exceeds `SNAP_REPEAT_MAX_MM`; restarts on a
-    clean crossing give a dispersion under 0.05 mm; border and too-far cases; constants pinned once (CV31).
+    on it, and the test also checks its distance to the true crossing of `board.py` (above 1 px: a converged
+    wrong crossing is caught by the truth, not by the dispersion, T2), and the restart dispersion of a point
+    between two crossings exceeds `SNAP_REPEAT_MAX_MM`; restarts on a clean crossing give a dispersion under 0.05
+    mm; border and too-far cases; one board rendered with a seed and a style not used for tuning (other wire
+    width and colours, other perspective) meets the same 0.1 px bound (T1); constants pinned once (CV31).
+    `luma.py` (A33, S14): a JPEG decoded to the same luma as before the move (the T8b drift tests stay green
+    unchanged); decompression bomb at both Pillow levels (error and warning, `Image.MAX_IMAGE_PIXELS` lowered by
+    `monkeypatch` in the test only and checked restored), truncated JPEG, random bytes, size different from the
+    expected size, file of exactly `MAX_IMAGE_BYTES` accepted and of `MAX_IMAGE_BYTES` + 1 refused (cap lowered by
+    `monkeypatch`, never read past it): each gives `(None, reason)`, no exception; the T8b static check (no
+    assignment of `MAX_IMAGE_PIXELS`, no `LOAD_TRUNCATED_IMAGES`) parametrized over `drift.py`, `luma.py` and
+    `snap.py` (T15n adds `annotate/snapping.py`, T15i adds `diagnose.py`).
   - T15n: lazy import (`python3 -I -S -m kosmo_camera.annotate --help` without numpy; tool starts, "Recalage
     indisponible", calibration and recalibration clicks refused with 409, tips unchanged); assisted flow on the
     calibration and recalibration screens with a fake snapper (proposals, nearest-point replacement, Entrée saves
@@ -944,20 +1006,40 @@ the cases. Summary:
     `requirements-cpu.txt` versions with exactly two hashes each, one of them the cp313 hash of
     `requirements-cpu.txt`; `requirements-tool-test.txt` holds exactly pytest, iniconfig, packaging, pluggy and
     pygments with the `requirements-cpu.txt` pins and hashes; `kosmo_camera.synth` imports and renders a board with
-    `av` unimportable; image cache bounded by `SNAP_CACHE_IMAGES` (CV16, CV31). The "tool and snapping tests"
-    (`TOOL_TESTS`: `tests/test_snap.py`, `tests/test_annotate_snapping.py`, `tests/test_annotate_flow.py`,
+    `av` unimportable; image cache bounded by `SNAP_CACHE_IMAGES` (CV16, CV31). `flow.click_target` tested as a
+    pure function without a browser (U27): selected point wins; nearest positioned point within
+    `CLICK_REPLACE_RADIUS_PX` replaced (at the radius: replaced; radius + 1: not); two points within the radius:
+    the nearer; none within: first point without a position, order 1 to 4; every point positioned and none within:
+    refused with its message. `save` below 4 ready points 409, file unchanged; repeated save (two `save` actions
+    for the same recalibration item): the second 409 « Photo déjà enregistrée », one segment written (U29).
+    Availability (A32): numpy or PIL missing (`ModuleNotFoundError` for those names only) gives "Recalage
+    indisponible"; an error raised inside `snap.py` at import (a test module replacing it that raises
+    `RuntimeError`, or `ModuleNotFoundError` for another name) is not hidden: it propagates. Decode failure (S14,
+    real `luma.py` on a bomb, a truncated JPEG, random bytes and a size different from the listed size): the click
+    stays where it was, `unsnapped` with reason `unreadable`, the response is 200 with the banner text « Photo
+    illisible : le recalage est impossible pour cette photo », never an exception out of the server thread, and the
+    next request is served. Doc test (A31) in `test_plan_docs.py`: `docs/rules/camera.md` CV16 holds the "After
+    D39 and D43" sentence, ADR 0016 decision 2 holds "Amended: see section Assisted click (D43, D44)", plan rows 5
+    and D5 hold "Amended by D43, D44"; each check fails when its line is removed (checked once by hand, noted, as
+    T15a). The "tool and snapping tests"
+    (`TOOL_TESTS`: `tests/test_snap.py`, `tests/test_luma.py`, `tests/test_annotate_snapping.py`, `tests/test_annotate_flow.py`,
     `tests/test_annotate_server.py`, `tests/test_annotate_static.py`, `tests/test_requirements.py`) also pass under
     Python 3.14 in a throwaway venv holding only the two tool files (D44; command in T15n "Done when").
   - T15c: sample on scripted sessions (ranks, last dart, reference photos, eval all, darts 55 to 60, voided and
     photo-less never sampled); `frame_at` on a generated video (exact frame, each missing reason); `frames.json`
     strict reader (cap, cap + 1); privacy of printed lines (CV26, CV27, CV15).
   - T15d: control flow (K, proposals from the previous item of the same source or the segment, none on the first
-    video item, Entrée, H, U, leave, next item, cap 409, `snap` stored), frame route serves only listed files and
+    video item, Entrée, H, U, leave, next item, cap 409, `snap` stored; the CV31 hide rule with no selection and
+    no point `à cliquer` refused 409, a `save` naming an item that is no longer open refused 409, U27 click rule
+    through `flow.click_target`, unreadable frame `unsnapped` `unreadable`), frame route serves only listed files and
     resists the T6a attacks, missing `--split` or `--frames` (CV25, CV16, CV31).
   - T15e: journey states and the "Instructions" table row by row, no instruction when the state is stale, info
     lines kept apart (D30 point 5), "Recalage indisponible" replacing calibration and control rows (tips row
     unchanged) when snapping is unavailable (D43), role per session with `--split` only (Q9, D38).
-  - T15f, T15g, T15k (static): strings once, keys bound, unique banner, removed strings absent, T6b scan.
+  - T15f, T15g, T15k (static): strings once, keys bound, unique banner, removed strings absent, T6b scan; T15f
+    also: Entrée handler calls `preventDefault`, ignores `event.repeat` and `SAVE_GUARD_MS`, buttons `blur()`
+    after click, inset `aria-label`, `SNAP_INSET_PX` 60 (U25, U26, U29, U31); T15k: « recalage » absent from the
+    visual check strings (U30).
   - T15h, T15l: commands of K7.0 to K7.6 (K7.1b included) parse with their parsers; K7.1b is one command of three
     parts joined by `&&` (venv with `python3`, pip install of `requirements-tool.txt` with `--require-hashes
     --only-binary=:all:`, version print), the named file exists and is fully hashed, the printed line matches the
@@ -965,7 +1047,9 @@ the cases. Summary:
     clics » paragraph names the report section `diagnose.py` writes.
   - T15i: `T`, `E`, `E_seeded`, `R` on synthetic sessions, the periodic trap, peak ratio by hand, partial
     controls, `D` on rendered controls (clean, between two crossings, a failed restart counted infinite),
-    `unsnapped` controls excluded and counted, `measure_photo` unchanged, report privacy (CV28, CV31, CV15).
+    `unsnapped` controls excluded and counted, unreadable control images counted with reason `unreadable`, the
+    « Limites » sentence on `D` present in the report (A35, T2), `measure_photo` unchanged, report privacy (CV28,
+    CV31, CV15).
   - T15j: mapping recovered and refused, `O`, `V`, `W`, each CV29 line at its boundary, both "non concluant" causes
     (`D` p95 just above and at `SNAP_REPEAT_MAX_MM`, 29 and 30 snapped dev controls), `R` never changes a verdict
     (CV29).
@@ -1050,9 +1134,11 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     chaque photo, les 4 points de la photo précédente sont déjà proposés et recalés ; les 4 vignettes agrandies à
     droite montrent chaque point avec son état (« recalé », « non recalé », « caché », « à cliquer »). Si les 4
     sont sur le bon croisement : Entrée. Si un point est sur le mauvais croisement ou « à cliquer » : cliquer près
-    du bon croisement (le point le plus proche est remplacé et recalé), puis Entrée. H seulement si une fléchette
-    cache le point (une photo inutilisable : H quatre fois puis Entrée, elle compte comme cachée) ; U annule le
-    dernier changement, ou revient à la photo précédente ; Échap pour quitter. Rien n'est enregistré avant Entrée
+    du bon croisement (le point le plus proche est remplacé et recalé ; pour un point loin de votre clic,
+    choisir d'abord le point avec les touches 1 à 4), puis Entrée. H seulement si une fléchette cache le point
+    (touche 1 à 4 puis H ; une photo inutilisable : 1 H 2 H 3 H 4 H puis Entrée, elle compte comme cachée) ; U
+    annule le dernier changement, ou revient à la photo précédente (son enregistrement est retiré jusqu'à
+    Entrée) ; Échap pour quitter. Entrée enregistre toujours, même après un clic sur un bouton. Rien n'est enregistré avant Entrée
     (« Points prêts : n / 4 », puis « Enregistré à HH:MM:SS »). La première photo de chaque session part de la
     calibration de la session ; la première image vidéo de chaque session n'a pas de proposition : 4 clics. Après
     un déplacement de la cible, les points proposés partent sur un mauvais croisement ou restent « à cliquer » :
@@ -1072,7 +1158,7 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     rôles « dev 1 », « eval 2 », aucun nom de session). Ne jamais coller `diagnostic.json` ni `frames.json`.
   - K7.6 Contrôle visuel : relancer l'outil comme en K7.3 en ajoutant
     `--diagnostic ~/kosmo-runs/diagnostic/diagnostic.json`, appuyer sur V. Les deux photos alternent ; touche 1
-    recalage automatique, 2 recalage d'après vos clics, 3 sans recalage ; Espace pour figer ; flèches pour changer
+    alignement automatique, 2 alignement d'après vos clics, 3 aucun alignement ; Espace pour figer ; flèches pour changer
     de photo ; N pour la photo suivante au-delà de 0,5 mm ; l'outil s'ouvre sur la photo au plus grand écart et
     affiche « Photo i / n ». Dire dans le chat ce que vous voyez (par exemple « avec 1 l'image saute, avec 2 elle est immobile »).
     (10 min)
@@ -1086,7 +1172,11 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     apparaissent déjà recalés, chacun dans sa vignette agrandie avec son état en toutes lettres ; un clic à
     quelques pixels du bon croisement déplace le point le plus proche et le recale exactement sur le croisement
     (vignette à l'appui) ; un clic loin de tout croisement net donne « non recalé » ; Entrée enregistre seulement
-    quand les 4 points sont prêts ; touches 1 à 4, H, U, Échap, la touche 0, la molette et K marchent, K aussi
+    quand les 4 points sont prêts, même quand un bouton a le focus (après un clic sur « Point caché (H) », Entrée
+    enregistre) ; Entrée gardée enfoncée ou pressée deux fois vite n'enregistre pas la photo suivante sans la
+    voir ; les 4 vignettes, « Points prêts » et « Enregistrer (Entrée) » se voient ensemble sans faire défiler en
+    1080p ; H sans point choisi ni point « à cliquer » affiche « Choisir le point à cacher : touche 1 à 4, puis
+    H » et ne cache rien ; touches 1 à 4, H, U, Échap, la touche 0, la molette et K marchent, K aussi
     depuis « Terminé » ; « Points prêts : n / 4 » suit les changements et « Enregistré à HH:MM:SS » apparaît
     après Entrée ; après un clic puis Échap, puis K, la même photo revient avec les points proposés ; U sans
     changement revient à la photo précédente avec ses points ; la progression « Photos contrôlées » augmente ; la
@@ -1214,7 +1304,7 @@ PR, without opening it (D19); no extra PR. The batch 1 hand-back states the full
           "$RUNNER_TEMP/tool-venv/bin/pip" install --require-hashes --only-binary=:all: \
             -r requirements-tool.txt -r requirements-tool-test.txt
           "$RUNNER_TEMP/tool-venv/bin/python" -m pytest -q -m "not slow" \
-            tests/test_snap.py tests/test_annotate_snapping.py tests/test_annotate_flow.py \
+            tests/test_snap.py tests/test_luma.py tests/test_annotate_snapping.py tests/test_annotate_flow.py \
             tests/test_annotate_server.py tests/test_annotate_static.py tests/test_requirements.py
   ```
 
@@ -1301,9 +1391,9 @@ P2; T9p done at 474ebdc):
 |---|---|---|---|---|---|
 | T15a | ADR 0017, ADR 0016 "Tripod drift" status line, K5 suspended, plan doc test | `42-camera-feasibility-0b-1/T15a-adr-per-image-calibration.md` | - | haiku | Text copied from "ADR 0017 text" and "How Kosmo verifies", no design choice |
 | T15b | Annotation format v3 (control clicks, `snap` status on controls and segments), lossless v2 migration, doc | `42-camera-feasibility-0b-1/T15b-annotation-format-v3.md` | T5b | opus | Changed stored format with its migration (case 1) on Kosmo's real files |
-| T15m | Snapping algorithm `snap.py` (sub-pixel wire crossing, "non recalé" reasons, restart dispersion), ring wires in T7 boards | `42-camera-feasibility-0b-1/T15m-snap-algorithm.md` | T7 | opus | Rule still open after design review (case 3): detector, failure tests and thresholds of the snap are outlined, not specified, and they bound the reference truth |
+| T15m | Snapping algorithm `snap.py` (sub-pixel wire crossing, "non recalé" reasons, restart dispersion), shared decoder `luma.py` (D45), ring wires in T7 boards | `42-camera-feasibility-0b-1/T15m-snap-algorithm.md` | T7 | opus | Rule still open after design review (case 3): detector, failure tests and thresholds of the snap are outlined, not specified, and they bound the reference truth |
 | T15c | Control sample, roles, video frame extraction and `frames.json` | `42-camera-feasibility-0b-1/T15c-control-sample-frames.md` | T15b, T4b | sonnet | Sample and frame rules fully specified in CV26 and CV27, generated-video tests |
-| T15n | Tool snapping: tool venv requirements, lazy import, image cache, assisted calibration and recalibration flow, ADR 0016 "Assisted click" | `42-camera-feasibility-0b-1/T15n-tool-snapping.md` | T15b, T15m, T6c | sonnet | Wiring and flow rules specified in CV31 and "Screens and states", fake snapper tests, same patterns as T6c |
+| T15n | Tool snapping: tool venv requirements, lazy import, image cache, assisted calibration and recalibration flow with the click, hide and save rules (D45), ADR 0016 "Assisted click" | `42-camera-feasibility-0b-1/T15n-tool-snapping.md` | T15b, T15m, T6c | sonnet | Wiring and flow rules specified in CV31 and "Screens and states", fake snapper tests, same patterns as T6c |
 | T15d | Tool: control flow and server (options, proposals, frame route, cap) | `42-camera-feasibility-0b-1/T15d-control-flow.md` | T15b, T15c, T15n | sonnet | Flow and security rules specified, reuses the T15n assisted flow |
 | T15e | Tool: journey state, role per session, the single instruction ("Recalage indisponible" row included) | `42-camera-feasibility-0b-1/T15e-journey-state.md` | T15d | sonnet | State holder from the "Instructions" table, Python tests |
 | T15f | Tool page: assisted point screen (insets, statuses, keys) for control, calibration and recalibration | `42-camera-feasibility-0b-1/T15f-control-page.md` | T15d | sonnet | Page from a specified screen and strings, same patterns as T6b |
@@ -1358,7 +1448,7 @@ Labels or calibration feed T9, T9o, T9c, T9d, T10, T13, T13b; T14 and T14b chain
 | 2 | Removal criterion "empty board recognised before Next volley"; protocol: press within 3 s after leaving the field. Applies to the `captures-eval/` campaign only (K0). | CV11 |
 | 3 | Nothing typed: tripod group and lighting derived from calibration and luminance, zoom from `truth.json`. | CV14 |
 | 4 | An off-board miss is correct if nothing is announced on the board for that dart. | CV7 |
-| 5 | Annotation tool: stdlib only, run in WSL outside the container, `127.0.0.1` only, no external resource; writes in `~/kosmo-data/annotations/`, captures read-only. | CV16 |
+| 5 | Annotation tool: stdlib only, run in WSL outside the container, `127.0.0.1` only, no external resource; writes in `~/kosmo-data/annotations/`, captures read-only. Amended by D43, D44: `snap.py` and `luma.py` (numpy, Pillow) are imported lazily from the WSL tool venv `~/kosmo-tool-venv`; without it the tool starts and snapping is unavailable. | CV16 |
 | 6 | No model file in the repository in 0b-1: SHA-256, size and rebuild command only. | - |
 | 7 | No pseudo-annotation of Kosmo's photos: manual clicks. Amended by D23: public images get pseudo-labels (CV23). | CV23 |
 | 8 | Superseded by D20 (was: public set candidates listed as search links; Kosmo checks licences before download). | - |
@@ -1369,7 +1459,7 @@ Labels or calibration feed T9, T9o, T9c, T9d, T10, T13, T13b; T14 and T14b chain
 | D2 | 4 calibration points on the outer double corners 5|20, 13|6, 17|3, 8|11; calibration limit 2.0 mm. | CV2, CV9 |
 | D3 | Detection and calibration metrics on photos, events on video (different crop and scale). | CV9 to CV12 |
 | D4 | No OpenCV; numpy DLT and PyAV (already pulled by `rfdetr`). Only `pytest` added as a direct dependency. | - |
-| D5 | Annotation tool UI in French only (it is for Kosmo); started with `python3`. | CV16 |
+| D5 | Annotation tool UI in French only (it is for Kosmo); started with `python3`. Amended by D43, D44: started with `~/kosmo-tool-venv/bin/python` for the assisted click (K7.1b); plain `python3` still starts it without snapping. | CV16 |
 | D6 | CUDA build `cu130` for the GPU image. | - |
 | D7 | Design review S5: the container keeps uid 0 inside, no `USER`. With rootless Docker, container root maps to Kosmo's own unprivileged uid; a non-root `USER` maps to a subordinate uid that cannot write `~/kosmo-runs` without changing its permissions. Root inside has no extra power (`--cap-drop ALL`, `no-new-privileges`, `--read-only`, `--network none`). Accepted by the security reviewer at the design review of 1377af2. | - |
 | D8 | Pixel coordinates in stored JPEG pixel order, EXIF orientation ignored everywhere; the server checks clicks against the real JPEG size (U3). | CV16 |
@@ -1409,11 +1499,13 @@ Labels or calibration feed T9, T9o, T9c, T9d, T10, T13, T13b; T14 and T14b chain
 | D42 | Kosmo, 2026-11-17 (verbatim): « Remarques U23 et U24 : à appliquer. Choix de l'équipe (50 époques, lot de 8, graine 42, 8 à 9 entraînements, 5 à 6 h) : notés. » U23: Enter runs "Continuer" only when no other button has focus (T15g, K7.C). U24: the arrows of the visual check follow dart order and "Photo i / n" counts in that order (T15k, K7.C). | CV16 |
 | D43 | Squad's design for D39 (plan change of 2026-11-17; amends decision 5, D5, CV16 and ADR 0016 "stdlib only", confirmed by Kosmo in Q14, D44): snapping in `kosmo_camera/snap.py` (numpy, Pillow luma loader; outline in "Approach, Assisted click", constants `SNAP_*` in `defaults.json` pinned once in `test_config.py`); it runs in the tool process from a WSL venv `~/kosmo-tool-venv` with only numpy and Pillow (`tools/camera/requirements-tool.txt`, hashes for cp313 and cp314), imported lazily: without the venv the tool starts as today and shows "Recalage indisponible" and refuses `calibrate` and `control` saves (409); format v3 stores a `snap` status per point (`snapped`, `unsnapped`, and `manual` on segments migrated from v2), so the format change lands in T15b before it is built; no new data file, no new route; the previous item's 4 points are proposed and snapped, Enter saves; D31's "no marker" rule replaced; `R` (segment click agreement) becomes information; "non concluant" comes from the snap dispersion `D` p95 above `SNAP_REPEAT_MAX_MM` 0.25 or fewer than `DIAG_MIN_CONTROLS` complete snapped dev controls; when `D` is too high the squad revises the snap at P2 and reruns on the same stored clicks (no new clicks); controls with an unsnapped point are excluded from `T`, `E` and counted. New tasks T15m (opus, case 3) and T15n (sonnet). | CV16, CV25, CV28, CV29, CV31 |
 | D44 | Kosmo, 2026-11-17 (Q14, verbatim, line breaks flattened): « Q14 : option 1, l'environnement ~/kosmo-tool-venv dans le WSL de Kosmo, avec trois conditions : - fichier de dépendances dédié à l'outil (par exemple tools/camera/requirements-tool.txt) : numpy et Pillow seulement, versions exactes avec empreintes, installation avec --require-hashes et --only-binary=:all: ; il vise le Python du WSL de Kosmo, qui est 3.14 (pas de python3.13 hors du bac à sable et de l'image) ; vérifie que les versions choisies publient bien des roues cp314 manylinux x86_64 ; - K7.1b : une seule commande à copier-coller qui crée l'environnement avec python3, installe ce fichier et affiche les versions installées ; l'outil se lance ensuite avec ~/kosmo-tool-venv/bin/python ; démarrage sans l'environnement : « Recalage indisponible », comme proposé ; - le recalage est aussi testé sous Python 3.14 : propose dans « Proposed owner changes » l'ajout au job camera-tools d'une étape Python 3.14 qui installe requirements-tool.txt et lance les seuls tests de l'outil et du recalage. Kosmo l'appliquera avec les autres changements de CI de la PR B. » Squad's application: D43 confirmed. (1) `requirements-tool.txt` = numpy 2.5.4 and Pillow 13.0.0 (the `requirements-cpu.txt` pins), one file with two hashes per package, cp313 and cp314 manylinux_2_27/2_28 x86_64 (pip checks the one wheel matching the interpreter: Kosmo's 3.14 gets cp314, the sandbox and image 3.13 get cp313, same versions; a second file would duplicate the pins and could drift; free-threaded cp314t excluded, Kosmo's `python3` is the standard build); cp314 wheels confirmed on PyPI and installed binary-only by the sandbox's Python 3.14.4 on 2026-11-17; hashes generated and cross-checked as T15n says. (2) K7.1b is one command (`python3 -m venv`, pip `--require-hashes --only-binary=:all:`, version print); the separate `--help` check is dropped from K7.1b (the tool still prints its « Recalage » line). (3) Python 3.14 test run of `TOOL_TESTS` in the sandbox (T15n "Done when") and proposed for CI (PR B "Proposed owner changes"); pytest comes from a second small file `requirements-tool-test.txt` (pytest and its 4 dependencies, `requirements-cpu.txt` pins and hashes) so Kosmo's file stays numpy and Pillow only; `synth.py` imports `av` lazily so the snap tests' ring-wire boards render without PyAV. | CV16, CV31, D10 |
+| D45 | Design review of 67968fa (test and security approve; architecture and ux changes requested), squad's fixes: A31 the amendment of plan decision 5, D5, CV16 and ADR 0016 decision 2 is written where it applies (rows 5 and D5 "Amended by D43, D44", the CV16 "After D39 and D43" sentence, ADR 0016 decision 2 line "Amended: see section Assisted click (D43, D44)"), asserted by a doc test in `test_plan_docs.py` (T15n); A32 the tool treats only `ModuleNotFoundError` for numpy or PIL as "Recalage indisponible", any other import error of `snap.py` propagates (T15n); A33 and S14 one JPEG-to-luma decoder `kosmo_camera/luma.py` moved from `drift.py` `_decode_luma`, with `MAX_IMAGE_BYTES` 32 MiB checked before reading, `Image.MAX_IMAGE_PIXELS` kept, bomb warning raised as an error, `(None, reason)` and never an exception, used by `drift.py`, the tool and the diagnosis; `snap.py` becomes numpy only on a luma array (amends D43's "Pillow luma loader"); an unreadable image leaves the point at the click, `unsnapped` with reason `unreadable`, banner « Photo illisible : le recalage est impossible pour cette photo », the tool never freezes (T15m, T15n, T15d, T15i); A34 the rejected alternative "decoding video in the tool" is justified by the D44 venv limit (numpy and Pillow only), not by decision 5; A35 and T2 `D` measures repeatability, not accuracy: accuracy is proven only by the T15m tests against `board.py` truth (a converged wrong crossing checked against the truth), and the diagnosis report states it in « Limites » (CV28, T15i); T1 one T15m test board in a seed and style not used for tuning meets the 0.1 px bound; U25 Entrée on the assisted point screen always means « Enregistrer » (`preventDefault`, buttons `blur()` after click), the opposite of the list rule U23; H follows a hide rule (selected point, else first `à cliquer`, else refused 409 « Choisir le point à cacher : touche 1 à 4, puis H ») (T15d, T15f); U26 insets 2 x 2 of `SNAP_INSET_PX` 60 source px at x3, side panel 400 px, insets, ready line and save button visible together at 1080p (T15f); U27 click rule `flow.click_target` (selected point, else nearest positioned point within `CLICK_REPLACE_RADIUS_PX` 100, else first point without a position, else refused 409), the CV2 diagram kept where points are filled in order (T15n, T15d, T15f); U28 banner « Photo précédente rouverte : son enregistrement est retiré jusqu'à Entrée » when U reopens the previous item (T15f); U29 `save` carries the open item and is refused 409 below 4 ready points or for an item no longer open, Entrée with `event.repeat` ignored and `SAVE_GUARD_MS` 300 after a save (T15n, T15d, T15f); U30 the visual check says « alignement » (choices « Alignement automatique », « Alignement d'après les clics », « Aucun alignement »), « recalé » names the snap only (T15k); U31 each inset has an `aria-label` with its number and status (T15f). | CV16, CV28, CV31 |
 
 ## Open questions
 
 Each answer lands in one commit with the rule it changes, its test and the K7 numbers and steps it affects (design
-review T5). Q4 to Q12 landed together in the commit of D33 to D43; Q14 in the commit of D44.
+review T5). Q4 to Q12 landed together in the commit of D33 to D43; Q14 in the commit of D44; the design fixes of D45 change no
+answer.
 
 - P1: resolved by D23 (Kosmo checked the pages and gave the attribution texts and statuses).
 - P3: decided, two PRs (D11).

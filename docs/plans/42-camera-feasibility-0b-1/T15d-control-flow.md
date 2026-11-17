@@ -15,10 +15,15 @@ resumable, undoable, with progress counts, in the Python flow and server so ever
   - The item opens with 4 slots from the T15n assisted flow: proposals = the previous item's saved points of the
     same session and source, else the segment of that dart for the first photo item, none for the first video
     item, each snapped on the new image (root "Screens and states", items "Assisted point screen" and "Control
-    screen"; CV31, D39). `click` replaces the nearest slot or fills the first empty one, snapped at once;
-    `select k`; `hidden_point` (H) hides the selected or first empty slot; `save` (Entrée) writes the control with
-    its `snap` (real JPEG size, D8; `positionMs` from `frames.json` for a video frame) only when the 4 slots are
-    snapped, clicked or hidden, then opens the next open item with its proposals. The view gives the slots (point,
+    screen"; CV31, D39). `click` goes to the slot of `flow.click_target` (T15n, CV31 click rule, U27), snapped
+    at once, or is refused with 409 and its text; `select k`; `hidden_point` (H) follows the CV31 hide rule (U25):
+    the selected slot, then the selection is cleared; else the first slot `à cliquer`; else 409 « Choisir le point
+    à cacher : touche 1 à 4, puis H »; `save` (Entrée, carrying `dart` and `source`) writes the control with its
+    `snap` (real JPEG size, D8; `positionMs` from `frames.json` for a video frame) only when the 4 slots are
+    snapped, clicked or hidden (else 409 « Points prêts : n / 4 »; 409 « Photo déjà enregistrée » when that item is
+    no longer the open one, U29), then opens the next open item with its proposals. A frame or photo that
+    `luma.decode_luma` cannot read: slots `à cliquer`, a click stays `unsnapped` with reason `unreadable`, banner
+    text « Photo illisible : le recalage est impossible pour cette photo » (S14). The view gives the slots (point,
     status, reason) and `ready` (0 to 4) for "Points prêts : n / 4 (Entrée pour enregistrer)" (U16).
   - `clear` (U): undoes the last slot change of the item; with no change, back to the previous item, whose saved
     control is removed from the file at once and shown again as proposals.
@@ -41,7 +46,7 @@ resumable, undoable, with progress counts, in the Python flow and server so ever
 T15b, T15c, T15n (assisted flow and `Snapper`, which builds on T6c).
 
 ## Rules
-CV25, CV26, CV31, CV16, D8. Control clicks never change tips, segments or `segments_sha256`.
+CV25, CV26, CV31, CV16, D8, S14, D45 (U25, U27, U29). Control clicks never change tips, segments or `segments_sha256`.
 
 ## Tests
 All flow tests use a fake `Snapper` (T15n) scripted per point; one test uses the real `snap.py` on a T7 board.
@@ -50,6 +55,9 @@ All flow tests use a fake `Snapper` (T15n) scripted per point; one test uses the
   the first item without a complete control.
 - Proposal that does not snap: slot "à cliquer", Entrée refused until clicked or hidden; a click 2 px from slot 3
   replaces slot 3, not the nearest empty slot; a click that does not snap is stored `"unsnapped"`.
+- H with a selection hides it and clears the selection; H with no selection and no slot `à cliquer`: 409, slots
+  unchanged; two `save` for the same item: the second 409 « Photo déjà enregistrée », one control written (U25,
+  U29); an unreadable frame (truncated JPEG): click stored `unsnapped` `unreadable`, next request served (S14).
 - First video item: no proposal; 4 clicks then Entrée. H twice and 2 clicks save 2 `null` points with `snap`
   `null`; 4 H save 4 `null` (counted done).
 - U undoes the last slot change; U with no change goes back and removes the previous control (file saved, its
