@@ -85,7 +85,8 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   (all pulled by `rfdetr` or `litert-torch` except `pytest` 9.2.0: no extra library).
 - **Stdlib-only core**: `config.py`, `truth.py`, `split.py`, `annotations.py`, `board.py`, `drift_file.py` import only the standard library, so the
   annotation tool runs in WSL with a bare `python3` (3.14 in Kosmo's WSL, which has no python3.13; the stdlib core must work on 3.13 and 3.14), outside the container and without the venv (decision 5).
-  Everything with numpy, PIL, av, torch or LiteRT lives in other modules. Amended by D43 (Q14): the tool imports
+  Everything with numpy, PIL, av, torch or LiteRT lives in other modules. Amended by D43 and D44 (Q14, option 1):
+  the tool imports
   `snap.py` (numpy, Pillow) lazily from the small WSL tool venv of "Approach, Where the snapping runs"; the core
   modules stay stdlib and the tool still starts without that venv (snapping then unavailable).
 - **Detector** (issue): RF-DETR Nano from COCO weights, "keypoints as objects": 5 classes, `tip` and `cal1` to `cal4`,
@@ -144,12 +145,15 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   `SNAP_REPEAT_OFFSET_PX` (3) around each snapped point; dispersion = largest board-plane distance (mm, through the
   homography of that control) between the stored point and a restart result, a failed restart counting as
   infinite; p95 over the snapped points, target at most `SNAP_REPEAT_MAX_MM` (0.25 mm).
-- **Where the snapping runs** (amends decision 5, D5 and CV16 "stdlib only"; Q14 asks Kosmo to confirm, D43): the
+- **Where the snapping runs** (amends decision 5, D5 and CV16 "stdlib only"; D43, confirmed by Kosmo in Q14, D44): the
   snap needs the image pixels and the standard library cannot decode JPEG. Chosen (simplest that keeps the tool in
   WSL): the tool server, still started in WSL on 127.0.0.1 with Kosmo's `python3` (3.14), runs the snap in-process
   from a venv holding only numpy and Pillow, the versions already pinned (`tools/camera/requirements-tool.txt`, exact
-  pins with `--hash` for cp313 and cp314 manylinux x86_64; cp314 wheels of numpy 2.5.4 and Pillow 13.0.0 checked on
-  PyPI on 2026-11-17), created once in K7.1b. The stdlib core is unchanged: `snap.py` is imported lazily, so
+  pins with `--hash` for the cp313 and cp314 manylinux x86_64 wheels, installed with `--require-hashes
+  --only-binary=:all:`; the wheels `numpy-2.5.4-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl` and
+  `pillow-13.0.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl` and their cp313 twins are listed on
+  PyPI, checked on 2026-11-17, and the sandbox's system Python 3.14.4 created a venv and installed both
+  binary-only), created once in K7.1b with Kosmo's WSL `python3` (3.14, D44). The stdlib core is unchanged: `snap.py` is imported lazily, so
   `python3 -I -S -m kosmo_camera.annotate --help` still works without the venv; then calibration, recalibration and
   control are "Recalage indisponible" (tips annotation unchanged). The diagnosis (container) imports the same
   `snap.py`. Alternatives: (1) the tool in the container (numpy and Pillow already there): no venv, but the tool
@@ -660,7 +664,9 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
 - After D30 (T15a to T15l; T16a to T16c conditional): `annotations.py` v3 (`Control`, `controls_sha256`,
   `control_for`, `MAX_CONTROLS` 1024; T15b), `control.py` and `frames_file.py` (stdlib; T15c), `video_frames.py`
   (PyAV; T15c), `snap.py` (numpy and Pillow, imported lazily by the tool; T15m), `requirements-tool.txt` (numpy
-  and Pillow only, hashed, cp313 and cp314; T15n), `annotate/snapping.py` (stdlib glue: lazy import, image cache,
+  and Pillow only, hashed, cp313 and cp314; T15n, D44), `requirements-tool-test.txt` (pytest and its four
+  dependencies at the `requirements-cpu.txt` pins and hashes, for the Python 3.14 test runs only, never installed by
+  Kosmo; T15n, D44), `synth.py` imports `av` inside `_write_video` only (T15n, D44), `annotate/snapping.py` (stdlib glue: lazy import, image cache,
   availability; T15n), `annotate/journey.py` (stdlib; T15e), `annotate/homography.py` (stdlib, with `next_above`; T15k), `tests/test_plan_docs.py` (stdlib doc test: ADR
   0016 status line, ADR 0017 sections, "HELD by D30:" line of each held task file; T15a), `diagnose.py` and
   `diagnostic_file.py` (T15i, T15j), `drift.py` gains `phase_shift_detail` and `measure_photo_detail` with
@@ -935,7 +941,13 @@ the cases. Summary:
     indisponible", calibration and recalibration clicks refused with 409, tips unchanged); assisted flow on the
     calibration and recalibration screens with a fake snapper (proposals, nearest-point replacement, Entrée saves
     only at 4 ready points, U, leave drops changes); `requirements-tool.txt` holds only numpy and Pillow at the
-    `requirements-cpu.txt` versions with hashes; image cache bounded by `SNAP_CACHE_IMAGES` (CV16, CV31).
+    `requirements-cpu.txt` versions with exactly two hashes each, one of them the cp313 hash of
+    `requirements-cpu.txt`; `requirements-tool-test.txt` holds exactly pytest, iniconfig, packaging, pluggy and
+    pygments with the `requirements-cpu.txt` pins and hashes; `kosmo_camera.synth` imports and renders a board with
+    `av` unimportable; image cache bounded by `SNAP_CACHE_IMAGES` (CV16, CV31). The "tool and snapping tests"
+    (`TOOL_TESTS`: `tests/test_snap.py`, `tests/test_annotate_snapping.py`, `tests/test_annotate_flow.py`,
+    `tests/test_annotate_server.py`, `tests/test_annotate_static.py`, `tests/test_requirements.py`) also pass under
+    Python 3.14 in a throwaway venv holding only the two tool files (D44; command in T15n "Done when").
   - T15c: sample on scripted sessions (ranks, last dart, reference photos, eval all, darts 55 to 60, voided and
     photo-less never sampled); `frame_at` on a generated video (exact frame, each missing reason); `frames.json`
     strict reader (cap, cap + 1); privacy of printed lines (CV26, CV27, CV15).
@@ -946,8 +958,10 @@ the cases. Summary:
     lines kept apart (D30 point 5), "Recalage indisponible" replacing calibration and control rows (tips row
     unchanged) when snapping is unavailable (D43), role per session with `--split` only (Q9, D38).
   - T15f, T15g, T15k (static): strings once, keys bound, unique banner, removed strings absent, T6b scan.
-  - T15h, T15l: commands of K7.0 to K7.6 (K7.1b included) parse with their parsers; the K7.1b pip command names
-    `requirements-tool.txt`, which exists and is fully hashed; container flags kept (S10); T15l's « Recalage des
+  - T15h, T15l: commands of K7.0 to K7.6 (K7.1b included) parse with their parsers; K7.1b is one command of three
+    parts joined by `&&` (venv with `python3`, pip install of `requirements-tool.txt` with `--require-hashes
+    --only-binary=:all:`, version print), the named file exists and is fully hashed, the printed line matches the
+    file's versions; container flags kept (S10); T15l's « Recalage des
     clics » paragraph names the report section `diagnose.py` writes.
   - T15i: `T`, `E`, `E_seeded`, `R` on synthetic sessions, the periodic trap, peak ratio by hand, partial
     controls, `D` on rendered controls (clean, between two crossings, a failed restart counted infinite),
@@ -1016,12 +1030,13 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     `git pull`. (1 min)
   - K7.1 Reconstruire l'image depuis la racine du dépôt : `docker build -f tools/camera/Dockerfile -t
     kosmo-camera:gpu tools/camera`. (2 à 5 min)
-  - K7.1b Une seule fois : préparer l'environnement du recalage dans WSL, depuis la racine du dépôt (il ne contient
-    que numpy et Pillow, aux versions déjà utilisées dans l'image) : `python3 -m venv ~/kosmo-tool-venv` (si WSL
-    répond que `venv` manque : `sudo apt install python3-venv`, puis relancer), puis
-    `~/kosmo-tool-venv/bin/pip install --require-hashes -r tools/camera/requirements-tool.txt`. Vérifier :
-    `~/kosmo-tool-venv/bin/python -m kosmo_camera.annotate --help`, lancé depuis `tools/camera/`, affiche
-    « Recalage : disponible ». (2 à 5 min)
+  - K7.1b Une seule fois : préparer l'environnement du recalage dans WSL (il ne contient que numpy et Pillow, aux
+    versions déjà utilisées dans l'image, vérifiées par empreinte), en collant cette seule commande depuis la
+    racine du dépôt :
+    `python3 -m venv ~/kosmo-tool-venv && ~/kosmo-tool-venv/bin/pip install --require-hashes --only-binary=:all: -r tools/camera/requirements-tool.txt && ~/kosmo-tool-venv/bin/python -c "import numpy, PIL; print('numpy', numpy.__version__, '- Pillow', PIL.__version__)"`.
+    Elle se termine par la ligne `numpy 2.5.4 - Pillow 13.0.0`. Si WSL répond que `venv` manque :
+    `sudo apt install python3-venv`, puis recoller la commande. L'outil se lance ensuite toujours avec
+    `~/kosmo-tool-venv/bin/python` (K7.3). (2 à 5 min)
   - K7.2 Extraire les images vidéo prises environ 1 s avant chaque saisie (pas de carte graphique nécessaire) :
     `docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,size=2g -v ~/kosmo-data:/data:ro -v ~/kosmo-runs:/runs:rw kosmo-camera:gpu python -m kosmo_camera.video_frames --captures /data/captures --annotations /data/annotations --split /runs/split.json --out /runs/frames`.
     Elle affiche le nombre d'images extraites, la ligne « Images vidéo absentes : N » et les manquantes par
@@ -1136,7 +1151,9 @@ PR, without opening it (D19); no extra PR. The batch 1 hand-back states the full
 - Versions table only if a pin changes in part B (none planned: drift uses numpy and Pillow, already pinned). The
   new `requirements-tool.txt` (T15n, D43) repeats the numpy and Pillow pins of `requirements-cpu.txt` for the WSL
   tool venv (cp313 and cp314 wheels, hashed): listed in the table with their PyPI pages, and the deviation "tool
-  venv on Kosmo's WSL Python 3.14" stated next to the "Python 3.13" deviation; no new library.
+  venv on Kosmo's WSL Python 3.14" stated next to the "Python 3.13" deviation; no new library. The new
+  `requirements-tool-test.txt` (T15n, D44) repeats the pytest, iniconfig, packaging, pluggy and pygments pins of
+  `requirements-cpu.txt` for the Python 3.14 test runs (sandbox and proposed CI step), listed in the same table.
 - Justifications the issue asks for: input size and FP32 versus FP16 for the Pixel 7, then the confidence threshold
   from the dev report; plus the drift threshold (CV19, 1.0 mm, D18), the drift method (CV18), and the version
   retained among the three trainings with the figures of all three and the McNemar steps (CV22, D21, D23, D26);
@@ -1170,7 +1187,39 @@ PR, without opening it (D19); no extra PR. The batch 1 hand-back states the full
   effect, but video resolution and compression); (c) zero-shutter-lag capture (`CAPTURE_MODE_ZERO_SHUTTER_LAG`,
   frame from the buffer before the tap; depends on device support); (d) entering darts without touching the camera
   phone (second phone or remote entry: protocol change). Kosmo chooses (Q13).
-- Proposed owner changes: none new (ADR 0017 is a `docs/adr/` file, not protected).
+- Proposed owner changes (ADR 0017 is a `docs/adr/` file, not protected): add to the job `camera-tools` of
+  `.github/workflows/android.yml`, after the existing test step, a Python 3.14 run of the tool and snapping tests
+  (Kosmo, Q14, D44; he applies it with the other CI changes of PR B; the squad never edits `.github`). Why: Kosmo
+  runs the tool and its snapping with his WSL Python 3.14 and only the cp314 wheels of `requirements-tool.txt`; the
+  existing step runs on 3.13 with the full CPU set. `update-environment: false` keeps `python` on 3.13 for the
+  earlier steps; the venv holds only the two tool files, so a tool or snapping import outside numpy and Pillow
+  fails here. The `actions/setup-python` pin is the one the job already uses. Snippet for the description:
+
+  ```yaml
+      # Python 3.14: Kosmo's WSL interpreter for the annotation tool and its snapping (issue #42, Q14).
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        id: py314
+        if: ${{ hashFiles('tools/camera/requirements-tool.txt') != '' }}
+        with:
+          python-version: "3.14"
+          update-environment: false
+
+      - name: Tool and snapping tests on Python 3.14 (tool requirements only, hashes required, wheels only)
+        if: ${{ hashFiles('tools/camera/requirements-tool.txt') != '' }}
+        working-directory: tools/camera
+        env:
+          PY314: ${{ steps.py314.outputs.python-path }}
+        run: |
+          "$PY314" -m venv "$RUNNER_TEMP/tool-venv"
+          "$RUNNER_TEMP/tool-venv/bin/pip" install --require-hashes --only-binary=:all: \
+            -r requirements-tool.txt -r requirements-tool-test.txt
+          "$RUNNER_TEMP/tool-venv/bin/python" -m pytest -q -m "not slow" \
+            tests/test_snap.py tests/test_annotate_snapping.py tests/test_annotate_flow.py \
+            tests/test_annotate_server.py tests/test_annotate_static.py tests/test_requirements.py
+  ```
+
+  The file list is `TOOL_TESTS` of root "Test plan" (T15n entry); developer-fix copies it from there and checks
+  that the snippet matches the command T15n runs in the sandbox.
 
 ## ADR 0017 text
 
@@ -1287,7 +1336,8 @@ After D30 and D43 (supersedes the batch 2 order above): 28 + 14 batch 3 tasks + 
 `opus` tasks: T5, T5b (done), T15b, T15m, T15j, plus T16a if built (6 at most, 3 still to build for sure). Execution order, one
 task at a time: T9p (done, 474ebdc, to review first), then T15a, T15b, T15m, T15c, T15n, T15d, T15e, T15f, T15g,
 T15h, push batch 3a after main confirms the code-phase approval of its head (Kosmo does K7.0 to K7.3 with K7.1b
-once, about 20 to 30 min of clicks instead of 1 h 15, D39),
+once, about 20 to 30 min of clicks instead of 1 h 15, D39; Q14 is decided, D44, so nothing in batch 3a waits for
+Kosmo),
 then T15i, T15j, T15k, T15l, push batch 3b (Kosmo does K7.4 to K7.6 and pastes the report), then T11 and T12 while
 Kosmo works, then plan update P2 on the diagnosis (Kosmo reviews it before any code), then the retained T16 tasks
 and the held tasks as revised at P2. T9b does not depend on labels but stays on hold by Kosmo's priority (D30).
@@ -1357,12 +1407,13 @@ Labels or calibration feed T9, T9o, T9c, T9d, T10, T13, T13b; T14 and T14b chain
 | D40 | Kosmo, 2026-11-17 (verbatim): « Q11 : 1) les garder. » Recalibrations made during K5 stay; their `snap` is `manual` after migration (CV25). | CV20, CV25 |
 | D41 | Kosmo, 2026-11-17 (verbatim): « Q12 : 1) réglée sur dev, validée sur dev, puis confirmée sur les clics eval. » | CV30 |
 | D42 | Kosmo, 2026-11-17 (verbatim): « Remarques U23 et U24 : à appliquer. Choix de l'équipe (50 époques, lot de 8, graine 42, 8 à 9 entraînements, 5 à 6 h) : notés. » U23: Enter runs "Continuer" only when no other button has focus (T15g, K7.C). U24: the arrows of the visual check follow dart order and "Photo i / n" counts in that order (T15k, K7.C). | CV16 |
-| D43 | Squad's design for D39 (plan change of 2026-11-17; amends decision 5, D5, CV16 and ADR 0016 "stdlib only", confirmation asked in Q14): snapping in `kosmo_camera/snap.py` (numpy, Pillow luma loader; outline in "Approach, Assisted click", constants `SNAP_*` in `defaults.json` pinned once in `test_config.py`); it runs in the tool process from a WSL venv `~/kosmo-tool-venv` with only numpy and Pillow (`tools/camera/requirements-tool.txt`, hashes for cp313 and cp314), imported lazily: without the venv the tool starts as today and shows "Recalage indisponible" and refuses `calibrate` and `control` saves (409); format v3 stores a `snap` status per point (`snapped`, `unsnapped`, and `manual` on segments migrated from v2), so the format change lands in T15b before it is built; no new data file, no new route; the previous item's 4 points are proposed and snapped, Enter saves; D31's "no marker" rule replaced; `R` (segment click agreement) becomes information; "non concluant" comes from the snap dispersion `D` p95 above `SNAP_REPEAT_MAX_MM` 0.25 or fewer than `DIAG_MIN_CONTROLS` complete snapped dev controls; when `D` is too high the squad revises the snap at P2 and reruns on the same stored clicks (no new clicks); controls with an unsnapped point are excluded from `T`, `E` and counted. New tasks T15m (opus, case 3) and T15n (sonnet). | CV16, CV25, CV28, CV29, CV31 |
+| D43 | Squad's design for D39 (plan change of 2026-11-17; amends decision 5, D5, CV16 and ADR 0016 "stdlib only", confirmed by Kosmo in Q14, D44): snapping in `kosmo_camera/snap.py` (numpy, Pillow luma loader; outline in "Approach, Assisted click", constants `SNAP_*` in `defaults.json` pinned once in `test_config.py`); it runs in the tool process from a WSL venv `~/kosmo-tool-venv` with only numpy and Pillow (`tools/camera/requirements-tool.txt`, hashes for cp313 and cp314), imported lazily: without the venv the tool starts as today and shows "Recalage indisponible" and refuses `calibrate` and `control` saves (409); format v3 stores a `snap` status per point (`snapped`, `unsnapped`, and `manual` on segments migrated from v2), so the format change lands in T15b before it is built; no new data file, no new route; the previous item's 4 points are proposed and snapped, Enter saves; D31's "no marker" rule replaced; `R` (segment click agreement) becomes information; "non concluant" comes from the snap dispersion `D` p95 above `SNAP_REPEAT_MAX_MM` 0.25 or fewer than `DIAG_MIN_CONTROLS` complete snapped dev controls; when `D` is too high the squad revises the snap at P2 and reruns on the same stored clicks (no new clicks); controls with an unsnapped point are excluded from `T`, `E` and counted. New tasks T15m (opus, case 3) and T15n (sonnet). | CV16, CV25, CV28, CV29, CV31 |
+| D44 | Kosmo, 2026-11-17 (Q14, verbatim, line breaks flattened): « Q14 : option 1, l'environnement ~/kosmo-tool-venv dans le WSL de Kosmo, avec trois conditions : - fichier de dépendances dédié à l'outil (par exemple tools/camera/requirements-tool.txt) : numpy et Pillow seulement, versions exactes avec empreintes, installation avec --require-hashes et --only-binary=:all: ; il vise le Python du WSL de Kosmo, qui est 3.14 (pas de python3.13 hors du bac à sable et de l'image) ; vérifie que les versions choisies publient bien des roues cp314 manylinux x86_64 ; - K7.1b : une seule commande à copier-coller qui crée l'environnement avec python3, installe ce fichier et affiche les versions installées ; l'outil se lance ensuite avec ~/kosmo-tool-venv/bin/python ; démarrage sans l'environnement : « Recalage indisponible », comme proposé ; - le recalage est aussi testé sous Python 3.14 : propose dans « Proposed owner changes » l'ajout au job camera-tools d'une étape Python 3.14 qui installe requirements-tool.txt et lance les seuls tests de l'outil et du recalage. Kosmo l'appliquera avec les autres changements de CI de la PR B. » Squad's application: D43 confirmed. (1) `requirements-tool.txt` = numpy 2.5.4 and Pillow 13.0.0 (the `requirements-cpu.txt` pins), one file with two hashes per package, cp313 and cp314 manylinux_2_27/2_28 x86_64 (pip checks the one wheel matching the interpreter: Kosmo's 3.14 gets cp314, the sandbox and image 3.13 get cp313, same versions; a second file would duplicate the pins and could drift; free-threaded cp314t excluded, Kosmo's `python3` is the standard build); cp314 wheels confirmed on PyPI and installed binary-only by the sandbox's Python 3.14.4 on 2026-11-17; hashes generated and cross-checked as T15n says. (2) K7.1b is one command (`python3 -m venv`, pip `--require-hashes --only-binary=:all:`, version print); the separate `--help` check is dropped from K7.1b (the tool still prints its « Recalage » line). (3) Python 3.14 test run of `TOOL_TESTS` in the sandbox (T15n "Done when") and proposed for CI (PR B "Proposed owner changes"); pytest comes from a second small file `requirements-tool-test.txt` (pytest and its 4 dependencies, `requirements-cpu.txt` pins and hashes) so Kosmo's file stays numpy and Pillow only; `synth.py` imports `av` lazily so the snap tests' ring-wire boards render without PyAV. | CV16, CV31, D10 |
 
 ## Open questions
 
 Each answer lands in one commit with the rule it changes, its test and the K7 numbers and steps it affects (design
-review T5). Q4 to Q12 landed together in the commit of D33 to D43.
+review T5). Q4 to Q12 landed together in the commit of D33 to D43; Q14 in the commit of D44.
 
 - P1: resolved by D23 (Kosmo checked the pages and gave the attribution texts and statuses).
 - P3: decided, two PRs (D11).
@@ -1375,26 +1426,13 @@ review T5). Q4 to Q12 landed together in the commit of D33 to D43.
 - P4 (information for Kosmo, not blocking): "stdlib + numpy" is read as "no new library": the drift computation is
   numpy only, but JPEG decoding needs Pillow, already pinned and in the image. So `drift` runs in the container, not
   with the bare `python3` of WSL; the annotation tool stays stdlib and only reads `drift.json` (amended by D43:
-  the assisted click needs numpy and Pillow from the WSL venv, Q14).
+  the assisted click needs numpy and Pillow from the WSL venv, D44).
 - Q7: decided, dev sample plus darts 55 to 60 of every eval session, about 45 frames (D36).
 - Q8: decided, roles only (D37).
 - Q9: decided, role shown on the session cards (D38).
 - Q10: decided, no threshold on Kosmo's clicks, assisted click with machine-measured snap dispersion (D39, D43).
 - Q11: decided, K5 recalibrations kept (D40).
 - Q12: decided, tuned and validated on dev, confirmed on eval clicks (D41).
-- Q14 (Kosmo, blocking for T15n and the push of batch 3a; architecture change, D43): le recalage du clic assisté
-  a besoin de numpy et Pillow (lecture JPEG), absents du `python3` nu de WSL, alors que l'outil d'annotation est
-  « bibliothèque standard seulement » (décision 5, ADR 0016). Où le faire tourner ?
-  1) Un environnement Python dédié dans WSL (`~/kosmo-tool-venv`, numpy et Pillow seulement, versions figées avec
-  empreintes), créé une fois en 2 à 5 min (K7.1b) ; l'outil se lance avec ce Python, démarre quand même sans lui
-  et affiche alors « Recalage indisponible » (recommandé : le moins de code, recalage en direct partout, rien ne
-  change côté sécurité : toujours 127.0.0.1, aucun nouveau fichier ni nouvelle route).
-  2) L'outil entier dans le conteneur : il faut ouvrir un port vers Windows (fin de `--network none`, écoute sur
-  0.0.0.0), monter les annotations en écriture, et le transfert de port n'est pas testable ici.
-  3) Un fichier de candidats précalculé par le conteneur : nouveau format et sa validation, fenêtres devinées à
-  l'avance, recadrage vidéo inconnu, fichier périmé après un changement, et le plus de code ; pas de recalage
-  en direct sur un clic qui tombe hors des candidats.
-  (Écartés : décodeur JPEG en bibliothèque standard, trop de code non éprouvé ; recalage en JavaScript, non
-  testable dans le bac à sable et en double du code Python du diagnostic.)
+- Q14: decided, option 1, WSL tool venv `~/kosmo-tool-venv` with Kosmo's three conditions (D44).
 - Q13 (Kosmo, after the diagnosis, at P2): replacement of D18 (sub-threshold compensation) and, if H2, the Kosmo
   Capture change among options (a) to (d) of "PR material".
