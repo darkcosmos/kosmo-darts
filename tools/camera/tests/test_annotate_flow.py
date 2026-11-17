@@ -289,14 +289,14 @@ def test_clear_of_segment_0_with_later_segments_is_refused_and_changes_nothing_c
         flow.apply(annotations, session, Action("clear"), cursor)
 
 
-def test_flow_saves_version_2_with_one_segment_from_dart_1_cv20(tmp_path):
+def test_flow_saves_version_3_with_one_manual_segment_from_dart_1_cv20_cv25(tmp_path):
     session = session_of(tmp_path / "captures")
     annotations, cursor = calibrate(session)
     annotations, cursor = flow.apply(annotations, session, click(11.5, 12.5), cursor)
     path = tmp_path / "annotations.json"
     an.write_atomic(path, annotations)
-    assert an.read(path).calibrations == (Calibration(1, "dart-001.jpg", *SIZE, POINTS),)
-    assert '"version": 2' in path.read_text(encoding="utf-8")
+    assert an.read(path).calibrations == (Calibration(1, "dart-001.jpg", *SIZE, POINTS, an.MANUAL_SNAP),)
+    assert '"version": 3' in path.read_text(encoding="utf-8")  # snapping comes with T15n: clicks are manual
 
 
 def test_truth_dict_helper_gives_a_readable_truth(tmp_path):

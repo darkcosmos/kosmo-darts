@@ -90,7 +90,7 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   strictly ascending, each applies from its `fromDart` until the next one; a segment after the first starts at a judged
   dart (CV5) and is clicked on that dart's photo. A version 1 file is read by the kept version 1 reader and migrated
   without loss (a version 1 `calibration` becomes the single segment from dart 1; `null` becomes an empty list).
-  Writers write version 2 only. Details in `docs/camera/annotation-format.md`.
+  Writers wrote version 2 only until version 3 (CV25). Details in `docs/camera/annotation-format.md`.
 - CV21 Public datasets (D20, D23, D27): only sets with an entry in `tools/camera/config/public-class-maps.json` are read,
   from `~/kosmo-data/public/<slug>/` (slug = Kosmo's folder name, `^[a-z0-9_-]{1,64}$`); the map holds only sets with
   status `accepted` or `conditional` in `docs/camera/datasets.md`, a set with a `pseudo-tip-box` target being
@@ -109,3 +109,14 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   `public_import.MAX_IMAGE_BYTES` (32 MiB), fails to decode (`Image.MAX_IMAGE_PIXELS` kept, decompression bomb,
   truncated), has a size different from the JSON, or has a box that is not finite or not inside the image. Both caps
   are checked before reading and a read never goes past them. Sources are never written.
+- CV25 Control clicks (D30, annotation format version 3): `controls` is a list of `{dart, source, width, height,
+  points}` plus `positionMs` when `source` is `video`; `source` is `photo` or `video`; `points` holds exactly 4
+  entries in CV2 order, each a point `{x, y}` in stored pixels of that image or `null` (hidden); sorted by dart then
+  photo before video, at most one control per (dart, source), at most `MAX_CONTROLS` (1024). A control belongs to a
+  judged dart (CV5); a video control needs a volley video and a non-null `entry.videoPositionMs`. Controls are
+  independent of segments (CV20) and never change them. Each control and each segment carries `snap`: 4 entries
+  aligned with `points`, `"snapped"` or `"unsnapped"` (CV31) for a point, `null` exactly when the point is `null`;
+  segments may also hold `"manual"` (clicked before snapping existed). A version 2 file is migrated without loss
+  (`controls: []`, every segment `snap: ["manual", "manual", "manual", "manual"]`); writers write version 3 only. Use:
+  CV9 reference and diagnosis (CV28); on dev, label source only through T16b (P2). Details in
+  `docs/camera/annotation-format.md`.

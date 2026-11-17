@@ -460,7 +460,7 @@ def test_v1_file_opened_listed_and_browsed_stays_byte_identical_cv16_cv20(tool):
     assert tree_listing(tool.root) == before
 
 
-def test_first_saved_change_rewrites_a_v1_file_as_v2_with_every_tip_kept_cv16_cv20(tool):
+def test_first_saved_change_rewrites_a_v1_file_as_v3_with_every_tip_kept_cv16_cv20_cv25(tool):
     _, sha = make_session(tool.captures)
     tool.annotations.mkdir()
     annotation_file(tool).write_text(_v1_text(sha), encoding="utf-8")
@@ -468,9 +468,10 @@ def test_first_saved_change_rewrites_a_v1_file_as_v2_with_every_tip_kept_cv16_cv
     status, result = tool.act("off_board")  # resume cursor: dart 4
     assert status == 200 and result["saved"] == "Enregistré à 12:34:56"
     saved = json.loads(annotation_file(tool).read_text(encoding="utf-8"))
-    assert saved["version"] == 2 and "calibration" not in saved
+    assert saved["version"] == 3 and "calibration" not in saved and saved["controls"] == []
     assert saved["calibrations"] == [{"fromDart": 1, "photo": "dart-001.jpg", "width": SIZE[0], "height": SIZE[1],
-                                      "points": [{"x": float(x), "y": float(y)} for x, y in POINTS]}]
+                                      "points": [{"x": float(x), "y": float(y)} for x, y in POINTS],
+                                      "snap": ["manual"] * 4}]
     assert saved["truthSha256"] == sha
     assert saved["darts"] == [{"number": 1, "status": "VISIBLE", "tip": {"x": 100.5, "y": 200.5}},
                               {"number": 3, "status": "HIDDEN", "tip": None},

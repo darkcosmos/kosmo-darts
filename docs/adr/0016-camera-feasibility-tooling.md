@@ -56,6 +56,34 @@ session is not enough. Decisions (rule CV20, `docs/camera/annotation-format.md`)
   `write_atomic` at 8d69f64) and 50 seeded random version 1 files round-trip through migrate, encode and decode to
   their original version 1 content.
 
+## Annotation format v3: control clicks
+
+Context: Kosmo stopped K5 (D30): the drift measure is not reliable, so the squad needs ground truth per image, the 4
+calibration points clicked again on chosen photos and video frames, independent of the segments. The assisted click
+(CV31, D39, D43) also needs to record whether each stored point is the snapped crossing or the click itself.
+Decisions (rule CV25, `docs/camera/annotation-format.md`):
+
+- The annotation file moves to version 3: the root gains `controls`, a list of `{dart, source, positionMs, width,
+  height, points, snap}`, `positionMs` present exactly when `source` is `video`; `points` holds 4 entries in CV2
+  order, each a point or `null` (hidden). The list is sorted by dart, then photo before video, one control per
+  (dart, source), at most `MAX_CONTROLS` = 1024 next to `MAX_SEGMENTS`. A control belongs to a judged dart; a video
+  control needs a volley video and a non-null `entry.videoPositionMs`.
+- `snap` field: every control and every segment carries 4 statuses aligned with `points`, `snapped` or `unsnapped`
+  (CV31) for a point and `null` exactly for a `null` point; segments may also hold `manual` (clicked before snapping
+  existed). The format change lands before the snapping is built, so no later version bump is needed for it.
+- Controls never change the segments: `segment_for` and `segments_sha256` ignore them, and `segments_sha256` leaves
+  `snap` out so drift flags measured on version 2 stay current. `controls_sha256` hashes the control list, `snap`
+  included, for the diagnosis; `control_for` is the one lookup every tool uses.
+- The version 2 rules are kept unchanged; `migrate_v2` adds `controls: []` and `snap: ["manual" x4]` on every
+  segment, and a version 1 file goes through `migrate_v1` then `migrate_v2`. The writer writes version 3 only, on the
+  first saved change (CV16). Alternative rejected: storing controls as extra segments, which would change
+  `segment_for` and the drift hash, and mix the reference clicks with the ground truth that checks them.
+- Proof: the version 2 and version 1 golden examples migrate to the version 3 golden example without its controls
+  and its second segment, byte for byte; a version 2 file written by the batch 1 tool (`flow.apply` and
+  `write_atomic` at ab85842) and 50 seeded random version 2 files encode as version 3 and give back their version 2
+  text once the empty `controls` and the `manual` statuses are dropped; the worst case (64 segments, 1024 controls,
+  1000 darts) stays under the 1 MiB cap.
+
 ## Tripod drift
 
 Status: Not validated and suspended on 2026-11-15 (D30): compensation, threshold and guard are replaced at plan update P2; see ADR 0017 and rules CV18 to CV19, CV30.
