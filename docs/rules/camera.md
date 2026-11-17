@@ -75,14 +75,16 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   `low_peak` (a correlation peak below `DRIFT_MIN_PEAK`: occlusion or change), `unreadable` (missing, truncated or
   oversized file: Pillow's decompression bomb limit is kept). Drift is annotation quality control, independent of any
   model, so it reads every session, dev and eval, without the split lock (CV4 unaffected). The `drift` command writes a
-  numbers-only report (CV15) and the local flag file `drift.json`.
+  numbers-only report (CV15) and the local flag file `drift.json`. CV18 status (D30): not validated. Its results are information only until a measure passes the CV30 gate; the report starts with "Mesure de dérive non validée (diagnostic en cours) : ne pas recalibrer d'après ce rapport".
 - CV19 Drift threshold and compensation: a photo is "beyond" when drift mm > `DRIFT_MAX_MM` (1.0 mm =
   `CAL_MAX_ERROR_MM` / 2, Kosmo, D18). Reference calibration of a photo = its compensated points `p_i + d_i` when
   measured and not beyond; none otherwise. Used for the `cal1`-`cal4` training labels, CV9, CV12 and CV14. Photos
   without reference calibration are dropped from the dataset and excluded from CV9 and CV12, each counted by reason.
   `dataset` and `measure` refuse to run while a judged photo of their set is beyond (message: run `drift`,
   recalibrate, run `drift` again); `--accept-drift` overrides and the run records the count. CV7 (and CV8) never use
-  the clicked calibration: no dart or session is excluded from the main criterion.
+  the clicked calibration: no dart or session is excluded from the main criterion. CV19 status (D30): suspended. No
+  compensation, no "beyond" guard, no K5 recalibration loop until plan update P2 replaces this rule (T16b) on the
+  diagnosis (CV29) and the gate (CV30); the value of D18 is reopened (Q13).
 - CV20 Calibration segments (annotation format version 2): `calibrations` is an ordered list of segments
   `{fromDart, photo, width, height, points}`, at most `MAX_SEGMENTS` (64); the first starts at dart 1, `fromDart`
   strictly ascending, each applies from its `fromDart` until the next one; a segment after the first starts at a judged

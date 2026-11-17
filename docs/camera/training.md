@@ -119,6 +119,8 @@ collez toute la sortie dans le chat et arrêtez-vous là.
 
 ## Dérive et recalibration
 
+Étape K5 suspendue le 15/11/2026 : la mesure de dérive n'est pas fiable (presque toutes les photos sortent au-delà du seuil, et le déplacement vu à l'œil à partir de la fléchette 57 de la session d'éval de 18h24 n'apparaît pas). Ne recalibrez plus d'après le rapport de dérive. Les recalibrations déjà faites sont gardées. La suite est l'étape K7 (contrôle de calibration).
+
 Étape K5 : le trépied bouge un peu entre les photos, donc la calibration cliquée une fois ne vaut plus pour toute la
 session. La mesure de dérive dit à partir de quelle fléchette recalibrer ; vous recalibrez dans l'outil, puis vous
 mesurez de nouveau, jusqu'à ce que tout soit sous le seuil (1,0 mm). Les commandes ci-dessous se copient telles quelles.

@@ -58,6 +58,8 @@ session is not enough. Decisions (rule CV20, `docs/camera/annotation-format.md`)
 
 ## Tripod drift
 
+Status: Not validated and suspended on 2026-11-15 (D30): compensation, threshold and guard are replaced at plan update P2; see ADR 0017 and rules CV18 to CV19, CV30.
+
 Context: the clicked calibration of a segment is only true for the photo it was clicked on; between two clicks the
 tripod moves by a few pixels. Decisions (rules CV18 and CV19, `tools/camera/kosmo_camera/drift.py`):
 
