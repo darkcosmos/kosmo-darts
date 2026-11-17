@@ -12,11 +12,11 @@ No mapping or status is chosen here: every value is given.
   "whole-dart-checked"}`; `dart-tip-detection-v17i-coco` `{"dart_tip": "pseudo-tip-box"}`. Rejected sets: no entry.
 - Changed `docs/camera/datasets.md`: six rows in the T9p table `| slug (dossier) | jeu | lien | licence |
   attribution | statut | motif |`. Licence cell of the five Roboflow rows: `CC BY 4.0 (page vue par Kosmo le
-  2026-11-15)`. Attribution cell (D28, author and link as Kosmo gave them): the two accepted rows
-  `<jeu> par <auteur>, <lien>, CC BY 4.0 ; modifié : boîtes reconstruites autour de la pointe`; the v17 row
-  `<jeu> par <auteur>, <lien>, CC BY 4.0 ; modifié : pointes obtenues par pseudo-étiquetage, boîtes reconstruites
-  autour de la pointe`; rejected rows: `non utilisé`. Q6 (root "Open questions") may add « points de calibration
-  ajoutés par pseudo-étiquetage » to the three used rows: copy the cell of D28 as it stands when the task is built.
+  2026-11-15)`. Attribution cell (D28 completed by D35, Kosmo's Q6 answer; author and link as Kosmo gave them):
+  the two accepted rows `<jeu> par <auteur>, <lien>, CC BY 4.0 ; modifié : boîtes reconstruites autour de la
+  pointe, points de calibration ajoutés par pseudo-étiquetage`; the conditional v17 row `<jeu> par <auteur>,
+  <lien>, CC BY 4.0 ; modifié : pointes obtenues par pseudo-étiquetage, boîtes reconstruites autour de la pointe,
+  points de calibration ajoutés par pseudo-étiquetage`; rejected rows: `non utilisé`.
   - `dart-detection3-v1i-coco` | dart_detection3 (DartsKEY01) | https://universe.roboflow.com/dartskey01/dart_detection3
     | accepted | motif: `boîte centrée sur la pointe (médiane 1,0 % de la largeur) ; récupéré via un fork Roboflow de
     Kosmo (aucune version publiée), version brute sans prétraitement ni augmentation ; dart_tip -> tip`.
@@ -46,7 +46,8 @@ change in this task).
 - Committed map passes the T9p strict reader and equals the three entries above exactly (expected value in the
   test as data).
 - `test_datasets_doc.py` (T9p) passes with the six rows: v17 `conditional` (its `pseudo-tip-box`), the two others
-  `accepted`, the three rejected rows unmapped; the three used rows carry the D28 `modifié :` text exactly.
+  `accepted`, the three rejected rows unmapped; the three used rows carry the D35 `modifié :` text exactly,
+  « points de calibration ajoutés par pseudo-étiquetage » included.
 
 ## Done when
 Python checks of root "Test plan" green (including the CI command `python -m pytest -q -m "not slow"` from

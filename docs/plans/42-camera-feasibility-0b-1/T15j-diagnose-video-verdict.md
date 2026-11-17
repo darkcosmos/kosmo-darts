@@ -8,7 +8,8 @@ whether the board moves durably between darts (H3), and print the verdict of the
 ## Files
 - Changed `tools/camera/kosmo_camera/diagnose.py`:
   - Session mapping `M` (photo px to video px): least-squares similarity (scale, rotation, translation) over the
-    clicked points of every dart that has both a complete photo control and a complete video control; median and
+    clicked points of every dart that has both a complete photo control and a complete video control, none of
+    their points `unsnapped` (CV28); median and
     p95 residual px reported; not usable when fewer than `MAP_MIN_PAIRS` (3) pairs or residual p95 above
     `MAP_MAX_RESIDUAL_PX` (2.0), reason shown.
   - `O` per dart with both controls (CV28); automatic `O` for other video darts only when the CV18 method,
@@ -18,7 +19,8 @@ whether the board moves durably between darts (H3), and print the verdict of the
     window: frames every `VIDEO_WINDOW_STEP_MS` from `entry` to `photo` `videoPositionMs`, registered against the
     CV27 frame; maximum and settling time) only with the validated video method.
   - Report sections "(b) Photo et vidéo", "Verdict" (CV29 lines and the "Suite proposée" row of root plan
-    "Approach, Diagnosis decision rule").
+    "Approach, Diagnosis decision rule"); the two "non concluant" causes read `D` p95 and the complete snapped dev
+    photo control count from T15i, never `R` (information since D39).
 - Changed `diagnostic_file.py`: optional per photo `videoMm` (`O`) and per session `mapping` residuals.
 - Changed `defaults.json`, `config.py`, `test_config.py`: `VIDEO_WINDOW_STEP_MS` 100, `DIAG_MOVE_MM` 1.0,
   `DIAG_MIN_SHARE` 0.10, `DIAG_MIN_VIDEO` 10, `MAP_MIN_PAIRS` 3, `MAP_MAX_RESIDUAL_PX` 2.0; each pinned once, in
@@ -30,7 +32,7 @@ whether the board moves durably between darts (H3), and print the verdict of the
 T15i, T15c (frames, `frame_at`).
 
 ## Rules
-CV28, CV29, CV30, CV27, CV15. Every threshold is read from `config.py`; none is chosen from the data.
+CV28, CV29, CV30, CV31, CV27, CV15. Every threshold is read from `config.py`; none is chosen from the data.
 
 ## Tests
 - Synthetic session (T7 boards, generated video at a known scale and crop): photos equal to the frames: `O` about
@@ -40,7 +42,15 @@ CV28, CV29, CV30, CV27, CV15. Every threshold is read from `config.py`; none is 
 - Mapping refused: 2 pairs; residual above the cap (a non-similar warp).
 - Video method not validated (frames made unregistrable): automatic `O`, `V`, `W` reported "non mesurable".
 - Verdict: each CV29 branch on scripted values, thresholds at the boundary (exactly `DIAG_MIN_SHARE`,
-  exactly `VALIDATION_MIN_SHARE`), "non concluant" for `R` p95 above `CLICK_REPEAT_MAX_MM` and for 29 dev controls.
+  exactly `VALIDATION_MIN_SHARE`).
+- The two "non concluant" causes (CV29, Kosmo Q10, D39), each with its own French line and "Suite proposée":
+  `D` p95 just above `SNAP_REPEAT_MAX_MM` gives "Non concluant : dispersion du recalage p95 X mm, au-delà de
+  0,25 mm", exactly at it does not; an infinite p95 (failed restarts) gives the same line with "infinie"; 29
+  complete snapped dev photo controls give "Non concluant : N contrôles photo dev complets et recalés, il en faut
+  30", 30 do not; 30 complete dev controls of which 2 have an `unsnapped` point count 28 and give that line; both
+  causes at once print both lines and nothing else.
+- `R` is information: scripted `R` values from 0 to 10 mm never change any verdict line.
+- `O` and `M` use only controls without an `unsnapped` point (CV28).
 - Combinations (T1, the CV29 lines are independent): H1 with "photos déplacées" (both lines, "Suite proposée" =
   T16a used as per-photo calibration); H2 and H3 together; H1, H2 and H3 together; "non concluant" with values
   that would also give H1 and H2: only "non concluant" is printed and no other line.

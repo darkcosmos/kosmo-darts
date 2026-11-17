@@ -1,36 +1,39 @@
-# T15f: Tool page, control calibration screen
+# T15f: Tool page, assisted point screen (control, calibration, recalibration)
 
 ## Goal
-Give Kosmo a fast control screen: one point at a time, already zoomed on the expected area, hidden point and undo
-by key, progress always visible (D30 point 1).
+Give Kosmo a fast assisted screen: the 4 snapped points shown zoomed with their status, Entrée to confirm, a click
+near the right crossing to correct, hidden point and undo by key, progress always visible (D30 point 1, D39).
 
 ## Files
-- Changed `tools/camera/kosmo_camera/annotate/static/app.js`, `index.html`, `style.css`: control screen of root plan
-  "Screens and states", item "Control screen": title "Contrôle de calibration : photo de la fléchette N, point k sur
-  4" (or "image vidéo de la fléchette N"), the CV2 diagram highlighting point k, progress "Photos contrôlées : D /
-  T · Images vidéo : D / T" (templates filled from the server counts), the line "Points posés : n / 4 (enregistrés
-  au 4e point)" from `pending` (U16), buttons with their keys "Point caché (H)", "Effacer (U)", "Quitter le
-  contrôle (Échap)"; key K on every session screen ("Terminé" included) and the button "Contrôle de calibration
-  (K)". At each point the view is zoomed (x4, `CONTROL_ZOOM`, a page constant) on `zoomCentre` of point k from
-  the server; the full view (key 0) and the wheel zoom of T6b keep working, and the hint "Point hors de la vue :
-  touche 0. H seulement si une fléchette le cache" is always shown under the buttons (U18; H four times skips an
-  unusable photo, stored as four hidden points, already accepted by T15d); no marker is drawn at
-  that centre and no automatic measure is shown (no anchoring, root D31). Clicked points of the current item drawn
-  as filled numbered crosses. "Enregistré à HH:MM:SS" after each 4th point. Text built with `textContent` only.
+- Changed `tools/camera/kosmo_camera/annotate/static/app.js`, `index.html`, `style.css`, per root plan "Screens
+  and states", items "Assisted point screen" and "Control screen" (strings exactly as written there):
+  - Assisted point screen, shared by the control, first calibration and recalibration screens (each keeps its
+    title): 4 insets in the side panel (x3 zoom of `SNAP_INSET_PX` source px, drawn from the already loaded image
+    with canvas `drawImage`, no new request), labels `1 : 5|20` to `4 : 8|11`, a thin cross and the status text
+    (`recalé`, `non recalé`, `caché`, `à cliquer`) from the server slots; numbered crosses on the full view; line
+    "Points prêts : n / 4 (Entrée pour enregistrer)"; buttons "Enregistrer (Entrée)", "Point caché (H)" (control
+    only), "Annuler (U)", "Quitter (Échap)"; keys Entrée, 1 to 4, H (control only), U, Escape, 0 and the wheel;
+    the hint (calibration screens without its H sentence); "Enregistré à HH:MM:SS" after a save; the line
+    "Recalage indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)" when the server says
+    unavailable, with clicks ignored on this screen.
+  - Control screen: title, progress templates "Photos contrôlées : D / T · Images vidéo : D / T", key K on every
+    session screen ("Terminé" included) and the button "Contrôle de calibration (K)".
+  - Text built with `textContent` only.
 - Changed `tools/camera/tests/test_annotate_static.py`: new strings, keys and buttons; static scan as T6b.
 
 ## Depends on
-T15d.
+T15d (control slots; T15n serves the calibration and recalibration slots).
 
 ## Rules
-CV16, CV25, D8 (clicks in stored JPEG pixels through the existing view transform), contrast and 48 px targets as
+CV16, CV25, CV31, D8 (clicks in stored JPEG pixels through the existing view transform), contrast and 48 px targets as
 T6b.
 
 ## Tests
-- Static: every French string above present in `app.js` exactly once as a constant; keys K, H, U, Escape, 0 and
-  the wheel handler bound on the control screen; K bound in the handler shared by every session screen; no
-  `innerHTML`, `eval`, `document.write`, external URL (T6b scan); the zoom-centre code path never draws a marker
-  (no call of the marker function with `zoomCentre`, checked by a source test).
+- Static: every French string above present in `app.js` exactly once as a constant; keys Enter, 1 to 4, H, U,
+  Escape, 0 and the wheel handler bound on the assisted screen; K bound in the handler shared by every session
+  screen; the four status texts and the "Recalage indisponible" line present; the strings "Points posés" and
+  `zoomCentre` absent; no `innerHTML`, `eval`, `document.write`, external URL (T6b scan); insets drawn without a
+  new fetch (no URL built in the inset code, source test).
 - What only Kosmo can check (JavaScript cannot run in the sandbox): root plan "How Kosmo verifies", checklist K7.C.
 
 ## Done when

@@ -34,8 +34,8 @@ and the image dropped; also dropped: one point retained for two boxes (`tip-shar
 box (`tip-unassigned`), or no calibration labels for the image in `pseudo-cal.json` (its drop reason). No `tauTip`,
 no v17 folder or no image kept: `notBuilt` with the reason, B not built. Box rebuilt with `BOX_FRACTION` (T9).
 `figures` count dropped images per rule (each image under the first rule it breaks, in the order above). The
-calibration labels of v17 images come from `pseudo-cal.json` (M0), pending Q4 (root "Open questions"): if Kosmo
-picks A, main amends this task before it is built. Percentiles: p95 by the same quantile rule as T13
+calibration labels of v17 images come from `pseudo-cal.json` (M0, the `sans jeux publics` `full` model; Kosmo,
+Q4, D33), like every other public image of A and B. Percentiles: p95 by the same quantile rule as T13
 (`numpy.percentile`, linear), stated in the notes.
 
 ## Tests

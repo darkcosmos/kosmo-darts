@@ -32,14 +32,15 @@ guard the eval run. The report itself is T13b.
   (CV23, copied, never recomputed); `not_built` maps a missing version to its reason; `trainings` lists every
   `train-run.json` (version, fold, held-out role, images, duration). Tunes each version with `tune.py`, takes each
   dart's CV7 outcome at that version's pair, then runs the sequence `sans` -> `A` -> `B`: `b`, `c`, `p` against the
-  version retained so far, candidate retained only when `p < MCNEMAR_ALPHA`, and (Q5 pending, fail closed) never
-  when it has no feasible pair while the retained version has one. Returns the retained version, one step per
+  version retained so far, candidate retained only when `p < MCNEMAR_ALPHA`, and never when it has no feasible pair
+  while the retained version has one (Kosmo, Q5, D34: the 1 % unflagged-error cap comes before McNemar, the simpler
+  version stays; reason `no-feasible-pair` in its step). Returns the retained version, one step per
   candidate (`b`, `c`, `p`, decision, reason), every version's figures (CV8 rates with Wilson intervals, tuned pair
   or `NoFeasiblePair`, CV9 successes, CV12 median), the trainings with count and total duration, and whether step
   13 is needed (B retained and `models/B/full` missing). Only `sans`: "sans jeux publics seulement".
 - Changed `defaults.json` and `config.py`: `MCNEMAR_ALPHA` 0.05, pinned once in `test_config.py`.
 - Changed `docs/adr/0016-camera-feasibility-tooling.md`, section "Public data and version selection" (T9): the
-  sequential McNemar selection, the alpha and why paired darts (D26), the Q5 gate.
+  sequential McNemar selection, the alpha and why paired darts (D26), the 1 % cap gate before McNemar (D34).
 - Added tests `tools/camera/tests/test_metrics.py`, `test_tune.py`, `test_frozen.py`, `test_compare.py`.
 
 ## Depends on
@@ -72,7 +73,7 @@ correct `>=` 95 % passes, unflagged errors `<=` 1 % passes. The former overlap r
   (9, 3) gives 0.0730 (to 1e-4); `b` and `c` counted on the same darts from scripted outcomes.
 - Sequence on scripted results: A not significant then B tested against `sans`; A retained then B tested against
   A; B significant against `sans` while A was not retained (B retained); B not built (listed with its reason);
-  `sans` alone ("sans jeux publics seulement"); (5, 0) retains, (4, 0) does not; Q5 gate: an infeasible candidate
+  `sans` alone ("sans jeux publics seulement"); (5, 0) retains, (4, 0) does not; D34 gate: an infeasible candidate
   with `p < 0.05` does not replace a feasible retained version, while an infeasible retained version can be
   replaced; step 13 needed only when B is retained without `models/B/full`.
 - Refusals: different fold plan, `kosmoPartSha256` of a fold or hyperparameters across versions, a duplicated

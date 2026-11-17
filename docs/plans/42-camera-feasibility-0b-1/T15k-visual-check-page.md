@@ -24,8 +24,10 @@ alternate, registered by the automatic measure or by the control clicks, with th
 - Changed `annotate/static/app.js`, `index.html`, `style.css`: screen "Contrôle visuel" (key V, button "Contrôle
   visuel (V)") of root plan "Screens and states", item "Visual check": the two images stacked, alternating every
   `VISUAL_PERIOD_MS` (700); Space pauses; keys 1, 2, 3 choose "Automatique", "Clics de contrôle", "Aucun" (applied
-  with CSS `matrix3d`); opens on `start` (largest gap); arrows go to the previous or next diagnosed photo; key N
-  jumps to `nextAbove` ("Aucune autre photo au-delà de 0,5 mm" when null); position line "Photo i / n"; the line
+  with CSS `matrix3d`); opens on `start` (largest gap); arrows go to the previous or next diagnosed photo in dart
+  order (the server's list order, index − 1 and + 1, no wrap past the ends); key N jumps to `nextAbove` ("Aucune
+  autre photo au-delà de 0,5 mm" when null); position line "Photo i / n" with `i` = shown index + 1 in that same
+  dart order, so the opening jump, N and the arrows keep `i` consistent (U24, D42); the line
   "Décalage automatique : … px (… mm) · d'après les clics : … mm · écart : … mm"; "Non mesurable" when a matrix is
   missing; the route `state` text when not `ok`. Without `--diagnostic`: "Contrôle visuel : indisponible (option
   --diagnostic absente)".
@@ -35,7 +37,8 @@ alternate, registered by the automatic measure or by the control clicks, with th
 T15i, T15g.
 
 ## Rules
-CV16 (local only, 127.0.0.1, images never leave the PC), CV15 (`diagnostic.json` local), CV28.
+CV16 (local only, 127.0.0.1, images never leave the PC), CV15 (`diagnostic.json` local), CV28. U24 (D42): arrows
+and "Photo i / n" follow dart order.
 
 ## Tests
 - Homography: identity; a known translation, rotation, scale and perspective rebuilt from 4 points within 1e-9;
@@ -49,6 +52,10 @@ CV16 (local only, 127.0.0.1, images never leave the PC), CV15 (`diagnostic.json`
   is 3, from 3 wraps to 1; with a single photo above: null from that photo, that photo from any other; none above:
   null;
   boundary exactly 0.5 is not above.
+- Dart order (U24, D42): a diagnostic file whose photos are written out of dart order (darts 31, 7, 19) is served
+  sorted by `dart` (7, 19, 31); `start` and every `nextAbove` value index that sorted list, so "Photo i / n" of the
+  page (i = index + 1) matches the dart rank; the page's arrow handlers use index − 1 and + 1 on that list only
+  (static check: no other ordering in `app.js`), stopping at the ends.
 - Static: strings, keys V, N, Space, 1, 2, 3, arrows bound; `matrix3d` built from the server numbers only; T6b scan.
 - What only Kosmo can check: root plan "How Kosmo verifies", checklist K7.C (visual check lines).
 

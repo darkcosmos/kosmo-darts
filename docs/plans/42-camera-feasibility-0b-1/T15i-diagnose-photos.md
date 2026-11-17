@@ -1,9 +1,9 @@
 # T15i: Diagnosis, photo side: true drift, error of the automatic measure, where it fails
 
 ## Goal
-From Kosmo's control clicks, measure per photo the true drift and the error of the current automatic measure
-(CV18), the click repeatability, and where the automatic measure fails (coarse search or patches, peak ratios),
-as numbers only (D30 point 2 (a) and (c), CV28).
+From Kosmo's snapped control clicks, measure per photo the true drift and the error of the current automatic
+measure (CV18), the machine-measured snapping dispersion `D` (Kosmo, Q10, D39), and where the automatic measure
+fails (coarse search or patches, peak ratios), as numbers only (D30 point 2 (a) and (c), CV28, CV31).
 
 ## Files
 - Changed `tools/camera/kosmo_camera/drift.py`: `phase_shift_detail(a, b)` -> `(dx, dy, peak, second_peak)`
@@ -15,28 +15,37 @@ as numbers only (D30 point 2 (a) and (c), CV28).
   gain the first line "Mesure de dérive non validée (diagnostic en cours) : ne pas recalibrer d'après ce rapport".
 - Added `tools/camera/kosmo_camera/diagnose.py` (numpy, Pillow): per session (roles from `control.roles`, split
   checked against the lock, CV3) and per complete photo control, the CV28 values `T`, `E`, `E_seeded`, coarse
-  error px, peak ratios; repeatability `R` on segment reference photos; partial controls (a `null` point): visible
-  points' px errors only, counted apart. `build_report(...)` sections "Échantillon", "(a) Dérive vraie et erreur
-  de la mesure automatique", "(c) Où la mesure échoue", "Répétabilité des clics", per role and overall: counts,
-  median and p95 with CV13 intervals, share of `E` at most `VALIDATION_MAX_MM` with a Wilson interval,
-  unmeasurable per reason. `diagnostic.json` (local, CV15) through `diagnostic_file.py`. `main()` for `python -m
+  error px, peak ratios; `R` on segment reference photos (agreement of the segment clicks with the snapped
+  controls, information only, decides nothing); `D` per `snapped` point of photo and video controls through
+  `snap.restart_dispersion` (T15m) on the luma of that photo or listed frame, p95 with its CV13 interval, a failed
+  restart counted infinite; partial controls (a `null` point): visible points' px errors only, counted apart;
+  controls with an `unsnapped` point: excluded from `T`, `E` and from the `DIAG_MIN_CONTROLS` count, counted per
+  role and source, like a partial control; the number of complete snapped dev photo controls is exported for
+  CV29. `build_report(...)` sections "Échantillon", "(a) Dérive vraie et erreur de la mesure automatique", "(c) Où
+  la mesure échoue", "Recalage des clics" (points recalés and non recalés per role and source with reasons, `D`
+  median and p95 with interval against the target `SNAP_REPEAT_MAX_MM`, `R` as information), per role and
+  overall: counts, median and p95 with CV13 intervals, share of `E` at most `VALIDATION_MAX_MM` with a Wilson
+  interval, unmeasurable per reason. T15l documents that section for Kosmo. `diagnostic.json` (local, CV15) through `diagnostic_file.py`. `main()` for `python -m
   kosmo_camera.diagnose --captures DIR --annotations DIR --split FILE --runs DIR [--frames DIR]`: writes
   `<runs>/diagnostic/diagnostic-report.md` and `diagnostic.json`, prints the report path.
 - Added `tools/camera/kosmo_camera/diagnostic_file.py` (stdlib only, strict, `MAX_BYTES` 4 MiB): `format`
   `"kosmo-camera-diagnostic"`, `version` 1, per session `session`, `role`, `segmentsSha256`, `controlsSha256`,
-  per photo `dart`, `referencePhoto`, `autoPoints` or null with `reason`, `controlPoints`, `autoPx`, `autoMm`,
-  `trueMm`, `errorMm`.
+  per photo `dart`, `referencePhoto`, `autoPoints` or null with `reason`, `controlPoints`, `controlSnap` (the
+  stored `snap` statuses), `autoPx`, `autoMm`, `trueMm`, `errorMm`, `dispersionMm` (per point, null when not
+  snapped; JSON has no infinity, a failed restart is the string `"failed"`).
 - Changed `defaults.json`, `config.py`, `test_config.py`: `VALIDATION_MAX_MM` 0.5, `VALIDATION_MIN_SHARE` 0.95,
-  `PEAK_EXCLUSION` 3, `CLICK_REPEAT_MAX_MM` 0.35, `DIAG_MIN_CONTROLS` 30; each value pinned once, in
-  `test_config.py` only; every other test reads it from `config` (T3, as A16).
-- Changed `docs/rules/camera.md`: adds CV28 (photo part); CV15 sentence on `diagnostic.json`.
+  `PEAK_EXCLUSION` 3, `DIAG_MIN_CONTROLS` 30; each value pinned once, in `test_config.py` only; every other test
+  reads it from `config` (T3, as A16). The `SNAP_*` constants are T15m's, read from `config`.
+- Changed `docs/rules/camera.md`: adds CV28 (photo part, with `D` and the `unsnapped` exclusion); CV15 sentence on
+  `diagnostic.json`.
 - Added tests `test_diagnose.py`, `test_diagnostic_file.py`; changed `test_drift.py`.
 
 ## Depends on
-T15c (roles, sample), T8b.
+T15c (roles, sample), T8b, T15m (`snap.restart_dispersion`, `load_luma`).
 
 ## Rules
-CV28, CV9 metric, CV13, CV15, CV4 (reads every session like `drift`; nothing is tuned).
+CV28, CV31, CV9 metric, CV13, CV15, CV4 (reads every session like `drift`; nothing is tuned). There is no click
+threshold on Kosmo's hand (Q10 option 3).
 
 ## Tests
 - T7 session with planned drift and exact "control clicks" (true points): `T` equals the planned drift mm within
@@ -48,7 +57,14 @@ CV28, CV9 metric, CV13, CV15, CV4 (reads every session like `drift`; nothing is 
   dart 20 also planted: the diagnosis gives `E` above `VALIDATION_MAX_MM` on those photos, `T` about 0 before dart
   20 and about 2 mm after, and the share feeding CV29 makes H1 "mesure fausse" (verdict line checked in T15j).
 - Second peak on a two-peak correlation: ratio equals the hand value.
-- `R` on reference photos with clicks offset by 1 px: equals the CV9 error of that offset.
+- `R` on reference photos with clicks offset by 1 px: equals the CV9 error of that offset; reported under
+  "information", feeds no verdict field.
+- `D` on rendered controls (T7 boards with ring wires, T15m): a clean crossing gives p95 under 0.05 mm; a stored
+  point between two crossings gives a dispersion above `SNAP_REPEAT_MAX_MM`; a restart that fails counts infinite
+  (`"failed"` in `diagnostic.json`, the p95 then infinite when it is in the top 5 %); video controls included.
+- Unsnapped point: a control with one `unsnapped` point is excluded from `T` and `E` and from the snapped dev
+  count, counted per role and source with its reason; its snapped points keep their `D` entries, the unsnapped one
+  has none.
 - Partial control: excluded from `T` and `E`, counted, visible points listed.
 - Report: numbers only, roles only (scan for every input session name, file name and path), CV13 intervals at a
   hand-checked case; `diagnostic.json` strict reader (cap, cap + 1, unknown key).
@@ -59,6 +75,7 @@ CV28, CV9 metric, CV13, CV15, CV4 (reads every session like `drift`; nothing is 
 Python checks of root "Test plan" green (CI command too), `kosmo-detekt` exit 0.
 
 ## Model
-sonnet. Why: every quantity is defined in CV28 with formulas reusing T8 and T8b; tests on synthetic data.
+sonnet. Why: every quantity is defined in CV28 and CV31 with formulas reusing T8, T8b and T15m; tests on
+synthetic data.
 
 ## Implementation notes

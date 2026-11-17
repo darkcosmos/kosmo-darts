@@ -5,7 +5,8 @@ Compute in Python what is done and what is left per session, and exactly one act
 a stale one (D30 point 5), so the page only displays it.
 
 ## Files
-- Added `tools/camera/kosmo_camera/annotate/journey.py` (stdlib): `session_state(loaded, control, drift, frames)`
+- Added `tools/camera/kosmo_camera/annotate/journey.py` (stdlib): `session_state(loaded, control, drift, frames,
+  snap_available)`
   -> `SessionState(steps, next_step, info)`; `steps`: ordered rows `calibration`, `tips`, `control_photo`,
   `control_video`, each `done`, `total`, `status` (`todo`, `in_progress`, `done`, `unavailable` with a reason);
   `next_step`: the first row not done in that order, with its French text, its flow `action` (`calibrate`, `goto
@@ -14,8 +15,13 @@ a stale one (D30 point 5), so the page only displays it.
   in list order with a step left, ignored sessions skipped), its text and list hint; when no session has a step
   left, the table's final row. No default text claims completion while a row is `unavailable` (U17).
   `info`: lines that are information only (drift, stale files, missing frames reasons).
+  Snapping unavailable (`Snapper.available` false, T15n; D43): when the matching row's action is `calibrate` or
+  `control`, the table row "Recalage indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)"
+  replaces it (no action, no hint); a `goto N` tips row is unchanged.
 - Changed `annotate/server.py`: `/api/sessions` adds `instruction` (one string), `focus` (the focus session's name)
-  and per session `steps` and `state` (`À faire`, `En cours`, `Terminée`, `Ignorée`); the session view adds
+  and per session `steps`, `state` (`À faire`, `En cours`, `Terminée`, `Ignorée`) and `role` (`dev 1`, `eval 2`,
+  from `control.roles` when `--split` is given, absent otherwise; Kosmo, Q9, D38; never a set name inferred from
+  the session name); the session view adds
   `instruction` (the session's next step with its session hint, or the screen's own title in calibration,
   recalibration and control screens).
 - Drift flags (CV18 not validated, CV30): `drift.json` lines move to `info` as "Mesure de dérive non validée :
@@ -28,10 +34,10 @@ a stale one (D30 point 5), so the page only displays it.
 - Changed tests `test_annotate_server.py`; added `test_annotate_journey.py`.
 
 ## Depends on
-T15d.
+T15d (and through it T15n's `Snapper.available`, T15c's `control.roles`).
 
 ## Rules
-CV16, CV26, CV30. An instruction is derived from the current annotation file and the presence of frames only;
+CV16, CV26, CV30, CV31. An instruction is derived from the current annotation file and the presence of frames only;
 `drift.json` is information, never the active instruction. Rows are taken in the order of the root table
 "Instructions"; an `unavailable` video row gives that table's "no frames" row, after every photo control.
 
@@ -41,6 +47,11 @@ CV16, CV26, CV30. An instruction is derived from the current annotation file and
 - Global instruction: the focus session is the first in list order with a step left; ignored sessions skipped.
 - After the last control of a session is saved, its instruction changes at the next call (no cached text).
 - No `--split` or no `--frames` with everything else done: the "indisponible" row, never the final row (U17).
+- Snapping unavailable: the calibration row and each control row are replaced by "Recalage indisponible ..." with
+  no action; the tips row is unchanged; never the final row while a calibration or control is left; the same states
+  with snapping available give the normal rows (D43).
+- Role (Q9, D38): with `--split` each listed session carries its role in CV3 key order (`dev 1`, `dev 2`,
+  `eval 1`, `eval 2`), an ignored session none; without `--split` no `role` field.
 - Session with every frame missing: video row done with total 0, info line, the next row is reached (S13).
 - Drift never instructs (A30): for every journey state above crossed with every drift input (none, valid with
   beyond darts, stale, invalid, oversized), `instruction`, `next_step` and every session view `instruction` are
