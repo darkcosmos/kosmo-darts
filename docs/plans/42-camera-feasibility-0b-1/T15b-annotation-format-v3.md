@@ -54,3 +54,30 @@ opus. Why: changed stored format with its migration (case 1): v3 schema, strict 
 Kosmo's real v1 and v2 files.
 
 ## Implementation notes
+- Model (`annotations.py`): `Annotations` gains `controls: tuple = ()` as its last field (JSON order stays
+  `calibrations, controls, darts`); `Calibration` gains `snap: tuple = MANUAL_SNAP`, so existing callers (`flow.py`,
+  `synth.py`) still build segments with `manual` statuses. T15n must pass the real statuses (`SNAPPED`/`UNSNAPPED`)
+  when the tool snaps. `Control(dart, source, position_ms, width, height, points, snap)`; constants `PHOTO`, `VIDEO`,
+  `SOURCES`, `SNAPPED`, `UNSNAPPED`, `MANUAL`, `MANUAL_SNAP`, `MAX_CONTROLS`, `VERSION_2`.
+- Version 2 kept as its own model: `CalibrationV2`, `AnnotationsV2`, `_annotations_v2`, `_calibrations_v2`.
+  `migrate_v1` now returns `AnnotationsV2` (was the v2 `Annotations`); `decode` runs `migrate_v2(migrate_v1(...))`.
+- Point encoding of a control: `{x, y}` objects like segments and tips (root CV25 text says `[x, y]`; the rule in
+  `docs/rules/camera.md` says `{x, y}` to match the existing point encoding of the file).
+- Deviation: `segments_sha256` hashes the segments WITHOUT `snap`, so the hash is identical before and after the v2 to
+  v3 migration and Kosmo's existing `drift.json` flags (compared in `server.py`) stay current. `controls_sha256`
+  includes `snap`. Covered by a test on the tool-written v2 fixture.
+- `validate_against`: "volley has no video" is an empty `volley.video` string (truth v2 always names a video).
+- `encode` writes `positionMs` when the source is video or a position is set, so a photo control with a position or
+  a video control without one fails the decode check inside `encode`.
+- Golden: `annotations-v3-golden.json` = v2 golden (segment 1 `manual`) plus a second segment from dart 3 `snapped`
+  plus 3 controls; "v3 golden minus its controls" therefore also drops that second segment (test helper
+  `_v3_golden_minus_its_controls`).
+- Fixture `annotations-v2-tool-written.json`: generated before any code change with `git archive ab85842 tools/camera`
+  extracted to the scratchpad, a script run with `python3.13 -I` that puts that export and its `tests/` on
+  `sys.path`, `make_session(judged=1..9, voided=(10,), no_photo=(11,))`, 4 calibration clicks, darts 1 to 3, `recalibrate`
+  on dart 4 with 4 clicks, darts 4 to 9, `write_atomic` after each action; asserts `VERSION == 2`, 2 segments and a
+  complete cursor.
+- Worst case measured: 807 716 bytes (64 segments, 1024 video/photo controls, 1000 visible darts, full-precision
+  floats), under `MAX_BYTES`.
+- Done-when: `python3 -I -S -m kosmo_camera.annotate --help` cannot find the package (`-I` drops the current folder,
+  as T5b noted); checked with `-I -S` and the package root inserted on `sys.path`, and `python3 -S -m ... --help`.
