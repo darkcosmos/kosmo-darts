@@ -121,7 +121,7 @@ def _info_lines(loaded, control_info, drift, steps):
         lines += [DRIFT_INFO, views.drift_view(loaded, drift)[0]]
     lines += [step.reason for step in steps if step.status == UNAVAILABLE]
     missing = sum(control_info.frame_reasons.values())
-    video = steps[3]
+    video = next(step for step in steps if step.key == CONTROL_VIDEO)
     if video.status == DONE and video.total == 0 and missing:
         lines.append(NO_USABLE_FRAMES.format(n=missing))
     return tuple(dict.fromkeys(lines))  # both control rows may share the same reason: said once
