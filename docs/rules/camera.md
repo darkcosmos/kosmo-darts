@@ -60,7 +60,13 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   an annotation file that the strict reader rejects (a version 1 file is accepted and written back as version 2 on
   the first change, CV20). The drift flag file (`--drift`, CV18) is read-only for the tool: read again at every
   session list and view, never written; a missing, invalid or oversized file gives one warning and no flags, and flags
-  measured on other segments than the current ones stay shown marked "(mesure périmée : relancer la mesure)".
+  measured on other segments than the current ones stay shown marked "(mesure périmée : relancer la mesure)". After
+  D39 and D43: the stdlib-only rule covers every module except `snap.py` and the shared decoder `luma.py`, both
+  imported lazily (`annotate/snapping.py`); without numpy and Pillow the tool starts, shows "Recalage indisponible"
+  and refuses calibration, recalibration and control saves (CV31); snapping reads only the photo or listed frame
+  already served by the tool, through `luma.decode_luma`, at most `SNAP_CACHE_IMAGES` (2) decoded images in memory; an
+  image that cannot be decoded leaves the point at the click, `unsnapped` with reason `unreadable`, and never stops the
+  tool.
 - CV17 Sessions in `~/kosmo-data/captures-eval/` (confirmation campaign, later) are always eval: never in the split,
   never in training or tuning; `measure --set campaign` reads them under the same `frozen.json` guard.
 - CV18 Drift of a judged photo: compared with the reference photo of its segment (CV20), both decoded to luma in

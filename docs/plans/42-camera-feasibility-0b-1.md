@@ -83,7 +83,7 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   checked with the resolver on 2026-11-15 in the sandbox: `rfdetr` 1.12.1, `litert-torch` 0.10.0, `ai-edge-litert`
   2.3.0, `ai-edge-quantizer` 0.10.1, `torch` 2.14.1, `torchvision` 0.29.2, `numpy` 2.5.4, `pillow` 13.0.0, `av` 19.0.2
   (all pulled by `rfdetr` or `litert-torch` except `pytest` 9.2.0: no extra library).
-- **Stdlib-only core**: `config.py`, `truth.py`, `split.py`, `annotations.py`, `board.py`, `drift_file.py` import only the standard library, so the
+- **Stdlib-only core**: `config.py`, `truth.py`, `split.py`, `annotations.py`, `board.py`, `drift_file.py`, `strict_json.py` import only the standard library, so the
   annotation tool runs in WSL with a bare `python3` (3.14 in Kosmo's WSL, which has no python3.13; the stdlib core must work on 3.13 and 3.14), outside the container and without the venv (decision 5).
   Everything with numpy, PIL, av, torch or LiteRT lives in other modules. Amended by D43 and D44 (Q14, option 1):
   the tool imports
@@ -651,9 +651,10 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   previous item's points snapped on the new image) are never stored as such: a proposal that does not snap must be
   clicked or hidden before Entrée saves. Click rule (U27, pure function `flow.click_target(slots, click,
   selected)`, T15n): a point selected with keys 1 to 4 takes the click; else the positioned point nearest to the
-  click within `CLICK_REPLACE_RADIUS_PX` (100 source px) is replaced; else the first point without a position, in
-  order 1 to 4, is filled; else (every point positioned, none within the radius) the click is refused with 409
-  « Clic loin des 4 points : choisir le point avec les touches 1 à 4, puis cliquer ». Hide rule (U25, control
+  click within `CLICK_REPLACE_RADIUS_PX` (100 source px) is replaced (two points at the same distance: the lowest
+  index); else the first point without a position, in order 1 to 4, is filled; else (every point positioned, none within the radius) the click is refused with 409
+  « Clic loin des 4 points : choisir le point avec les touches 1 à 4, puis cliquer ». A click that is accepted consumes the selection (the next click follows the rule again), like `hide`.
+  Hide rule (U25, control
   only): `hide` applies to the selected point, then clears the selection; with no selection it hides the first
   point `à cliquer`; with neither it is refused with 409 « Choisir le point à cacher : touche 1 à 4, puis H »,
   so a stray `hide` never hides a point silently. Save rule (U29): `save` carries the open item (`dart` and
@@ -842,7 +843,8 @@ After D30 (T15d to T15g, T15k). Exact French strings; each lives once as a const
   `Enregistrer (Entrée)` are visible together without scrolling at 1080p. Insets are labelled `1 : 5|20`,
   `2 : 13|6`, `3 : 17|3`, `4 : 8|11`, with a thin cross on the point and its status in text (colour is never the
   only cue): `recalé`, `non recalé` (clicked, no clear crossing, or photo unreadable), `caché` (H), `à cliquer` (no
-  proposal, or a proposal that did not snap); each inset has an `aria-label` with its number and status (`Point
+  proposal, or a proposal that did not snap); a clicked point whose snap failed shows `non recalé` whatever the
+  reason (`ambiguous` and `unreadable` included; the reason is counted, not shown); each inset has an `aria-label` with its number and status (`Point
   2, recalé`, U31). The 4 points are also drawn as numbered crosses on the full view. The CV2 board diagram that
   highlights the next point (T6b) stays on the screens where points are filled in order: the first calibration,
   and any item opened without proposals (the first video item of a session); it highlights the point the next
@@ -1147,7 +1149,7 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     calibration »), depuis n'importe quel écran de la session, même « Terminé ». Vos clics servent à désigner le
     bon croisement de fils, pas à le viser au pixel : l'outil recale chaque point sur le croisement exact. Pour
     chaque photo, les 4 points de la photo précédente sont déjà proposés et recalés ; les 4 vignettes agrandies à
-    droite montrent chaque point avec son état (« recalé », « non recalé », « caché », « à cliquer »). Si les 4
+    droite montrent chaque point avec son état (« recalé » veut dire : le point est placé sur le croisement exact ; « non recalé », « caché », « à cliquer »). Si les 4
     sont sur le bon croisement : Entrée. Si un point est sur le mauvais croisement ou « à cliquer » : cliquer près
     du bon croisement (le point le plus proche est remplacé et recalé ; pour un point loin de votre clic,
     choisir d'abord le point avec les touches 1 à 4), puis Entrée. H seulement si une fléchette cache le point
@@ -1325,6 +1327,8 @@ PR, without opening it (D19); no extra PR. The batch 1 hand-back states the full
 
   The file list is `TOOL_TESTS` of root "Test plan" (T15n entry); developer-fix copies it from there and checks
   that the snippet matches the command T15n runs in the sandbox.
+  The tests marked `slow` (12 Mpx snap, export and training smoke tests) are selected by neither step and must never
+  be a required CI check; a job that runs them, if the owner adds one, stays optional.
 
 ## ADR 0017 text
 

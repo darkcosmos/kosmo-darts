@@ -16,9 +16,9 @@ must stay reproducible, offline and cheap to review, and a trained model that ne
    (`requirements-gpu.txt`, training image) have the same set except `torch`, `torchvision` and `torchao`. Both are
    pinned with exact versions and SHA-256 hashes and installed with `--require-hashes`. Alternative rejected: one file
    with CUDA torch (multi-GB in the sandbox).
-2. Stdlib-only core (`config`, `truth`, `split`, `annotations`, `board`): the annotation tool runs with a bare
+2. Stdlib-only core (`config`, `truth`, `split`, `annotations`, `board`, `drift_file`, `strict_json`): the annotation tool runs with a bare
    `python3` (3.14 in Kosmo's WSL, also valid on 3.13) in WSL, outside the container and the venv. Everything using numpy, PIL, PyAV, torch or LiteRT lives
-   in other modules.
+   in other modules. Amended: see section Assisted click (D43, D44).
 3. Keypoints as objects: the detector (RF-DETR Nano) finds 5 classes (`tip`, `cal1` to `cal4`), each a fixed square
    box centred on the point. Alternative rejected: a dedicated keypoint model, which would leave the object-detection
    export route of `rfdetr`.
@@ -83,6 +83,30 @@ Decisions (rule CV25, `docs/camera/annotation-format.md`):
   `write_atomic` at ab85842) and 50 seeded random version 2 files encode as version 3 and give back their version 2
   text once the empty `controls` and the `manual` statuses are dropped; the worst case (64 segments, 1024 controls,
   1000 darts) stays under the 1 MiB cap.
+
+## Assisted click
+
+Context: Kosmo's clicks designate the right wire crossing, they do not locate it (D39, CV31): a human does not hold 1 to
+2 px for an hour. The tool therefore snaps every calibration-point click (first calibration, recalibration, control)
+to the exact crossing with `snap.py` (numpy, on the luma of `luma.py`, numpy and Pillow). The standard library cannot
+decode JPEG, so decision 2 and decision 5 of the plan ("stdlib only") are amended (D43, confirmed by Kosmo in Q14, D44).
+Decisions:
+- Where it runs: in the tool process, in WSL, from a small venv `~/kosmo-tool-venv` created once with Kosmo's `python3`
+  (3.14) and holding only numpy and Pillow (`tools/camera/requirements-tool.txt`: exact versions, two hashes each, cp313
+  and cp314 manylinux x86_64 wheels, installed with `--require-hashes --only-binary=:all:`). The stdlib core is
+  unchanged: `snapping.py` imports `snap.py` and `luma.py` lazily, only a missing numpy or Pillow means "Recalage
+  indisponible" (any other import error is a bug and propagates), and the tool still starts with a bare `python3`.
+- Alternatives rejected: the tool in the container (published port, network other than `none`, server bound to 0.0.0.0,
+  annotations mounted read-write, a Windows browser that the sandbox cannot test); a container pre-computation of
+  candidate crossings read by the stdlib tool (a new file format with its reader and caps, windows unknown for video
+  frames, stale after a recalibration, the most code); a pure-stdlib JPEG decoder (thousands of lines, seconds per 12 MP
+  photo); snapping in JavaScript (untestable here, a second implementation next to the diagnosis).
+- Flow: the previous item's points are snapped on the new image and proposed; a click goes to the point named by the
+  click rule (`flow.click_target`) and is snapped at once; Entrée (`save`) writes only when 4 points are ready.
+  A proposal is never stored as such. An image that cannot be decoded leaves the point at the click, `unsnapped`.
+- Decoded images stay in memory in a cache of `SNAP_CACHE_IMAGES` (2) images, keyed by path and modification time
+  (48 MB per 12 MP image).
+- Repeatability is measured by the machine (CV28 `D`), accuracy only against synthetic truth (T15m).
 
 ## Tripod drift
 
