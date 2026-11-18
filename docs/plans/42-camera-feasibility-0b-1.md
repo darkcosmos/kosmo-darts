@@ -70,6 +70,8 @@ Registration R, on every image, no learning (ADR 0020):
 - R5 tracking: the next image starts from the previous homography; R1 restarts when quality drops.
 - R6 quality: share of kept points, residual in mm, consistency with the previous image; an image out of bounds is
   flagged, never scored with a doubtful calibration.
+- R is deterministic: fixed RANSAC seed, no time-based stop; geometry unit tests (ellipse fit, 18 degree symmetry, R4
+  hesitation exactly at 9 degrees) on synthetic boards; real-image figures only from the numbers report.
 
 Dart detection D:
 
@@ -108,7 +110,13 @@ sets and the app, photo and video; the only learned model sees rectified, normal
 | 3 | D2 and D3, cross-validation by session on dev; McNemar "Kosmo only" vs "Kosmo + rectified public sets" | Dev estimate: >= 95 % correct without flag and <= 1 % unflagged errors; gap <= 3 points between dart types | 0 min, or 2 min to start the GPU training |
 | 4 | Single evaluation on eval | Go if >= 95 % and <= 1 %; the 1 % cap prevails | 3 min |
 
-Total for Kosmo: about 10 min, plan reading excluded.
+Total for Kosmo: about 10 min, plan reading excluded. Kosmo's thresholds above are not changed by the squad.
+
+Reporting of every gate (thresholds unchanged): each figure with its n and 95 % interval (CV13; 0 of n bounds a rate
+at about 3/n), verdict per D12. Phase 1 also measures and prints the click noise floor (median and p95 of the gap
+between two click sets of the same photo: segment reference photos that also carry a control, CV26) next to the
+error figures; how the gate reads it is Q2. Phase 3: the phase 3 plan update names who supplies the dart type and the
+minimum darts per type; below it the gap is printed with its interval and the case goes to Kosmo.
 
 ### Kept and stopped
 
@@ -167,7 +175,7 @@ game app are unchanged in 0b-1.
   ADR 0017 and ADR 0016 "Assisted click" and "Tripod drift" open with their "Superseded by ADR 0020" status; ADR 0018
   and ADR 0019 titles, statuses and sections (as on PR #90); every not-built task file opens with
   `CANCELLED (2026-11-18):`; the root plan has the sections of this file, at most 300 lines, and no phase 1 task file
-  exists (the phase 1 prototype row has no file).
+  exists (the phase 1 prototype row has no file); `camera.md` marks CV18, CV19, CV31 stopped and the reserved numbers.
 - `tools/camera/tests/test_training_doc.py`: the "Contrôle de calibration" section carries the 2026-11-18 stop line
   and K7.4 to K7.6 cancelled; the K7.0 to K7.3 checks stay while the code exists (removed by C1).
 - Checks of the stage: `python -m pytest -q -m "not slow"` in `tools/camera`, `kosmo-detekt` (exit 0),
@@ -177,8 +185,8 @@ game app are unchanged in 0b-1.
 ## How Kosmo verifies
 
 - Phase 0: nothing to install or run, the apps do not change (the CI debug APK is unchanged in behavior). Kosmo reads
-  the phase 0 PR description (French summary of this plan, phase table, Q1), checks that PR #90 is closed with its
-  branch kept, then approves the plan on #42 and answers Q1.
+  the phase 0 PR description (French summary of this plan, phase table, Q1 to Q3), checks that PR #90 is closed with its
+  branch kept, then approves the plan on #42 and answers Q1 to Q3.
 - Phase 1 onwards: one command and one pasted report per phase, as in the "Phases and gates" table, within 10 min.
 
 ## Tasks
@@ -261,18 +269,29 @@ New (Kosmo's strategy of 2026-11-18 and the squad's phase 0 design):
 | N16 | PR #90 closed, its branch kept; ADR 0018 and 0019 brought unchanged to this branch. | - |
 | N17 | The annotation tool is a viewer; the stopped code is removed by C1, scheduled by Q1. | CV16 |
 | N18 | Prototype first: one `opus` prototype task per phase on the real images, with a number, before its tasks are written. | - |
-| N19 | Kosmo provides about 20 photos and 10 video frames of the 4 sessions (board only, no EXIF) with their annotations, mounted read-only in the sandbox, never committed; a development set, never used for acceptance figures. Phase 1 starts only after his confirmation on #42. | CV15 |
+| N19 | Kosmo provides about 20 photos and 10 video frames of the 4 sessions (board only, no EXIF) with their annotations, mounted read-only in the sandbox, never committed; a development set: these exact images never enter an acceptance figure, each report lists them by number, excludes them and states any eval-session image as a leak; sessions they come from: Q3. Phase 1 starts only after his confirmation on #42. | CV4, CV15 |
 | N20 | Not-built task files of the previous plan open with `CANCELLED (2026-11-18):`; new camera rules start at CV33 (CV22 to CV24 and CV28 to CV30 lived only in the replaced plan, CV32 only on PR #90; these numbers are not reused). | - |
 | N21 | H2 (finger tilting the phone) becomes an ergonomics note for Kosmo Capture (trigger without touching the phone), later. | - |
 
 ## Open questions
 
-- Q1 (Kosmo, before C1): when is the stopped code removed? (A, recommended) In the phase 0 PR, task C1: snapping,
-  assisted click, drift and its flags are deleted and the tool becomes a read-only viewer (it writes no annotation
-  file any more; Kosmo's files stay as they are). (B) In the phase 0 PR, but the tool keeps tip annotation (without
-  calibration or control clicks). (C) Nothing deleted in 0b-1: the code is frozen and the docs mark it stopped.
-  Why A: the strategy names the tool a viewer and forbids new clicks; dead code keeps tests and CI steps that check
-  nothing useful. C1 also removes `requirements-tool.txt`, so the CI step on Python 3.14 (which names the snapping
-  tests) is skipped; the phase 0 PR proposes an owner change to run the tool tests on 3.14 without it.
+Consolidated for Kosmo (in French, as he reads them):
+
+- Q1 (avant C1) : quand supprimer le code arrêté (recalage des clics, dérive) ? (A, recommandé) Dans la PR de la
+  phase 0 (tâche C1) : l'outil devient une visionneuse ; vous voyez toujours photos, pointes et contrôles, mais vous
+  ne pouvez plus cliquer ni rien enregistrer ; vous perdez la saisie de pointes et de calibration dans l'outil (une
+  future campagne serait annotée automatiquement, ADR 0018). (B) Même suppression, mais vous pouvez encore placer des
+  pointes (plus de clics de calibration ni de contrôle). (C) Rien ne change dans l'outil pendant la 0b-1 : code figé,
+  documentation marquée « arrêté ». Pourquoi A : la stratégie fait de l'outil une visionneuse et exclut tout nouveau
+  clic ; le code mort garde des tests et une étape de CI inutiles (avec A ou B, la PR propose de faire tourner les
+  tests de l'outil sous Python 3.14 sans `requirements-tool.txt`).
+- Q2 (porte de la phase 1, seuils inchangés) : vos clics varient de 0,2 à 0,9 mm entre deux saisies. (A, recommandé)
+  Les seuils 0,5 / 1,0 mm s'appliquent à l'écart entre R et vos clics, bruit des clics compris ; le rapport affiche à
+  côté le plancher mesuré et les intervalles. (B) Les seuils s'appliquent à l'erreur de R une fois le bruit des clics
+  retiré (estimation). (C) Si le plancher mesuré dépasse 0,5 mm, retour vers vous avant tout verdict. Pourquoi A :
+  le plus simple et le plus strict ; C reste possible par la règle d'arrêt.
+- Q3 (images montées dans le bac à sable) : (A, recommandé) les tirer des seules sessions dev (17h44 et 18h03), pour
+  que l'éval reste vue une seule fois. (B) Les 4 sessions comme prévu : ces images sont exclues de tous les chiffres
+  d'acceptation, listées dans le rapport, et la fuite y est signalée.
 - Points for the phase 1 prototype (not questions to Kosmo): the source of the phone orientation for R4 (D8 ignores
   EXIF and the image folder has none); scipy as a new dependency (version table in the phase 1 PR).

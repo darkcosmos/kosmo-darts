@@ -20,8 +20,9 @@ listing sessions and showing photos, video frames, tips, calibration segments an
   write routes (tips, calibrate, recalibrate, control, undo), `--drift`, the drift flags and the assisted-click states
   are removed; the page shows « Visionneuse : lecture seule » and no edit key. Their tests are cut to match.
 - `config/defaults.json`, `config.py`, `tests/test_config.py`: `SNAP_*`, `DRIFT_*`, `CLICK_REPLACE_RADIUS_PX` removed.
-- `synth.py`: ring-wire boards stay only if a kept test uses them. `luma.py` and `annotations.py` stay (R needs the
-  safe decoder; format v3 read and write stay as library code).
+- `synth.py`: ring-wire boards stay only if a kept test uses them. `luma.py` stays (R needs the safe decoder) with
+  `tests/test_luma.py`. `annotations.py`: the readers and migrations stay (truth for R); the v3 writer and its tests
+  are deleted when no kept module calls it (`grep` in the hand-back), else the caller is named in the notes.
 - Docs: `docs/rules/camera.md` (CV16 viewer rule, CV18, CV19, CV31 deleted with a one-line "removed by C1" each),
   `docs/camera/training.md` (K7.1b and the K7.3 assisted-click text removed, the tool command uses `python3`),
   `docs/adr/0016-camera-feasibility-tooling.md` decision 2 line (stdlib core restored), `test_plan_docs.py`,
@@ -42,6 +43,9 @@ CV15, CV16 (rewritten: viewer, stdlib only, `127.0.0.1`, read-only), CV18, CV19,
 - The page and the journey show no « recalé », « Recalage indisponible » or drift text (static and journey tests).
 - `frames_file` and `video_frames` atomic-write tests still pass through `strict_json.replace_atomic`.
 - No remaining import of the deleted modules (`grep` in the hand-back) and no orphan constant in `defaults.json`.
+- `test_luma.py` still runs and passes once `test_snap.py` and `test_annotate_snapping.py` are gone.
+- The hand-back carries the owner-change text replacing the CI Python 3.14 step (checked by main against the
+  workflow, which the squad cannot edit; no repository test can read a PR body).
 
 ## Done when
 

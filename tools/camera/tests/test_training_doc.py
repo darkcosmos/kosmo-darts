@@ -119,6 +119,8 @@ def test_the_section_names_the_steps_the_expected_texts_and_retires_k5_and_k7():
     assert "Étape K5 suspendue le 15/11/2026" in text
     assert "Étapes K7 arrêtées le 18/11/2026 (nouvelle stratégie de l'issue #42)" in text  # ADR 0020
     assert "aucun nouveau clic ne vous sera demandé" in text  # N5
+    assert "K7 est arrêtée à son tour" in text and "La suite est l'étape K7" not in text
+    assert "l'outil devient une visionneuse (tâche C1, selon votre réponse à la question Q1 de #42)" in text
     assert "K7.4 à K7.6 : annulées le 18/11/2026" in text and "prochaine livraison" not in text
     for expected in ("Recalage indisponible", "non recalé", "Points prêts", "Contrôle indisponible",
                      "Images vidéo absentes", "Continuer", "Entrée"):

@@ -131,8 +131,8 @@ def test_adr_0020_exists_with_its_title_proposed_status_and_supersedes_line():
 
     assert text.splitlines()[0] == ADR_20_TITLE
     assert "- Status: Proposed (Kosmo's strategy of 2026-11-18 on issue #42" in text
-    supersedes = ("- Supersedes: ADR 0017 (per-image calibration), the sections \"Assisted click\" and \"Tripod drift\" "
-                  "of ADR 0016, and the sections \"Phase 0b-1\" and \"Re-snap file\" of ADR 0018.")
+    supersedes = ("- Supersedes: ADR 0017 (per-image calibration), decision 3 (RF-DETR Nano with calibration classes) "
+                  "and the sections \"Assisted click\" and \"Tripod drift\" of ADR 0016, and the sections \"Phase 0b-1\" and \"Re-snap file\" of ADR 0018.")
     assert supersedes in flat(ADR_20)
 
 
@@ -194,3 +194,22 @@ def test_adr_0019_exists_with_its_title_and_its_accepted_requirement_status():
 @pytest.mark.parametrize("heading", ADR_19_SECTIONS)
 def test_adr_0019_has_the_sections_of_the_plan_text(heading):
     assert f"\n## {heading}\n" in ADR_19.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("rule", ["CV18", "CV19", "CV31"])
+def test_camera_rules_mark_the_stopped_rules(rule):
+    assert f"- {rule} Stopped on 2026-11-18 (ADR 0020)." in flat(RULES_CAMERA)
+
+
+def test_camera_rules_record_the_retired_and_reserved_rule_numbers():
+    text = flat(RULES_CAMERA)
+
+    assert "CV22 to CV24 and CV28 to CV30, defined only in the replaced plan, are retired" in text
+    assert "these numbers are not reused. New rules start at CV33." in text
+
+
+@pytest.mark.parametrize("heading", ["Phase 0b-1", "Re-snap file"])
+def test_adr_0018_marks_the_sections_superseded_by_adr_0020(heading):
+    body = section(ADR_18.read_text(encoding="utf-8"), heading)
+
+    assert first_non_blank(body).startswith("Superseded by ADR 0020 on 2026-11-18")

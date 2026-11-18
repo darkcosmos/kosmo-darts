@@ -25,12 +25,16 @@ ready on synthetic targets only.
 
 ## Phase 0b-1
 
+Superseded by ADR 0020 on 2026-11-18 (snapping stopped).
+
 - The snapping is diagnosed and fixed on Kosmo's stored clicks, with no new click (D49): offline diagnosis, fix,
   acceptance on the real data (at least 90 % of the photo control points snapped from Kosmo's clicks, no point on
   another crossing), then automatic snapping of every stored click into the pixel-level truth.
 - Each step asks Kosmo only to run one command and paste a report of numbers; the plan counts his time per step.
 
 ## Re-snap file
+
+Superseded by ADR 0020 on 2026-11-18 (no re-snap file).
 
 - The pixel-level truth is `snapped-points.json`, a derived and regenerable local file (format
   `"kosmo-camera-snapped"`, version 1, strict reader, 4 MiB cap). It is never pasted and never leaves the PC.

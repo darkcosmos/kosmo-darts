@@ -2,8 +2,8 @@
 
 - Status: Proposed (Kosmo's strategy of 2026-11-18 on issue #42, plan decisions N1 to N12); accepted when the phase 0
   PR is merged. Date: 2026-11-18.
-- Supersedes: ADR 0017 (per-image calibration), the sections "Assisted click" and "Tripod drift" of ADR 0016, and the
-  sections "Phase 0b-1" and "Re-snap file" of ADR 0018. ADR 0018 (decision section) and ADR 0019 stay in force,
+- Supersedes: ADR 0017 (per-image calibration), decision 3 (RF-DETR Nano with calibration classes) and the sections
+  "Assisted click" and "Tripod drift" of ADR 0016, and the sections "Phase 0b-1" and "Re-snap file" of ADR 0018. ADR 0018 (decision section) and ADR 0019 stay in force,
   unchanged; the last consequence of ADR 0019 (H2 measured in the video, D50) no longer applies since the H1/H2
   diagnosis is stopped.
 
