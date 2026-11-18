@@ -16,7 +16,7 @@ from kosmo_camera.split import SplitError
 
 SPLIT_REFUSED = "Contrôle : indisponible (split refusé)"
 NOT_IN_SPLIT = "Contrôle : indisponible (session absente du split)"
-FRAMES_UNREADABLE = "Images vidéo illisibles"
+FRAMES_UNREADABLE = "Images vidéo illisibles : frames.json est invalide ou illisible (relancer l'extraction, K7.2)"
 SPLIT_ERRORS = (  # (start of the SplitError message, French reason): the known refusals of `control.read_split`
     ("split does not match the lock", "il ne correspond plus au verrou (split-lock.json)"),
     ("cannot read the split or its lock", "le split ou son verrou est illisible"),
@@ -103,6 +103,6 @@ class ControlSources:
             try:
                 manifest = frames_file.read(self.frames / "frames.json")
                 frames = {s.session: s for s in manifest.sessions}
-            except frames_file.FramesFileError as error:
-                frames_warning = f"{FRAMES_UNREADABLE} : {error}"
+            except frames_file.FramesFileError:  # its text can hold a path: the warning is a fixed sentence
+                frames_warning = FRAMES_UNREADABLE
         return ControlSnapshot(self.split is not None, warning, roles, self.frames, frames, frames_warning)
