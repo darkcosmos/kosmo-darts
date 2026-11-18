@@ -383,3 +383,11 @@ def test_entree_with_fewer_than_four_points_says_why_u37():
     assert "TEXT.pointsMissing" in body and "cursor.ready" in body and "setStatus(" in body
     assert body.index("TEXT.pointsMissing") < body.index("perform(")
     assert string_table()["pointsMissing"] == "Points prêts : {n} / 4 : placer les points manquants"
+
+
+def test_the_diagram_follows_the_action_buttons_and_marks_done_points_without_colour_alone_u38_u39():
+    html = read("index.html")
+    assert html.index('id="actions"') < html.index('id="zoom-actions"') < html.index('id="diagram"')
+    assert "max-width: 140px" in read("style.css")  # with the insets, Enregistrer stays visible at 1080p
+    body = function_body("drawDiagramPoint")
+    assert "DONE_MARK" in body and "isDone" in body and 'DONE_MARK = "✓"' in read("app.js")

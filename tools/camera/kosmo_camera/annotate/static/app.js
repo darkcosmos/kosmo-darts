@@ -73,6 +73,7 @@ const BOARD_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14
 const KEY_ACTIONS = { h: "hidden", o: "off_board", u: "clear", n: "next", p: "previous", r: "recalibrate", k: "control" };
 const ASSISTED_KINDS = ["calibration", "recalibration", "control"];
 const POINT_COUNT = 4;
+const DONE_MARK = "✓"; // a placed or hidden diagram point is ticked as well as green, not by colour alone (U39)
 const SNAP_INSET_PX = 60; // source pixels shown around a point (CV31)
 const INSET_SIZE = 180; // CSS pixels of one inset: a x3 zoom of SNAP_INSET_PX
 const MAGNIFIER_SIZE = 160;
@@ -820,14 +821,14 @@ function drawDiagram(slots, nextIndex) {
 function drawDiagramPoint(context, p, index, isNext, isDone) {
   context.beginPath();
   context.arc(p.x, p.y, isNext ? 14 : 9, 0, 2 * Math.PI);
-  context.fillStyle = isNext ? "#ffe14d" : "#121212";
+  context.fillStyle = isNext ? "#ffe14d" : (isDone ? "#8fd6a0" : "#121212"); // filled green and a tick: placed
   context.fill();
   context.lineWidth = isNext ? 4 : 2;
   context.strokeStyle = isDone ? "#8fd6a0" : "#ffe14d";
   context.stroke();
-  context.fillStyle = isNext ? "#000000" : "#ffffff";
+  context.fillStyle = isNext || isDone ? "#000000" : "#ffffff";
   context.font = isNext ? "bold 16px system-ui, sans-serif" : "bold 11px system-ui, sans-serif";
-  context.fillText(String(index + 1), p.x, p.y);
+  context.fillText(isDone ? `${index + 1}${DONE_MARK}` : String(index + 1), p.x, p.y);
 }
 
 // ---- actions -----------------------------------------------------------------------------------------------------
