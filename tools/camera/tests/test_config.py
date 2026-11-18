@@ -39,6 +39,10 @@ def test_committed_defaults_load_and_are_exposed_as_constants():
     assert config.DRIFT_MAX_MM == 1.0 and config.DRIFT_MAX_MM == config.CAL_MAX_ERROR_MM / 2
     assert config.DRIFT_CANDIDATES_MM == (0.5, 1.0, 2.0)
     assert (config.DRIFT_COARSE_PX, config.DRIFT_PATCH_FRACTION, config.DRIFT_MIN_PEAK) == (512, 0.06, 0.2)
+    # Control sample and video frames (CV26, CV27): the one place that pins them.
+    assert (config.CONTROL_DEV_STRIDE, config.CONTROL_EVAL_VIDEO_FIRST, config.CONTROL_EVAL_VIDEO_LAST) == (10, 55, 60)
+    assert (config.VIDEO_BEFORE_ENTRY_MS, config.VIDEO_MAX_DECODED_FRAMES) == (1000, 20000)
+    assert config.VIDEO_MAX_BYTES == 512 * 1024 * 1024
     # Assisted click (CV31, D43): the one place that pins the SNAP_* constants (initial values of the root plan).
     assert (config.SNAP_RADIUS_PX, config.SNAP_WINDOW_PX, config.SNAP_SIGMAS_PX) == (10.0, 16, (1.0, 2.0, 3.0))
     assert (config.SNAP_MIN_ANGLE_DEG, config.SNAP_MIN_SUPPORT_PX, config.SNAP_MIN_CONTRAST) == (30.0, 8, 4.0)
