@@ -47,3 +47,21 @@ Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
 haiku. Why: documentation copied from the root plan and doc tests on the T15h and T15a patterns, no design choice.
 
 ## Implementation notes
+
+- `training.md`: K2 first line, K7.3 done line (instructions and its annotate command removed), K7.C first line,
+  campaign protocol line with links to ADR 0018 and 0019 (relative `../adr/`), budget line « Lot 3b » before K7.4,
+  K7.4 (`git fetch origin`, `git switch docs/camera-feasibility-0b-1-lot-3b`, `git pull`, then the `snap_report`
+  command without `--lock`, `--out ~/kosmo-runs/snap`), and the single line « K7.5 et la suite arrivent dans la
+  prochaine livraison ». K7.0 and K7.1b are unchanged (K7.0 still names `feat/camera-feasibility-0b-1-detection`).
+- The K7.C click bullets are kept as the list of done checks; only the visual-check sentence changed (it is not to
+  be checked unless a verdict asks, no K7.8 step printed).
+- Tests: `test_training_doc.py` replaces the K7.3 annotate-command test by a test that no block starts the tool;
+  the K7 step list now holds K7.4 instead of « K7.4 à K7.6 »; new tests for the K7.4 git order and branch regex,
+  the snap_report parse (`--lock` absent, default file exists), budget figures, no click verb in K7.3 and K7.4,
+  K7.5 to K7.8 not printed, the K2, K7.C and campaign lines and the ADR links. `test_plan_docs.py`: ADR 0018 and
+  0019 title, status line and sections.
+- The step of the Python 3.14 run `tests/test_training_doc.py::test_the_video_frames_command_parses_with_its_parser`
+  needs `av` (pyav), not in the tool requirements; that file is not in TOOL_TESTS. Unchanged by this task, not run
+  with the tool venv for that test.
+- Lot 3b-2 (T15l) must replace the branch placeholder of K7.5 by its real branch name; K7.4 already uses the
+  real name of lot 3b-1.
