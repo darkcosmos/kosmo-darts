@@ -9,6 +9,15 @@ const TEXT = {
   ignoredLabel: "Ignorée : aucune fléchette jugée",
   readOnly: "Lecture seule",
   open: "Ouvrir",
+  nextStep: "Prochaine étape",
+  btnContinue: "Continuer",
+  infoTitle: "Information",
+  stepCalibrationDone: "Calibration : faite",
+  stepCalibrationTodo: "Calibration : à faire",
+  stepTips: "Pointes : {done} / {total}",
+  stepControlPhoto: "Contrôle photo : {done} / {total}",
+  stepControlVideo: "Contrôle vidéo : {done} / {total}",
+  recalibrationExplanation: "Recalibrer veut dire : la cible ou le téléphone a bougé à partir de cette fléchette. Les 4 points enregistrés ici remplacent la calibration pour cette fléchette et les suivantes, jusqu'à la prochaine recalibration. Les fléchettes déjà pointées ne changent pas. Ne recalibrer que si le déplacement se voit à l'œil.",
   btnHidden: "Cachée (H)",
   btnOffBoard: "Hors cible (O)",
   btnClear: "Effacer (U)",
@@ -59,6 +68,12 @@ const TEXT = {
   oldPoint: "ancien {n}",
 };
 
+// Server values the page only displays (pinned to the constants of journey.py by static tests): the badge of a
+// session, the status of a step row and the key of a step row. The page decides nothing from them.
+const BADGE_CLASS = { "À faire": "badge-todo", "En cours": "badge-progress", "Terminée": "badge-done", "Ignorée": "badge-ignored" };
+const STEP_DONE = "done";
+const STEP_UNAVAILABLE = "unavailable";
+const STEP_TEXT = { calibration: null, tips: "stepTips", control_photo: "stepControlPhoto", control_video: "stepControlVideo" };
 const WIRES = ["5|20", "13|6", "17|3", "8|11"]; // CV2 order
 const WIRE_ANGLES = [-9, 81, 171, 261]; // degrees clockwise from the top, 20 on top
 const BOARD_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
@@ -81,6 +96,7 @@ const state = {
   busy: false,
   lastActionAt: 0,
   lastSaveAt: 0,
+  list: null,
   notice: null,
   viewKey: null,
   blocked: null,
@@ -118,6 +134,13 @@ function makeButton(label, handler, className) {
   return button;
 }
 
+// The one journey instruction of the server, at the top of every screen (U19); nothing else is styled as one.
+function setJourney(text) {
+  const journey = $("journey");
+  setText(journey, text || "");
+  journey.hidden = !text;
+}
+
 function setStatus(text, kind) {
   const status = $("status");
   setText(status, text || "");
@@ -145,43 +168,135 @@ function sessionUrl(name) {
 
 // ---- session list ------------------------------------------------------------------------------------------------
 
-function sessionLine(item) {
-  const line = document.createElement("li");
-  const name = document.createElement("div");
+function stepText(step) {
+  if (step.status === STEP_UNAVAILABLE) {
+    return step.reason; // the server says why, in French
+  }
+  if (step.key === "calibration") {
+    return step.status === STEP_DONE ? TEXT.stepCalibrationDone : TEXT.stepCalibrationTodo;
+  }
+  return fill(TEXT[STEP_TEXT[step.key]], step);
+}
+
+function sessionHead(item) {
+  const head = document.createElement("div");
+  head.className = "session-head";
+  const name = document.createElement("span");
   name.className = "session-name";
   setText(name, item.name);
-  const info = document.createElement("div");
-  info.className = "session-info";
-  if (item.message) {
-    setText(info, `${TEXT.readOnly} - ${item.message}`);
-    info.className = "session-info session-warning";
-  } else if (item.label) {
-    setText(info, item.label);
-  } else {
-    setText(info, `${item.badge} - ${fill(TEXT.progress, item.progress)} - ${item.calibrationLabel}`);
-    line.appendChild(makeButton(TEXT.open, () => openSession(item.name), "primary"));
+  head.appendChild(name);
+  if (item.role) {
+    const role = document.createElement("span");
+    role.className = "session-role";
+    setText(role, item.role);
+    head.appendChild(role);
   }
-  line.insertBefore(info, line.firstChild);
-  line.insertBefore(name, line.firstChild);
-  item.info.forEach((text) => { // information lines only (CV30): never an instruction
-    const extra = document.createElement("div");
-    extra.className = "session-info";
-    setText(extra, text);
-    line.insertBefore(extra, info.nextSibling);
+  const badge = document.createElement("span");
+  if (item.message) { // unreadable or refused files: read only, no journey state
+    badge.className = "badge session-warning";
+    setText(badge, TEXT.readOnly);
+  } else {
+    badge.className = `badge ${BADGE_CLASS[item.badge]}`;
+    setText(badge, item.badge);
+  }
+  head.appendChild(badge);
+  return head;
+}
+
+function stepRows(item) {
+  const steps = document.createElement("ul");
+  steps.className = "steps";
+  item.steps.forEach((step) => {
+    const row = document.createElement("li");
+    setText(row, stepText(step));
+    steps.appendChild(row);
   });
+  return steps;
+}
+
+// Grey box below the steps: information lines only (CV30), never an instruction.
+function infoBox(item) {
+  const shown = new Set(item.steps.map(stepText)); // a line already said by a step row is not repeated
+  const lines = item.info.filter((text) => !shown.has(text));
+  if (lines.length === 0) {
+    return null;
+  }
+  const box = document.createElement("div");
+  box.className = "info-box";
+  const title = document.createElement("div");
+  title.className = "info-title";
+  setText(title, TEXT.infoTitle);
+  box.appendChild(title);
+  lines.forEach((text) => {
+    const line = document.createElement("div");
+    line.className = "session-info";
+    setText(line, text);
+    box.appendChild(line);
+  });
+  return box;
+}
+
+function sessionActions(item, focus) {
+  const actions = document.createElement("div");
+  actions.className = "session-actions";
+  if (focus && state.list.continuePayload) {
+    actions.appendChild(makeButton(TEXT.btnContinue, continueFocus, "primary"));
+  }
+  actions.appendChild(makeButton(TEXT.open, () => openSession(item.name)));
+  return actions;
+}
+
+function sessionLine(item, focus) {
+  const line = document.createElement("li");
+  line.appendChild(sessionHead(item));
+  if (focus) {
+    line.className = "focus";
+    const mark = document.createElement("div");
+    mark.className = "focus-mark";
+    setText(mark, TEXT.nextStep);
+    line.appendChild(mark);
+  }
+  if (item.label) {
+    const label = document.createElement("div");
+    label.className = "session-info";
+    setText(label, item.label);
+    line.appendChild(label);
+  }
+  line.appendChild(stepRows(item));
+  const box = infoBox(item);
+  if (box) {
+    line.appendChild(box);
+  }
   if (item.warning) {
     const warning = document.createElement("div");
     warning.className = "session-warning";
     setText(warning, item.warning);
     line.appendChild(warning);
   }
+  if (!item.message && !item.label) {
+    line.appendChild(sessionActions(item, focus));
+  }
   return line;
+}
+
+// "Continuer": open the focus session of the server and send the action it gives (calibration: opening is enough).
+async function continueFocus() {
+  const list = state.list;
+  if (state.busy || !list || !list.focus || !list.continuePayload) {
+    return;
+  }
+  await openSession(list.focus);
+  if (list.continuePayload.action) {
+    perform(list.continuePayload);
+  }
 }
 
 async function showList() {
   state.view = null;
   state.name = null;
   state.blocked = null;
+  state.list = null;
+  setJourney("");
   $("screen-session").hidden = true;
   $("screen-list").hidden = false;
   $("back").hidden = true;
@@ -198,7 +313,9 @@ async function showList() {
       setText(empty, TEXT.noSession);
       list.appendChild(empty);
     }
-    data.sessions.forEach((item) => list.appendChild(sessionLine(item)));
+    state.list = data;
+    setJourney(data.instruction);
+    data.sessions.forEach((item) => list.appendChild(sessionLine(item, item.name === data.focus)));
   } catch (error) {
     setStatus(error.message || TEXT.networkError, "error");
   }
@@ -376,6 +493,9 @@ function renderPanel() {
   banner.hidden = !message;
   banner.className = message ? message.kind : "";
   setText(banner, message ? message.text : "");
+  setJourney(view.instruction);
+  setText($("recalibration-help"), TEXT.recalibrationExplanation);
+  $("recalibration-help").hidden = cursor.kind !== "recalibration";
   $("panel").classList.toggle("assisted", assisted);
   $("value").hidden = assisted;
   $("state").hidden = assisted;
@@ -390,7 +510,7 @@ function renderPanel() {
     setText($("value"), TEXT.completeTitle);
     setText($("entry"), "");
     setText($("state"), "");
-    setText($("instruction"), cursor.kind === "control_done" ? view.instruction : TEXT.completeHelp);
+    setText($("help"), TEXT.completeHelp);
   }
   renderActions();
   renderPicker();
@@ -418,9 +538,9 @@ function pointStatusText(slot) {
 // The shared screen of the control, the first calibration and the recalibration (CV31): the title comes from the server.
 function renderAssistedPanel(view) {
   const cursor = view.cursor;
-  setText($("entry"), view.instruction || "");
+  setText($("entry"), "");
   const hint = cursor.kind === "control" ? `${TEXT.hintClick} ${TEXT.hintHide}` : TEXT.hintClick;
-  setText($("instruction"), hint);
+  setText($("help"), hint);
   setText($("ready"), fill(TEXT.pointsReady, { n: cursor.ready }));
   cursor.slots.forEach((slot, index) => {
     const status = pointStatusText(slot);
@@ -450,10 +570,10 @@ function renderDartPanel(dart) {
   setText($("value"), dart.value);
   setText($("entry"), fill(TEXT.dartEntry, { number: dart.number, volley: dart.volley }));
   setText($("state"), stateText(dart));
-  setText($("instruction"), TEXT.dartHelp);
+  setText($("help"), TEXT.dartHelp);
   const skipped = state.view.skipped;
   if (skipped.length > 0) {
-    setText($("instruction"), `${TEXT.dartHelp} ${fill(TEXT.skipped, { list: skipped.join(", ") })}`);
+    setText($("help"), `${TEXT.dartHelp} ${fill(TEXT.skipped, { list: skipped.join(", ") })}`);
   }
 }
 
@@ -907,14 +1027,26 @@ function onAssistedKey(key) {
   return true;
 }
 
+// Entrée on the list runs "Continuer" only when no button or link has the focus: on a focused button it keeps its own
+// action (U23, D42). The assisted screen has the opposite rule (U25).
+function onListKey(key, event) {
+  const active = document.activeElement;
+  if (key !== "Enter" || event.repeat || (active && (active.tagName === "BUTTON" || active.tagName === "A"))) {
+    return;
+  }
+  event.preventDefault();
+  continueFocus();
+}
+
 function onKey(event) {
   if (event.ctrlKey || event.metaKey || event.altKey || typingInField(event)) {
     return;
   }
+  const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
   if (!state.view) {
+    onListKey(key, event);
     return;
   }
-  const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
   if (key === "Enter" && isAssisted(state.view)) {
     onEnter(event);
     return;

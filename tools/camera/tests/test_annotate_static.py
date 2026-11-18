@@ -193,14 +193,19 @@ def test_picker_label_is_the_number_ticked_when_annotated_without_any_drift_mark
 
 def test_the_page_shows_the_server_progress_badge_and_calibration_label_without_counting_a3():
     source = read("app.js")
-    assert "calibrationStatus" not in source and "finished" not in source and "Terminée" not in source
-    assert "item.badge" in function_body("sessionLine") and "item.calibrationLabel" in function_body("sessionLine")
-    assert "item.progress" in function_body("sessionLine")
+    assert "calibrationStatus" not in source and "finished" not in source
+    assert "Terminée" not in source.replace(BADGE_LINE(source), "")  # the badge table is the only place
+    assert "item.badge" in function_body("sessionHead") and "item.steps" in function_body("stepRows")
     panel = function_body("renderPanel")
     assert "view.progress" in panel and "view.calibrationLabel" in panel
-    for body in (panel, function_body("sessionLine")):
+    for body in (panel, function_body("sessionHead"), function_body("stepRows"), function_body("stepText"),
+                 function_body("sessionLine")):
         assert not re.search(r"\.filter\(|\.length|\.every\(|\.some\(|\.reduce\(", body)
     assert "calibrated" not in source and "segments" not in function_body("renderPanel")
+
+
+def BADGE_LINE(source):
+    return re.search(r"const BADGE_CLASS = \{.*?\};", source).group(0)
 
 
 def test_no_dérive_text_nor_drift_field_remains_in_the_page_cv30_a7():
@@ -376,3 +381,125 @@ def test_the_diagram_follows_the_action_buttons_and_marks_done_points_without_co
     assert "max-width: 140px" in read("style.css")  # with the insets, Enregistrer stays visible at 1080p
     body = function_body("drawDiagramPoint")
     assert "DONE_MARK" in body and "isDone" in body and 'DONE_MARK = "✓"' in read("app.js")
+
+
+# ---- journey page (T15g: CV16, CV30, D42 U23, U19, U35; the strings are pinned to the Python constants) --------------
+
+def js_object(name):
+    match = re.search(rf"const {name} = \{{(.*?)\}};", read("app.js"), re.DOTALL)
+    assert match, name
+    return match.group(1)
+
+
+def test_the_badge_values_of_the_page_are_the_server_constants_t3():
+    from kosmo_camera.annotate import journey
+    page = re.findall(r'"([^"]+)":\s*"badge-\w+"', js_object("BADGE_CLASS"))
+    assert sorted(page) == sorted([journey.STATE_TODO, journey.STATE_IN_PROGRESS, journey.STATE_DONE,
+                                   journey.STATE_IGNORED])
+    assert page == ["À faire", "En cours", "Terminée", "Ignorée"]
+
+
+def test_the_step_statuses_and_keys_of_the_page_are_the_server_constants_t3():
+    from kosmo_camera.annotate import journey
+    source = read("app.js")
+    assert f'const STEP_DONE = "{journey.DONE}";' in source
+    assert f'const STEP_UNAVAILABLE = "{journey.UNAVAILABLE}";' in source
+    assert re.findall(r"(\w+):", js_object("STEP_TEXT")) == list(journey.ROWS)
+
+
+def test_the_step_row_templates_and_card_strings_are_defined_once():
+    table = string_table()
+    assert table["stepCalibrationDone"] == "Calibration : faite" and table["stepCalibrationTodo"] == "Calibration : à faire"
+    assert table["stepTips"] == "Pointes : {done} / {total}"
+    assert table["stepControlPhoto"] == "Contrôle photo : {done} / {total}"
+    assert table["stepControlVideo"] == "Contrôle vidéo : {done} / {total}"
+    assert table["infoTitle"] == "Information" and table["nextStep"] == "Prochaine étape"
+    assert table["btnContinue"] == "Continuer"
+    for text in ("Prochaine étape", "Continuer", "Information"):
+        assert len(re.findall(rf'\w+: "{text}"', read("app.js"))) == 1, text
+
+
+def test_the_page_restates_no_instruction_of_the_server_u35():
+    source = read("app.js")
+    for fragment in ("Cliquer les 4 points", "Pointer les fléchettes", "Contrôle terminé", "Session terminée",
+                     "Session illisible", "Contrôle indisponible", "Images vidéo absentes", "bouton Continuer"):
+        assert fragment not in source, fragment
+
+
+def test_the_recalibration_explanation_is_the_server_text_in_the_side_panel_u19():
+    from kosmo_camera.annotate import journey
+    assert string_table()["recalibrationExplanation"] == journey.RECALIBRATION_EXPLANATION
+    html = read("index.html")
+    panel = html[html.index('<aside id="panel">'):html.index("</aside>")]
+    assert 'id="recalibration-help"' in panel and 'id="recalibration-help"' not in html.replace(panel, "")
+    assert html.index('id="recalibration-help"') > html.index('id="help"')
+    body = function_body("renderPanel")
+    assert 'cursor.kind !== "recalibration"' in body and "TEXT.recalibrationExplanation" in body
+
+
+def test_journey_help_and_banner_are_three_distinct_elements_and_only_journey_has_the_instruction_style_u19():
+    html, css, source = read("index.html"), read("style.css"), read("app.js")
+    for element in ("journey", "help", "banner"):
+        assert html.count(f'id="{element}"') == 1, element
+    assert 'id="instruction"' not in html and '$("instruction")' not in source
+    rules = dict((name.strip(), body) for name, body in re.findall(r"(?m)^([#.][\w-]+(?:, [#.][\w-]+)*)\s*\{([^}]*)\}", css)
+                 if name.strip() in ("#journey", "#help, #recalibration-help", "#banner"))
+    assert set(rules) == {"#journey", "#help, #recalibration-help", "#banner"}
+    assert int(re.search(r"font-size:\s*(\d+)px", rules["#journey"]).group(1)) >= 20
+    assert "font-weight: bold" in rules["#journey"]
+    for other in ("#help, #recalibration-help", "#banner"):
+        assert "font-weight: bold" not in rules[other]
+        size = re.search(r"font-size:\s*(\d+)px", rules[other])
+        assert size is None or int(size.group(1)) < 20
+    assert css.count("border-bottom: 3px solid var(--primary-bg)") == 1  # the accent of the instruction line, once
+    assert source.count('$("journey")') == 1 and 'setText($("banner")' not in source.replace("setText(banner,", "")
+    calls = re.findall(r"setJourney\(([^)]*)\)", source)
+    assert len(calls) >= 3  # the list, the session screen and setJourney's own definition
+    assert [c for c in calls if c not in ('data.instruction', 'view.instruction', '""', "text")] == []
+
+
+def test_the_focus_card_carries_the_mark_and_continuer_sends_the_server_payload_u15():
+    card = function_body("sessionLine")
+    assert "TEXT.nextStep" in card and "focus" in card
+    assert "state.list.continuePayload" in function_body("sessionActions")
+    assert "continueFocus" in function_body("sessionActions") and "TEXT.btnContinue" in function_body("sessionActions")
+    body = function_body("continueFocus")
+    assert "list.continuePayload" in body and "openSession(list.focus)" in body and "perform(list.continuePayload)" in body
+    assert body.index("openSession(") < body.index("perform(")
+    assert "item.role" in function_body("sessionHead")  # the role is rendered on each card (Q9)
+    assert "state.list = data" in function_body("showList") and "state.list = null" in function_body("showList")
+
+
+def test_entree_on_the_list_runs_continuer_only_when_no_button_or_link_has_the_focus_u23_d42():
+    body = function_body("onListKey")
+    assert 'key !== "Enter"' in body and "document.activeElement" in body
+    assert '"BUTTON"' in body and '"A"' in body and "event.repeat" in body
+    assert body.index("activeElement") < body.index("continueFocus()")
+    handler = function_body("onKey")
+    assert "!state.view" in handler and "onListKey(key, event)" in handler
+    assert handler.index("onListKey(") < handler.index('key === "Enter" && isAssisted')  # the assisted rule stays
+    assert 'key === "Enter" && isAssisted(state.view)' in handler
+
+
+def test_the_card_shows_information_apart_and_skips_nothing_else_cv30():
+    body = function_body("infoBox")
+    assert "TEXT.infoTitle" in body and "item.info" in body and '"info-box"' in body
+    css = read("style.css")
+    assert re.search(r"\.info-box\s*\{[^}]*background", css)
+
+
+# ---- fragility of the T15f static tests (T1, T2 of the code review) ---------------------------------------------------
+
+def test_each_assisted_button_label_is_an_argument_of_assisted_button_t1():
+    body = function_body("renderAssistedActions")
+    for label in ("btnSave", "btnHidePoint", "btnUndo", "btnQuit"):
+        assert re.search(rf"assistedButton\(\s*TEXT\.{label}\s*,", body), label
+
+
+def test_the_save_time_is_stamped_only_by_a_save_action_t2():
+    source = read("app.js")
+    assert source.count("state.lastSaveAt = Date.now()") == 1
+    perform = function_body("perform")
+    stamp = re.search(r'if \(payload\.action === "save"\) \{\s*state\.lastSaveAt = Date\.now\(\);\s*\}', perform)
+    assert stamp, "the stamp belongs to the save action of perform"
+    assert "lastSaveAt" in function_body("onEnter") and "lastSaveAt" not in function_body("saveItem")

@@ -49,3 +49,15 @@ Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
 sonnet. Why: page from specified screens and strings, same patterns as T6b and T6d.
 
 ## Implementation notes
+- Server side (commits before the page): the "Instructions" table has the blocked-session row (U35,
+  `journey.BLOCKED_TEXT`, no focus); `views.summary` and `views.view` no longer carry `state`, `driftLabel`,
+  `driftStale` nor the per-dart `drift` (A7); the cursor view gains `canSave` (`flow.can_save`) and
+  `previousPoints` (recalibration only; A8, A9); the list answer gains `continuePayload` (None: no button, `{}`: open
+  only, else the flow action; `Instruction.continue_payload`); `journey.RECALIBRATION_EXPLANATION` is the one text of
+  the recalibration explanation.
+- Page: `#journey` (server `instruction`, list and session screens), `#help` (was `#instruction`), `#banner` (errors
+  only, drift banner and picker "!" removed). Cards: `sessionLine` (head with role and badge, step rows from `steps`,
+  grey "Information" box, focus mark "Prochaine étape" and "Continuer" on the focus card). A blocked session shows
+  "Lecture seule" instead of a badge. Entrée on the list: `onListKey`, only without a focused button or link.
+- A step row already said by an `info` line is not repeated in the box (display only).
+- The `lastSaveAt` stamp lives in the save branch of `perform`, so its test is scoped there (and `onEnter` reads it).
