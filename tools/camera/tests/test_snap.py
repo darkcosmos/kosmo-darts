@@ -17,6 +17,7 @@ pytest.importorskip("PIL")
 from PIL import Image  # noqa: E402
 
 from kosmo_camera import board, config, geometry, snap, synth  # noqa: E402
+from snap_support import inner_crossings as _inner_crossings  # noqa: E402
 
 MAX_ERROR_PX = 0.25  # criterion 1
 MIN_SNAPPED_SHARE = 0.90  # criterion 3
@@ -77,12 +78,6 @@ def _render(case):
         luma = numpy.asarray(Image.fromarray(pixels).convert("L"))
         _CACHE[case] = (_gaussian_blur(luma, case.blur) if case.blur else luma, truth)
     return _CACHE[case]
-
-
-def _inner_crossings(truth):
-    """True pixels of the radial wire crossing the inner edge of the double ring, for each calibration point."""
-    scale = board.DOUBLE_INNER_MM / board.DOUBLE_OUTER_MM
-    return synth.project(truth.homography, [(x * scale, y * scale) for x, y in board.CALIBRATION_POINTS_MM])
 
 
 def _starts(point):

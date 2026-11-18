@@ -250,8 +250,8 @@ def test_d46_calibration_on_a_board_with_ring_wires_clicks_5_px_off_snap_within_
             response = connection.getresponse()
             return response.status, json.loads(response.read())
 
-        from test_snap import _inner_crossings
-        targets = _inner_crossings(truth)
+        from snap_support import inner_crossings
+        targets = inner_crossings(truth)
         for x, y in targets:
             status, result = act({"action": "click", "x": x + 3.5, "y": y - 3.5})  # about 5 px off
             assert status == 200, result
