@@ -78,6 +78,8 @@ def test_the_k73_annotate_command_is_started_by_the_tool_venv_and_parses_with_th
 
 
 def test_k71b_is_one_command_that_creates_the_venv_installs_the_hashed_file_and_prints_the_pins():
+    pytest.importorskip("numpy")  # the test runs the printed pins command with the current interpreter
+    pytest.importorskip("PIL")
     step = k71b_step()
     commands = [s for s in re.findall(r"`([^`]+)`", step) if "&&" in s]
     assert len(commands) == 1 and commands[0].startswith("python3 -m venv")
@@ -118,4 +120,8 @@ def test_the_section_names_the_steps_the_expected_texts_and_retires_k5():
     for expected in ("Recalage indisponible", "non recalé", "Points prêts", "Contrôle indisponible",
                      "Images vidéo absentes", "Continuer", "Entrée"):
         assert expected in text, expected
+    from kosmo_camera.annotate import flow, journey  # the texts the tool really shows, not retyped
+    for exact in (journey.NO_SPLIT_TEXT, flow.CONTROL_OFF, journey.NO_FRAMES_TEXT, flow.UNAVAILABLE):
+        assert exact in text, exact
+    assert "frames.json" in text and "restent sur votre ordinateur : ne les collez jamais" in text  # CV15
     assert "git switch feat/camera-feasibility-0b-1-detection" in text
