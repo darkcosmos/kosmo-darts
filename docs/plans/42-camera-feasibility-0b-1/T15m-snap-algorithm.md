@@ -45,8 +45,8 @@ CV31, CV2 (the 4 points are double-ring outer edge on radial wires), CV4 (no tun
   marked `slow` if above the CI budget.
 
 ## Done when
-Python checks of root "Test plan" green (CI command too), `python3 -I -S -m kosmo_camera.annotate --help` works,
-`kosmo-detekt` exit 0.
+Python checks of root "Test plan" green (CI command too), `python3 -S -m kosmo_camera.annotate --help` run from
+`tools/camera` works (stdlib only; `-I` would drop the working directory from `sys.path`), `kosmo-detekt` exit 0.
 
 ## Model
 opus. Why: rule still open after design review (case 3): the detector, the "no clear crossing" tests and their
@@ -72,3 +72,20 @@ narrower first-line band, thresholds from white noise only, unlimited stem reach
 fallback for the stem, every pixel above threshold instead of sub-pixel points. The profile refinement
 (`_refine`, `_Profile`) is the accurate part; the detection (`_detect_line`, `_nearest_parallel`, `_away`) needs a
 redesign: e.g. a coarse junction stage that gets within 1 to 2 px first, then the window centred on it.
+
+Third build agent (STOPPED, bound not met; `test_snap.py`, CV31 text and SNAP_* tuning still to do):
+- `synth.py` `_SUPERSAMPLE` 4 -> 8: with 4 x 4 a wire nearly parallel to a pixel axis moved by up to 0.15 px, so
+  the truth itself was off; 8 x 8 keeps noise-free crossings within 0.03 px (default T7 render unchanged).
+- `snap.py` redesigned in two stages: `_coarse` (region half side window + radius, ridge then edge lines by
+  Hough peak and iterative fit, `_is_wire` rejects the bright-side pseudo-ridge of a bare edge, candidate = pair at
+  least `min_angle` apart, both reaching the crossing, nearest the start) and `_fine` (lines refitted in the window,
+  `_refine` bar or step profile with the exact pixel footprint `_pixel_step`, profiles kept in the crossing cell).
+  Smallest scale whose ridge response reaches 0.8 of the strongest (larger scales bias thin wires by up to 3 px).
+- Measured (scratch harness, 100 starts per board at 0, 3, 6, 9.5 px, noise 2): 100 % snapped and within 0.1 px
+  (p50 0.006 to 0.022, starts nearer the inner double crossing land on it) on the default board, yaw 10 / pitch
+  25 wire 1.5 mm, the unseen style (yaw -30, pitch -10, roll 8, wire 1.2 mm, other colours), 12 MP, wire 2 mm
+  (5 px, 98 %); bare colour edges 98 % (2 `too_far`); noise 5: 100 % but one start at 9.5 px converged 17 px
+  away (a wrong crossing). Not met: 1200 x 900 (wire about 1 px): 75 %, a few at 0.11 to 0.13 px and one point
+  at 0.31 px (stem fitted on few ridge points, tilted by its part beyond the inner ring); Gaussian blur 0.8 px:
+  75 % (`support`, `too_far`), blur 1.2 px: 69 % and one point at 0.22 px (short stem between the rings,
+  contaminated by the ring wires within about 3 blur widths). Snap time about 80 to 140 ms (target 50 ms).
