@@ -427,22 +427,22 @@ def main(argv=None) -> int:
     parser.add_argument("--split", required=True, type=Path)
     parser.add_argument("--lock", type=Path, default=DEFAULT_LOCK, help="split lock (default: the committed one)")
     args = parser.parse_args(argv)
-    for folder in (args.captures, args.annotations, args.frames):
-        if not folder.is_dir():
-            print("not a folder", file=sys.stderr)
+    for option in ("captures", "annotations", "frames"):
+        if not getattr(args, option).is_dir():
+            print(f"Dossier introuvable : --{option}", file=sys.stderr)
             return 2
     try:
         split = control.read_split(args.split, args.lock)
         text, times, run_s, outcomes = report(args.captures, args.annotations, split, args.frames)
-    except split_module.SplitError as error:
-        print(f"split or lock invalid: {error}", file=sys.stderr)
+    except split_module.SplitError:  # the detail may name sessions: not shown
+        print("Split ou verrou invalide : --split ne correspond pas à --lock.", file=sys.stderr)
         return 2
     path = args.out / REPORT_NAME
     try:
         args.out.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
-    except OSError as error:
-        print(f"cannot write the report: {error.strerror or error}", file=sys.stderr)
+    except OSError:  # the detail may hold a full path: not shown
+        print("Impossible d'écrire le rapport : --out n'est pas inscriptible.", file=sys.stderr)
         return 2
     median = "-" if not times else f"{1000.0 * _quantile(times, 0.5):.1f} ms"
     print(f"Rapport : {path}")

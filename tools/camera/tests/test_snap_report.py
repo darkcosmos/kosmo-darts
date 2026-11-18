@@ -7,6 +7,7 @@ import hashlib
 import math
 import subprocess
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -247,14 +248,46 @@ def test_cv32_planned_k76_duration_follows_the_formula_with_an_injected_clock_d5
     assert expected in durations and "Recalages exécutés : 81" in durations
 
 
-def test_cv32_main_refuses_a_bad_folder_or_a_split_that_does_not_match_the_lock(data, tmp_path):
-    args = _args(data, tmp_path / "out")
-    args[args.index("--frames") + 1] = str(tmp_path / "none")
-    assert sr.main(args) == 2
+def test_cv32_descriptor_median_p10_p90_and_shares_match_a_hand_computed_case():
+    def outcome(value, stem, bright):
+        descriptors = types.SimpleNamespace(a=value, stem_px=stem, bright_wires=bright)
+        return types.SimpleNamespace(point=types.SimpleNamespace(group=sr.GROUPS[0]), stage=None,
+                                     descriptors=descriptors)
+
+    # a = 1, 2, 3, 4, 10: median 3, p10 at rank 0.4 = 1.4, p90 at rank 3.6 = 4 + 6 * 0.6 = 7.6
+    outcomes = [outcome(a, stem, bright) for a, stem, bright in
+                ((1, 0.0, True), (2, 0.5, False), (3, 2.0, False), (4, 3.0, False), (10, 5.0, True))]
+    lines = sr._descriptors_section(outcomes, ("a",))
+    assert lines[-1] == (f"| {sr._group_label(sr.GROUPS[0])} | {sr.SNAPPED} | 3.00 [1.40–7.60] n=5 | 40.0 % | 40.0 % |")
+
+
+def test_cv32_main_refuses_a_bad_folder_naming_the_option_in_french_and_writes_nothing(data, tmp_path, capsys):
+    for option in ("captures", "annotations", "frames"):
+        args = _args(data, tmp_path / "out")
+        args[args.index(f"--{option}") + 1] = str(tmp_path / "none-secret")
+        assert sr.main(args) == 2
+        err = capsys.readouterr().err
+        assert err == f"Dossier introuvable : --{option}\n"
+        assert "none-secret" not in err and str(tmp_path) not in err
+    assert not (tmp_path / "out").exists()
+
+
+def test_cv32_main_refuses_a_split_that_does_not_match_the_lock_in_french_without_detail(data, tmp_path, capsys):
     (tmp_path / "split.json").write_bytes(b"{}")
     args = _args(data, tmp_path / "out")
     args[args.index("--split") + 1] = str(tmp_path / "split.json")
     assert sr.main(args) == 2 and not (tmp_path / "out").exists()
+    err = capsys.readouterr().err
+    assert err.startswith("Split ou verrou invalide") and str(tmp_path) not in err
+    assert not any(name in err for name in NAMES)
+
+
+def test_cv32_main_reports_an_unwritable_output_in_french_without_the_path(data, tmp_path, capsys):
+    blocker = tmp_path / "secret-file"
+    blocker.write_text("x")  # a file where the output folder should go
+    assert sr.main(_args(data, blocker / "out")) == 2
+    err = capsys.readouterr().err
+    assert err.startswith("Impossible d'écrire le rapport") and "secret-file" not in err and str(tmp_path) not in err
 
 
 def test_cv32_main_runs_with_numpy_and_pillow_only_no_av_d44(data, tmp_path):
