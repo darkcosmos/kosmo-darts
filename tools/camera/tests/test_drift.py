@@ -280,8 +280,9 @@ def test_decompression_bomb_is_unreadable_never_an_exception(small_session, tmp_
     assert Image.MAX_IMAGE_PIXELS == default
 
 
-def test_the_decoder_never_changes_the_pillow_pixel_limit():
-    source = (TOOL_ROOT / "kosmo_camera" / "drift.py").read_text(encoding="utf-8")
+@pytest.mark.parametrize("module", ["drift.py", "luma.py"])  # S14: every module near the decoder
+def test_the_decoder_never_changes_the_pillow_pixel_limit(module):
+    source = (TOOL_ROOT / "kosmo_camera" / module).read_text(encoding="utf-8")
     assert not re.search(r"MAX_IMAGE_PIXELS\s*=", source) and "LOAD_TRUNCATED_IMAGES" not in source
 
 

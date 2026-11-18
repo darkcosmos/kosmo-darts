@@ -1,8 +1,9 @@
 """Tripod drift of the judged photos against the reference photo of their calibration segment (CV18, CV19).
 
-numpy for the maths, Pillow only to decode a JPEG to luma. The clicked calibration of a segment (CV20) is the reference:
-each judged photo gets one sub-pixel shift per calibration point, a drift in px and in mm, and, when the drift is at
-most `DRIFT_MAX_MM`, a compensated reference calibration (CV19). Reads every session without the split lock (CV18).
+numpy for the maths, the shared decoder `luma.decode_luma` (Pillow) to decode a JPEG to luma. The clicked calibration
+of a segment (CV20) is the reference: each judged photo gets one sub-pixel shift per calibration point, a drift in px
+and in mm, and, when the drift is at most `DRIFT_MAX_MM`, a compensated reference calibration (CV19). Reads every
+session without the split lock (CV18).
 
 Shift sign: content position in the photo minus content position in the reference. Luma is decoded in stored pixel
 order, EXIF orientation ignored (D8). The segment of a dart is `annotations.segment_for` (A15), never recomputed here.
@@ -11,16 +12,14 @@ import argparse
 import math
 import statistics
 import sys
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 import numpy
-from PIL import Image
 
 from kosmo_camera import annotations as ann
-from kosmo_camera import config, drift_file, geometry
+from kosmo_camera import config, drift_file, geometry, luma
 
 OK = "ok"
 BEYOND = "beyond"
@@ -218,20 +217,6 @@ def _from_shifts(points, shifts, params):
 
 # ---- one session --------------------------------------------------------------------------------------------------
 
-def _decode_luma(path):
-    """(luma array, None), or (None, UNREADABLE): a bad, truncated or oversized JPEG is a status, never an error (S8).
-
-    `Image.MAX_IMAGE_PIXELS` stays at its default: Pillow raises above twice the limit and warns above the limit; both
-    are refused here."""
-    try:
-        with warnings.catch_warnings():
-            warnings.simplefilter("error", Image.DecompressionBombWarning)
-            with Image.open(path) as image:
-                return numpy.asarray(image.convert("L"), dtype=numpy.float32), None
-    except (OSError, ValueError, SyntaxError, Image.DecompressionBombError, Image.DecompressionBombWarning):
-        return None, UNREADABLE
-
-
 def _reference_drift(segment):
     points = tuple((float(x), float(y)) for x, y in segment.points)
     return PhotoDrift(OK, None, _NO_DRIFT_SHIFTS, 0.0, 0.0, points)
@@ -253,9 +238,9 @@ def measure_session(session_dir, annotations, params=DriftParams()) -> SessionDr
             photos[dart.number] = _reference_drift(segment)
             continue
         if index not in references:
-            references[index] = _decode_luma(folder / segment.photo)
+            references[index] = luma.decode_luma(folder / segment.photo)
         reference, reason = references[index]
-        photo, photo_reason = _decode_luma(folder / name) if reference is not None else (None, reason)
+        photo, photo_reason = luma.decode_luma(folder / name) if reference is not None else (None, reason)
         if photo is None:
             photos[dart.number] = _unmeasurable(photo_reason or UNREADABLE)
         else:
