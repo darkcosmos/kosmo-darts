@@ -39,6 +39,11 @@ def test_committed_defaults_load_and_are_exposed_as_constants():
     assert config.DRIFT_MAX_MM == 1.0 and config.DRIFT_MAX_MM == config.CAL_MAX_ERROR_MM / 2
     assert config.DRIFT_CANDIDATES_MM == (0.5, 1.0, 2.0)
     assert (config.DRIFT_COARSE_PX, config.DRIFT_PATCH_FRACTION, config.DRIFT_MIN_PEAK) == (512, 0.06, 0.2)
+    # Assisted click (CV31, D43): the one place that pins the SNAP_* constants (initial values of the root plan).
+    assert (config.SNAP_RADIUS_PX, config.SNAP_WINDOW_PX, config.SNAP_SIGMAS_PX) == (10.0, 16, (1.0, 2.0, 3.0))
+    assert (config.SNAP_MIN_ANGLE_DEG, config.SNAP_MIN_SUPPORT_PX, config.SNAP_MIN_CONTRAST) == (30.0, 8, 4.0)
+    assert (config.SNAP_MAX_RESIDUAL_PX, config.SNAP_CONVERGE_PX, config.SNAP_MAX_ITER) == (0.75, 0.05, 5)
+    assert (config.SNAP_REPEAT_DIRECTIONS, config.SNAP_REPEAT_OFFSET_PX, config.SNAP_REPEAT_MAX_MM) == (8, 3.0, 0.25)
 
 
 def test_unknown_key_raises(tmp_path):
