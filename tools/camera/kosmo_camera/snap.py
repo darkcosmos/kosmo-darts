@@ -23,7 +23,8 @@ One iteration, around the current estimate (root plan "Approach, Assisted click"
 fewer than `SNAP_MIN_SUPPORT_PX` detected points), `contrast` (no detected point, or a fitted wire or edge contrast
 below `SNAP_MIN_CONTRAST` times the noise), `residual` (detected points farther than `SNAP_MAX_RESIDUAL_PX` RMS from
 their fitted curve, or a profile fit that fails), `angle` (fitted lines closer than `SNAP_MIN_ANGLE_DEG`),
-`no_convergence`, `too_far` (more than `SNAP_RADIUS_PX` from the start), `border` (window or result outside the image).
+`no_convergence`, `too_far` (more than `SNAP_RADIUS_PX` from the start), `border` (window or result outside the image), `ambiguous`
+(two or more distinct crossings of the lattice within `SNAP_RADIUS_PX` of the start: the click does not say which one).
 """
 import math
 from dataclasses import dataclass
@@ -42,7 +43,8 @@ ANGLE = "angle"
 NO_CONVERGENCE = "no_convergence"
 TOO_FAR = "too_far"
 BORDER = "border"
-REASONS = (SUPPORT, CONTRAST, RESIDUAL, ANGLE, NO_CONVERGENCE, TOO_FAR, BORDER)
+AMBIGUOUS = "ambiguous"
+REASONS = (SUPPORT, CONTRAST, RESIDUAL, ANGLE, NO_CONVERGENCE, TOO_FAR, BORDER, AMBIGUOUS)
 
 _NOISE_FLOOR = 0.5  # grey levels: 8-bit quantisation and JPEG keep at least this much noise
 _MAD_TO_SIGMA = 1.4826
@@ -66,7 +68,9 @@ _CURVED_EXTENT_PX = 24.0  # a line whose points span less than this is fitted st
 _MAX_LINES = 6  # lines looked for per kind in the coarse region
 _GAP_SIGMAS = 2.0  # a line reaches a crossing when its points come within this many scales plus _GAP_PX of it
 _GAP_PX = 3.0
-_SCALE_SHARE = 0.8  # the smallest scale whose ridge response reaches this share of the strongest
+_SCALE_SHARE = 0.7  # the smallest scale whose ridge response reaches this share of the strongest
+_SHARP_BLUR_PX = 2.0  # a fitted wire or edge blurrier than this (beyond the pixel footprint) is a blob, not a wire
+_DISTINCT_PX = 3.0  # coarse crossings closer than this are one crossing of the lattice (a wire and its own edge)
 _COARSE_SLACK_PX = 2.0  # coarse crossings this far beyond `radius_px` are still refined (the result is checked)
 
 
@@ -495,6 +499,30 @@ def _refine(window, grid, clear, origin, curve, other, other_band, inlier_points
                    float(q[4]))
 
 
+def _stands_out(scan, curve, point, floor):
+    """A wire or step edge shows on at least one flank of `point` along `curve`, `floor` grey levels above or beside
+    its sides; the flanks lie beyond the other line's band (the other line crosses at `point` at least
+    `min_angle_deg` away, and the scales of the scan give the band)."""
+    theta = math.radians(curve.angle)
+    direction = numpy.array([math.cos(theta), math.sin(theta)])
+    normal = numpy.array([-direction[1], direction[0]])
+    side = 2.0 * scan.sigma + _LINE_BAND_PX
+    reach = min(4.0 * scan.sigma + 4.0, scan.window.shape[0] / 2.0 - side - 1.0)
+    corner = numpy.array([scan.grid[0][0, 0], scan.grid[1][0, 0]])
+    brighter = -scan.polarity
+
+    def sample(shift, along):
+        at = numpy.array(point) + along * direction + shift * normal - corner
+        return float(_bilinear(scan.window, numpy.array([at[0]]), numpy.array([at[1]]))[0])
+
+    for along in (reach, -reach):
+        centre, low, high = sample(0.0, along), sample(-side, along), sample(side, along)
+        wire = min(brighter * (centre - low), brighter * (centre - high))
+        if max(wire, abs(high - low)) >= floor:
+            return True
+    return False
+
+
 def _crossing(first, second):
     """Intersection of two curves near their common origin (Newton from the origin)."""
     x, y = first.origin
@@ -625,7 +653,7 @@ def _coarse(luma, start, params):
     if not ridges:
         raise _NoCrossing(SUPPORT if len(scan.ridge[0]) else CONTRAST)
     gap = _GAP_SIGMAS * scan.sigma + _GAP_PX
-    seen, best = set(), None
+    seen, best, found = set(), None, []
     for index, first in enumerate(ridges):
         for second in ridges[index + 1:] + edges:
             if _angle_between(first.curve.angle, second.curve.angle) < params.min_angle_deg:
@@ -637,8 +665,13 @@ def _coarse(luma, start, params):
                 seen.add(TOO_FAR)
             elif not (_reaches(first, point, gap) and _reaches(second, point, gap)):
                 seen.add(SUPPORT)
-            elif best is None or distance < best[0]:
-                best = (distance, point, first, second)
+            else:
+                if distance <= params.radius_px and all(math.dist(point, other) > _DISTINCT_PX for other in found):
+                    found.append(point)
+                if best is None or distance < best[0]:
+                    best = (distance, point, first, second)
+    if len(found) > 1:
+        raise _NoCrossing(AMBIGUOUS)
     if best is None:
         raise _NoCrossing(next((r for r in (TOO_FAR, SUPPORT, ANGLE) if r in seen), SUPPORT))
     _, point, first, second = best
@@ -691,6 +724,10 @@ def _fine(luma, estimate, first, second, others, params):
     refined = _crossing(refined_first.curve, refined_second.curve)
     if math.hypot(refined[0] - detected[0], refined[1] - detected[1]) > _REFINE_SHIFT_PX:
         raise _NoCrossing(RESIDUAL)
+    if max(refined_first.blur, refined_second.blur) > _SHARP_BLUR_PX:
+        raise _NoCrossing(RESIDUAL)
+    if not all(_stands_out(scan, fitted.curve, refined, floor) for fitted in (refined_first, refined_second)):
+        raise _NoCrossing(CONTRAST)
     return refined, _Line(refined_first.curve, first.kind, ()), _Line(refined_second.curve, second.kind, ())
 
 
