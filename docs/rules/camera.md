@@ -67,6 +67,10 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   already served by the tool, through `luma.decode_luma`, at most `SNAP_CACHE_IMAGES` (2) decoded images in memory; an
   image that cannot be decoded leaves the point at the click, `unsnapped` with reason `unreadable`, and never stops the
   tool.
+  Control mode (T15d): `--split` (with `--lock`) and `--frames` are read again at every request and never written; a
+  split that does not match its lock, or an unreadable `frames.json`, gives one list warning and switches control (or
+  the video items) off; `GET /api/frame/<session>/<file>` serves only a file listed in `frames.json` for a listed
+  session.
 - CV17 Sessions in `~/kosmo-data/captures-eval/` (confirmation campaign, later) are always eval: never in the split,
   never in training or tuning; `measure --set campaign` reads them under the same `frozen.json` guard.
 - CV18 Drift of a judged photo: compared with the reference photo of its segment (CV20), both decoded to luma in

@@ -16,6 +16,7 @@ from urllib.parse import unquote, urlsplit
 from kosmo_camera import annotations as annotation_file
 from kosmo_camera import drift_file
 from kosmo_camera.annotate import flow, views
+from kosmo_camera.annotate.control_state import ControlSources
 from kosmo_camera.annotate.jpeg_size import JpegError, jpeg_size
 from kosmo_camera.annotate.snapping import Snapper
 from kosmo_camera.annotate.views import (IGNORED, IGNORED_LABEL, NO_DRIFT, OK, REJECTED, TOO_LARGE, TRUTH_INVALID,
@@ -29,7 +30,8 @@ STATIC_DIR = Path(__file__).parent / "static"
 STATIC_FILES = {"index.html": "text/html; charset=utf-8", "app.js": "text/javascript; charset=utf-8",
                 "style.css": "text/css; charset=utf-8"}
 _PHOTO_FILE = re.compile(r"dart-\d{3,}\.jpg")
-_ACTION_KEYS = ("action", "x", "y", "number")
+_FRAME_FILE = re.compile(r"video-\d{3,}\.jpg")
+_ACTION_KEYS = ("action", "x", "y", "number", "source")
 
 
 class HttpError(Exception):
@@ -50,8 +52,9 @@ def _clock():
 class SessionStore:
     """Sessions of a captures folder and their annotation files, with the in-memory state of the open sessions."""
 
-    def __init__(self, captures, annotations_dir, clock=_clock, drift=None, snapper=None):
+    def __init__(self, captures, annotations_dir, clock=_clock, drift=None, snapper=None, controls=None):
         self.snapper = Snapper() if snapper is None else snapper
+        self.controls = ControlSources() if controls is None else controls
         self.captures = Path(captures)
         self.drift_path = None if drift is None else Path(drift)
         self.annotations_dir = Path(annotations_dir)
@@ -122,18 +125,26 @@ class SessionStore:
             return DriftState({}, f"Mesure de dérive illisible : {error}", True)
         return DriftState({f.session: f for f in flags.sessions}, None, True)
 
-    def summary(self, loaded, drift=NO_DRIFT) -> dict:
-        return views.summary(loaded, drift)
+    @staticmethod
+    def _control_info(snapshot, loaded):
+        if loaded.state != OK:
+            return None
+        return snapshot.info(loaded.name, loaded.truth, loaded.annotations)
 
     def sessions_with_warning(self) -> tuple:
-        """The session summaries and the drift flag file warning (or None)."""
+        """The session summaries, the drift flag file warning and the control inputs warning (or None)."""
         with self.lock:
-            drift = self.read_drift()
-            return [views.summary(self.load(name), drift) for name in self.listing()], drift.warning
+            drift, snapshot = self.read_drift(), self.controls.read()
+            sessions = []
+            for name in self.listing():
+                loaded = self.load(name)
+                sessions.append(views.summary(loaded, drift, self._control_info(snapshot, loaded)))
+            return sessions, drift.warning, " ; ".join(snapshot.warnings) or None
 
-    def view(self, loaded, cursor, drift=None) -> dict:
+    def view(self, loaded, cursor, drift=None, snapshot=None) -> dict:
         drift = self.read_drift() if drift is None else drift
-        return views.view(loaded, cursor, drift, self.snapper.available)
+        snapshot = self.controls.read() if snapshot is None else snapshot
+        return views.view(loaded, cursor, drift, self.snapper.available, self._control_info(snapshot, loaded))
 
     def open_session(self, name) -> dict:
         with self.lock:
@@ -156,11 +167,13 @@ class SessionStore:
                 raise HttpError(409, loaded.message)
             action = self._action(payload)
             cursor = self.cursors.get(name) or flow.resume(loaded.annotations, loaded.truth)
+            snapshot = self.controls.read()
+            info = snapshot.info(name, loaded.truth, loaded.annotations)
+            snapping = _BoundSnapping(self.snapper, loaded, info)
             if action.kind in ("click", "save"):
-                action = replace(action, size=self._photo_size(loaded, cursor))
-            snapping = _BoundSnapping(self.snapper, loaded)
+                action = replace(action, size=self._photo_size(snapping, cursor))
             try:
-                updated, new_cursor = flow.apply(loaded.annotations, loaded.truth, action, cursor, snapping)
+                updated, new_cursor = flow.apply(loaded.annotations, loaded.truth, action, cursor, snapping, info.plan)
                 annotation_file.validate_against(updated, loaded.truth)
             except flow.FlowConflict as error:
                 raise HttpError(409, str(error)) from error
@@ -170,16 +183,16 @@ class SessionStore:
             result = {}
             if updated != loaded.annotations:
                 result.update(self._save(name, updated))
-            view = self.view(replace(loaded, annotations=updated), new_cursor)
+            view = self.view(replace(loaded, annotations=updated), new_cursor, snapshot=snapshot)
             result["session"] = view
             return result
 
     @staticmethod
-    def _photo_size(loaded, cursor):
-        if cursor.kind == flow.COMPLETE or cursor.photo is None:
+    def _photo_size(snapping, cursor):
+        if cursor.kind in (flow.COMPLETE, flow.CONTROL_DONE) or cursor.photo is None:
             return None
         try:
-            return jpeg_size(loaded.folder / cursor.photo)
+            return jpeg_size(snapping.locate(cursor.photo)[0])
         except JpegError as error:
             raise HttpError(500, str(error)) from error
 
@@ -206,7 +219,10 @@ class SessionStore:
             value = payload.get(key)
             if value is not None and not flow.is_coordinate(value):
                 raise HttpError(400, "Coordonnées invalides.")
-        return flow.Action(kind, payload.get("x"), payload.get("y"), number)
+        source = payload.get("source")
+        if source is not None and (not isinstance(source, str) or source not in annotation_file.SOURCES):
+            raise HttpError(400, "Source invalide.")
+        return flow.Action(kind, payload.get("x"), payload.get("y"), number, source=source)
 
     # ---- photos ----------------------------------------------------------------------------------------------------
 
@@ -224,21 +240,41 @@ class SessionStore:
         except OSError as error:
             raise HttpError(404, "Photo introuvable.") from error
 
+    def frame(self, name, file) -> bytes:
+        """A video frame of `frames.json`: only a listed session and a listed file are served (S13, as the photos)."""
+        self.resolve_session(name)
+        listed = self.controls.read().frames.get(name)
+        if listed is None or file not in {f.file for f in listed.frames} or not _FRAME_FILE.fullmatch(file):
+            raise HttpError(404, "Image introuvable.")
+        try:
+            return (self.controls.frames / name / file).read_bytes()
+        except OSError as error:
+            raise HttpError(404, "Image introuvable.") from error
+
 
 class _BoundSnapping:
-    """What `flow.apply` sees of the snapper: the photos of one session, named only by the plan (never a request)."""
+    """What `flow.apply` sees of the snapper: the photos of one session named by the plan and the video frames named
+    by the manifest (never a request); a frame has its own size, listed in the manifest."""
 
-    def __init__(self, snapper, loaded):
+    def __init__(self, snapper, loaded, info):
         self._snapper = snapper
         self._folder = loaded.folder
         self._size = (loaded.truth.photo_width, loaded.truth.photo_height)
+        self._frames = info.frames
+
+    def locate(self, photo):
+        """(path, expected size) of a photo of the plan or of a listed frame."""
+        if photo in self._frames:
+            return self._frames[photo]
+        return self._folder / photo, self._size
 
     @property
     def available(self) -> bool:
         return self._snapper.available
 
     def snap(self, photo, start):
-        return self._snapper.snap(self._folder / photo, start, self._size)
+        path, size = self.locate(photo)
+        return self._snapper.snap(path, start, size)
 
 
 def _parse_json(data):
@@ -325,12 +361,15 @@ def _make_handler(store, static_dir):
             if len(parts) == 2 and parts[0] == "static":
                 return self._static(parts[1])
             if parts == ["api", "sessions"]:
-                sessions, warning = store.sessions_with_warning()
-                return self._json(200, {"sessions": sessions, "driftWarning": warning})
+                sessions, warning, control_warning = store.sessions_with_warning()
+                return self._json(200, {"sessions": sessions, "driftWarning": warning,
+                                        "controlWarning": control_warning})
             if len(parts) == 3 and parts[:2] == ["api", "sessions"]:
                 return self._json(200, store.open_session(parts[2]))
             if len(parts) == 3 and parts[0] == "photo":
                 return self._send(200, "image/jpeg", store.photo(parts[1], parts[2]))
+            if len(parts) == 4 and parts[:2] == ["api", "frame"]:
+                return self._send(200, "image/jpeg", store.frame(parts[2], parts[3]))
             raise HttpError(404, "Introuvable.")
 
         # ---- POST: the only write route ----------------------------------------------------------------------------
@@ -384,10 +423,10 @@ class AnnotationServer(ThreadingHTTPServer):
 
 
 def make_server(captures, annotations_dir, port=DEFAULT_PORT, static_dir=STATIC_DIR, clock=_clock, drift=None,
-                snapper=None):
+                snapper=None, controls=None):
     """Bind the server on 127.0.0.1 (raises OSError when the port is in use)."""
     captures, annotations_dir = Path(captures).resolve(), Path(annotations_dir).resolve()
     if annotations_dir == captures or captures in annotations_dir.parents:
         raise ValueError("Le dossier d'annotations ne doit pas être dans le dossier des captures (lecture seule).")
     annotations_dir.mkdir(parents=True, exist_ok=True)
-    return AnnotationServer(SessionStore(captures, annotations_dir, clock, drift, snapper), port, static_dir)
+    return AnnotationServer(SessionStore(captures, annotations_dir, clock, drift, snapper, controls), port, static_dir)
