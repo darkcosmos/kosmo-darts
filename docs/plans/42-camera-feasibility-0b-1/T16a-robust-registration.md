@@ -1,12 +1,13 @@
 # T16a (CONDITIONAL): Robust registration of a photo against its reference
 
-Status: conditional. Built only if the T15j verdict says H1 (alone or with H2) and Kosmo confirms at plan update
+Status: conditional. Built only if the T15o verdict says H1 (alone or with H2) and Kosmo confirms at plan update
 P2. Its content is finalized at P2 from the diagnostic numbers; this file fixes the frame.
 
 ## Goal
 Replace the CV18 measure by one that does not lock onto a neighbouring wire and ignores darts, validated on the
-control clicks (error at most `VALIDATION_MAX_MM` on at least `VALIDATION_MIN_SHARE` of the sample) before any
-compensation (D30 point 4, CV30).
+re-snapped control points of `snapped-points.json` (T17c; error at most `VALIDATION_MAX_MM` on at least
+`VALIDATION_MIN_SHARE` of the sample; controls with a non-snapped point apart, as T15i) before any compensation
+(D30 point 4, CV30, D49). Measured on the real data, numbers only, before anything is asked of Kosmo (D48).
 
 ## Files
 - Changed `tools/camera/kosmo_camera/drift.py` (or a new `registration.py`): ambiguous-peak rejection (second to
@@ -19,7 +20,7 @@ compensation (D30 point 4, CV30).
 - Changed tests `test_drift.py` (or `test_registration.py`), `test_diagnose.py`.
 
 ## Depends on
-T15j; plan update P2.
+T15o, T17c; plan update P2.
 
 ## Rules
 CV18 (amended at P2), CV30, CV4 (parameters chosen on dev controls only; eval controls confirm, never tune).
@@ -35,6 +36,7 @@ CV18 (amended at P2), CV30, CV4 (parameters chosen on dev controls only; eval co
 Python checks of root "Test plan" green (CI command too), `kosmo-detekt` exit 0.
 
 ## Model
-opus. Why: algorithm with an open design: the robust measure is chosen from the diagnosis, no rule specifies it.
+opus. Why: case 3, algorithm with an open design: the robust measure is chosen from the diagnosis, no rule
+specifies it.
 
 ## Implementation notes

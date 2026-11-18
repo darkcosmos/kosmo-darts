@@ -1,9 +1,22 @@
 # T15i: Diagnosis, photo side: true drift, error of the automatic measure, where it fails
 
 ## Goal
-From Kosmo's snapped control clicks, measure per photo the true drift and the error of the current automatic
-measure (CV18), the machine-measured snapping dispersion `D` (Kosmo, Q10, D39), and where the automatic measure
-fails (coarse search or patches, peak ratios), as numbers only (D30 point 2 (a) and (c), CV28, CV31).
+From the pixel-level truth of the automatic re-snap (`snapped-points.json`, T17c, D49), measure per photo the true
+drift and the error of the current automatic measure (CV18), the machine-measured snapping dispersion `D` (Kosmo,
+Q10, D39), and where the automatic measure fails (coarse search or patches, peak ratios), as numbers only (D30
+point 2 (a) and (c), CV28, CV31, CV32).
+
+## Change of lot 3b (D49, D52)
+- Truth source: control and segment points and their `snap` statuses come from `snapped-points.json` (option
+  `--snapped FILE`, required; read with `snapped_file`; absent, refused or stale against the annotation hashes: the
+  run stops with one French line « Recalage automatique absent ou périmé : relancer K7.6 », exit 2). The
+  annotation files keep Kosmo's clicks and are never written.
+- `D` per snapped point comes from the file's `dispersionPx`, in mm through the control homography (4 points);
+  controls with fewer visible points report `D` in px, apart; no restart is rerun.
+- « Recalage des clics » also gives the share of snapped and non-snapped points per role and source and the click
+  precision `C` (p95 click-to-snap mm of T17c). Controls with a non-snapped point stay out of `T`, `E` and the
+  `DIAG_MIN_CONTROLS` count (CV28); they are listed apart with `E` compared with `VALIDATION_MAX_MM` + `C`
+  (information line « précision humaine »), never in a verdict.
 
 ## Files
 - Changed `tools/camera/kosmo_camera/drift.py`: `phase_shift_detail(a, b)` -> `(dx, dy, peak, second_peak)`
@@ -45,10 +58,12 @@ fails (coarse search or patches, peak ratios), as numbers only (D30 point 2 (a) 
   `diagnose.py`).
 
 ## Depends on
-T15c (roles, sample), T8b, T15m (`snap.restart_dispersion`, `luma.decode_luma`).
+T15c (roles, sample), T8b, T15m (`snap.restart_dispersion`, `luma.decode_luma`), T17c (`snapped_file`).
+Where the Files list above says `restart_dispersion` on the luma, read the stored `dispersionPx` instead (section
+"Change of lot 3b"); the synthetic `D` tests below build the file with T17c's writer.
 
 ## Rules
-CV28, CV31, CV9 metric, CV13, CV15, CV4 (reads every session like `drift`; nothing is tuned). There is no click
+CV28, CV31, CV32, CV9 metric, CV13, CV15, CV4 (reads every session like `drift`; nothing is tuned). There is no click
 threshold on Kosmo's hand (Q10 option 3).
 
 ## Tests
@@ -75,6 +90,9 @@ threshold on Kosmo's hand (Q10 option 3).
   hand-checked case; `diagnostic.json` strict reader (cap, cap + 1, unknown key).
 - `drift` report first line present; `measure_photo` outputs unchanged on the T8b fixtures.
 - `main()` in a subprocess on T7 sessions with a split and lock written by the test.
+- Lot 3b: missing, over-cap or stale `--snapped` file stops with the French line and exit 2; a control whose click
+  differs from its snapped point uses the snapped point; the « précision humaine » line uses `C` from the file and
+  changes no verdict field.
 
 ## Done when
 Python checks of root "Test plan" green (CI command too), `kosmo-detekt` exit 0.

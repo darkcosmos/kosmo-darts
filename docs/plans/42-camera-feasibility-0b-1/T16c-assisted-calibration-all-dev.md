@@ -1,36 +1,42 @@
-# T16c (CONDITIONAL): Assisted manual calibration of every dev photo
+# T16c (CONDITIONAL): Automatic per-photo calibration by chained snapping, exceptions only to Kosmo
 
-Status: conditional. Built only if the photos moved and no automatic per-photo calibration passes the CV30 gate,
-and Kosmo accepts the clicking time at plan update P2. Finalized at P2.
+Status: conditional. Built only if the photos moved and no automatic per-photo calibration passes the CV30 gate.
+Finalized at P2. Reshaped at lot 3b (D48): the former manual clicking of every dev photo is withdrawn; Kosmo's
+manual budget is at most 10 min per campaign (ADR 0018).
 
 ## Goal
-Let Kosmo click the 4 calibration points of every dev photo quickly, so that dev labels are right without a
-validated automatic measure (D30 point 4, "manuelle assistée").
+Calibrate every dev photo automatically: snap the 4 calibration points of photo k from the snapped points of photo
+k-1 (or the segment calibration), check them with the CV32 lattice, and flag only the photos the tool cannot
+settle; Kosmo validates the flagged photos within the budget (D30 point 4, D48).
 
 ## Files
-- Changed `tools/camera/kosmo_camera/control.py`: sample option `--control-sample all-dev` (every judged dev
-  photo); default unchanged (CV26).
-- Changed `annotate/server.py`, `annotate/flow.py`: the option passed through; the zoom centre of each point is
-  the previous photo's clicked point (already the T15d rule); progress counts the new sample.
-- Changed `annotate/static/app.js`: progress line shows the time left estimate "Reste environ … min".
-- Changed `docs/camera/training.md` and `test_training_doc.py`: one step for the option.
-- Changed tests `test_control.py`, `test_annotate_flow.py`, `test_annotate_static.py`.
+- Added `tools/camera/kosmo_camera/chain_calibration.py` (numpy, WSL tool venv): per dev photo in dart order, start
+  = previous accepted points; snap (T17b), lattice (T17c), restarts; status `accepted` or `flagged` with reason;
+  writes `<runs>/calibration/calibration-points.json` (format on the `snapped_file` pattern) and a numbers-only
+  report with the flagged count and the estimated validation time from K7.6's real per-point time.
+- Changed `annotate/server.py`, `annotate/flow.py`, `annotate/static/app.js`: option `--flagged FILE` shows only the
+  flagged photos, the proposed points pre-placed; Kosmo accepts with Entrée or drags a point (snapped again).
+- Changed `docs/camera/training.md`, `test_training_doc.py`: one command and the optional flagged review.
+- Added `tests/test_chain_calibration.py`; changed `test_annotate_flow.py`, `test_annotate_static.py`.
 
 ## Depends on
-T16b, T15g; plan update P2.
+T16b, T17c, T15g; plan update P2.
 
 ## Rules
-CV25, CV26 (option added), CV16.
+CV30, CV31, CV32, D48: if the flagged count times the measured time per photo exceeds 10 min, the tool stops
+before the review and the plan proposes another automated alternative.
 
 ## Tests
-- Sample `all-dev`: every judged dev photo, no eval photo, order by dart.
-- Flow: the next control item after the last sampled one is the first item of the option sample.
-- Static: the time-left string present once; T6b scan.
+- Synthetic session with planned drift: every photo accepted, points within 0.25 px; a photo with a dart on a
+  calibration crossing flagged; a jump larger than the snap radius flagged, never accepted on a wrong crossing.
+- Budget: a flagged count above the 10-min estimate stops with its French line, no review started.
+- Flow: only flagged photos are shown; acceptance with Entrée writes the proposed points.
 
 ## Done when
-Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
+Python checks of root "Test plan" green, the Python 3.14 `TOOL_TESTS` run green, `kosmo-detekt` exit 0.
 
 ## Model
-sonnet. Why: an extra sample option and a progress string on the T15c to T15f patterns.
+sonnet. Why: chains T17b's snap and T17c's lattice check, both specified, with synthetic tests; the flagged review
+reuses the T15d to T15g patterns.
 
 ## Implementation notes

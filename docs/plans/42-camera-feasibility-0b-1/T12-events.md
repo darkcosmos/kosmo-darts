@@ -13,6 +13,9 @@ on stable frames), and score them against the entry times.
   event, counted); `score_arrivals(volley, events)` and `score_empty(volley, events)` per CV10 and CV11.
 - Changed `tools/camera/config/defaults.json` (event parameters) and its test in `test_config.py`.
 - Added tests `tools/camera/tests/test_events.py` on T7 videos.
+- Lot 3b (D50, ADR 0019): video frames are 16:9 and may be cropped top and bottom against the photo (stabilization
+  or sensor crop), so part of the board can be out of frame. `decide.calibrate` on a frame whose board is cut is
+  counted `board_cut` (no event), never calibrated from the photo; the CV10 and CV11 report gives that count.
 
 ## Depends on
 T11.
@@ -31,6 +34,7 @@ first) to entry k, using `entry.videoPositionMs`; darts with a null position are
 - Empty board after removal: declared between last entry and `end`; a fake detector that sees no tip before the last
   entry produces a false empty.
 - Null `videoPositionMs` and null `end` cases skipped and counted.
+- A T7 video cropped 16:9 so that the double ring leaves the frame: no event, counted `board_cut`.
 - A `captures/` session: empty-board result is "not measurable", never a rate; a `captures-eval/` session is scored.
 
 ## Done when

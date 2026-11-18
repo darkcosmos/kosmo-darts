@@ -5,6 +5,13 @@ Let Kosmo see with his own eyes, on his PC only, whether a photo moved: the refe
 alternate, aligned by the automatic measure or by the control clicks, with the shift shown (D30 point 3). The
 French text says « alignement », never « recalage », which names the snap only (U30, D45).
 
+## Change of lot 3b (D48, D52, Q15)
+- Built only if Kosmo keeps the visual check at Q15 (it is outside the paste-only budget of ADR 0018); otherwise
+  held until a verdict asks for it. Step numbers move: the three state strings say « relancer le diagnostic
+  (K7.7) » instead of « (K7.4) », and the step itself is K7.8 (« facultatif »).
+- `clicks` reads `controlPoints` from `diagnostic.json`, which since T15i lot 3b are the re-snapped points
+  (`snapped-points.json`); the label stays « Alignement d'après les clics » (they come from Kosmo's clicks).
+
 ## Files
 - Changed `tools/camera/kosmo_camera/annotate/server.py`: option `--diagnostic FILE` (read with the stdlib strict
   reader of `diagnostic_file.py`, T15i; sessions absent from the file are ignored, a session whose
@@ -35,7 +42,7 @@ French text says « alignement », never « recalage », which names the snap on
 - Changed tests `test_annotate_server.py`, `test_annotate_static.py`; added `test_homography.py`.
 
 ## Depends on
-T15i, T15g.
+T15i, T15g, T15o; Q15.
 
 ## Rules
 CV16 (local only, 127.0.0.1, images never leave the PC), CV15 (`diagnostic.json` local), CV28. U24 (D42): arrows

@@ -1,34 +1,32 @@
-# T15l: training.md, diagnosis steps (K7.4 to K7.6)
+# T15l: training.md, steps K7.5 to K7.8 (fixed snap, acceptance and re-snap, diagnosis, optional visual check)
 
 ## Goal
-Give Kosmo the copy-paste steps to run the diagnosis, paste the report in the chat and open the visual check
-(D30 points 2 and 3).
+Replace the placeholder « K7.5 et la suite arrivent dans la prochaine livraison » (T17d) with the copy-paste steps
+K7.5 to K7.8 of root plan "How Kosmo verifies": Kosmo only runs commands and pastes reports, within the 10-minute
+budget (D48, ADR 0018), no click.
 
 ## Files
-- Changed `docs/camera/training.md`, section "Contrôle de calibration": adds K7.4 (run `diagnose` in the
-  container), K7.5 (paste `diagnostic-report.md` in the chat, numbers and roles only), K7.6 (start the tool with
-  `--diagnostic` and do the visual check), in French, copied from root plan "How Kosmo verifies", replacing the
-  T15h line "K7.4 à K7.6 : le diagnostic arrive dans la prochaine livraison"; the checklist K7.C gains its visual
-  check lines (alternation, keys 1, 2, 3, N, Espace, arrows in dart order, "Photo i / n" in that order, U24), and
-  loses the sentence that says the visual check is not there yet (they were taken out of K7.C at T15h: U41).
-- Same file: a short paragraph « Recalage des clics » under K7.4 explaining that section of the report (T15i) in
-  plain French: points recalés and non recalés counted per role and source with their reasons; the dispersion `D`
-  is measured by the machine (recalage relancé depuis 8 départs décalés de 3 px autour de chaque point), p95
-  compared with the target 0,25 mm; it, not Kosmo's hand, bounds the reference (D39); a p95 above 0,25 mm or
-  fewer than 30 complete snapped dev photo controls makes the verdict « non concluant », and then the squad
-  revises the snap and reruns the diagnosis on the same stored clicks, no new clicks (D43); the "accord des clics
-  de segment" line (`R`) is information only.
-- Changed `tools/camera/tests/test_training_doc.py`: the `diagnose` command parses with its parser; the annotate
-  command with `--diagnostic` parses; the `docker run` block keeps the S10 flags and the read-only data mount;
-  K7.4 to K7.6 named; the guide says `diagnostic.json` is never pasted; the « Recalage des clics » paragraph is
-  present and names « 0,25 mm » and « non concluant »; the section title it cites equals the one `diagnose.py`
-  writes (read from the module constant, not retyped).
+- Changed `docs/camera/training.md`, section "Contrôle de calibration", in French, copied from root plan "How Kosmo
+  verifies": K7.5 (git pull and image rebuild), K7.6 (the K7.4 command again: acceptance and re-snap, paste
+  `snap-report.md`), K7.7 (run `diagnose` in the container with `--snapped`, paste `diagnostic-report.md`), K7.8
+  (optional visual check, per Q15); the budget line « Temps d'attention total : environ 8 min, au plus 10 » with
+  each step's attention time and the unattended compute time computed from K7.4's real timing.
+- Same file: a paragraph « Recalage des clics » under K7.7 in plain French: points recalés automatiquement and non
+  recalés per role and source; the dispersion `D` is measured by the machine; a non-recalé point keeps the click and
+  its human precision `C`, counted apart; if the diagnosis is « non concluant » the squad revises the snap or
+  proposes an automated alternative, never new clicks (D43, D48); `R` is information only.
+- Same file: the checklist K7.C gains the visual check lines only if Q15 keeps K7.8 (marked « facultatif »).
+- Changed `tools/camera/tests/test_training_doc.py`: the `diagnose` command with `--snapped` parses with its parser;
+  the `docker run` block keeps the S10 flags and the read-only data mount; K7.5 to K7.8 named; the guide says
+  `diagnostic.json` and `snapped-points.json` are never pasted; no step K7.4 to K7.8 asks for a click (scan for
+  « cliquer », « clic » outside the « Recalage des clics » paragraph); the budget line present; the section title
+  it cites equals the one `diagnose.py` writes (read from the module constant, not retyped).
 
 ## Depends on
-T15h, T15j, T15k.
+T17d, T17c, T15o (and T15k only if Q15 keeps K7.8).
 
 ## Rules
-S10, CV15, CV28 (`D`), CV29 ("non concluant" causes), CV31.
+S10, CV15, CV28 (`D`), CV29 ("non concluant" causes), CV31, CV32, D48.
 
 ## Tests
 - As listed in Files (doc test).

@@ -1,68 +1,59 @@
-# T15j: Diagnosis, video side and verdict: photo versus untouched phone, decision rule
+# T15j: Diagnosis, video side: movement at the tap tracked inside the video stream (`O`, `V`, `W`)
 
 ## Goal
-Measure whether the photo differs from the video frame of the untouched phone about 1 s before the entry (H2),
-whether the board moves durably between darts (H3), and print the verdict of the decision rule written in advance
-(D30 point 2 (b), CV28 video part, CV29).
+Measure whether the phone moves at the tap (H2) inside the video stream at constant framing, whether the board
+moves durably between darts (H3), and print the verdict of the decision rule written in advance (D30 point 2 (b),
+D50, CV28 video part, CV29). A photo is never compared with a video frame: their framing and resolution differ
+(photo 4:3, video 16:9 cropped, ADR 0019).
 
 ## Files
-- Changed `tools/camera/kosmo_camera/diagnose.py`:
-  - Session mapping `M` (photo px to video px): least-squares similarity (scale, rotation, translation) over the
-    clicked points of every dart that has both a complete photo control and a complete video control, none of
-    their points `unsnapped` (CV28); median and
-    p95 residual px reported; not usable when fewer than `MAP_MIN_PAIRS` (3) pairs or residual p95 above
-    `MAP_MAX_RESIDUAL_PX` (2.0), reason shown.
-  - `O` per dart with both controls (CV28); automatic `O` for other video darts only when the CV18 method,
-    applied video frame against the session's first video control, passes the CV30 gate on the clicked video
-    frames (else "méthode non validée sur la vidéo").
-  - `V` (untouched frame versus the first video control of the same segment) and `W` (motion during the capture
-    window: frames every `VIDEO_WINDOW_STEP_MS` from `entry` to `photo` `videoPositionMs`, registered against the
-    CV27 frame; maximum and settling time) only with the validated video method.
-  - Report section « Limites » (T15i) gains the CV28 video limit (a constant tilt in every photo is absorbed by
-    `M`). Report sections "(b) Photo et vidéo", "Verdict" (CV29 lines and the "Suite proposée" row of root plan
-    "Approach, Diagnosis decision rule"); the two "non concluant" causes read `D` p95 and the complete snapped dev
-    photo control count from T15i, never `R` (information since D39).
-- Changed `diagnostic_file.py`: optional per photo `videoMm` (`O`) and per session `mapping` residuals.
-- Changed `defaults.json`, `config.py`, `test_config.py`: `VIDEO_WINDOW_STEP_MS` 100, `DIAG_MOVE_MM` 1.0,
-  `DIAG_MIN_SHARE` 0.10, `DIAG_MIN_VIDEO` 10, `MAP_MIN_PAIRS` 3, `MAP_MAX_RESIDUAL_PX` 2.0; each pinned once, in
-  `test_config.py` only (T3).
-- Changed `docs/rules/camera.md`: CV28 video part, adds CV29.
+- Changed `tools/camera/kosmo_camera/diagnose.py` (container, PyAV):
+  - Tracking (D50, root "Approach, H2 inside the video stream"): for each dart with a video control, start = its
+    visible snapped points on the CV27 frame A (about 1 s before `entry`; unsnapped points start from the click,
+    flagged); frames decoded from A to frame B, the last frame at or before `photo.videoPositionMs`; each point
+    tracked frame to frame by local patch registration (numpy, sub-pixel), then re-snapped on B from its tracked
+    position. Validation per point: forward-backward return to A within `TRACK_MAX_RETURN_PX`, and tracked versus
+    re-snapped on B within `TRACK_MAX_SNAP_PX`; a failed point is dropped with its reason, counted.
+  - `O` per dart from 2 or more validated points: board-plane move of the visible points between A and B in mm,
+    through the control homography with 4 points, else through the scale given by the known board distances of the
+    visible calibration points (translation with 2 points, similarity with 3 or 4). Fewer than 2: « non mesurable »
+    with reason (`hors_cadre` for points marked hidden because out of frame, `suivi` for tracking failures).
+  - `W` = the largest move along the tracked path (maximum and settling time); `V` = move of frame A of dart k
+    against the first video control of its segment, both snapped controls, same rule for 2 to 4 points.
+  - Report section « Limites » (T15i) gains the video limits of CV28; report section "(b) Mouvement dans la vidéo"
+    (darts with `O`, points out of frame, tracking failures by reason, return and re-snap residuals). The
+    "Verdict" section is T15o.
+- Changed `diagnostic_file.py`: optional per photo `videoMm` (`O`), `videoPoints` (validated count) and
+  `videoReason`.
+- Changed `defaults.json`, `config.py`, `test_config.py`: `DIAG_MOVE_MM` 1.0, `TRACK_PATCH_PX`, `TRACK_MAX_RETURN_PX`, `TRACK_MAX_SNAP_PX` (values chosen on synthetic
+  videos, pinned once in `test_config.py`, T3); `MAP_MIN_PAIRS`, `MAP_MAX_RESIDUAL_PX`, `VIDEO_WINDOW_STEP_MS` dropped.
+- Changed `docs/rules/camera.md`: CV28 video part (as in root "Rules").
 - Changed tests `test_diagnose.py`.
 
 ## Depends on
-T15i, T15c (frames, `frame_at`).
+T15i, T15c (frames, `frame_at`), T17c (snapped video controls).
 
 ## Rules
-CV28, CV29, CV30, CV31, CV27, CV15. Every threshold is read from `config.py`; none is chosen from the data.
+CV28, CV31, CV32, CV27, CV15, D50. Every threshold is read from `config.py`; none is chosen from the data.
 
 ## Tests
-- Synthetic session (T7 boards, generated video at a known scale and crop): photos equal to the frames: `O` about
-  0, `M` recovered (scale, offset within 0.1 px residual); photos shifted by a random tilt on 30 % of darts: share
-  of `O` above `DIAG_MOVE_MM` matches, H2 "oui"; a durable shift from dart 20 in the video and photos: H3 "oui",
-  H2 "non".
-- Mapping refused: 2 pairs; residual above the cap (a non-similar warp).
-- Video method not validated (frames made unregistrable): automatic `O`, `V`, `W` reported "non mesurable".
-- Verdict: each CV29 branch on scripted values, thresholds at the boundary (exactly `DIAG_MIN_SHARE`,
-  exactly `VALIDATION_MIN_SHARE`).
-- The two "non concluant" causes (CV29, Kosmo Q10, D39), each with its own French line and "Suite proposée":
-  `D` p95 just above `SNAP_REPEAT_MAX_MM` gives "Non concluant : dispersion du recalage p95 X mm, au-delà de
-  0,25 mm", exactly at it does not; an infinite p95 (failed restarts) gives the same line with "infinie"; 29
-  complete snapped dev photo controls give "Non concluant : N contrôles photo dev complets et recalés, il en faut
-  30", 30 do not; 30 complete dev controls of which 2 have an `unsnapped` point count 28 and give that line; both
-  causes at once print both lines and nothing else.
-- `R` is information: scripted `R` values from 0 to 10 mm never change any verdict line.
-- `O` and `M` use only controls without an `unsnapped` point (CV28).
-- Combinations (T1, the CV29 lines are independent): H1 with "photos déplacées" (both lines, "Suite proposée" =
-  T16a used as per-photo calibration); H2 and H3 together; H1, H2 and H3 together; "non concluant" with values
-  that would also give H1 and H2: only "non concluant" is printed and no other line.
-- The T15i K5 regression session gives the H1 line.
-- Report privacy scan as T15i.
+- Synthetic session (T7 ring-wire boards, generated 16:9 video cropped top and bottom): no move between A and B:
+  `O` about 0; the board moved by a planned amount on 30 % of darts between A and B: `O` within 0.1 mm of the
+  plan, share above `DIAG_MOVE_MM` matches; a durable shift from dart 20 in the video: `V` above it from dart 20,
+  `O` about 0.
+- Points out of frame: 2 visible points give `O` (translation), 3 a similarity, 1 « non mesurable » `hors_cadre`;
+  counts per reason.
+- Tracking: a frame sequence with a fast blur or a person crossing the point fails the forward-backward return
+  and is dropped with `suivi`; a tracked point that re-snaps on a neighbouring crossing fails `TRACK_MAX_SNAP_PX`.
+- A photo is never read by the H2 code (static check: no photo path in the tracking functions).
+- A start point stored `unsnapped` is tracked from the click and flagged; `O` from it is counted apart (CV28).
+- Report privacy scan as T15i. The CV29 verdict and its tests are T15o.
 
 ## Done when
 Python checks of root "Test plan" green (CI command too), `kosmo-detekt` exit 0.
 
 ## Model
-opus. Why: algorithm with an open design: the photo to video mapping, its validity test and the video
-registration are not specified by any earlier rule and decide the H2 verdict.
+opus. Why: case 3, the in-video tracking (D50), its validation and the mm scale from 2 or 3 visible points are not
+specified by any earlier rule and decide the H2 verdict.
 
 ## Implementation notes

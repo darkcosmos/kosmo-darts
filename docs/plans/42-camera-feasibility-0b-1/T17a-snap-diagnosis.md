@@ -1,0 +1,49 @@
+# T17a: Snapping diagnosis on Kosmo's stored clicks (offline, numbers only, no click)
+
+## Goal
+Find why the snap (CV31) almost never worked on Kosmo's real photos (D49): rerun it from every stored control point
+of photos and video frames and count the refusals by cause and by image type, with numeric descriptors that let the
+squad build realistic synthetic cases (root "Approach, Snapping on real data").
+
+## Files
+- Changed `tools/camera/kosmo_camera/snap.py`: `snap_detail(luma, start, params)` -> `SnapResult` plus `stage` (the
+  exact check that stopped it: coarse no ridge, coarse no line pair, pair not reaching the crossing, fine support,
+  fine contrast, fine blur, stands-out, refine shift, too far, border, ambiguous, no convergence) and the
+  descriptors of root "Approach, Snapping on real data"; `snap_point` returns the same values as before (T15m tests
+  unchanged).
+- Added `tools/camera/kosmo_camera/snap_report.py` (numpy, Pillow through `luma.decode_luma`, stdlib; no PyAV, runs
+  in the WSL tool venv, D44): `python -m kosmo_camera.snap_report --captures DIR --annotations DIR --split FILE
+  --frames DIR --out DIR`; reads controls and segments (v3, read-only), roles from `control.roles`; starts = the
+  stored points (the click for `unsnapped`, the stored point for `snapped`, D49); radius sweep at 1x, 2x, 4x
+  `SNAP_RADIUS_PX` (diagnostic only); proposal distance between consecutive controls of a session and source;
+  writes `<out>/snap-report.md` and prints its path, the run time and the median time per snap.
+- Report sections « Échantillon », « Causes de refus » (Kosmo's categories: pas de croisement, forme, ambiguïté,
+  hors rayon, autre; each with its detailed `stage`), per source (photo, vidéo) and role, « Descripteurs » (median
+  and p10/p90 per category), « Rayon », « Propositions », « Durées »; numbers and roles only (CV15).
+- Changed `docs/rules/camera.md`: CV32 (diagnosis part) of root "Rules".
+- Added `tests/test_snap_report.py`; changed `tests/test_snap.py`; `TOOL_TESTS` gains `test_snap_report.py`.
+
+## Depends on
+T15m, T15c (`control.roles`), T15b.
+
+## Rules
+CV32, CV31, CV15, CV16 (images never leave the PC), CV4 (nothing tuned here), D48 point 5.
+
+## Tests
+- `snap_detail` agrees with `snap_point` on every T15m case; each `stage` reached by a scripted board (no ring
+  wire, crossing beyond the radius, two crossings, blurred wire, dart-shaft crossing).
+- T-junction descriptor: a radial wire ending at the ring wire versus one crossing it (synthetic, `synth.py`).
+- Sweep: a start 15 px from a clean crossing is `too_far` at 1x and snapped at 2x.
+- Report on a T7 session with controls written by the test: counts add up per source and role; hidden (null)
+  points counted apart; unreadable image counted `unreadable`; privacy scan (no session or file name, no path).
+- `main()` in a subprocess with numpy and Pillow only (no `av` importable).
+
+## Done when
+Python checks of root "Test plan" green (CI command too), the Python 3.14 `TOOL_TESTS` run of T15n green,
+`kosmo-detekt` exit 0.
+
+## Model
+opus. Why: case 3, the refusal causes on real images are unknown and the cause taxonomy must map onto the internal
+checks of T15m's algorithm; a wrong diagnosis wastes one of Kosmo's runs within the 10-minute budget (D48).
+
+## Implementation notes

@@ -194,15 +194,46 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
 - **Diagnosis** (D30 point 2, CV28): per photo control, true drift `T` (clicks versus segment calibration), error
   `E` of the automatic measure (its shifted points versus the clicks), `E_seeded` (patches seeded with the clicked
   points: separates coarse-search failure from patch failure), peak ratios, agreement `R` of the segment clicks,
-  snapping dispersion `D` and points not snapped; on the video side the photo to frame offset `O` through a per-session similarity `M` fitted on paired clicks, the durable move `V` and
-  the motion during capture `W`. Numbers and roles only in the report (Kosmo pastes it); `diagnostic.json` local.
+  snapping dispersion `D` and points not snapped; on the video side (D50) the movement at the tap `O` tracked
+  inside the video stream from the CV27 frame to the frame at `photo.videoPositionMs`, the durable move `V` and
+  the motion during capture `W`, all at constant video framing (a photo is never compared with a video frame).
+  Numbers and roles only in the report (Kosmo pastes it); `diagnostic.json` local. Since lot 3b the truth points
+  are the automatic re-snap of Kosmo's clicks (`snapped-points.json`, CV32), never the raw clicks when a snap exists.
 - **Diagnosis decision rule** (CV29, written before any number is seen): see CV29. "Suite proposée": H1 only:
   T16a then compensation per CV30; H2 or H3 or "photos déplacées" with a correct measure: T16b with the current
-  method validated per CV30, else T16c; H1 and moved photos: T16a used as the per-photo calibration (T16b); non
-  concluant for the snapping dispersion: the squad revises the snapping at P2 and the diagnosis is rerun on the
-  same stored clicks (Kosmo does not click again); non concluant for too few controls: Kosmo completes the control
-  clicks, then reruns the diagnosis. H2 also produces the
-  Capture proposal of "PR material" (an issue draft, no Capture code in this PR).
+  method validated per CV30, else T16c (automatic chained snapping, D48); H1 and moved photos: T16a used as the
+  per-photo calibration (T16b); non concluant for the snapping dispersion: the squad revises the snapping at P2 and
+  the diagnosis is rerun on the same stored clicks (Kosmo does not click again); non concluant for too few
+  controls: the squad proposes an automated alternative at P2 (for example T16c's chained snapping, which produces
+  controls on every dev photo), never more clicks (D48). H2 also produces the Capture proposal of "PR material" (an
+  issue draft, no Capture code in this PR) with the framing requirement of ADR 0019.
+- **Manual budget and automatic ground truth** (D48, ADR 0018 in `docs/adr/0018-automatic-ground-truth.md`): every
+  future truth is produced automatically; Kosmo validates only flagged exceptions, at most 10 min of attention per
+  campaign; a plan whose Kosmo steps exceed it stops before coding and proposes an automated alternative. Every
+  time estimate in "How Kosmo verifies" is computed from real counts and timings. An algorithm that runs on Kosmo's
+  images is measured on the real data (numbers only) before anything is asked of him. The K7 clicks are a one-time
+  investment: they validate the automatic measure.
+- **Snapping on real data** (D49, T17a): `snap_report` reruns `snap` from every stored control and segment point
+  (the click for `unsnapped`, the stored point for `snapped`: the click is not kept, D39), on photos and listed
+  video frames, in the WSL tool venv (numpy and Pillow only, no image rebuild, data read-only). It counts the
+  refusals in Kosmo's categories, each mapped from the exact failing check (`stage`): « pas de croisement » (coarse
+  ridge or line pair missing, support, contrast), « forme » (pair not reaching the crossing, blur, stands-out,
+  refine shift), « ambiguïté », « hors rayon » (`too_far`), « autre » (border, no convergence, unreadable). Per
+  source and role it gives numeric descriptors: radial-wire extent beyond the crossing (T-junction indicator), wire
+  width, blur, contrast-to-noise, polarity and halo; a radius sweep (1x, 2x, 4x `SNAP_RADIUS_PX`); the distance
+  between consecutive controls' points (proposals beyond the radius); time per snap. The report gives causes;
+  parameters are still chosen on synthetic boards (CV4), which T17b extends with the causes found.
+- **Automatic re-snap** (D49, T17c): after the fix, the same command measures acceptance on the real clicks (CV32)
+  and, when accepted, writes `snapped-points.json` (derived, regenerable, never pasted): every stored point snapped
+  from the click; a point not snapped keeps the click, counted apart, and the click precision `C` (click-to-snap
+  distance, p95 mm) bounds it. Annotation files are never rewritten. Alternative rejected: rewriting the annotation
+  files in place (loses Kosmo's clicks, breaks the hashes the reports cite).
+- **H2 inside the video stream** (D50, T15j): frames are 16:9 and cropped against the 4:3 photo, so `O` is measured
+  between two video frames: the CV27 frame A and the frame B at `photo.videoPositionMs`, by frame-to-frame patch
+  tracking of the visible calibration points, validated by forward-backward return and by re-snapping on B;
+  2 to 4 visible points (translation, similarity; mm through the homography with 4, through the known board
+  distances with 2 or 3); points out of frame counted. Alternative rejected: the photo to video similarity `M`
+  (photo pipeline and stabilization crop make it unreliable; it is dropped with `MAP_*`).
 - **Visual check** (D30 point 3): the annotation tool, on 127.0.0.1 with the stdlib, alternates reference photo and
   measured photo with the alignment of choice (automatic, from the control clicks, none; named "alignement" in
   French so that "recalé / non recalé" names the snap only, U30) applied by CSS `matrix3d` from a homography
@@ -426,7 +457,9 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   valid `frozen.json` (strict: format, version, `tau_low`, `tau_sure`, 64-hex `modelSha256`, no other key) with a
   matching model SHA-256; the report records the model, `frozen.json` and split hashes. Eval control clicks (CV25)
   are reference data for CV9 and the diagnosis only: never a training label, never an input of a parameter choice
-  (CV30 tunes on dev controls; eval controls confirm).
+  (CV30 tunes on dev controls; eval controls confirm). Lot 3b (D48, D49): the snapping failure causes are read
+  from aggregate real numbers of every role (CV32, no image, no value tuned on them); snapping parameters stay
+  chosen on synthetic boards; acceptance on real data is a measure, never a tuning loop (one fix round, then P3).
 - CV5 Darts judged: non-voided entries with a photo; entries with `photo: null` are counted apart, not judged.
 - CV6 Announcement per dart as in "Approach, Per dart" (`TAU_LOW`, `TAU_SURE`, `MATCH_RADIUS_MM`).
 - CV7 Outcome per dart: correct (announced value equals truth, not flagged), flagged, or unflagged error. A truth miss
@@ -608,15 +641,22 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   on segment reference photos (agreement of the segment clicks with the snapped controls; information, it bounds
   the part of `T` due to the segment clicks and decides nothing); `D` = snapping dispersion per snapped point
   (CV31, "Approach, Assisted click"), photo and video controls, p95 with its CV13 interval; points `unsnapped`
-  counted per role and source, and a control with an `unsnapped` point is excluded from `T`, `E`, `O` and from the
-  `DIAG_MIN_CONTROLS` count, counted apart like a partial control. Video side: `M` = least-squares similarity from photo px to
-  video px fitted per session on paired complete controls (residual median and p95 reported; refused below
-  `MAP_MIN_PAIRS` or above `MAP_MAX_RESIDUAL_PX`); `O` = CV9(`H(photo controls)`, `H(M⁻¹(video controls))`): move
-  between the untouched phone and the photo; `V` = move of the untouched frame against the first video control of
-  its segment (durable move); `W` = largest move during the capture window (frames every `VIDEO_WINDOW_STEP_MS`
-  from `entry` to the `photo` stamp), only with a video method validated per CV30 on the video controls. Report:
-  counts, median and p95 with CV13 intervals, per role and overall. Limits stated (section « Limites » of the
-  diagnosis report): a constant tilt present in every photo is absorbed by `M`; and, in one plain French sentence,
+  counted per role and source, and a control with an `unsnapped` point is excluded from `T`, `E` and from the
+  `DIAG_MIN_CONTROLS` count, counted apart like a partial control, with `E` shown against `VALIDATION_MAX_MM` +
+  `C` (click precision, CV32) as information. Points are read from `snapped-points.json` (CV32). Video side (D50),
+  at constant video framing, a photo never compared with a video frame: `O` = board-plane move of the visible
+  calibration points tracked frame to frame from the CV27 frame A to frame B (last frame at or before
+  `photo.videoPositionMs`), each point validated by forward-backward return within `TRACK_MAX_RETURN_PX` and by a
+  re-snap on B within `TRACK_MAX_SNAP_PX`; at least 2 validated points (translation with 2, similarity with 3 or
+  4; mm through the control homography with 4, else through the scale from the known board distances of the
+  visible points), else « non mesurable » with reason (`hors_cadre`, `suivi`), counted; a start point stored
+  `unsnapped` is tracked from the click and its `O` counted apart; `V` = move of frame A of dart k against the first
+  video control of its segment (durable move), same point rule; `W` = largest move along the tracked path from A
+  to B (maximum and settling time). Report: counts, median and p95 with CV13 intervals, per role and overall.
+  Limits stated (section « Limites » of the diagnosis report): H2 is measured in the video stream only, so a
+  difference specific to the photo pipeline (photo taken at another instant than the stamp, other optics
+  processing) is not measured; the mm scale from 2 or 3 points assumes a fronto-parallel board; and, in one plain
+  French sentence,
   « La dispersion D mesure la répétabilité du recalage (le même calcul relancé depuis des départs voisins retombe
   au même point), pas son exactitude : un recalage qui se tromperait toujours de la même façon aurait une
   dispersion nulle. » (A35, T2). A control image that the decoder cannot read (CV16) is counted per role and
@@ -626,8 +666,9 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   reference, Kosmo, Q10, D39) or fewer than `DIAG_MIN_CONTROLS` (30) complete snapped dev photo controls; each
   cause has its own line ("Non concluant : dispersion du recalage p95 X mm, au-delà de 0,25 mm", X = « infinie »
   when failed restarts reach the p95, or "Non concluant :
-  N contrôles photo dev complets et recalés, il en faut 30") and its "Suite proposée" (Approach); no click
-  threshold on Kosmo's hand exists (Q10 option 3); else
+  N contrôles photo dev complets et recalés, il en faut 30") and its "Suite proposée" (Approach), which never asks
+  Kosmo for a click (D48: too few controls leads to an automated alternative); no click threshold on Kosmo's hand
+  exists (Q10 option 3); `C` and `R` are information and decide nothing; else
   H1 "mesure fausse" if the share of photos with `E` ≤ `VALIDATION_MAX_MM` (0.5) is below `VALIDATION_MIN_SHARE`
   (0.95); "photos déplacées" if at least `DIAG_MIN_SHARE` (0.10) of photos have `T` > `DIAG_MOVE_MM` (1.0); H2
   "le téléphone bouge à la frappe" if at least `DIAG_MIN_SHARE` of the darts with `O` have `O` > `DIAG_MOVE_MM`
@@ -663,7 +704,22 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   writes the next item. Repeatability `D` (CV28): restarts from `SNAP_REPEAT_DIRECTIONS` starts at
   `SNAP_REPEAT_OFFSET_PX` around the stored point, board-plane mm through the control's homography, failed restart
   = infinite; target `SNAP_REPEAT_MAX_MM`. Constants `SNAP_*` in `defaults.json`, each pinned once in
-  `test_config.py`; the same function serves the tool and the diagnosis.
+  `test_config.py`; the same function serves the tool and the diagnosis. Lot 3b (D49): the shape check and domain
+  are amended by T17b for the causes found on the real clicks (T17a); parameters stay chosen on synthetic boards.
+- CV32 Snapping on real data and automatic re-snap (D48, D49; lot 3b). Diagnosis (T17a): `snap_report` reruns the
+  snap from every stored point of controls and segments (photos and listed video frames), numbers and roles only,
+  refusals counted in the categories « pas de croisement », « forme », « ambiguïté », « hors rayon », « autre »,
+  each with its detailed `stage` (mapping in "Approach, Snapping on real data"). Acceptance (T17c), all on the real
+  photo control points of Kosmo's clicks: share snapped from the stored point at least `SNAP_ACCEPT_MIN_SHARE`
+  (0.90, Wilson interval reported); no « croisement suspect »: the homography of the 4 snapped calibration points
+  predicts the other outer-double corners, those are snapped, and a calibration point whose residual against the
+  lattice fitted on the others exceeds `SNAP_LATTICE_MAX_PX` is suspect (fewer than `SNAP_LATTICE_MIN_CORNERS`
+  snapped corners: « non vérifiable », counted); every successful restart of `D` returns to the same point (within
+  `SNAP_REPEAT_MAX_MM`). Re-snap: only when accepted, `snapped-points.json` (`snapped_file`, strict, 4 MiB, hashes of
+  the source annotations; local, never pasted, CV15) holds per stored point the snapped point or the click with
+  status, reason and `dispersionPx`; annotation files are never rewritten; a non-snapped point keeps the click and
+  is counted apart; click precision `C` = click-to-snap distance (median, p95 mm with CV13 intervals). The
+  diagnosis (CV28) refuses a missing or stale file.
 
 ## Files and types added or changed
 
@@ -722,9 +778,15 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   `SNAP_MIN_CONTRAST` 4, `SNAP_MAX_RESIDUAL_PX` 0.75, `SNAP_CONVERGE_PX` 0.05, `SNAP_MAX_ITER` 5,
   `SNAP_REPEAT_DIRECTIONS` 8, `SNAP_REPEAT_OFFSET_PX` 3, `SNAP_REPEAT_MAX_MM` 0.25 (T15m; initial values, T15m may
   tune them on synthetic boards only), `SNAP_CACHE_IMAGES` 2 and `CLICK_REPLACE_RADIUS_PX` 100 (T15n, U27),
-  `VIDEO_WINDOW_STEP_MS` 100, `DIAG_MOVE_MM` 1.0, `DIAG_MIN_SHARE` 0.10, `DIAG_MIN_VIDEO` 10, `MAP_MIN_PAIRS` 3,
-  `MAP_MAX_RESIDUAL_PX` 2.0 (T15j), each pinned once in `test_config.py`. Format caps next to their readers:
-  `frames_file.MAX_BYTES` 4 MiB, `diagnostic_file.MAX_BYTES` 4 MiB. ADR 0016 gains the sections "Annotation format
+  `DIAG_MOVE_MM` 1.0, `TRACK_PATCH_PX`, `TRACK_MAX_RETURN_PX`, `TRACK_MAX_SNAP_PX` (T15j, D50; values chosen on
+  synthetic videos), `DIAG_MIN_SHARE` 0.10, `DIAG_MIN_VIDEO` 10 (T15o), `SNAP_ACCEPT_MIN_SHARE` 0.90,
+  `SNAP_LATTICE_MAX_PX`, `SNAP_LATTICE_MIN_CORNERS` (T17c), each pinned once in `test_config.py`; `MAP_MIN_PAIRS`,
+  `MAP_MAX_RESIDUAL_PX` and `VIDEO_WINDOW_STEP_MS` are dropped (D50). Lot 3b modules: `snap_report.py` (T17a,
+  T17c; numpy and Pillow only, WSL tool venv), `lattice.py` and `snapped_file.py` (T17c), `snap.snap_detail`
+  (T17a), `chain_calibration.py` (T16c, conditional). Format caps next to their readers:
+  `frames_file.MAX_BYTES` 4 MiB, `diagnostic_file.MAX_BYTES` 4 MiB, `snapped_file.MAX_BYTES` 4 MiB. ADRs
+  `docs/adr/0018-automatic-ground-truth.md` (D48) and `docs/adr/0019-capture-framing.md` (D51) are committed with
+  this plan; T17d links them from `docs/camera/training.md` and asserts them in `test_plan_docs.py`. ADR 0016 gains the sections "Annotation format
   v3: control clicks" (T15b, with the `snap` field) and "Assisted click" (T15n: ADR decision 2 and plan decision 5
   amended, the options of "Approach, Where the snapping runs"), and its decision 2 gains the line "Amended: see
   section Assisted click (D43, D44)" (T15n, A31); `docs/rules/camera.md` CV16 gains the "After D39 and D43" sentence
@@ -896,7 +958,8 @@ After D30 (T15d to T15g, T15k). Exact French strings; each lives once as a const
   `i` is the rank of the shown photo in that same dart order (U24, D42), so N and the opening jump keep `i`
   consistent; `Non mesurable` when an
   alignment is missing; route states shown in the page, never a bare error (S12): `Diagnostic périmé : relancer
-  le diagnostic (K7.4)`, `Pas de diagnostic pour cette session : relancer le diagnostic (K7.4)`; without the
+  le diagnostic (K7.7)`, `Pas de diagnostic pour cette session : relancer le diagnostic (K7.7)` (K7.7 since lot
+  3b, D52; built only if Q15 keeps the visual check); without the
   option: `Contrôle visuel : indisponible (option --diagnostic absente)`.
 
 ## Test plan
@@ -1062,15 +1125,29 @@ the cases. Summary:
     parts joined by `&&` (venv with `python3`, pip install of `requirements-tool.txt` with `--require-hashes
     --only-binary=:all:`, version print), the named file exists and is fully hashed, the printed line matches the
     file's versions; container flags kept (S10); T15l's « Recalage des
-    clics » paragraph names the report section `diagnose.py` writes.
+    clics » paragraph names the report section `diagnose.py` writes. T17d, T15l (lot 3b): K7.4 and K7.6 commands
+    parse with the `snap_report` parser and use `~/kosmo-tool-venv/bin/python` without `docker`; K7.7 with
+    `--snapped` parses; no step K7.4 to K7.8 asks for a click; the budget line present; K7.3 marked done; ADR 0018
+    and ADR 0019 asserted by `test_plan_docs.py`.
+  - T17a: `snap_detail` agrees with `snap_point`, every `stage` reached on a scripted board, T-junction descriptor,
+    radius sweep, counts add up per source and role, hidden and unreadable counted, privacy scan, runs without
+    `av` (CV32).
+  - T17b: every T15m bound kept; one realistic synthetic case per cause found (at least 90 % snapped, at most
+    0.25 px); wrong-crossing traps on the new shapes (CV31).
+  - T17c: acceptance at the 0.90 boundary, suspect crossing, restart elsewhere; lattice never flags smooth lens-like
+    distortion; re-snap file strict reader and not written when refused; click precision `C` (CV32).
   - T15i: `T`, `E`, `E_seeded`, `R` on synthetic sessions, the periodic trap, peak ratio by hand, partial
     controls, `D` on rendered controls (clean, between two crossings, a failed restart counted infinite),
     `unsnapped` controls excluded and counted, unreadable control images counted with reason `unreadable`, the
     « Limites » sentence on `D` present in the report (A35, T2), `measure_photo` unchanged, report privacy (CV28,
     CV31, CV15).
-  - T15j: mapping recovered and refused, `O`, `V`, `W`, each CV29 line at its boundary, both "non concluant" causes
-    (`D` p95 just above and at `SNAP_REPEAT_MAX_MM`, 29 and 30 snapped dev controls), `R` never changes a verdict
-    (CV29).
+  - T15i (lot 3b): missing or stale `--snapped` file stops with its French line; snapped points used; « précision
+    humaine » line changes no verdict field.
+  - T15j: in-video tracking `O` with a planned move on a 16:9 cropped synthetic video, 2 and 3 visible points,
+    `hors_cadre` and `suivi` counted, forward-backward and re-snap rejections, `V`, `W`, no photo read (D50).
+  - T15o: each CV29 line at its boundary, both "non concluant" causes (`D` p95 just above and at
+    `SNAP_REPEAT_MAX_MM`, 29 and 30 snapped dev controls), `R` and `C` never change a verdict, no "Suite proposée"
+    asks for a click (CV29, D48).
   - T15k: homography against known transforms, server route and stale diagnostic, photos served in dart order with
     `start`, `nextAbove` and "Photo i / n" in that order (U24, D42).
 
@@ -1087,7 +1164,8 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
   the mode (session or block, "plus optimiste"), units and judged darts per set, and the split SHA-256; Kosmo pastes
   that output plus the content of `~/kosmo-runs/split-lock.json` (counts and hash only). The squad commits that
   content byte for byte as `tools/camera/config/split-lock.json` (block mode only after Kosmo's OK).
-- K2 (PR A) Annotate all existing sessions with the tool (about 1 h). What he should see: relaunch with
+- K2 (PR A, done; never for a new session: its ground truth is produced automatically, D48, ADR 0018) Annotate all
+  existing sessions with the tool (about 1 h). What he should see: relaunch with
   `python3 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations`, open
   `http://127.0.0.1:8765` in Windows; the session list shows progress and calibration status; calibration asks the 4
   points in order 1 to 4 on a diagram that highlights the next point; each dart photo shows its true value ("T20"); voided entries are skipped; one
@@ -1143,46 +1221,36 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     `docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,size=2g -v ~/kosmo-data:/data:ro -v ~/kosmo-runs:/runs:rw kosmo-camera:gpu python -m kosmo_camera.video_frames --captures /data/captures --annotations /data/annotations --split /runs/split.json --out /runs/frames`.
     Elle affiche le nombre d'images extraites, la ligne « Images vidéo absentes : N » et les manquantes par
     raison ; une vidéo illisible ne l'arrête pas. Rien à coller. (2 à 5 min)
-  - K7.3 Relancer l'outil d'annotation dans WSL, depuis `tools/camera/`, avec l'environnement de K7.1b :
-    `~/kosmo-tool-venv/bin/python -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations --split ~/kosmo-runs/split.json --frames ~/kosmo-runs/frames`,
-    puis ouvrir `http://127.0.0.1:8765`. La ligne en haut donne la seule consigne en cours. Sur la liste, la carte
-    « Prochaine étape » a un bouton « Continuer » (ou Entrée) ; dans une session, appuyer sur K (« Contrôle de
-    calibration »), depuis n'importe quel écran de la session, même « Terminé ». Vos clics servent à désigner le
-    bon croisement de fils, pas à le viser au pixel : l'outil recale chaque point sur le croisement exact. Pour
-    chaque photo, les 4 points de la photo précédente sont déjà proposés et recalés ; les 4 vignettes agrandies à
-    droite montrent chaque point avec son état (« recalé » veut dire : le point est placé sur le croisement exact ; « non recalé », « caché », « à cliquer »). Si les 4
-    sont sur le bon croisement : Entrée. Si un point est sur le mauvais croisement ou « à cliquer » : cliquer près
-    du bon croisement (le point le plus proche est remplacé et recalé ; pour un point loin de votre clic,
-    choisir d'abord le point avec les touches 1 à 4), puis Entrée. H seulement si une fléchette cache le point
-    (touche 1 à 4 puis H ; une photo inutilisable : 1 H 2 H 3 H 4 H puis Entrée, elle compte comme cachée) ; U
-    annule le dernier changement, ou revient à la photo précédente (son enregistrement est retiré jusqu'à
-    Entrée) ; Échap pour quitter. Entrée enregistre toujours, même après un clic sur un bouton. Rien n'est enregistré avant Entrée
-    (« Points prêts : n / 4 », puis « Enregistré à HH:MM:SS »). La première photo de chaque session part de la
-    calibration de la session ; la première image vidéo de chaque session n'a pas de proposition : 4 clics. Après
-    un déplacement de la cible, les points proposés partent sur un mauvais croisement ou restent « à cliquer » :
-    les recliquer. Même travail ensuite sur les images vidéo. Environ 190 photos et 45 images vidéo (les nombres
-    exacts s'affichent sur la carte de chaque session, « Contrôle photo : D / T ») : le plus souvent une seule
-    touche par photo (environ 5 s), 4 clics sur la première image vidéo de chaque session (4 images), quelques
-    clics après un déplacement : environ 20 à 30 min au total (au lieu de 1 h 15), en plusieurs fois si vous voulez (l'outil
-    reprend où vous étiez). Un point « non recalé » est gardé à votre clic et compté dans le diagnostic. Sans
-    `--split` ou sans `--frames`, l'outil affiche « Contrôle indisponible » ou « Images vidéo absentes » ; lancé
-    avec `python3` au lieu de `~/kosmo-tool-venv/bin/python`, il affiche « Recalage indisponible » : relancer
-    comme indiqué. Rien à coller.
-  - K7.4 Lancer le diagnostic (pas de carte graphique nécessaire) :
-    `docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,size=2g -v ~/kosmo-data:/data:ro -v ~/kosmo-runs:/runs:rw kosmo-camera:gpu python -m kosmo_camera.diagnose --captures /data/captures --annotations /data/annotations --split /runs/split.json --runs /runs --frames /runs/frames`.
-    Elle affiche le chemin du rapport ; le rapport contient la section « Recalage des clics » (points recalés et
-    non recalés, dispersion mesurée par la machine, cible 0,25 mm). (5 à 15 min)
-  - K7.5 Coller dans le chat le contenu de `~/kosmo-runs/diagnostic/diagnostic-report.md` (des chiffres et des
-    rôles « dev 1 », « eval 2 », aucun nom de session). Ne jamais coller `diagnostic.json` ni `frames.json`.
-  - K7.6 Contrôle visuel : relancer l'outil comme en K7.3 en ajoutant
-    `--diagnostic ~/kosmo-runs/diagnostic/diagnostic.json`, appuyer sur V. Les deux photos alternent ; touche 1
-    alignement automatique, 2 alignement d'après vos clics, 3 aucun alignement ; Espace pour figer ; flèches pour changer
-    de photo ; N pour la photo suivante au-delà de 0,5 mm ; l'outil s'ouvre sur la photo au plus grand écart et
-    affiche « Photo i / n ». Dire dans le chat ce que vous voyez (par exemple « avec 1 l'image saute, avec 2 elle est immobile »).
-    (10 min)
+  - K7.3 Contrôle de calibration à la main dans l'outil : fait, environ 1 h (104 photos d'évaluation
+    à 4 points, recalage presque jamais actif). Ne pas refaire : aucune nouvelle saisie manuelle ne sera demandée
+    (ADR 0018, D48). Vos clics sont gardés tels quels et servent une seule fois, à valider la mesure automatique.
+  - Lot 3b (D48 à D52 ; tout se fait dans WSL ou le conteneur, aucun clic ; temps d'attention total environ 8 min,
+    au plus 10 ; les durées de calcul sont estimées d'après les nombres réels : environ 190 photos et 45 images
+    vidéo, environ 940 points, au plus 140 ms par recalage mesurés en T15m, puis recalculées d'après les durées
+    réelles affichées en K7.4) :
+  - K7.4 Diagnostic du recalage (pas de carte graphique, pas de reconstruction de l'image) : dans votre clone,
+    `git pull`, puis depuis `tools/camera/` :
+    `~/kosmo-tool-venv/bin/python -m kosmo_camera.snap_report --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations --split ~/kosmo-runs/split.json --frames ~/kosmo-runs/frames --out ~/kosmo-runs/snap`.
+    Elle lit vos fichiers sans les modifier et affiche le chemin du rapport et sa durée. Coller dans le chat le
+    contenu de `~/kosmo-runs/snap/snap-report.md` (des chiffres et des rôles, aucun nom de session, aucune image).
+    (attention : 3 min ; calcul : quelques minutes, sans surveillance)
+  - K7.5 et la suite arrivent dans la livraison suivante (lot 3b-2), après la correction du recalage (T17b, T17c) :
+  - K7.5 `git pull`, puis reconstruire l'image comme en K7.1. (attention : 1 min ; calcul 2 à 5 min)
+  - K7.6 Relancer la commande de K7.4 : le rapport gagne les sections « Acceptation » et « Précision des clics » et
+    la ligne « Recalage accepté » ou « Recalage non accepté : … ». Accepté : le fichier
+    `~/kosmo-runs/snap/snapped-points.json` est écrit (ne jamais le coller). Coller `snap-report.md`. (attention :
+    2 min ; calcul : jusqu'à environ 30 min sans surveillance, recalculé d'après la durée de K7.4). Non accepté :
+    l'équipe corrige une fois et vous relancez une fois K7.6 ; au-delà, l'équipe revoit le plan, jamais de clics.
+  - K7.7 Lancer le diagnostic (pas de carte graphique nécessaire) :
+    `docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,size=2g -v ~/kosmo-data:/data:ro -v ~/kosmo-runs:/runs:rw kosmo-camera:gpu python -m kosmo_camera.diagnose --captures /data/captures --annotations /data/annotations --split /runs/split.json --runs /runs --frames /runs/frames --snapped /runs/snap/snapped-points.json`.
+    Coller le contenu de `~/kosmo-runs/diagnostic/diagnostic-report.md` (chiffres et rôles « dev 1 », « eval 2 »).
+    Ne jamais coller `diagnostic.json` ni `frames.json`. (attention : 2 min ; calcul : 5 à 15 min)
+  - K7.8 (facultatif, selon Q15, hors budget) Contrôle visuel : relancer l'outil avec `--diagnostic
+    ~/kosmo-runs/diagnostic/diagnostic.json`, appuyer sur V ; touches 1, 2, 3, Espace, flèches, N ; dire ce que
+    vous voyez. (10 min)
   - K7.C Checklist (ce que seul Kosmo peut vérifier, le JavaScript ne tourne pas dans le bac à sable). Le contrôle visuel
-    (alternance, touches 1, 2, 3, N, Espace, flèches, « Photo i / n ») n'existe pas encore : il sera à vérifier à la
-    prochaine livraison, avec K7.4 à K7.6.
+    (alternance, touches 1, 2, 3, N, Espace, flèches, « Photo i / n ») n'existe pas encore : il sera à vérifier avec
+    K7.8, si Q15 le garde.
 
     - Liste des sessions :
       - une seule consigne affichée à la fois, jamais une consigne déjà faite ;
@@ -1297,13 +1365,15 @@ PR, without opening it (D19); no extra PR. The batch 1 hand-back states the full
   Kosmo's pasted comparison section); the strict rules of D24, confirmed by Kosmo (D27), with images dropped per
   rule; the attribution lines with their modification mentions (D28).
 - Kosmo's pasted numbers recorded in the PR: the last drift report (all under the threshold), the comparison
-  section, then the dev report. After D30: the K5 figures that stopped the loop (Goal), the diagnostic report (K7.5)
-  with its CV29 verdict, the CV30 gate result, and the per-photo CV9 measure of the eval set (ADR 0017). "How to
-  verify" gains K7.0 to K7.6 (K7.1b included) and K7.C; K5.0 to K5.4 are listed as suspended. Justification of
-  the assisted click (D39, D43): why the snapping dispersion, not Kosmo's hand, bounds the reference, and where the
-  snapping runs with the alternatives of "Approach, Where the snapping runs". The description states that Kosmo's
-  K7 steps (K7.2 and K7.4 in the container, K7.3 and K7.6 in the tool) are the check of the real container run and
-  of the page, which the sandbox cannot run (no GPU, no browser, no real data; design review T4).
+  section, then the dev report. After D30: the K5 figures that stopped the loop (Goal), the snap reports (K7.4,
+  K7.6: refusal causes, acceptance share, click precision `C`), the diagnostic report (K7.7) with its CV29 verdict,
+  the CV30 gate result, and the per-photo CV9 measure of the eval set (ADR 0017). "How to verify" gains K7.0 to
+  K7.8 (K7.1b included, K7.3 done, K7.8 per Q15) and K7.C with the measured attention time against the 10-minute
+  budget (ADR 0018); K5.0 to K5.4 are listed as suspended. Justification of the assisted click (D39, D43) and of
+  its fix on real data (D49): why the snapping dispersion, not Kosmo's hand, bounds the reference, where the
+  snapping runs, and why the truth is the automatic re-snap of the clicks. The description states that Kosmo's K7
+  steps (K7.2 and K7.7 in the container, K7.4 and K7.6 in the WSL tool venv) are the check of the real run, which
+  the sandbox cannot do (no GPU, no browser, no real data; design review T4).
 - Justifications after D30: why control clicks rather than trusting the measure; the decision rule fixed before the
   numbers (CV29); the correction chosen at P2 and its validation (CV30); D18 replaced (Q13).
 - Capture proposal (only if the verdict says H2; an issue draft in French for Kosmo, no Capture code in this PR):
@@ -1311,7 +1381,9 @@ PR, without opening it (D19); no extra PR. The batch 1 hand-back states the full
   change of the capture flow, one constant); (b) photo taken from the video frame just before the tap (no touch
   effect, but video resolution and compression); (c) zero-shutter-lag capture (`CAPTURE_MODE_ZERO_SHUTTER_LAG`,
   frame from the buffer before the tap; depends on device support); (d) entering darts without touching the camera
-  phone (second phone or remote entry: protocol change). Kosmo chooses (Q13).
+  phone (second phone or remote entry: protocol change). Kosmo chooses (Q13). Every option carries the framing
+  requirement of ADR 0019 (preview equals the analysed or recorded field, stabilization off or its crop accounted,
+  framing written in the truth file).
 - Proposed owner changes (ADR 0017 is a `docs/adr/` file, not protected): add to the job `camera-tools` of
   `.github/workflows/android.yml`, after the existing test step, a Python 3.14 run of the tool and snapping tests
   (Kosmo, Q14, D44; he applies it with the other CI changes of PR B; the squad never edits `.github`). Why: Kosmo
@@ -1437,17 +1509,25 @@ P2; T9p done at 474ebdc):
 | T15g | Tool page: session cards with roles, focus card "Continuer" (Enter rule U23), instruction line, recalibration explained | `42-camera-feasibility-0b-1/T15g-journey-page.md` | T15e, T15f | sonnet | Page from specified screens and strings |
 | T15h | `training.md`: K7.0 to K7.3 with K7.1b, checklist K7.C, K5 retired | `42-camera-feasibility-0b-1/T15h-control-steps-doc.md` | T15c, T15g, T15n | haiku | Documentation copied from this plan; doc test moved |
 | - | Push batch 3a (no PR), main tells Kosmo: K7.0 to K7.3 | - | T15h | - | - |
-| T15i | Diagnosis, photo side: `T`, `E`, `E_seeded`, `R`, `D`, points not snapped, error location, `diagnostic.json` | `42-camera-feasibility-0b-1/T15i-diagnose-photos.md` | T15c, T8b, T15m | sonnet | Every quantity defined in CV28 and CV31 on top of T8, T8b and T15m, synthetic tests |
-| T15j | Diagnosis, video side (`M`, `O`, `V`, `W`) and CV29 verdict | `42-camera-feasibility-0b-1/T15j-diagnose-video-verdict.md` | T15i, T15c | opus | Algorithm with an open design (the photo to video mapping, its validity test, video registration) |
-| T15k | Tool page: visual check in dart order (U24), homography in Python | `42-camera-feasibility-0b-1/T15k-visual-check-page.md` | T15i, T15g | sonnet | Screen and route from a specified layout, textbook 4-point homography |
-| T15l | `training.md`: K7.4 to K7.6 | `42-camera-feasibility-0b-1/T15l-diagnosis-steps-doc.md` | T15h, T15j, T15k | haiku | Documentation copied from this plan; doc test extended |
-| - | Push batch 3b (no PR), main tells Kosmo: K7.4 to K7.6 | - | T15l | - | - |
-| T11 | Per-dart decision (unchanged row above) | `42-camera-feasibility-0b-1/T11-decide.md` | T3, T8 | sonnet | Not blocked by D30 |
-| T12 | Arrival and empty-board events (unchanged row above) | `42-camera-feasibility-0b-1/T12-events.md` | T11 | sonnet | Not blocked by D30 |
-| - | Plan update P2 (developer-plan) from Kosmo's pasted diagnosis: retained T16 tasks, held tasks revised, Q13 | - | K7.5 | - | - |
-| T16a | CONDITIONAL (H1): robust registration, validated per CV30 | `42-camera-feasibility-0b-1/T16a-robust-registration.md` | T15j, P2 | opus | Algorithm with an open design, chosen from the diagnosis |
-| T16b | CONDITIONAL (photos moved): per-photo calibration in the label build, CV19 replaced | `42-camera-feasibility-0b-1/T16b-per-photo-calibration.md` | T15j, T16a if H1, P2 | sonnet | Source order fixed at P2 wired into the label build |
-| T16c | CONDITIONAL (no validated automatic calibration): assisted manual calibration of every dev photo | `42-camera-feasibility-0b-1/T16c-assisted-calibration-all-dev.md` | T16b, T15g, P2 | sonnet | Extra sample option and progress string on the T15 patterns |
+| - | Batch 3a merged (PR #88, 4c40110); Kosmo did K7.0 to K7.3 (about 1 h, D48). Lot 3b below, branch `docs/camera-feasibility-0b-1-lot-3b` from main (D52) | - | - | - | - |
+| T17a | Snapping diagnosis on Kosmo's stored clicks: `snap_detail` stages, `snap_report` (refusal causes per source and role, descriptors, radius sweep, proposals, timings), CV32 diagnosis part | `42-camera-feasibility-0b-1/T17a-snap-diagnosis.md` | T15m, T15c, T15b | opus | Case 3: refusal causes on real images unknown, the taxonomy must map onto T15m's internal checks; a wrong diagnosis wastes one of Kosmo's budgeted runs |
+| T17d | `training.md`: K7.4, K7.3 and K2 marked done and never to redo, ADR 0018 sentence, ADR 0018 and 0019 doc test | `42-camera-feasibility-0b-1/T17d-snap-steps-doc.md` | T17a | haiku | Documentation copied from this plan, doc tests on the T15a and T15h patterns |
+| - | Push lot 3b-1 (main decides PR or push), main tells Kosmo: K7.4, paste `snap-report.md` | - | T17d | - | - |
+| - | Plan update P3 (developer-plan) from the pasted K7.4 report: T17b "Cause and fix" confirmed or rewritten | - | K7.4 | - | - |
+| T17b | Snapping fix for the causes found, realistic synthetic cases, CV31 amended | `42-camera-feasibility-0b-1/T17b-snap-fix.md` | T17a, P3 | opus | Case 3: the CV31 shape rule changes according to a cause known only from the real report, and it bounds the reference truth |
+| T17c | Real-data acceptance of the snap (share, lattice consistency, restarts), click precision `C`, automatic re-snap file `snapped-points.json` | `42-camera-feasibility-0b-1/T17c-snap-acceptance-resnap.md` | T17b, T17a | opus | Case 3: "no point on another crossing" has no real ground truth; the lattice check and its thresholds against lens distortion are unspecified and gate the truth |
+| T15i | Diagnosis, photo side: `T`, `E`, `E_seeded`, `R`, `D`, points not snapped, error location, `diagnostic.json`; truth read from `snapped-points.json`, `C`, non-snapped apart | `42-camera-feasibility-0b-1/T15i-diagnose-photos.md` | T15c, T8b, T15m, T17c | sonnet | Every quantity defined in CV28, CV31 and CV32 on top of T8, T8b, T15m and T17c's reader, synthetic tests |
+| T15j | Diagnosis, video side: movement at the tap tracked inside the video stream (`O`, `V`, `W`), 2 to 4 visible points | `42-camera-feasibility-0b-1/T15j-diagnose-video-verdict.md` | T15i, T15c, T17c | opus | Case 3: the in-video tracking, its validation and the mm scale from 2 or 3 points are unspecified and decide the H2 verdict |
+| T15o | Diagnosis verdict (CV29, no "Suite proposée" asks for a click) | `42-camera-feasibility-0b-1/T15o-diagnose-verdict.md` | T15j | sonnet | Rule fully written in CV29 and "Approach, Diagnosis decision rule", scripted-value tests |
+| T15k | CONDITIONAL (Q15): tool page, visual check in dart order (U24), homography in Python, states point to K7.7 | `42-camera-feasibility-0b-1/T15k-visual-check-page.md` | T15i, T15g, T15o, Q15 | sonnet | Screen and route from a specified layout, textbook 4-point homography |
+| T15l | `training.md`: K7.5 to K7.8 with the budget line, no click | `42-camera-feasibility-0b-1/T15l-diagnosis-steps-doc.md` | T17d, T17c, T15o (T15k if kept) | haiku | Documentation copied from this plan; doc test extended |
+| - | Push lot 3b-2, main tells Kosmo: K7.5 to K7.7 (K7.8 per Q15) | - | T15l | - | - |
+| T11 | Per-dart decision (unchanged row above) | `42-camera-feasibility-0b-1/T11-decide.md` | T3, T8 | sonnet | Not blocked by D30; checked at lot 3b, unchanged (photo only) |
+| T12 | Arrival and empty-board events (row above), video frames cropped: `board_cut` counted (D50) | `42-camera-feasibility-0b-1/T12-events.md` | T11 | sonnet | Algorithm and rules CV10, CV11 specified; one count added |
+| - | Plan update P2 (developer-plan) from Kosmo's pasted diagnosis: retained T16 tasks, held tasks revised, Q13 | - | K7.7 | - | - |
+| T16a | CONDITIONAL (H1): robust registration, validated per CV30 on the re-snapped controls | `42-camera-feasibility-0b-1/T16a-robust-registration.md` | T15o, T17c, P2 | opus | Case 3: algorithm with an open design, chosen from the diagnosis |
+| T16b | CONDITIONAL (photos moved): per-photo calibration in the label build from the re-snapped points, CV19 replaced | `42-camera-feasibility-0b-1/T16b-per-photo-calibration.md` | T15o, T17c, T16a if H1, P2 | sonnet | Source order fixed at P2 wired into the label build |
+| T16c | CONDITIONAL (no validated automatic calibration): automatic per-photo calibration by chained snapping, flagged exceptions only to Kosmo within 10 min (D48) | `42-camera-feasibility-0b-1/T16c-assisted-calibration-all-dev.md` | T16b, T17c, T15g, P2 | sonnet | Chains T17b's snap and T17c's lattice check, both specified; review page on the T15 patterns |
 
 28 tasks (8 in part A, 20 in part B), two `opus` tasks (T5, T5b). Execution order: part A in table order, PR A, then
 part B in table order, one task at a time (D11, D19): batch 1 T5b, T7, T8, T8b, T6c, T6d, push (done, 7a6f5b5),
@@ -1469,6 +1549,14 @@ then T15i, T15j, T15k, T15l, push batch 3b (Kosmo does K7.4 to K7.6 and pastes t
 Kosmo works, then plan update P2 on the diagnosis (Kosmo reviews it before any code), then the retained T16 tasks
 and the held tasks as revised at P2. T9b does not depend on labels but stays on hold by Kosmo's priority (D30).
 Labels or calibration feed T9, T9o, T9c, T9d, T10, T13, T13b; T14 and T14b chain and document them.
+
+After D48 to D52 (lot 3b, supersedes the batch 3b order above; batch 3a is merged in PR #88): 5 new task files
+(T17a, T17b, T17c, T17d, T15o), 50 task files in all. `opus` tasks still to build: T17a, T17b, T17c, T15j (4), plus
+T16a if built (5 at most). Execution order, one task at a time: T17a, T17d, push lot 3b-1 (Kosmo does K7.4 and
+pastes, about 3 min of attention), plan update P3, T17b, T17c, T15i, T15j, T15o, T15k (only if Q15 keeps it),
+T15l, push lot 3b-2 (Kosmo does K7.5 to K7.7, about 5 min of attention; total within the 10-minute budget of ADR
+0018), then T11 and T12, then plan update P2 on the diagnosis, then the retained T16 tasks and the held tasks as
+revised at P2. If the K7.6 acceptance fails twice, the squad stops and updates the plan; it never asks for clicks.
 
 ## Decisions
 
@@ -1539,6 +1627,11 @@ Labels or calibration feed T9, T9o, T9c, T9d, T10, T13, T13b; T14 and T14b chain
 | D45 | Design review of 67968fa (test and security approve; architecture and ux changes requested), squad's fixes: A31 the amendment of plan decision 5, D5, CV16 and ADR 0016 decision 2 is written where it applies (rows 5 and D5 "Amended by D43, D44", the CV16 "After D39 and D43" sentence, ADR 0016 decision 2 line "Amended: see section Assisted click (D43, D44)"), asserted by a doc test in `test_plan_docs.py` (T15n); A32 the tool treats only `ModuleNotFoundError` for numpy or PIL as "Recalage indisponible", any other import error of `snap.py` propagates (T15n); A33 and S14 one JPEG-to-luma decoder `kosmo_camera/luma.py` moved from `drift.py` `_decode_luma`, with `MAX_IMAGE_BYTES` 32 MiB checked before reading, `Image.MAX_IMAGE_PIXELS` kept, bomb warning raised as an error, `(None, reason)` and never an exception, used by `drift.py`, the tool and the diagnosis; `snap.py` becomes numpy only on a luma array (amends D43's "Pillow luma loader"); an unreadable image leaves the point at the click, `unsnapped` with reason `unreadable`, banner « Photo illisible : le recalage est impossible pour cette photo », the tool never freezes (T15m, T15n, T15d, T15i); A34 the rejected alternative "decoding video in the tool" is justified by the D44 venv limit (numpy and Pillow only), not by decision 5; A35 and T2 `D` measures repeatability, not accuracy: accuracy is proven only by the T15m tests against `board.py` truth (a converged wrong crossing checked against the truth), and the diagnosis report states it in « Limites » (CV28, T15i); T1 one T15m test board in a seed and style not used for tuning meets the 0.1 px bound; U25 Entrée on the assisted point screen always means « Enregistrer » (`preventDefault`, buttons `blur()` after click), the opposite of the list rule U23; H follows a hide rule (selected point, else first `à cliquer`, else refused 409 « Choisir le point à cacher : touche 1 à 4, puis H ») (T15d, T15f); U26 insets 2 x 2 of `SNAP_INSET_PX` 60 source px at x3, side panel 400 px, insets, ready line and save button visible together at 1080p (T15f); U27 click rule `flow.click_target` (selected point, else nearest positioned point within `CLICK_REPLACE_RADIUS_PX` 100, else first point without a position, else refused 409), the CV2 diagram kept where points are filled in order (T15n, T15d, T15f); U28 banner « Photo précédente rouverte : son enregistrement est retiré jusqu'à Entrée » when U reopens the previous item (T15f); U29 `save` carries the open item and is refused 409 below 4 ready points or for an item no longer open, Entrée with `event.repeat` ignored and `SAVE_GUARD_MS` 300 after a save (T15n, T15d, T15f); U30 the visual check says « alignement » (choices « Alignement automatique », « Alignement d'après les clics », « Aucun alignement »), « recalé » names the snap only (T15k); U31 each inset has an `aria-label` with its number and status (T15f). | CV16, CV28, CV31 |
 | D46 | Kosmo, 2026-11-18 (T15m, option a; summary of his decision): real photos are 4080 x 3072 and video is 1080p; the 1200 x 900 case is not in the domain. Realistic domain: wires of about 2 px at least (1600 x 1200 and larger), blur at most 0.5 px, noise at most 3. Criterion 1: at most 0.25 px for every snapped point (median and max reported per case, with the mm equivalent for the board size of the photos and of the video); criterion 3: at least 90 % of the points snapped per realistic case, the rest "non recalé", clicked by hand and counted; cases outside the domain (1200 x 900, blur above 0.5 px, noise 5 for rate and accuracy) tested and reported without a blocking bound. Speed: the 50 ms target is removed (80 to 140 ms per snap accepted), no wall-clock assertion in the default suite. Criterion 2, never a wrong crossing, on the whole domain, noise 5 included: explicit shape check, ambiguity test (two or more distinct crossings within `SNAP_RADIUS_PX` of the click: refused, reason `ambiguous`), regression test of the noise-5 start that ended 17 px away. Squad's application: reason `ambiguous` added to CV31, to `snap.REASONS` and to T15m; the 0.1 px bound of T15m and T15n becomes 0.25 px. | CV31 |
 | D47 | Code review of 9597aab (T15f), squad's fixes: A3 the page counts and decides nothing: it shows `progress`, `badge` and the new `calibrationLabel` of the server ("Non calibrée", "Calibrée", "Calibrée (n segments)"); A4 the action answer carries `notice` (the fixed text `flow.REOPENED`, set when `Cursor.reopened` is true, true only on the cursor of the `clear` that reopens the previous control), the request keys stay `action`, `x`, `y`, `number`, `source`; A5 the view sends `nextSlot` (`flow.next_slot`, the answer of `click_target` for a far click) and `diagram` (`flow.shows_diagram`: item opened without proposal), the page restates no rule; A6 a static test pins the page strings `snapUnavailable` and `photoUnreadable` to `flow.UNAVAILABLE` and `flow.PHOTO_UNREADABLE`; U36 `#status` is cleared at the start of each action, the server `notice` goes to `#banner`; U37 Entrée below 4 points shows « Points prêts : n / 4 : placer les points manquants »; U38 the diagram follows the action buttons so Enregistrer stays visible at 1080p; U39 a placed point is green, filled and ticked; K7.C gains these lines. A7 the transitional fields stay until T15g. | CV16, CV31 |
+| D48 | Kosmo, 2026-11-18, firm constraint for 0b-1 and every later phase: the K7.3 control cost about 1 h (104 eval photos x 4 points, snapping almost never active) and such a manual entry is never redone; every future ground truth (calibration, drift, instrument calibration, new campaign) is produced automatically, Kosmo only validates the exceptions the tool flags; his manual budget is at most 10 min per campaign, a plan that exceeds it stops before coding and proposes an automated alternative; the K7 clicks are a one-time investment that validates the automatic measure, which then replaces any calibration click; every time estimate is computed from real data; an algorithm that runs on Kosmo's images is never declared ready on synthetic data alone, it is measured on the real data (numbers only) before anything is asked of him. Squad's application: ADR 0018 (`docs/adr/0018-automatic-ground-truth.md`, D31 convention), CV4 and CV29 sentences, "Approach, Manual budget and automatic ground truth", the K7.3 estimate of 20 to 30 min recorded as wrong (real cost about 1 h), K2 and K7.3 marked never to redo in `training.md` (T17d), T16c reshaped as automatic chained snapping, "too few controls" leads to an automated alternative. | CV4, CV29, CV32 |
+| D49 | Kosmo, 2026-11-18, snapping defect (K7.C): on real photos about 5 points snapped, so 4 clicks per photo, and a click near the right crossing did not snap either. Hypothesis to check first: T junction at the outer corner of the double; other leads: metal reflections, viewing angle, real wire width, an ambiguity test too strict, proposals beyond the radius after a move. Tasks with no Kosmo click: offline diagnosis from the saved clicks on photos and video frames, counted by refusal cause (no crossing, shape, ambiguity, outside radius, other) and image type, report pasted; fix by cause with realistic synthetic cases; acceptance on REAL data: at least 90 % of photo control points snapped from the clicks, no point on another crossing (consistency of the 4 points through the homography, stable return from offset starts); then automatic re-snap of every K7 click into the pixel truth, a point that does not snap keeps the click and its human precision and is counted apart; the report gives the shares and accounts for the precision of non-snapped points in the validation thresholds; Kosmo runs it within 10 min from his machine. Squad's application: T17a, T17b, T17c, CV32; the synthetic boards already end the radial wire at the double ring (`synth.py`), so the T junction alone is not proven and T17a measures it with the other leads; the lattice check of CV32 is the consistency test; `C` and the "VALIDATION_MAX_MM + C" information line (T15i). | CV31, CV32, CV28 |
+| D50 | Kosmo, 2026-11-18, video frames are cropped top and bottom (photo 4:3 4080x3072, video 16:9, possibly a stabilization crop; the preview followed the photo framing): H2 does not compare photo to video; it is measured inside the video stream, the frame about 1 s before `entry.videoPositionMs` (video control points, snapped when possible) against the frame at `photo.videoPositionMs`, by automatic frame-to-frame tracking; 2 or 3 visible points accepted (translation or similarity), out-of-frame points counted; tracking validated where possible (consistency with snapped points, forward-backward return), limits in the report. Squad's application: CV28 video part, T15j reshaped (`M` and `MAP_*` dropped, `TRACK_*` added), the verdict split out as T15o, T12 counts `board_cut`. | CV28, CV29 |
+| D51 | Kosmo, 2026-11-18, requirement for future capture and the game app (no implementation now): the preview shows exactly the analysed or recorded field (common ViewPort through UseCaseGroup, or a single source); stabilization disabled or its crop accounted for; the recorded framing written in the truth file. Squad's application: ADR 0019 (`docs/adr/0019-capture-framing.md`), cited by the Capture proposal of "PR material". | - |
+| D52 | Squad's design of lot 3b (Kosmo's order: snapping first, diagnosis then fix, then the rest of the diagnosis with D50): new branch from main; T17a and T17d first, push, K7.4 report, plan update P3, then T17b, T17c, T15i, T15j, T15o, T15k (Q15), T15l. The snap diagnosis and acceptance run in the WSL tool venv (numpy and Pillow only, no image rebuild for K7.4); `snapped-points.json` is a derived, regenerable local file, annotations are never rewritten; segment points are also re-snapped and counted apart (squad's choice, flagged for review); one fix round, a second failed acceptance stops for a plan update; Kosmo's attention about 8 min, at most 10 (K7.4 3 min, K7.5 1 min, K7.6 2 min, K7.7 2 min), compute times from real counts and recomputed from K7.4's timing; Q15 opened for the visual check. | CV32 |
 
 ## Open questions
 
@@ -1567,3 +1660,8 @@ answer.
 - Q14: decided, option 1, WSL tool venv `~/kosmo-tool-venv` with Kosmo's three conditions (D44).
 - Q13 (Kosmo, after the diagnosis, at P2): replacement of D18 (sub-threshold compensation) and, if H2, the Kosmo
   Capture change among options (a) to (d) of "PR material".
+- Q15 (Kosmo, lot 3b, D52): the visual check (D30 point 3, T15k, step K7.8) asks Kosmo to look and describe, which
+  is outside the "Kosmo only pastes reports" budget of D48. Options: (1) keep it as an optional step outside the
+  10-minute budget; (2) postpone T15k until a verdict asks for it (recommended: the diagnosis numbers decide, and
+  nothing is built that Kosmo may not use); (3) drop it. Until answered, T15k is not built (the build order skips
+  it) and K7.8 is not documented.
