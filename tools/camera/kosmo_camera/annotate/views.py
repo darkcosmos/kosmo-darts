@@ -16,6 +16,9 @@ TOO_LARGE = "annotation_too_large"
 REJECTED = "annotation_rejected"
 STALE_LABEL = "(mesure périmée : relancer la mesure)"
 NOT_MEASURED_LABEL = "Dérive non mesurée"
+NOT_CALIBRATED_LABEL = "Non calibrée"
+CALIBRATED_LABEL = "Calibrée"
+SEGMENTS_LABEL = "Calibrée ({count} segments)"
 
 
 @dataclass(frozen=True)
@@ -83,6 +86,16 @@ def _progress(loaded):
     return {"done": len({d.number for d in loaded.annotations.darts} & numbers), "total": len(numbers)}
 
 
+def calibration_label(loaded):
+    """What the page shows of the calibration: none, one segment, or the number of segments (CV20); None if unread."""
+    if loaded.state != OK:
+        return None
+    count = len(loaded.annotations.calibrations)
+    if count == 0:
+        return NOT_CALIBRATED_LABEL
+    return SEGMENTS_LABEL.format(count=count) if count > 1 else CALIBRATED_LABEL
+
+
 def control_view(loaded, info) -> dict:
     """Control mode of an open session (CV26): counts per source, the role, the frame reasons counted (S13)."""
     if info.plan is None:
@@ -97,6 +110,7 @@ def summary(loaded, drift=NO_DRIFT, control_info=None) -> dict:
     return {"name": loaded.name, "state": loaded.state, "message": loaded.message, "warning": loaded.warning,
             "label": IGNORED_LABEL if loaded.state == IGNORED else None, "progress": _progress(loaded),
             "calibrated": bool(loaded.annotations.calibrations) if loaded.state == OK else None,
+            "calibrationLabel": calibration_label(loaded),
             "driftLabel": label, "driftStale": stale,
             "control": control_view(loaded, control_info) if loaded.state == OK and control_info is not None else None}
 

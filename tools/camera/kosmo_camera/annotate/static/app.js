@@ -6,9 +6,6 @@ const TEXT = {
   backToList: "Liste (Échap)",
   noSession: "Aucune session trouvée dans le dossier des captures.",
   progress: "{done} sur {total} fléchettes annotées",
-  calibrated: "Calibrée",
-  notCalibrated: "Non calibrée",
-  finished: "Terminée",
   ignoredLabel: "Ignorée : aucune fléchette jugée",
   readOnly: "Lecture seule",
   open: "Ouvrir",
@@ -63,7 +60,6 @@ const TEXT = {
   driftSuggestedBanner: "Dérive au-delà du seuil : recalibrer à partir d'ici (R)",
   driftBeyond: "Dérive",
   driftUnmeasurable: "Dérive non mesurable",
-  calibratedSegments: "Calibrée ({count} segments)",
   staleMeasure: "(mesure périmée)",
   pickerSuggested: "{number} !",
   pickerSuggestedLabel: "Fléchette {number}, à recalibrer",
@@ -167,10 +163,7 @@ function sessionLine(item) {
   const info = document.createElement("div");
   info.className = "session-info";
   if (item.state === "ok") {
-    const finished = item.calibrated && item.progress.total > 0 && item.progress.done === item.progress.total;
-    const calibration = item.calibrated ? TEXT.calibrated : TEXT.notCalibrated;
-    const progress = finished ? TEXT.finished : fill(TEXT.progress, item.progress);
-    setText(info, `${progress} - ${calibration}`);
+    setText(info, `${item.badge} - ${fill(TEXT.progress, item.progress)} - ${item.calibrationLabel}`);
     line.appendChild(makeButton(TEXT.open, () => openSession(item.name), "primary"));
   } else if (item.state === "ignored") {
     setText(info, item.label || TEXT.ignoredLabel);
@@ -397,10 +390,9 @@ function bannerMessage(view, suggested) {
 function renderPanel() {
   const view = state.view;
   const cursor = view.cursor;
-  const done = dartsOfView().filter((d) => d.status !== null).length;
   const assisted = isAssisted(view);
   setText($("progress"), assisted && cursor.kind === "control" ? controlProgressText(view)
-    : `${fill(TEXT.progress, { done, total: dartsOfView().length })} - ${calibrationStatus(view)}`);
+    : `${fill(TEXT.progress, view.progress)} - ${view.calibrationLabel}`);
   const banner = $("banner");
   const message = bannerMessage(view, cursor.kind === "dart" && currentDart().drift === "suggested");
   banner.hidden = !message;
@@ -470,14 +462,6 @@ function nextSlotIndex(cursor) {
     return cursor.selected - 1;
   }
   return cursor.slots.findIndex((slot) => slot.point === null && slot.status === null);
-}
-
-function calibrationStatus(view) {
-  const count = view.segments ? view.segments.length : 0;
-  if (count === 0) {
-    return TEXT.notCalibrated;
-  }
-  return count > 1 ? fill(TEXT.calibratedSegments, { count }) : TEXT.calibrated;
 }
 
 // Segment in force before dart `number`: the last one that starts earlier (segments come in ascending order, CV20).

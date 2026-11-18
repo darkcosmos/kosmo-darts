@@ -179,10 +179,10 @@ def test_session_list_and_open_with_progress_and_resume_cursor(tool):
     journey_keys = {"badge", "steps", "info"}  # the journey fields, tested in test_annotate_journey.py
     assert {k: v for k, v in session.items() if k not in journey_keys} == {
         "name": NAME, "state": "ok", "message": None, "warning": None, "label": None,
-        "progress": {"done": 0, "total": 3}, "calibrated": False, "driftLabel": None, "driftStale": False,
-        "control": {"available": False, "reason": "Contrôle : indisponible (option --split absente)", "role": None}}
+        "progress": {"done": 0, "total": 3}, "calibrated": False, "calibrationLabel": "Non calibrée",
+        "driftLabel": None, "driftStale": False, "control": {"available": False, "reason": "Contrôle : indisponible (option --split absente)", "role": None}}
     assert set(session) == journey_keys | {"name", "state", "message", "warning", "label", "progress", "calibrated",
-                                           "driftLabel", "driftStale", "control"}  # no role without --split
+                                           "calibrationLabel", "driftLabel", "driftStale", "control"}  # no role without --split
     assert body["driftWarning"] is None and body["controlWarning"] is None
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
     assert view["cursor"] == {"kind": "calibration", "number": None, "photo": "dart-001.jpg", "pending": [],
@@ -1303,3 +1303,39 @@ def test_drift_flags_never_change_the_instruction_and_stay_in_the_information_li
         assert text is None or "Dérive" not in text
     drift.write_text("{not json", encoding="utf-8")
     assert _list(tool)["instruction"] == before[0]
+
+
+def test_the_view_carries_the_calibration_label_progress_and_badge_so_the_page_counts_nothing_a3(tool):
+    make_session(tool.captures)
+    tool.start()
+    view = tool.json("GET", f"/api/sessions/{NAME}")[1]
+    assert (view["calibrationLabel"], view["progress"], view["badge"]) == (
+        "Non calibrée", {"done": 0, "total": 3}, "À faire")  # no segment: to do
+    tool.calibrate()
+    tool.act("click", x=50.5, y=60.5)
+    view = tool.json("GET", f"/api/sessions/{NAME}")[1]
+    assert (view["calibrationLabel"], view["progress"], view["badge"]) == (
+        "Calibrée", {"done": 1, "total": 3}, "En cours")  # one segment: in progress
+    assert _list(tool)["sessions"][0]["calibrationLabel"] == "Calibrée"
+    _recalibrate_at(tool, 3)
+    view = tool.json("GET", f"/api/sessions/{NAME}")[1]
+    assert view["calibrationLabel"] == "Calibrée (2 segments)"  # several segments
+    assert _list(tool)["sessions"][0]["calibrationLabel"] == "Calibrée (2 segments)"
+    for _ in range(2):
+        tool.act("click", x=50.5, y=60.5)
+    view = tool.json("GET", f"/api/sessions/{NAME}")[1]
+    assert view["progress"] == {"done": 3, "total": 3} and view["badge"] == "En cours"  # control not done: not finished
+
+
+def test_a_session_with_nothing_left_has_the_terminee_badge_in_the_view_and_the_list_a3(tool):
+    control_tool(tool, frames={NAME: {1: 1850, 4: 3850}})
+    _tip_all(tool)
+    view = open_control(tool)
+    result = save_item(tool, view)[1]
+    result = save_item(tool, result["session"])[1]
+    for source, number in (("video", 1), ("video", 4)):
+        for x, y in POINTS:
+            tool.act("click", x=x, y=y)
+        result = tool.act("save", number=number, source=source)[1]
+    assert result["session"]["badge"] == "Terminée" and _list(tool)["sessions"][0]["badge"] == "Terminée"
+    assert result["session"]["progress"] == {"done": 3, "total": 3}

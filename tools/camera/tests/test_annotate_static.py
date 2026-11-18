@@ -146,10 +146,9 @@ def test_system_fonts_only():
     assert "@font-face" not in css and "url(" not in css
 
 
-def test_double_click_guard_finished_label_and_view_reset_are_present():
+def test_double_click_guard_and_view_reset_are_present():
     text = read("app.js")
-    assert "CLICK_GUARD_MS" in text and "lastActionAt" in text
-    assert "Terminée" in text and "viewKey" in text
+    assert "CLICK_GUARD_MS" in text and "lastActionAt" in text and "viewKey" in text
 
 
 # ---- recalibration page and drift flags (T6d; static checks only: no browser nor node in the sandbox) -------------------
@@ -177,7 +176,6 @@ def test_string_table_has_the_recalibration_and_drift_strings():
     assert table["btnRecalibrate"] == "Recalibrer à partir de cette fléchette (R)"
     assert table["driftSuggestedBanner"] == "Dérive au-delà du seuil : recalibrer à partir d'ici (R)"
     assert table["driftBeyond"] == "Dérive" and table["driftUnmeasurable"] == "Dérive non mesurable"
-    assert table["calibratedSegments"] == "Calibrée ({count} segments)"
     assert table["staleMeasure"] == "(mesure périmée)"
     assert table["pickerSuggested"] == "{number} !"
     assert table["pickerSuggestedLabel"] == "Fléchette {number}, à recalibrer"
@@ -207,10 +205,16 @@ def test_picker_keeps_the_annotated_mark_on_a_suggested_dart():
     assert "dart.status !== null" in body
 
 
-def test_calibration_status_distinguishes_none_one_and_several_segments():
-    body = re.search(r"function calibrationStatus\(view\) \{(.*?)\n\}\n", read("app.js"), re.DOTALL).group(1)
-    assert "TEXT.notCalibrated" in body and "TEXT.calibratedSegments" in body and "TEXT.calibrated" in body
-    assert re.search(r"count === 0", body) and re.search(r"count > 1", body)
+def test_the_page_shows_the_server_progress_badge_and_calibration_label_without_counting_a3():
+    source = read("app.js")
+    assert "calibrationStatus" not in source and "finished" not in source and "Terminée" not in source
+    assert "item.badge" in function_body("sessionLine") and "item.calibrationLabel" in function_body("sessionLine")
+    assert "item.progress" in function_body("sessionLine")
+    panel = function_body("renderPanel")
+    assert "view.progress" in panel and "view.calibrationLabel" in panel
+    for body in (panel, function_body("sessionLine")):
+        assert not re.search(r"\.filter\(|\.length|\.every\(|\.some\(|\.reduce\(", body)
+    assert "calibrated" not in source and "segments" not in function_body("renderPanel")
 
 
 def test_stale_measure_text_is_shown_in_the_banner_and_the_state_text():
