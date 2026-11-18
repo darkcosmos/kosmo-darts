@@ -323,6 +323,112 @@ def test_cv31_a_failed_restart_makes_the_dispersion_infinite():
     assert snap.restart_dispersion(luma, (5.0, 600.0), homography) == math.inf
 
 
+# ---- diagnosis: stages and descriptors (CV32, T17a) ----------------------------------------------------------------
+
+@pytest.mark.parametrize("name", list(DOMAIN) + list(OUTSIDE))
+def test_cv32_snap_detail_gives_the_result_of_snap_point_and_a_stage_exactly_when_unsnapped(name):
+    luma, truth = _render((DOMAIN | OUTSIDE)[name])
+    _, results = _run((DOMAIN | OUTSIDE)[name])
+    for point, start, result in results[:13]:  # every start of the first calibration point
+        detail = snap.snap_detail(luma, start)
+        assert detail.result == result
+        assert (detail.stage is None) == (result.status == snap.SNAPPED)
+        assert detail.stage is None or detail.stage in snap.STAGES
+
+
+def test_cv32_the_stages_are_the_documented_ones():
+    assert set(snap.STAGES) == {"coarse_no_ridge", "coarse_no_pair", "coarse_not_reaching", "coarse_too_far",
+                                "fine_support", "fine_angle", "fine_contrast", "fine_blur", "stands_out",
+                                "refine_shift", "fit_failure", "too_far", "border", "ambiguous", "no_convergence"}
+    assert len(snap.STAGES) == len(set(snap.STAGES))
+
+
+def _bar(luma, centre, angle_deg, width, level=215, half_length=60):
+    """A bright straight bar (a dart shaft) of `width` px through `centre`, drawn over the board."""
+    x0, y0 = int(centre[0]) - 80, int(centre[1]) - 80
+    out = luma.astype(float)
+    yy, xx = numpy.mgrid[y0:y0 + 160, x0:x0 + 160] + 0.5
+    t = math.radians(angle_deg)
+    across = -(xx - centre[0]) * math.sin(t) + (yy - centre[1]) * math.cos(t)
+    along = (xx - centre[0]) * math.cos(t) + (yy - centre[1]) * math.sin(t)
+    mask = numpy.clip(width / 2 + 0.5 - numpy.abs(across), 0, 1) * (numpy.abs(along) <= half_length)
+    out[y0:y0 + 160, x0:x0 + 160] = out[y0:y0 + 160, x0:x0 + 160] * (1 - mask) + level * mask
+    return numpy.clip(numpy.rint(out), 0, 255).astype(numpy.uint8)
+
+
+def _mid_ring_point(truth):
+    """A point of the outer double wire away from the radial wires (no true crossing there)."""
+    angle = math.radians(board.SECTOR_ANGLE_DEGREES / 4)
+    return synth.project(truth.homography, [(board.DOUBLE_OUTER_MM * math.cos(angle),
+                                             board.DOUBLE_OUTER_MM * math.sin(angle))])[0]
+
+
+def _stage_cases():
+    """(stage, luma, start, params) of scripted boards, one per stage that a board can reach (fit_failure aside)."""
+    luma, truth = _render(DOMAIN["photo-1600"])
+    p, q = truth.calibration[0], truth.calibration[1]
+    flat = numpy.full((200, 200), 40, dtype=numpy.uint8)
+    single = flat.copy()
+    single[:, 99:101] = 220  # one wire, no ring wire
+    oblique, oblique_truth = _render(Case(synth.View(yaw=75, pitch=10), (1600, 1200), 0))
+    dull, dull_truth = _render(Case(synth.View(), (1600, 1200), 0, style=synth.BoardStyle(wire=(70, 70, 70))))
+    outer, inner = p, _inner_crossings(truth)[0]
+    return [
+        ("coarse_no_ridge", flat, (100.0, 100.0), snap.SnapParams()),
+        ("coarse_no_ridge", single, (100.0, 100.0), snap.SnapParams()),
+        ("coarse_no_pair", _bar(luma, _mid_ring_point(truth), 60, 6), _mid_ring_point(truth), snap.SnapParams()),
+        ("coarse_not_reaching", oblique, oblique_truth.calibration[3], snap.SnapParams()),
+        ("coarse_too_far", luma, (p[0] + 15.0, p[1]), snap.SnapParams()),  # crossing beyond the radius
+        ("fine_support", _bar(luma, p, 45, 3), p, snap.SnapParams()),  # a dart shaft over the crossing
+        ("fine_angle", _bar(luma, p, 20, 3), (p[0] + 5.0, p[1] + 5.0), snap.SnapParams()),
+        ("fine_contrast", dull, list(_starts(dull_truth.calibration[1]))[9], snap.SnapParams()),
+        ("fine_blur", _gaussian_blur(luma, 2.0), (p[0] - 4.0, p[1]), snap.SnapParams()),  # blurred wire
+        ("stands_out", _bar(luma, q, 20, 4), list(_starts(q))[6], snap.SnapParams()),
+        ("refine_shift", _bar(luma, p, 45, 6), (p[0], p[1] - 7.0), snap.SnapParams()),
+        ("too_far", luma, (p[0] + SEARCH + 1.0, p[1]), snap.SnapParams()),
+        ("border", luma, (5.0, 600.0), snap.SnapParams()),
+        ("ambiguous", luma, ((outer[0] + inner[0]) / 2, (outer[1] + inner[1]) / 2), snap.SnapParams()),  # two crossings
+        ("no_convergence", luma, (p[0] + 4.0, p[1] + 1.0), snap.SnapParams(max_iter=1, converge_px=1e-12)),
+    ]
+
+
+def test_cv32_each_stage_is_reached_by_a_scripted_board(monkeypatch):
+    reached = set()
+    for stage, luma, start, params in _stage_cases():
+        detail = snap.snap_detail(luma, start, params)
+        assert detail.stage == stage, (stage, detail)
+        assert detail.result == snap.snap_point(luma, start, params)
+        assert detail.result.point == start and detail.result.status == snap.UNSNAPPED
+        reached.add(stage)
+    luma, truth = _render(DOMAIN["photo-1600"])
+    real = snap._fit_profile
+
+    def broken(*args, **kwargs):  # a NaN parameter, as a singular design matrix would give
+        q, levels, cost = real(*args, **kwargs)
+        q = q.copy()
+        q[0] = math.nan
+        return q, levels, cost
+
+    monkeypatch.setattr(snap, "_fit_profile", broken)
+    point = truth.calibration[0]
+    assert snap.snap_detail(luma, (point[0] + 3.0, point[1] + 1.0)).stage == "fit_failure"
+    assert reached | {"fit_failure"} == set(snap.STAGES)
+
+
+def test_cv32_t_junction_descriptor_tells_a_radial_wire_ending_at_the_ring_from_one_crossing_it():
+    luma, truth = _render(DOMAIN["photo-1600"])  # the radial wires stop at the outer double wire (synth.py)
+    for outer in truth.calibration:
+        detail = snap.snap_detail(luma, (outer[0] + 2.0, outer[1] - 1.0))
+        assert detail.stage is None and detail.descriptors.stem_px == 0.0
+    for inner in _inner_crossings(truth):
+        detail = snap.snap_detail(luma, (inner[0] + 2.0, inner[1] - 1.0))
+        assert detail.stage is None and detail.descriptors.stem_px > 5.0
+        descriptors = detail.descriptors
+        assert descriptors.bright_wires is True and descriptors.contrast_to_noise > config.SNAP_MIN_CONTRAST
+        assert descriptors.width_px > 0 and descriptors.blur_px >= 0 and descriptors.halo >= 0
+        assert descriptors.noise > 0
+
+
 # ---- determinism ---------------------------------------------------------------------------------------------------
 
 def test_cv31_same_input_gives_the_same_result_bit_for_bit():
