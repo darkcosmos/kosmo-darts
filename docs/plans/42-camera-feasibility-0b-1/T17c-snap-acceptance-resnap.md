@@ -6,6 +6,10 @@ every stored click into the pixel-level truth file read by the diagnosis; a poin
 its human precision, counted apart (D49, root "Approach, Automatic re-snap").
 
 ## Files
+- Every snap of this task (acceptance, lattice, restarts, re-snap) uses the candidate T17e chose for the point's
+  source (D55); segment points are re-snapped and counted apart, never in the acceptance share (D52). The run
+  prints « Durée prévue d'une relance de K7.6 : environ N min » from `planned_minutes` (reused, A1) with the median
+  time per snap measured in this run (real post-fix timing, ADR 0018).
 - Changed `tools/camera/kosmo_camera/snap_report.py` (same command as K7.4): section « Acceptation » (share of photo
   control points snapped from the stored click with its Wilson interval against `SNAP_ACCEPT_MIN_SHARE`, lattice
   consistency, restart stability, per role and source; decided on the eval photo control points only, the dev
@@ -17,7 +21,8 @@ its human precision, counted apart (D49, root "Approach, Automatic re-snap").
   calibration point is « croisement suspect » when its residual against the lattice fitted on the others exceeds
   `SNAP_LATTICE_MAX_PX`; fewer than `SNAP_LATTICE_MIN_CORNERS` snapped corners: « non vérifiable », counted.
 - Added `tools/camera/kosmo_camera/snapped_file.py` (stdlib, strict, `MAX_BYTES` 4 MiB): format
-  `"kosmo-camera-snapped"`, version 1, per session `session`, `segmentsSha256`, `controlsSha256`; per control and
+  `"kosmo-camera-snapped"`, version 1, top-level `snapParams` per source (`scale`, `minContrast`: the chosen
+  candidates, so T15j re-snaps with them), per session `session`, `segmentsSha256`, `controlsSha256`; per control and
   per segment the stored points, `points` (snapped or click), `snap`, `reasons`, `dispersionPx` per point: a finite
   number, the string `"failed"` for a failed restart (infinite `D`, as `diagnostic_file`), or null when not snapped;
   the writer never emits `Infinity` or `NaN`, the strict reader refuses them (`parse_constant` raises). The file is
@@ -30,10 +35,10 @@ its human precision, counted apart (D49, root "Approach, Automatic re-snap").
 - Changed `tests/test_snap_report.py`; added `test_lattice.py`, `test_snapped_file.py` (both in `TOOL_TESTS`).
 
 ## Depends on
-T17b, T17a.
+T17e, T17b, T17a.
 
 ## Rules
-CV32, CV31, CV28 (`D` per point stored for T15i), CV13, CV15, D48.
+CV32, CV31, CV28 (`D` per point stored for T15i), CV13, CV15, D48, D52, D55.
 
 ## Tests
 - Acceptance at the boundary: 0.90 accepted, one point fewer refused; one suspect point refuses with its cause line;
@@ -41,7 +46,10 @@ CV32, CV31, CV28 (`D` per point stored for T15i), CV13, CV15, D48.
 - Independence (D54): dev at 0.50 and eval at 0.95 accepted; dev at 0.95 and eval at 0.85 refused; a suspect point
   or an unstable restart on dev only does not refuse; the dev line is marked « pour information ».
 - Planned duration: on the test sessions, the number of snaps the acceptance run performs equals the starts of the
-  K7.4 « Durée prévue de K7.6 » formula (CV32), so the planned duration is not underestimated.
+  K7.4 « Durée prévue de K7.6 » formula plus T17e's candidate snaps (CV32), so the planned duration is not
+  underestimated; the rerun line uses this run's median (injected in the test).
+- Chosen candidate: acceptance snaps use the scale T17e chose (a scale-2 photo case accepted only with it);
+  `snapParams` round-trips; segment points counted apart and absent from the share (D52).
 - Lattice: radial lens distortion k1 giving 3 px at the image corners (4080 px wide) never flagged, over 20 seeded
   boards (seeds 0 to 19); the chosen `SNAP_LATTICE_MAX_PX` lies above the largest distortion residual of those
   boards and below 4 px (a calibration point moved onto a dart-shaft crossing 4 px away is flagged); boundary: a

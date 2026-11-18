@@ -31,7 +31,8 @@ D50, CV28 video part, CV29). A photo is never compared with a video frame: their
 - Changed tests `test_diagnose.py`.
 
 ## Depends on
-T15i, T15c (frames, `frame_at`), T17c (snapped video controls).
+T15i, T15c (frames, `frame_at`), T17c (snapped video controls; every re-snap on B uses the video `snapParams` of
+`snapped-points.json`, D55).
 
 ## Rules
 CV28, CV31, CV32, CV27, CV15, D50. Every threshold is read from `config.py`; none is chosen from the data.
