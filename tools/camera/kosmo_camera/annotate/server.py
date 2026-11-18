@@ -19,6 +19,7 @@ from kosmo_camera import annotations as annotation_file
 from kosmo_camera import drift_file
 from kosmo_camera.annotate import flow
 from kosmo_camera.annotate.jpeg_size import JpegError, jpeg_size
+from kosmo_camera.annotate.snapping import Snapper
 from kosmo_camera.truth import TruthError, read_truth, session_folders
 
 HOST = "127.0.0.1"
@@ -102,7 +103,8 @@ def _clock():
 class SessionStore:
     """Sessions of a captures folder and their annotation files, with the in-memory state of the open sessions."""
 
-    def __init__(self, captures, annotations_dir, clock=_clock, drift=None):
+    def __init__(self, captures, annotations_dir, clock=_clock, drift=None, snapper=None):
+        self.snapper = Snapper() if snapper is None else snapper
         self.captures = Path(captures)
         self.drift_path = None if drift is None else Path(drift)
         self.annotations_dir = Path(annotations_dir)
@@ -231,8 +233,12 @@ class SessionStore:
             "points": [list(p) for p in calibration.points]}
         view["segments"] = [{"fromDart": c.from_dart, "photo": c.photo, "points": [list(p) for p in c.points]}
                             for c in segments]
+        view["snapAvailable"] = self.snapper.available
         view["cursor"] = {"kind": cursor.kind, "number": cursor.number, "photo": cursor.photo,
-                          "pending": [list(p) for p in cursor.pending]}
+                          "pending": [list(slot.point) for slot in cursor.pending if slot.point is not None],
+                          "slots": [{"point": None if slot.point is None else list(slot.point), "status": slot.status,
+                                     "reason": slot.reason} for slot in cursor.pending],
+                          "selected": cursor.selected, "ready": flow.ready_count(cursor.pending)}
         return view
 
     def open_session(self, name) -> dict:
@@ -241,7 +247,7 @@ class SessionStore:
             cursor = None
             if loaded.state == OK:
                 previous = self.cursors.get(name)
-                pending = previous.pending if previous is not None and previous.kind == flow.CALIBRATION else ()
+                pending = previous.pending if previous is not None and previous.kind == flow.CALIBRATION else ()  # slots
                 cursor = flow.resume(loaded.annotations, loaded.truth, pending)
                 self.cursors[name] = cursor
             return self.view(loaded, cursor)
@@ -256,10 +262,11 @@ class SessionStore:
                 raise HttpError(409, loaded.message)
             action = self._action(payload)
             cursor = self.cursors.get(name) or flow.resume(loaded.annotations, loaded.truth)
-            if action.kind == "click":
+            if action.kind in ("click", "save"):
                 action = replace(action, size=self._photo_size(loaded, cursor))
+            snapping = _BoundSnapping(self.snapper, loaded)
             try:
-                updated, new_cursor = flow.apply(loaded.annotations, loaded.truth, action, cursor)
+                updated, new_cursor = flow.apply(loaded.annotations, loaded.truth, action, cursor, snapping)
                 annotation_file.validate_against(updated, loaded.truth)
             except flow.FlowConflict as error:
                 raise HttpError(409, str(error)) from error
@@ -323,6 +330,22 @@ class SessionStore:
             return (folder / file).read_bytes()
         except OSError as error:
             raise HttpError(404, "Photo introuvable.") from error
+
+
+class _BoundSnapping:
+    """What `flow.apply` sees of the snapper: the photos of one session, named only by the plan (never a request)."""
+
+    def __init__(self, snapper, loaded):
+        self._snapper = snapper
+        self._folder = loaded.folder
+        self._size = (loaded.truth.photo_width, loaded.truth.photo_height)
+
+    @property
+    def available(self) -> bool:
+        return self._snapper.available
+
+    def snap(self, photo, start):
+        return self._snapper.snap(self._folder / photo, start, self._size)
 
 
 def _dart_drift(flags, number):
@@ -484,10 +507,11 @@ class AnnotationServer(ThreadingHTTPServer):
         super().__init__((HOST, port), _make_handler(store, Path(static_dir)))
 
 
-def make_server(captures, annotations_dir, port=DEFAULT_PORT, static_dir=STATIC_DIR, clock=_clock, drift=None):
+def make_server(captures, annotations_dir, port=DEFAULT_PORT, static_dir=STATIC_DIR, clock=_clock, drift=None,
+                snapper=None):
     """Bind the server on 127.0.0.1 (raises OSError when the port is in use)."""
     captures, annotations_dir = Path(captures).resolve(), Path(annotations_dir).resolve()
     if annotations_dir == captures or captures in annotations_dir.parents:
         raise ValueError("Le dossier d'annotations ne doit pas être dans le dossier des captures (lecture seule).")
     annotations_dir.mkdir(parents=True, exist_ok=True)
-    return AnnotationServer(SessionStore(captures, annotations_dir, clock, drift), port, static_dir)
+    return AnnotationServer(SessionStore(captures, annotations_dir, clock, drift, snapper), port, static_dir)

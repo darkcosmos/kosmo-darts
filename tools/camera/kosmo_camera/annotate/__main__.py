@@ -4,12 +4,19 @@ import errno
 import sys
 from pathlib import Path
 
+from kosmo_camera.annotate import flow
 from kosmo_camera.annotate.server import DEFAULT_PORT, HOST, make_server
+from kosmo_camera.annotate.snapping import Snapper
+
+SNAP_AVAILABLE = "Recalage : disponible"
+SNAP_UNAVAILABLE = "Recalage : indisponible (numpy ou Pillow absent)"
 
 
 def main(argv=None) -> int:
+    snapper = Snapper()
     parser = argparse.ArgumentParser(prog="python3 -m kosmo_camera.annotate",
-                                     description="Outil d'annotation des photos de capture (local, 127.0.0.1).")
+                                     description="Outil d'annotation des photos de capture (local, 127.0.0.1).",
+                                     epilog=SNAP_AVAILABLE if snapper.available else SNAP_UNAVAILABLE)
     parser.add_argument("--captures", required=True, help="dossier des captures (lecture seule)")
     parser.add_argument("--annotations", required=True, help="dossier des fichiers d'annotations (écriture)")
     parser.add_argument("--drift", help="fichier de dérive drift.json (lecture seule, facultatif)")
@@ -21,7 +28,7 @@ def main(argv=None) -> int:
         return 2
     try:
         server = make_server(captures, Path(args.annotations).expanduser(), args.port,
-                             drift=Path(args.drift).expanduser() if args.drift else None)
+                             drift=Path(args.drift).expanduser() if args.drift else None, snapper=snapper)
     except ValueError as error:
         print(str(error), file=sys.stderr)
         return 2
@@ -32,6 +39,7 @@ def main(argv=None) -> int:
             print(f"Impossible de démarrer le serveur : {error.strerror or error}", file=sys.stderr)
         return 2
     print(f"Outil d'annotation prêt : http://{HOST}:{server.server_address[1]}/  (Ctrl+C pour arrêter)")
+    print(SNAP_AVAILABLE if snapper.available else f"{SNAP_UNAVAILABLE} : {flow.UNAVAILABLE}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

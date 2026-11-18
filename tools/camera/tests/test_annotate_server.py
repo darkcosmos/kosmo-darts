@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from annotate_support import NAME, SIZE, jpeg_bytes, make_session, stdlib_pythons, tree_listing
+from annotate_support import NAME, SIZE, FakeSnapping, jpeg_bytes, make_session, stdlib_pythons, tree_listing
 from kosmo_camera import annotations as an
 from kosmo_camera import drift_file
 from kosmo_camera.annotate import server as server_module
@@ -19,7 +19,7 @@ from kosmo_camera.annotate.__main__ import main
 from kosmo_camera.annotate.jpeg_size import JpegError, jpeg_size, read_size
 from kosmo_camera.annotate.server import IGNORED_LABEL, make_server
 
-POINTS = [(10, 20), (30, 40), (50, 60), (70, 80)]
+POINTS = [(300, 300), (1700, 300), (1700, 900), (300, 900)]  # far apart (U27), inside a 2000 x 1000 photo
 
 
 class Tool:
@@ -31,9 +31,10 @@ class Tool:
         self.static_dir = static_dir
         self.server = None
 
-    def start(self, drift=None):
+    def start(self, drift=None, snapper=None):
+        self.snapper = FakeSnapping() if snapper is None else snapper
         self.server = make_server(self.captures, self.annotations, 0, self.static_dir, clock=lambda: "12:34:56",
-                                  drift=drift)
+                                  drift=drift, snapper=self.snapper)
         self.port = self.server.server_address[1]
         threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True).start()
         return self
@@ -65,9 +66,12 @@ class Tool:
         return self.json("POST", f"/api/sessions/{name}/actions", {"action": action, **fields})
 
     def calibrate(self, name=NAME):
+        """The four clicks, then Entrée (the `save` action, which names the open item: the calibration is dart 1)."""
         for x, y in POINTS:
             status, result = self.act("click", name, x=x, y=y)
             assert status == 200, result
+        status, result = self.act("save", name, number=1)
+        assert status == 200, result
         return result
 
 
@@ -174,7 +178,10 @@ def test_session_list_and_open_with_progress_and_resume_cursor(tool):
                                  "driftLabel": None, "driftStale": False}]
     assert body["driftWarning"] is None
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert view["cursor"] == {"kind": "calibration", "number": None, "photo": "dart-001.jpg", "pending": []}
+    assert view["cursor"] == {"kind": "calibration", "number": None, "photo": "dart-001.jpg", "pending": [],
+                              "slots": [{"point": None, "status": None, "reason": None}] * 4, "selected": None,
+                              "ready": 0}
+    assert view["snapAvailable"] is True
     assert [d["number"] for d in view["darts"]] == [1, 3, 4] and view["skipped"] == [2, 5]
     assert view["readOnly"] is False and view["photoSize"] == list(SIZE)
     assert all(re.fullmatch(r"[DT]?\d{1,2}", d["value"]) for d in view["darts"])  # true value shown large by the page
@@ -184,10 +191,12 @@ def test_session_list_and_open_with_progress_and_resume_cursor(tool):
 def test_full_flow_autosaves_each_change_and_reports_the_saved_time(tool):
     make_session(tool.captures)
     tool.start()
-    tool.act("click", x=10, y=20)
+    tool.act("click", x=POINTS[0][0], y=POINTS[0][1])
     assert not annotation_file(tool).exists()  # a partial calibration is not a file change
     for x, y in POINTS[1:]:
         status, result = tool.act("click", x=x, y=y)
+    assert "saved" not in result and not annotation_file(tool).exists()  # four ready points are not written either
+    status, result = tool.act("save", number=1)
     assert result["saved"] == "Enregistré à 12:34:56"
     assert result["session"]["cursor"]["number"] == 1
     status, result = tool.act("click", x=100.5, y=200.5)
@@ -241,6 +250,7 @@ def test_clicks_are_checked_against_the_real_jpeg_size_not_only_the_truth_size_d
     assert status == 400
     for x, y in POINTS:
         status, result = tool.act("click", x=x, y=y)
+    tool.act("save", number=1)
     calibration = an.read(annotation_file(tool)).calibrations[0]
     assert (calibration.width, calibration.height) == (2000, 1000)
     assert tool.act("click", x=10, y=1001)[0] == 400
@@ -600,17 +610,17 @@ def _go_to(tool, number):
 def _recalibrate_at(tool, number, points=NEW_POINTS):
     _go_to(tool, number)
     tool.act("recalibrate")
-    for x, y in points:
+    for index, (x, y) in enumerate(points, start=1):
+        tool.act("select", number=index)  # the proposals sit far from the new points: the key chooses the slot
         status, result = tool.act("click", x=x, y=y)
-    return status, result
+        assert status == 200, result
+    return tool.act("save", number=number)
 
 
 def test_recalibration_from_a_dart_is_saved_with_its_photo_and_real_jpeg_size_cv20(tool):
     make_session(tool.captures, jpeg_size=(2000, 1000))
     tool.start()
-    tool.act("click", x=10, y=20)  # partial calibration, then the real flow
-    for x, y in POINTS[1:]:
-        tool.act("click", x=x, y=y)
+    tool.calibrate()
     tool.act("click", x=100.5, y=200.5)  # tip of dart 1
     status, result = _recalibrate_at(tool, 3)
     assert status == 200 and result["saved"] == "Enregistré à 12:34:56"
@@ -651,7 +661,7 @@ def test_clear_of_the_calibration_screen_is_refused_while_later_segments_exist_c
     assert annotation_file(tool).read_bytes() == before
 
 
-def test_the_fourth_click_at_the_segment_cap_answers_409_and_the_file_is_unchanged_cv20(tool):
+def test_the_save_at_the_segment_cap_answers_409_and_the_file_is_unchanged_cv20(tool):
     make_session(tool.captures, judged=tuple(range(1, 70)), voided=(), no_photo=())
     tool.start()
     tool.calibrate()
@@ -663,9 +673,7 @@ def test_the_fourth_click_at_the_segment_cap_answers_409_and_the_file_is_unchang
     before = annotation_file(tool).read_bytes()
     _go_to(tool, 3)
     tool.act("recalibrate")
-    for x, y in NEW_POINTS[:3]:
-        assert tool.act("click", x=x, y=y)[0] == 200
-    status, result = tool.act("click", x=17, y=18)
+    status, result = tool.act("save", number=3)  # the proposals of the segment in force are four ready points
     assert status == 409 and result["error"] == "Nombre maximal de recalibrations atteint (64)"
     assert annotation_file(tool).read_bytes() == before
 
@@ -778,7 +786,7 @@ def test_the_flag_file_is_read_again_at_every_list_and_never_written_cv16(tool):
 def test_drift_option_is_passed_to_the_server(tmp_path, monkeypatch):
     seen = {}
 
-    def fake(captures, annotations, port, drift=None):
+    def fake(captures, annotations, port, drift=None, snapper=None):
         seen["drift"] = drift
         raise ValueError("stop")
 
@@ -787,3 +795,96 @@ def test_drift_option_is_passed_to_the_server(tmp_path, monkeypatch):
     args = ["--captures", str(tmp_path / "c"), "--annotations", str(tmp_path / "a")]
     assert main(args + ["--drift", str(tmp_path / "d.json")]) == 2 and seen["drift"] == tmp_path / "d.json"
     assert main(args) == 2 and seen["drift"] is None
+
+
+# ---- assisted calibration (T15n, CV31, U27, U29, A32) ----------------------------------------------------------------
+
+def test_a_click_is_snapped_on_the_photo_of_the_session_and_the_view_shows_the_slots_cv31(tool):
+    make_session(tool.captures)
+    tool.start(snapper=FakeSnapping(shift=(0.5, 0.25), failing={(1700.0, 300.0): "contrast"}))
+    tool.act("click", x=300, y=300)
+    status, result = tool.act("click", x=1700, y=300)
+    assert status == 200 and "saved" not in result
+    slots = result["session"]["cursor"]["slots"]
+    assert slots[0] == {"point": [300.5, 300.25], "status": "snapped", "reason": None}
+    assert slots[1] == {"point": [1700.0, 300.0], "status": "unsnapped", "reason": "contrast"}
+    assert slots[2]["point"] is None and result["session"]["cursor"]["ready"] == 2
+    assert [Path(photo) for photo, _ in tool.snapper.calls] == [tool.captures / NAME / "dart-001.jpg"] * 2
+
+
+def test_select_then_click_goes_to_that_slot_and_a_far_click_is_refused_u27(tool):
+    make_session(tool.captures)
+    tool.start()
+    tool.calibrate()
+    tool.act("previous")
+    status, result = tool.act("click", x=1000, y=600)
+    assert status == 409 and result["error"].startswith("Clic loin des 4 points")
+    assert tool.act("select", number=4)[0] == 200
+    status, result = tool.act("click", x=1000, y=600)
+    assert status == 200 and result["session"]["cursor"]["slots"][3]["point"] == [1000.0, 600.0]
+    assert result["session"]["cursor"]["selected"] is None
+    assert tool.act("select", number=5)[0] == 400
+
+
+def test_save_below_four_ready_points_answers_409_and_writes_nothing_u29(tool):
+    make_session(tool.captures)
+    tool.start()
+    tool.act("click", x=300, y=300)
+    tool.act("click", x=1700, y=300)
+    status, result = tool.act("save", number=1)
+    assert status == 409 and result["error"] == "Points prêts : 2 / 4"
+    assert not annotation_file(tool).exists()
+
+
+def test_a_repeated_save_answers_409_and_writes_one_segment_u29(tool):
+    make_session(tool.captures)
+    tool.start()
+    tool.calibrate()
+    before = annotation_file(tool).read_bytes()
+    status, result = tool.act("save", number=1)
+    assert status == 409 and result["error"] == "Photo déjà enregistrée"
+    assert tool.act("save")[0] == 409  # a save that names no open item is no save
+    assert annotation_file(tool).read_bytes() == before and len(an.read(annotation_file(tool)).calibrations) == 1
+
+
+def test_hide_is_refused_with_409_on_the_calibration_screen_cv20(tool):
+    make_session(tool.captures)
+    tool.start()
+    status, result = tool.act("hidden")
+    assert status == 409 and "4 points" in result["error"]
+    assert not annotation_file(tool).exists()
+
+
+def test_the_saved_segment_keeps_the_snap_statuses_of_the_clicks_cv31(tool):
+    make_session(tool.captures)
+    tool.start(snapper=FakeSnapping(failing={(300.0, 900.0): "unreadable"}))
+    tool.calibrate()
+    assert an.read(annotation_file(tool)).calibrations[0].snap == ("snapped",) * 3 + ("unsnapped",)
+
+
+def test_without_numpy_or_pillow_the_tool_serves_and_refuses_the_calibration_a32(tool):
+    make_session(tool.captures)
+    tool.start()
+    tool.calibrate()
+    tool.act("click", x=100.5, y=200.5)  # tip of dart 1
+    before = annotation_file(tool).read_bytes()
+    tool.start(snapper=FakeSnapping(available=False))
+    status, view = tool.json("GET", f"/api/sessions/{NAME}")
+    assert status == 200 and view["snapAvailable"] is False
+    expected = "Recalage indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)"
+    tool.act("goto", number=3)
+    status, result = tool.act("recalibrate")
+    assert status == 409 and result["error"] == expected
+    status, result = tool.act("click", x=100.5, y=200.5)  # a tip does not need the snapper
+    assert status == 200 and result["saved"]
+    after = annotation_file(tool).read_bytes()
+    assert after != before and an.read(annotation_file(tool)).calibrations == an.decode(before.decode()).calibrations
+
+
+def test_without_numpy_or_pillow_a_new_session_refuses_clicks_and_save_and_writes_nothing_a32(tool):
+    make_session(tool.captures)
+    tool.start(snapper=FakeSnapping(available=False))
+    for body in ({"action": "click", "x": 300, "y": 300}, {"action": "save", "number": 1}):
+        status, result = tool.json("POST", f"/api/sessions/{NAME}/actions", body)
+        assert status == 409 and result["error"].startswith("Recalage indisponible"), body
+    assert not annotation_file(tool).exists()

@@ -75,3 +75,22 @@ def stdlib_pythons():
     if system and not any(os.path.realpath(system) == os.path.realpath(p) for p in found):
         found.append(system)
     return found
+
+
+class FakeSnapping:
+    """Stands for `flow.apply`'s `snapping` and for the server's `Snapper`: a click snaps to `start + shift`, unless its
+    start is listed in `failing` (then it stays unsnapped with that reason). `calls` records (photo or path, start)."""
+
+    def __init__(self, available=True, shift=(0.0, 0.0), failing=None):
+        self.available = available
+        self.shift = shift
+        self.failing = dict(failing or {})  # start (x, y) -> reason
+        self.calls = []
+
+    def snap(self, photo, start, expected_size=None):
+        from kosmo_camera.annotate.snapping import Outcome
+        start = (float(start[0]), float(start[1]))
+        self.calls.append((str(photo), start))
+        if start in self.failing:
+            return Outcome(start, "unsnapped", self.failing[start])
+        return Outcome((start[0] + self.shift[0], start[1] + self.shift[1]), "snapped", None)
