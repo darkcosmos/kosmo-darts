@@ -8,17 +8,18 @@ import json
 import re
 import threading
 import time
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Optional
 from urllib.parse import unquote, urlsplit
 
 from kosmo_camera import annotations as annotation_file
 from kosmo_camera import drift_file
-from kosmo_camera.annotate import flow
+from kosmo_camera.annotate import flow, views
 from kosmo_camera.annotate.jpeg_size import JpegError, jpeg_size
 from kosmo_camera.annotate.snapping import Snapper
+from kosmo_camera.annotate.views import (IGNORED, IGNORED_LABEL, NO_DRIFT, OK, REJECTED, TOO_LARGE, TRUTH_INVALID,
+                                         DriftState, Loaded)
 from kosmo_camera.truth import TruthError, read_truth, session_folders
 
 HOST = "127.0.0.1"
@@ -29,47 +30,6 @@ STATIC_FILES = {"index.html": "text/html; charset=utf-8", "app.js": "text/javasc
                 "style.css": "text/css; charset=utf-8"}
 _PHOTO_FILE = re.compile(r"dart-\d{3,}\.jpg")
 _ACTION_KEYS = ("action", "x", "y", "number")
-IGNORED_LABEL = "Ignorée : aucune fléchette jugée"
-OK = "ok"
-IGNORED = "ignored"
-TRUTH_INVALID = "truth_invalid"
-TOO_LARGE = "annotation_too_large"
-REJECTED = "annotation_rejected"
-STALE_LABEL = "(mesure périmée : relancer la mesure)"
-NOT_MEASURED_LABEL = "Dérive non mesurée"
-
-
-@dataclass(frozen=True)
-class DriftState:
-    """The drift flag file as read for one request (CV16: read-only, never written by the tool)."""
-    sessions: dict  # session name -> drift_file.SessionFlags
-    warning: Optional[str] = None
-    configured: bool = False
-
-
-NO_DRIFT = DriftState({})
-
-
-def _count_label(count, singular, plural):
-    return f"{count} {singular if count == 1 else plural}"
-
-
-def _numbers_text(numbers):
-    return ", ".join(str(n) for n in numbers)
-
-
-def _flag_labels(flags):
-    """List labels of one session (CV16): where to recalibrate, or the maximum drift, plus unmeasurable photos."""
-    if flags.beyond:
-        start = ("de la fléchette" if len(flags.suggested) == 1 else "des fléchettes")
-        labels = [f"À recalibrer à partir {start} {_numbers_text(flags.suggested)}"]
-    elif flags.max_drift_mm is None:
-        labels = ["Dérive OK"]
-    else:
-        labels = [f"Dérive OK (max {flags.max_drift_mm:.1f} mm)".replace(".", ",")]
-    if flags.unmeasurable:
-        labels.append(_count_label(len(flags.unmeasurable), "photo non mesurable", "photos non mesurables"))
-    return labels
 
 
 class HttpError(Exception):
@@ -81,18 +41,6 @@ class HttpError(Exception):
 
 def _refuse_method():
     raise HttpError(405, "Méthode non autorisée.")
-
-
-@dataclass(frozen=True)
-class Loaded:
-    name: str
-    folder: Path
-    state: str
-    message: Optional[str] = None
-    warning: Optional[str] = None
-    truth: object = None
-    annotations: object = None
-    plan: object = None
 
 
 def _clock():
@@ -174,71 +122,18 @@ class SessionStore:
             return DriftState({}, f"Mesure de dérive illisible : {error}", True)
         return DriftState({f.session: f for f in flags.sessions}, None, True)
 
-    @staticmethod
-    def _drift_view(loaded, drift):
-        """(label, stale, flags) of a session: stale when the segments changed since the measure (U7)."""
-        if not drift.configured or drift.warning is not None:
-            return None, False, None
-        flags = drift.sessions.get(loaded.name)
-        if flags is None:
-            return NOT_MEASURED_LABEL, False, None
-        stale = (loaded.annotations is not None
-                 and flags.segments_sha256 != annotation_file.segments_sha256(loaded.annotations))
-        label = " ; ".join(_flag_labels(flags))
-        return (f"{label} {STALE_LABEL}" if stale else label), stale, flags
-
-    # ---- views -----------------------------------------------------------------------------------------------------
-
-    @staticmethod
-    def _progress(loaded):
-        if loaded.state != OK:
-            return None
-        numbers = {n for n, _ in loaded.plan.darts}
-        return {"done": len({d.number for d in loaded.annotations.darts} & numbers), "total": len(numbers)}
-
     def summary(self, loaded, drift=NO_DRIFT) -> dict:
-        label, stale, _ = self._drift_view(loaded, drift)
-        return {"name": loaded.name, "state": loaded.state, "message": loaded.message, "warning": loaded.warning,
-                "label": IGNORED_LABEL if loaded.state == IGNORED else None, "progress": self._progress(loaded),
-                "calibrated": bool(loaded.annotations.calibrations) if loaded.state == OK else None,
-                "driftLabel": label, "driftStale": stale}
+        return views.summary(loaded, drift)
 
     def sessions_with_warning(self) -> tuple:
         """The session summaries and the drift flag file warning (or None)."""
         with self.lock:
             drift = self.read_drift()
-            return [self.summary(self.load(name), drift) for name in self.listing()], drift.warning
+            return [views.summary(self.load(name), drift) for name in self.listing()], drift.warning
 
     def view(self, loaded, cursor, drift=None) -> dict:
         drift = self.read_drift() if drift is None else drift
-        view = self.summary(loaded, drift)
-        view["readOnly"] = loaded.state != OK
-        if loaded.state != OK:  # read-only states show their message, with no photo flow
-            return view
-        by_number = {d.number: d for d in loaded.annotations.darts}
-        view["photoSize"] = [loaded.truth.photo_width, loaded.truth.photo_height]
-        flags = self._drift_view(loaded, drift)[2]
-        by_dart = {d.number: (_value_label(d), v.index) for v in loaded.truth.volleys for d in v.darts}
-        view["darts"] = [{"number": number, "photo": photo, "value": by_dart[number][0], "volley": by_dart[number][1],
-                          "status": by_number[number].status.value if number in by_number else None,
-                          "tip": list(by_number[number].tip) if number in by_number and by_number[number].tip
-                          else None, "drift": _dart_drift(flags, number)} for number, photo in loaded.plan.darts]
-        view["skipped"] = list(loaded.plan.skipped)
-        view["calibrationPhoto"] = loaded.plan.first_photo
-        segments = loaded.annotations.calibrations  # the page shows segment 0, from dart 1 (CV20)
-        calibration = segments[0] if segments else None
-        view["calibration"] = None if calibration is None else {
-            "photo": calibration.photo, "width": calibration.width, "height": calibration.height,
-            "points": [list(p) for p in calibration.points]}
-        view["segments"] = [{"fromDart": c.from_dart, "photo": c.photo, "points": [list(p) for p in c.points]}
-                            for c in segments]
-        view["snapAvailable"] = self.snapper.available
-        view["cursor"] = {"kind": cursor.kind, "number": cursor.number, "photo": cursor.photo,
-                          "pending": [list(slot.point) for slot in cursor.pending if slot.point is not None],
-                          "slots": [{"point": None if slot.point is None else list(slot.point), "status": slot.status,
-                                     "reason": slot.reason} for slot in cursor.pending],
-                          "selected": cursor.selected, "ready": flow.ready_count(cursor.pending)}
-        return view
+        return views.view(loaded, cursor, drift, self.snapper.available)
 
     def open_session(self, name) -> dict:
         with self.lock:
@@ -344,23 +239,6 @@ class _BoundSnapping:
 
     def snap(self, photo, start):
         return self._snapper.snap(self._folder / photo, start, self._size)
-
-
-def _dart_drift(flags, number):
-    """"suggested", "beyond", "unmeasurable" or None for one dart (the strongest flag wins)."""
-    if flags is None:
-        return None
-    for name, numbers in (("suggested", flags.suggested), ("beyond", flags.beyond),
-                          ("unmeasurable", flags.unmeasurable)):
-        if number in numbers:
-            return name
-    return None
-
-
-def _value_label(dart) -> str:
-    """The true value as Kosmo reads it on the board: "T20", "D16", "20", "25", "50" or "0" (miss)."""
-    prefix = {"DOUBLE": "D", "TRIPLE": "T"}.get(dart.multiplier, "")
-    return f"{prefix}{dart.segment}"
 
 
 def _parse_json(data):
