@@ -208,7 +208,7 @@ def _plain_sector_point(truth):
     return synth.project(truth.homography, [(radius * math.cos(middle_angle), radius * math.sin(middle_angle))])[0]
 
 
-def test_cv31_a_plain_sector_is_unsnapped_without_contrast_or_support():
+def test_cv31_a_plain_sector_ends_unsnapped_with_reason_contrast():
     luma, truth = _render(DOMAIN["photo-1600"])
     point = _plain_sector_point(truth)
     result = snap.snap_point(luma, point)
