@@ -1,4 +1,5 @@
 """Synthetic boards and sessions (T7). Rules CV1, CV2, CV5, CV10, CV11, CV20."""
+import hashlib
 import random
 
 import pytest
@@ -161,6 +162,30 @@ def test_corner_occlusion_covers_one_corner_of_one_photo(tmp_path):
     assert numpy.abs(first - second)[y - 15:y + 15, x - 15:x + 15].mean() > 10
     assert (clean.folder / "dart-001.jpg").read_bytes() == (covered.folder / "dart-001.jpg").read_bytes()
     assert covered.calibration == clean.calibration  # the truth does not change
+
+
+def test_t15m_default_render_is_byte_identical_to_the_t7_output():
+    # sha256 of the T7 render before the T15m ring option (canvas board warped by Pillow).
+    image, _ = synth.render_board(synth.View(), [(0.0, 0.0)], (640, 480), synth.Lighting(), 0)
+    assert hashlib.sha256(image.tobytes()).hexdigest() == (
+        "4e4e79989e0a0796e8f9dd73ebc133d134e0485a2a3d44fa6fc5cc1f250d3d3f")
+
+
+def _grey_at(image, pixel):
+    return image[int(pixel[1]), int(pixel[0])].astype(float)
+
+
+def test_cv2_ring_wires_cross_the_radial_wires_at_the_calibration_pixels():
+    plain, truth = synth.render_board(synth.View(), [], (1600, 1200), synth.Lighting(noise=0.0), 0,
+                                      style=synth.BoardStyle())
+    ringed, _ = synth.render_board(synth.View(), [], (1600, 1200), synth.Lighting(noise=0.0), 0, ring_wires=True)
+    wire = numpy.array(synth.BoardStyle().wire, dtype=float)
+    for pixel in truth.calibration:  # CV2: double ring outer edge on a radial wire, centre of both wires
+        assert numpy.abs(_grey_at(ringed, pixel) - wire).max() <= 2
+    # Mid-sector on the double outer radius: ring wire with the option, double ring or surround without it.
+    middle = synth.project(truth.homography, [(0.0, -170.0)])[0]
+    assert numpy.abs(_grey_at(ringed, middle) - wire).max() <= 2
+    assert numpy.abs(_grey_at(plain, middle) - wire).max() > 40
 
 
 def test_no_real_image_is_read():

@@ -174,6 +174,104 @@ def _warped_board(homography, size):
                                    fillcolor=_WALL)
 
 
+@dataclass(frozen=True)
+class BoardStyle:
+    """Look of the analytic renderer (T15m): wire width in board mm and colours. The default wire is as wide as the
+    radial wires of the canvas board (2 canvas px)."""
+    wire_mm: float = 2 / CANVAS_PX_PER_MM
+    wire: tuple = _WIRE
+    rings: tuple = (_RED, _GREEN)  # double and treble colours of the even and odd sectors (index in SECTOR_ORDER)
+    singles: tuple = (_BLACK, _CREAM)
+    surround: tuple = _BLACK
+    wall: tuple = _WALL
+
+
+_SUPERSAMPLE = 4  # sub-samples per pixel side near an edge
+_SURROUND_MM = DOUBLE_OUTER_MM + 25
+_RING_WIRES_MM = (TRIPLE_INNER_MM, TRIPLE_OUTER_MM, DOUBLE_INNER_MM, DOUBLE_OUTER_MM)
+_EDGES_MM = (BULL_RADIUS_MM, OUTER_BULL_RADIUS_MM) + _RING_WIRES_MM + (_SURROUND_MM,)
+_ROWS_PER_CHUNK = 128
+
+
+def _board_mm(inverse, xs, ys):
+    """Board mm under continuous pixel coordinates (pixel (i, j) covers [j, j + 1) x [i, i + 1), as `project`)."""
+    u = inverse[0, 0] * xs + inverse[0, 1] * ys + inverse[0, 2]
+    v = inverse[1, 0] * xs + inverse[1, 1] * ys + inverse[1, 2]
+    w = inverse[2, 0] * xs + inverse[2, 1] * ys + inverse[2, 2]
+    return u / w, v / w
+
+
+def _polar(x_mm, y_mm):
+    """Radius and the angular offset (degrees, -9 to 9) to the nearest sector edge, and the sector index."""
+    radius = numpy.hypot(x_mm, y_mm)
+    degrees = numpy.mod(numpy.degrees(numpy.arctan2(x_mm, y_mm)), 360.0)
+    shifted = degrees + SECTOR_ANGLE_DEGREES / 2
+    sector = numpy.floor(shifted / SECTOR_ANGLE_DEGREES).astype(numpy.int64) % len(SECTOR_ORDER)
+    offset = numpy.mod(shifted, SECTOR_ANGLE_DEGREES)
+    offset = numpy.minimum(offset, SECTOR_ANGLE_DEGREES - offset)
+    return radius, offset, sector
+
+
+def _edge_distance_mm(x_mm, y_mm):
+    """Distance in board mm to the nearest wire, ring or sector edge."""
+    radius, offset, _ = _polar(x_mm, y_mm)
+    radial = numpy.where((radius >= OUTER_BULL_RADIUS_MM) & (radius <= DOUBLE_OUTER_MM),
+                         radius * numpy.sin(numpy.radians(offset)), numpy.inf)
+    rings = numpy.min(numpy.abs(radius[..., None] - numpy.array(_EDGES_MM)), axis=-1)
+    return numpy.minimum(radial, rings)
+
+
+def _colours(x_mm, y_mm, style, ring_wires):
+    """RGB float colour of the board at each point (CV1 geometry of `board.py`)."""
+    radius, offset, sector = _polar(x_mm, y_mm)
+    odd = sector % 2
+    ring = numpy.array(style.rings, dtype=numpy.float64)[odd]
+    single = numpy.array(style.singles, dtype=numpy.float64)[odd]
+    out = numpy.empty(radius.shape + (3,))
+    out[...] = style.wall
+    layers = ((_SURROUND_MM, style.surround), (DOUBLE_OUTER_MM, ring), (DOUBLE_INNER_MM, single),
+              (TRIPLE_OUTER_MM, ring), (TRIPLE_INNER_MM, single), (OUTER_BULL_RADIUS_MM, _GREEN),
+              (BULL_RADIUS_MM, _RED))
+    for limit, colour in layers:  # outer to inner, each limit inclusive like the canvas discs
+        inside = radius <= limit
+        out[inside] = colour[inside] if isinstance(colour, numpy.ndarray) else colour
+    half = style.wire_mm / 2
+    wire = (radius >= OUTER_BULL_RADIUS_MM) & (radius <= DOUBLE_OUTER_MM) & (
+        radius * numpy.sin(numpy.radians(offset)) < half)
+    if ring_wires:
+        wire |= numpy.min(numpy.abs(radius[..., None] - numpy.array(_RING_WIRES_MM)), axis=-1) < half
+    out[wire] = style.wire
+    return out
+
+
+def _analytic_rows(inverse, size, rows, style, ring_wires):
+    width = size[0]
+    ys, xs = numpy.meshgrid(numpy.arange(rows.start, rows.stop) + 0.5, numpy.arange(width) + 0.5, indexing="ij")
+    x_mm, y_mm = _board_mm(inverse, xs, ys)
+    pixels = _colours(x_mm, y_mm, style, ring_wires)
+    step_x = numpy.hypot(*numpy.subtract(_board_mm(inverse, xs + 1.0, ys), (x_mm, y_mm)))
+    step_y = numpy.hypot(*numpy.subtract(_board_mm(inverse, xs, ys + 1.0), (x_mm, y_mm)))
+    near = _edge_distance_mm(x_mm, y_mm) < style.wire_mm / 2 + 1.5 * numpy.maximum(step_x, step_y)
+    rows_near, columns_near = numpy.nonzero(near)
+    offsets = (numpy.arange(_SUPERSAMPLE) + 0.5) / _SUPERSAMPLE - 0.5
+    sub_y, sub_x = numpy.meshgrid(offsets, offsets, indexing="ij")
+    sample_x = xs[rows_near, columns_near][:, None] + sub_x.reshape(-1)[None, :]
+    sample_y = ys[rows_near, columns_near][:, None] + sub_y.reshape(-1)[None, :]
+    pixels[rows_near, columns_near] = _colours(*_board_mm(inverse, sample_x, sample_y), style, ring_wires).mean(axis=1)
+    return pixels
+
+
+def _analytic_board(homography, size, style, ring_wires):
+    """The board drawn from `board.py` geometry at every pixel, edges supersampled: exact to well below 0.1 px."""
+    inverse = numpy.linalg.inv(homography)
+    width, height = size
+    pixels = numpy.empty((height, width, 3))
+    for start in range(0, height, _ROWS_PER_CHUNK):
+        rows = range(start, min(height, start + _ROWS_PER_CHUNK))
+        pixels[rows.start:rows.stop] = _analytic_rows(inverse, size, rows, style, ring_wires)
+    return Image.fromarray(numpy.clip(numpy.rint(pixels), 0, 255).astype(numpy.uint8))
+
+
 def _draw_dart(draw, tip, size):
     """Barrel and flight drawn from the tip, away from it along a fixed image direction."""
     norm = math.hypot(*_DART_DIRECTION)
@@ -197,13 +295,20 @@ def _shade(pixels, lighting, rng):
     return numpy.clip(shaded + 0.5, 0, 255).astype(numpy.uint8)
 
 
-def render_board(view, darts, size, lighting=Lighting(), seed=0):
+def render_board(view, darts, size, lighting=Lighting(), seed=0, ring_wires=False, style=None):
     """Render the board in perspective with darts at the given board positions (mm).
 
     Returns ``(image, truth)``: an RGB uint8 array of shape (height, width, 3) and a `BoardTruth` with the homography,
-    the tip pixel of every dart and the 4 calibration pixels (CV2)."""
+    the tip pixel of every dart and the 4 calibration pixels (CV2). By default the board is the canvas drawing warped
+    by Pillow (T7 output, unchanged). With `ring_wires` or a `style` (T15m), the board is computed from `board.py`
+    geometry at every pixel, edges supersampled, so that its wire crossings are where `project` puts them to well
+    below 0.1 px; `ring_wires` adds the double and treble ring wires (centred on their radius, `style.wire_mm` wide,
+    like the radial wires)."""
     homography = view.homography(size)
-    image = _warped_board(homography, size)
+    if ring_wires or style is not None:
+        image = _analytic_board(homography, size, style or BoardStyle(), ring_wires)
+    else:
+        image = _warped_board(homography, size)
     tips = project(homography, darts)
     draw = ImageDraw.Draw(image)
     for tip in tips:
