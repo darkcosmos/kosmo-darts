@@ -192,3 +192,18 @@ def test_no_real_image_is_read():
     import kosmo_camera.synth as module
     text = open(module.__file__, encoding="utf-8").read()
     assert "Image.open" not in text and "kosmo-data" not in text
+
+
+def test_synth_imports_and_renders_a_board_with_av_unimportable_t15n():
+    """The snap tests run on Python 3.14 with numpy and Pillow only (D44): `av` is imported when a video is written."""
+    import subprocess
+    import sys
+    code = ("import sys; sys.modules['av'] = None\n"
+            "from kosmo_camera import synth\n"
+            "pixels, truth = synth.render_board(synth.View(), [], (320, 240), synth.Lighting(noise=1.0), 1, "
+            "ring_wires=True)\n"
+            "assert pixels.shape == (240, 320, 3) and len(truth.calibration) == 4\n"
+            "print('ok')\n")
+    done = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True,
+                          cwd=str(__import__("pathlib").Path(__file__).resolve().parent.parent))
+    assert done.returncode == 0 and done.stdout.strip() == "ok", done.stderr

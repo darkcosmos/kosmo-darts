@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-import av
 import numpy
 from PIL import Image, ImageDraw
 
@@ -465,6 +464,7 @@ def _write_video(spec, seed, index, numbers, positions, path):
     frames = end // FRAME_MS + 1
     arrivals = {n: (_FIRST_ARRIVAL_MS + _ENTRY_STEP_MS * p) // FRAME_MS for p, n in enumerate(numbers)}
     removal_frame = removal // FRAME_MS
+    import av  # lazy: the snap tests render boards on Python 3.14 without PyAV (T15n, D44)
     width, height = spec.video_size
     container = av.open(str(path), "w", format="mp4")
     try:

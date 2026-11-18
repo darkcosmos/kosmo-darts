@@ -1,0 +1,17 @@
+# Tool environment of the annotation tool's assisted click (K7.1b, CV16, CV31, D43, D44): WSL, Kosmo's Python 3.14
+# (the sandbox and the training image run 3.13: pip picks the cp313 wheel there, the same versions). numpy and Pillow
+# only, exact versions with two hashes each (cp313 and cp314, no free-threaded build), the pins of requirements-cpu.txt.
+# Wheels (PyPI, checked 2026-11-18, digests equal to the PyPI JSON `digests.sha256` of the same filename):
+#   numpy-2.5.4-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+#   numpy-2.5.4-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+#   pillow-13.0.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+#   pillow-13.0.0-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+# Install, from the repository root (K7.1b, one command):
+#   python3 -m venv ~/kosmo-tool-venv && ~/kosmo-tool-venv/bin/pip install --require-hashes --only-binary=:all: \
+#     -r tools/camera/requirements-tool.txt
+numpy==2.5.4 \
+    --hash=sha256:6ffa07666f8da0eef81d149934a626d0d95fbd6838432a33e66245423a9062c0 \
+    --hash=sha256:d549420b8858885cea8838a727842249218b9c1da24dd517e25c9c7a948310a3
+pillow==13.0.0 \
+    --hash=sha256:5f56499c1a74d2b862beb0c33b8016f99d095858455df9d21583bbbc1c15b582 \
+    --hash=sha256:e91c2b1cbeae768c98752e67e717e283d68dae45717b41f2d91eaee648e37b7d
