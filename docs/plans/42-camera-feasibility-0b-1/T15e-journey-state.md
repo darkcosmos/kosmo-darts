@@ -71,3 +71,25 @@ exit 0.
 sonnet. Why: states and strings fully specified in the root plan; pure Python with tests.
 
 ## Implementation notes
+Done (sonnet). Where: `annotate/journey.py` (rows, `session_state`, `global_instruction`, `session_instruction`, the
+JSON field builders), `server.py` (`session_list` replaces `sessions_with_warning`; `_states`; `view` adds journey
+fields and `instruction`), tests `test_annotate_journey.py` (pure) and the end of `test_annotate_server.py`.
+- Deviations: (1) the French badge is the field `badge`, not `state`: `state` is still the load state (`ok`,
+  `ignored`...) read by the current page; T15g renames or reads `badge`. (2) `session_state(loaded, control_info,
+  drift, snap_available)` has no `frames` argument: `ControlInfo` already carries `frames_present` and the missing
+  reasons. (3) An unreadable session (`truth_invalid`, rejected, too large) has `blocked`: never the focus, its message
+  is its only info line, and while one exists with nothing else left `instruction` is null (never the final row, U17).
+  Product question left to Kosmo if he wants a text there.
+- Session `instruction` is the screen's title on the calibration ("Calibration : point k sur 4"), recalibration and
+  control screens; else the next step with its key hint; else `Session terminée...` or the final row. The list
+  instruction ends with `(bouton Continuer)` when its step has an action. `next_step` fields (`session_fields` and
+  `next_step_fields`) are helpers for T15g; the list answer has `focus` and `instruction` at its root.
+- `driftLabel`, `driftStale` and the per-dart `drift` field are unchanged for the current page; drift lines also go to
+  `info` ("Mesure de dérive non validée : information seulement" then the label). T15g removes the page's drift
+  banner and mark ("Dérive au-delà du seuil") and may then drop these fields.
+- `test_annotate_journey.py` is not in `TOOL_TESTS` (stdlib only, runs in the normal suite).
+- Carry-over minors done in their own commits: CV16 control-mode doc test (fails when the line is altered, checked by
+  hand), French split warning (`control_state.split_reason`, generic fallback), mixed `control_progress` test,
+  `control.Role(set_name, number)` and `control_info` parameter names. Earlier minors found already done: reasons
+  `residual`, `no_convergence`, `too_far` are each provoked and pinned in `test_snap.py`, plain-sector and single-wire
+  tests pin `CONTRAST`, `test_video_frames.py` uses seeded bytes.
