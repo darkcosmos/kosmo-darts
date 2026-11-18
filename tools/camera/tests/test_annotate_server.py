@@ -1151,7 +1151,10 @@ def test_a_corrupt_frame_manifest_warns_and_leaves_the_photo_controls_s13(tool):
     make_session(tool.captures)
     (sources.frames / "frames.json").write_text("{", encoding="utf-8")
     tool.start(controls=sources)
-    assert tool.json("GET", "/api/sessions")[1]["controlWarning"].startswith("Images vidéo illisibles")
+    warning = tool.json("GET", "/api/sessions")[1]["controlWarning"]
+    assert warning == ("Images vidéo illisibles : frames.json est invalide ou illisible "
+                       "(relancer l'extraction, K7.2)")
+    assert str(tool.root) not in warning and "frames.json:" not in warning  # never the raw error text (S-minor1)
 
 
 def test_frame_route_serves_only_listed_files_of_listed_sessions_s13(tool):
@@ -1234,6 +1237,17 @@ def test_the_list_gives_the_roles_the_focus_session_and_its_instruction_q9_cv16(
         ("calibration", 1, 1, "done"), ("tips", 0, 3, "todo"), ("control_photo", 0, 2, "todo"),
         ("control_video", 0, 0, "unavailable")]
     assert body["sessions"][1]["steps"][0]["status"] == "todo"
+
+
+def test_the_badge_values_are_pinned_for_the_list_page_t15g(tool):
+    make_session(tool.captures)
+    make_session(tool.captures, name=OTHER, judged=(), voided=(1, 2), no_photo=(3,))
+    tool.start()
+    badges = {s["name"]: s["badge"] for s in _list(tool)["sessions"]}
+    assert badges == {NAME: "À faire", OTHER: "Ignorée"}
+    tool.calibrate()
+    assert {s["name"]: s["badge"] for s in _list(tool)["sessions"]}[NAME] == "En cours"
+    # "Terminée" is pinned by test_the_instruction_follows_every_save_with_no_cached_text_cv16
 
 
 def test_without_split_the_list_has_no_role_and_says_control_is_unavailable_u17(tool):
