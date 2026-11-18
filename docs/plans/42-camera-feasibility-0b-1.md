@@ -272,6 +272,7 @@ New (Kosmo's strategy of 2026-11-18 and the squad's phase 0 design):
 | N19 | Kosmo provides about 20 photos and 10 video frames of the 4 sessions (board only, no EXIF) with their annotations, mounted read-only in the sandbox, never committed; a development set: these exact images never enter an acceptance figure, each report lists them by number, excludes them and states any eval-session image as a leak; sessions they come from: Q3. Phase 1 starts only after his confirmation on #42. | CV4, CV15 |
 | N20 | Not-built task files of the previous plan open with `CANCELLED (2026-11-18):`; new camera rules start at CV33 (CV22 to CV24 and CV28 to CV30 lived only in the replaced plan, CV32 only on PR #90; these numbers are not reused). | - |
 | N21 | H2 (finger tilting the phone) becomes an ergonomics note for Kosmo Capture (trigger without touching the phone), later. | - |
+| N22 | Design review round 1: every gate figure with n, 95 % interval and D12 verdict, plus the click noise floor in phase 1 (Q2); R deterministic (fixed seed, no time stop); phase 3 plan update names the dart-type source and minimum per type; one-line "Superseded by ADR 0020" markers in ADR 0018. | CV13, CV33+ |
 
 ## Open questions
 
