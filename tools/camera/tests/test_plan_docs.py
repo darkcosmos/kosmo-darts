@@ -103,3 +103,38 @@ def test_cv16_carries_the_journey_sentence_one_instruction_and_drift_as_informat
                 "instruction.")
 
     assert sentence in flat(RULES_CAMERA)
+
+
+ADR_18 = ROOT / "docs" / "adr" / "0018-automatic-ground-truth.md"
+ADR_19 = ROOT / "docs" / "adr" / "0019-capture-framing.md"
+ADR_18_TITLE = ("# ADR 0018: Automatic ground truth and a 10-minute manual budget for the camera work "
+                "(phase 0b-1 and later)")
+ADR_18_STATUS = "- Status: Accepted (Kosmo's firm constraint of 2026-11-18, D48). Date: 2026-11-18."
+ADR_18_SECTIONS = ["Context", "Decision", "Phase 0b-1", "Re-snap file", "Alternatives rejected", "Consequences"]
+ADR_19_TITLE = "# ADR 0019: The camera preview shows exactly the analysed or recorded field (Kosmo Capture and game app)"
+ADR_19_STATUS = "- Status: Accepted as a requirement (Kosmo, 2026-11-18, D51); no implementation yet. Date: 2026-11-18."
+ADR_19_SECTIONS = ["Context", "Decision", "Alternatives rejected", "Consequences"]
+
+
+def test_adr_0018_exists_with_its_title_and_its_accepted_status():
+    text = ADR_18.read_text(encoding="utf-8")
+
+    assert text.splitlines()[0] == ADR_18_TITLE
+    assert ADR_18_STATUS in text
+
+
+@pytest.mark.parametrize("heading", ADR_18_SECTIONS)
+def test_adr_0018_has_the_sections_of_the_plan_text(heading):
+    assert f"\n## {heading}\n" in ADR_18.read_text(encoding="utf-8")
+
+
+def test_adr_0019_exists_with_its_title_and_its_accepted_requirement_status():
+    text = ADR_19.read_text(encoding="utf-8")
+
+    assert text.splitlines()[0] == ADR_19_TITLE
+    assert ADR_19_STATUS in text
+
+
+@pytest.mark.parametrize("heading", ADR_19_SECTIONS)
+def test_adr_0019_has_the_sections_of_the_plan_text(heading):
+    assert f"\n## {heading}\n" in ADR_19.read_text(encoding="utf-8")
