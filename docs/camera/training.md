@@ -42,7 +42,7 @@ python3 -m kosmo_camera.split --captures ~/kosmo-data/captures --lock ~/kosmo-ru
 
 ## Annotate
 
-Étape K2 : annoter toutes les sessions existantes avec l'outil. Compter environ une heure.
+Étape K2 faite ; elle ne s'applique à aucune nouvelle session : leur vérité terrain est produite automatiquement (ADR 0018).
 
 Lancer l'outil dans WSL, depuis le dossier `tools/camera/` du dépôt (comme pour K1) :
 
@@ -150,42 +150,29 @@ docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges -
 Elle affiche le nombre d'images extraites, la ligne « Images vidéo absentes : N » et les manquantes par raison ; une
 vidéo illisible ne l'arrête pas. Rien à coller. Le fichier `frames.json` et le dossier `~/kosmo-runs/frames` restent sur votre ordinateur : ne les collez jamais. (2 à 5 min)
 
-K7.3. Relancer l'outil d'annotation dans WSL, depuis `tools/camera/`, avec l'environnement de K7.1b :
+K7.3. Contrôle de calibration à la main dans l'outil : fait, environ 1 h (104 photos d'évaluation à 4 points, recalage presque jamais actif). Ne pas refaire : aucune nouvelle saisie manuelle ne sera demandée (ADR 0018, D48). Vos clics sont gardés tels quels et servent une seule fois, à valider la mesure automatique.
+
+Lot 3b (D48 à D54 ; tout se fait dans WSL ou le conteneur, aucun clic ; temps d'attention : 8 min, plus 2 min si K7.6 est relancée une fois, soit 10 min au pire ; K7.8 hors budget tant que Q15 n'est pas rouvert ; les durées de calcul sont estimées d'après les nombres réels : environ 190 photos et 45 images vidéo, environ 940 points, au plus 140 ms par recalage mesurés en T15m, puis recalculées d'après les durées réelles affichées en K7.4).
+
+K7.4. Diagnostic du recalage (pas de carte graphique, pas de reconstruction de l'image). Dans votre clone : `git fetch origin`, puis `git switch docs/camera-feasibility-0b-1-lot-3b`, puis `git pull`.
 
 ```bash
-~/kosmo-tool-venv/bin/python -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations --split ~/kosmo-runs/split.json --frames ~/kosmo-runs/frames
+git fetch origin
+git switch docs/camera-feasibility-0b-1-lot-3b
+git pull
 ```
 
-puis ouvrir `http://127.0.0.1:8765`. La ligne en haut donne la seule consigne en cours. Sur la liste, la carte
-« Prochaine étape » a un bouton « Continuer » (ou Entrée) ; dans une session, appuyer sur K (« Contrôle de
-calibration »), depuis n'importe quel écran de la session, même « Terminé ». Vos clics servent à désigner le
-bon croisement de fils, pas à le viser au pixel : l'outil recale chaque point sur le croisement exact. Pour
-chaque photo, les 4 points de la photo précédente sont déjà proposés et recalés ; les 4 vignettes agrandies à
-droite montrent chaque point avec son état (« recalé » veut dire : le point est placé sur le croisement exact ; « non recalé », « caché », « à cliquer »). Si les 4
-sont sur le bon croisement : Entrée. Si un point est sur le mauvais croisement ou « à cliquer » : cliquer près
-du bon croisement (le point le plus proche est remplacé et recalé ; pour un point loin de votre clic,
-choisir d'abord le point avec les touches 1 à 4), puis Entrée. H seulement si une fléchette cache le point
-(touche 1 à 4 puis H ; une photo inutilisable : 1 H 2 H 3 H 4 H puis Entrée, elle compte comme cachée) ; U
-annule le dernier changement, ou revient à la photo précédente (son enregistrement est retiré jusqu'à
-Entrée) ; Échap pour quitter. Entrée enregistre toujours, même après un clic sur un bouton. Rien n'est enregistré avant Entrée
-(« Points prêts : n / 4 », puis « Enregistré à HH:MM:SS »). La première photo de chaque session part de la
-calibration de la session ; la première image vidéo de chaque session n'a pas de proposition : 4 clics. Après
-un déplacement de la cible, les points proposés partent sur un mauvais croisement ou restent « à cliquer » :
-les recliquer. Même travail ensuite sur les images vidéo. Environ 190 photos et 45 images vidéo (les nombres
-exacts s'affichent sur la carte de chaque session, « Contrôle photo : D / T ») : le plus souvent une seule
-touche par photo (environ 5 s), 4 clics sur la première image vidéo de chaque session (4 images), quelques
-clics après un déplacement : environ 20 à 30 min au total (au lieu de 1 h 15), en plusieurs fois si vous voulez (l'outil
-reprend où vous étiez). Un point « non recalé » est gardé à votre clic et compté dans le diagnostic. Sans
-`--split`, la ligne en haut dit « Contrôle indisponible : relancer l'outil avec --split (K7.3) » ; sans `--frames`,
-« Images vidéo absentes : lancer l'extraction (K7.2) » ; lancé
-avec `python3` au lieu de `~/kosmo-tool-venv/bin/python`, il affiche « Recalage indisponible » : relancer
-comme indiqué. Rien à coller.
+Puis, depuis `tools/camera/` :
 
-K7.4 à K7.6 : le diagnostic arrive dans la prochaine livraison.
+```bash
+~/kosmo-tool-venv/bin/python -m kosmo_camera.snap_report --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations --split ~/kosmo-runs/split.json --frames ~/kosmo-runs/frames --out ~/kosmo-runs/snap
+```
 
-K7.C. Checklist (ce que seul Kosmo peut vérifier, le JavaScript ne tourne pas dans le bac à sable). Le contrôle visuel
-(alternance, touches 1, 2, 3, N, Espace, flèches, « Photo i / n ») n'existe pas encore : il sera à vérifier à la
-prochaine livraison, avec K7.4 à K7.6.
+Elle lit vos fichiers sans les modifier et affiche le chemin du rapport, sa durée et la ligne « Durée prévue de K7.6 : environ N min » (nombre de points x départs par point x durée médiane d'un recalage, D54). Coller dans le chat le contenu de `~/kosmo-runs/snap/snap-report.md` (des chiffres et des rôles, aucun nom de session, aucune image) ; le rapport peut tenir sur plusieurs écrans : tout coller, rien d'autre n'est demandé. (attention : 3 min ; calcul : quelques minutes, sans surveillance)
+
+K7.5 et la suite arrivent dans la prochaine livraison.
+
+K7.C. Faite au lot 3a ; constats repris en D49 ; ne pas refaire. Checklist (ce que seul Kosmo peut vérifier, le JavaScript ne tourne pas dans le bac à sable). Les contrôles de clics ci-dessous ne sont pas refaits. Le contrôle visuel (alternance, touches 1, 2, 3, N, Espace, flèches, « Photo i / n ») n'existe pas encore : il ne sera à vérifier que si un verdict le demande.
 
 - Liste des sessions :
   - une seule consigne affichée à la fois, jamais une consigne déjà faite ;
@@ -229,6 +216,8 @@ prochaine livraison, avec K7.4 à K7.6.
 
 Ce protocole ne s'applique que si le rapport préliminaire demande une campagne de confirmation (CV17). Aucune prise de
 vue n'est faite avant ce rapport.
+
+Aucune saisie manuelle : la vérité terrain d'une campagne est produite automatiquement ; vous ne validez que les cas signalés par l'outil, 10 min au plus par campagne (ADR 0018). Décisions : [ADR 0018](../adr/0018-automatic-ground-truth.md) (vérité terrain automatique) et [ADR 0019](../adr/0019-capture-framing.md) (cadrage de la prévisualisation).
 
 - Les sessions vont dans `~/kosmo-data/captures-eval/<session>/`.
 - Une fléchette est saisie juste après chaque lancer.

@@ -13,6 +13,8 @@ from test_requirements import _parse
 DOC = Path(__file__).resolve().parents[3] / "docs" / "camera" / "training.md"
 VIDEO_MARK = "kosmo_camera.video_frames"
 ANNOTATE_MARK = "kosmo_camera.annotate"
+SNAP_MARK = "kosmo_camera.snap_report"
+BRANCH = re.compile(r"^(feat|fix|chore|build|test|docs)/[a-z0-9.-]+$")
 
 
 class Parsed(Exception):
@@ -32,6 +34,24 @@ def k71b_step():
     step = section().split("K7.1b.", 1)[1].split("K7.2.", 1)[0]
     assert step.strip(), "K7.1b not found"
     return step
+
+
+def k73_step():
+    step = section().split("\nK7.3. ", 1)[1].split("\nK7.4. ", 1)[0]
+    assert step.strip(), "K7.3 not found"
+    return step
+
+
+def k74_step():
+    step = section().split("\nK7.4. ", 1)[1].split("\nK7.5 et la suite", 1)[0]
+    assert step.strip(), "K7.4 not found"
+    return step
+
+
+def budget_line():
+    lines = [line for line in section().splitlines() if line.startswith("Lot 3b (")]
+    assert len(lines) == 1, "the lot 3b budget line is missing"
+    return lines[0]
 
 
 def blocks():
@@ -66,15 +86,75 @@ def test_the_video_frames_command_parses_with_its_parser(monkeypatch):
         == ("/data/captures", "/data/annotations", "/runs/split.json", "/runs/frames")
 
 
-def test_the_k73_annotate_command_is_started_by_the_tool_venv_and_parses_with_the_annotate_parser(monkeypatch):
-    from kosmo_camera.annotate import __main__ as annotate
-    command = command_with(ANNOTATE_MARK)
-    assert command.startswith("~/kosmo-tool-venv/bin/python -m kosmo_camera.annotate ")
+def test_k73_is_a_done_line_with_no_command_and_no_annotate_block():
+    assert not any(ANNOTATE_MARK in b for b in blocks())  # K7.3 instructions retired (D48, ADR 0018)
+    step = k73_step()
+    assert "fait, environ 1 h" in step and "Ne pas refaire" in step
+    assert "```" not in step
+
+
+def test_the_k74_command_parses_with_the_snap_report_parser_without_lock(monkeypatch):
+    from kosmo_camera import snap_report
+    command = command_with(SNAP_MARK)
+    assert command.startswith("~/kosmo-tool-venv/bin/python -m kosmo_camera.snap_report ")
+    assert "docker" not in command and "--lock" not in command
     words = shlex.split(command)
-    argv = words[words.index("kosmo_camera.annotate") + 1:]
-    namespace = parse_with(monkeypatch, annotate.main, argv)
-    assert namespace.split == "~/kosmo-runs/split.json" and namespace.frames == "~/kosmo-runs/frames"
-    assert namespace.captures == "~/kosmo-data/captures" and namespace.annotations == "~/kosmo-data/annotations"
+    argv = words[words.index("kosmo_camera.snap_report") + 1:]
+    namespace = parse_with(monkeypatch, snap_report.main, argv)
+    assert namespace.lock == snap_report.DEFAULT_LOCK and namespace.lock.is_file()  # the committed default
+    paths = (namespace.captures, namespace.annotations, namespace.split, namespace.frames, namespace.out)
+    assert tuple(str(p) for p in paths) == ("~/kosmo-data/captures", "~/kosmo-data/annotations",
+                                            "~/kosmo-runs/split.json", "~/kosmo-runs/frames", "~/kosmo-runs/snap")
+
+
+def test_k74_git_commands_fetch_then_switch_to_the_real_branch_then_pull():
+    block = re.findall(r"```bash\n(.*?)```", k74_step(), re.DOTALL)[0]
+    lines = block.strip().splitlines()
+    assert len(lines) == 3 and lines[0] == "git fetch origin" and lines[2] == "git pull"
+    switch = lines[1].split(" ")
+    assert switch[:2] == ["git", "switch"] and len(switch) == 3
+    assert BRANCH.match(switch[2]), switch[2]
+    assert "<" not in k74_step()  # the placeholder of the plan is replaced by the real branch
+
+
+@pytest.mark.parametrize("step", [k73_step, k74_step])
+def test_k73_and_k74_hold_no_instruction_to_click(step):
+    text = step().lower()
+    for verb in ("cliquer", "cliquez", "recliquer", "recliquez"):
+        assert verb not in text, verb
+
+
+def test_k74_states_the_attention_time_the_planned_duration_and_pastes_only_the_report():
+    step = k74_step()
+    assert "attention : 3 min" in step
+    assert "« Durée prévue de K7.6 : environ N min »" in step
+    assert "~/kosmo-runs/snap/snap-report.md" in step and "rien d'autre n'est demandé" in step
+
+
+def test_the_lot_3b_budget_line_gives_8_min_plus_2_and_10_at_worst_with_k78_outside():
+    line = budget_line()
+    for figure in ("8 min", "2 min", "10 min"):
+        assert figure in line, figure
+    assert "K7.8 hors budget" in line
+
+
+def test_k75_to_k78_are_not_printed_and_only_the_k75_line_announces_them():
+    text = section()
+    assert re.search(r"^K7\.[5-8]\.", text, re.MULTILINE) is None
+    assert "\nK7.5 et la suite arrivent dans la prochaine livraison.\n" in text
+    assert text.count("K7.8") == 1  # the budget line only (Q15, D54)
+
+
+def test_the_k2_k7c_and_campaign_done_lines_and_the_adr_links_are_written():
+    text = DOC.read_text(encoding="utf-8")
+    assert "\n## Annotate\n\nÉtape K2 faite ; elle ne s'applique à aucune nouvelle session : leur vérité terrain " \
+           "est produite automatiquement (ADR 0018).\n" in text
+    assert "K7.C. Faite au lot 3a ; constats repris en D49 ; ne pas refaire." in section()
+    assert "Aucune saisie manuelle : la vérité terrain d'une campagne est produite automatiquement ; vous ne validez " \
+           "que les cas signalés par l'outil, 10 min au plus par campagne (ADR 0018)." in text
+    for target in ("../adr/0018-automatic-ground-truth.md", "../adr/0019-capture-framing.md"):
+        assert f"]({target})" in text, target
+        assert (DOC.parent / target).resolve().is_file(), target
 
 
 def test_k71b_is_one_command_that_creates_the_venv_installs_the_hashed_file_and_prints_the_pins():
@@ -113,7 +193,7 @@ def test_the_docker_run_block_keeps_the_sandbox_flags_and_mounts_the_data_read_o
 
 def test_the_section_names_the_steps_the_expected_texts_and_retires_k5():
     text = " ".join(section().split())
-    for step in ("K7.0", "K7.1", "K7.1b", "K7.2", "K7.3", "K7.C", "K7.4 à K7.6"):
+    for step in ("K7.0", "K7.1", "K7.1b", "K7.2", "K7.3", "K7.4", "K7.C"):
         assert step in text, step
     assert "K5.2" not in text and "drift.json" not in text  # K5 is retired (D30)
     assert "Étape K5 suspendue le 15/11/2026" in text
