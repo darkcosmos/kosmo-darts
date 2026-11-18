@@ -167,3 +167,17 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   `SNAP_REPEAT_OFFSET_PX` around a snapped point; the largest board-plane distance in mm (through the homography of
   the control) to the stored point, a failed restart counting as infinite; target at most `SNAP_REPEAT_MAX_MM`. `D`
   measures repeatability, not accuracy. Constants `SNAP_*` in `defaults.json`, each pinned once in `test_config.py`.
+- CV32 Snapping on real data (D48, D49, D54; lot 3b), diagnosis part (T17a): `snap.snap_detail(luma, start)` gives the
+  result of `snap_point` plus `stage`, the exact check that refused it, and numeric descriptors (noise, polarity, stem
+  of the lines beyond the crossing as the T-junction indicator, wire width, blur, contrast-to-noise, halo).
+  `snap_report` reruns the snap from every stored point of controls and segments (photos and listed video frames),
+  the stored point as start, read-only, and counts the refusals in Kosmo's categories, each stage in exactly one:
+  « pas de croisement » (`coarse_no_ridge`, `coarse_no_pair`, `fine_support`, `fine_contrast`), « forme »
+  (`coarse_not_reaching`, `fine_angle`, `fine_blur`, `stands_out`, `refine_shift`), « ambiguïté » (`ambiguous`),
+  « hors rayon » (`coarse_too_far`, `too_far`), « autre » (`border`, `no_convergence`, `fit_failure`, `unreadable`).
+  It also gives the descriptors per category, a radius sweep at `SNAP_SWEEP_FACTORS` times `SNAP_RADIUS_PX`
+  (diagnosis only), the distance between consecutive controls' points and the time per snap. Every section is split
+  by split (dev, eval, from the split lock) and by source (photo, vidéo); numbers and roles only (CV15). Planned
+  duration of K7.6: stored points x starts per point x median time per snap of that run, starts per point = the snaps
+  of the run per point plus `SNAP_REPEAT_DIRECTIONS`, plus `SNAP_LATTICE_STARTS` for a photo control point. The
+  report gives causes; parameters are still chosen on synthetic boards (CV4).

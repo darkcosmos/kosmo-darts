@@ -1113,7 +1113,8 @@ the cases. Summary:
     and D5 hold "Amended by D43, D44"; each check fails when its line is removed (checked once by hand, noted, as
     T15a). The "tool and snapping tests"
     (`TOOL_TESTS`: `tests/test_snap.py`, `tests/test_luma.py`, `tests/test_annotate_snapping.py`, `tests/test_annotate_flow.py`,
-    `tests/test_annotate_server.py`, `tests/test_annotate_static.py`, `tests/test_requirements.py`) also pass under
+    `tests/test_annotate_server.py`, `tests/test_annotate_static.py`, `tests/test_requirements.py`,
+    `tests/test_snap_report.py` from T17a) also pass under
     Python 3.14 in a throwaway venv holding only the two tool files (D44; command in T15n "Done when").
   - T15c: sample on scripted sessions (ranks, last dart, reference photos, eval all, darts 55 to 60, voided and
     photo-less never sampled); `frame_at` on a generated video (exact frame, each missing reason); `frames.json`
@@ -1440,7 +1441,8 @@ PR, without opening it (D19); no extra PR. The batch 1 hand-back states the full
             -r requirements-tool.txt -r requirements-tool-test.txt
           "$RUNNER_TEMP/tool-venv/bin/python" -m pytest -q -m "not slow" \
             tests/test_snap.py tests/test_luma.py tests/test_annotate_snapping.py tests/test_annotate_flow.py \
-            tests/test_annotate_server.py tests/test_annotate_static.py tests/test_requirements.py
+            tests/test_annotate_server.py tests/test_annotate_static.py tests/test_requirements.py \
+            tests/test_snap_report.py
   ```
 
   The file list is `TOOL_TESTS` of root "Test plan" (T15n entry); developer-fix copies it from there and checks
