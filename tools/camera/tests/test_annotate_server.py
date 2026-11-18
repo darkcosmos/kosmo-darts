@@ -17,6 +17,8 @@ from kosmo_camera import drift_file
 from kosmo_camera.annotate import server as server_module
 from kosmo_camera.annotate.__main__ import main
 from kosmo_camera.annotate.jpeg_size import JpegError, jpeg_size, read_size
+from kosmo_camera.annotate.control_state import SPLIT_GENERIC, split_reason
+from kosmo_camera.split import SplitError
 from kosmo_camera.annotate.server import IGNORED_LABEL, make_server
 
 POINTS = [(300, 300), (1700, 300), (1700, 900), (300, 900)]  # far apart (U27), inside a 2000 x 1000 photo
@@ -1094,6 +1096,17 @@ def test_counts_follow_the_sample_eval_all_judged_dev_sample_reference_photos_co
     assert result["session"]["control"]["photo"] == {"done": 0, "total": 3}
 
 
+@pytest.mark.parametrize("message, reason", [
+    ("split does not match the lock (SHA-256)", "il ne correspond plus au verrou (split-lock.json)"),
+    ("cannot read the split or its lock: No such file", "le split ou son verrou est illisible"),
+    ("split is too large", "le split est trop gros"),
+    ("lock: wrong format or version", "le verrou (split-lock.json) est invalide"),
+    ("split: unknown mode", SPLIT_GENERIC),
+])
+def test_a_refused_split_is_explained_in_french_with_a_generic_fallback_cv16(message, reason):
+    assert split_reason(SplitError(message)) == reason
+
+
 def test_a_split_that_does_not_match_its_lock_warns_in_the_list_and_switches_control_off_cv16(tool):
     make_session(tool.captures)
     other = control_sources(tool, dev=(OTHER,))
@@ -1101,7 +1114,7 @@ def test_a_split_that_does_not_match_its_lock_warns_in_the_list_and_switches_con
     tool.start(controls=control_sources(tool, lock_of=other_data))
     tool.calibrate()
     status, body = tool.json("GET", "/api/sessions")
-    assert body["controlWarning"].startswith("Split refusé : split does not match the lock")
+    assert body["controlWarning"] == "Split refusé : il ne correspond plus au verrou (split-lock.json)"
     assert body["sessions"][0]["control"] == {"available": False, "reason": "Contrôle : indisponible (split refusé)",
                                               "role": None}
     assert tool.act("control")[0] == 409

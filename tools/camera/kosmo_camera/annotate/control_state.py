@@ -17,6 +17,13 @@ from kosmo_camera.split import SplitError
 SPLIT_REFUSED = "Contrôle : indisponible (split refusé)"
 NOT_IN_SPLIT = "Contrôle : indisponible (session absente du split)"
 FRAMES_UNREADABLE = "Images vidéo illisibles"
+SPLIT_ERRORS = (  # (start of the SplitError message, French reason): the known refusals of `control.read_split`
+    ("split does not match the lock", "il ne correspond plus au verrou (split-lock.json)"),
+    ("cannot read the split or its lock", "le split ou son verrou est illisible"),
+    ("split is too large", "le split est trop gros"),
+    ("lock", "le verrou (split-lock.json) est invalide"),
+)
+SPLIT_GENERIC = "le split est invalide ou ne correspond pas au verrou (split-lock.json)"
 DEFAULT_LOCK = Path(__file__).resolve().parents[2] / "config" / "split-lock.json"  # the committed lock
 
 
@@ -67,6 +74,15 @@ class ControlSnapshot:
                            reasons, files)
 
 
+def split_reason(error) -> str:
+    """The French reason of a refused split: the known messages are mapped, any other one gets the generic text."""
+    text = str(error)
+    for start, reason in SPLIT_ERRORS:
+        if text.startswith(start):
+            return reason
+    return SPLIT_GENERIC
+
+
 class ControlSources:
     """Where the control inputs live: the split file with its lock, and the frames folder; each one optional."""
 
@@ -81,7 +97,7 @@ class ControlSources:
             try:
                 roles = control.roles(control.read_split(self.split, self.lock))
             except SplitError as error:
-                warning = f"Split refusé : {error}"
+                warning = f"Split refusé : {split_reason(error)}"
         frames, frames_warning = {}, None
         if self.frames is not None:
             try:
