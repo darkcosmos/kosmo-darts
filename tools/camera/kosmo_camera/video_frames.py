@@ -13,7 +13,6 @@ import math
 import os
 import stat
 import sys
-import tempfile
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
@@ -21,7 +20,7 @@ from pathlib import Path
 import av
 from PIL import Image
 
-from kosmo_camera import annotations as ann, config, control, frames_file as ff, split as split_module
+from kosmo_camera import annotations as ann, config, control, drift_file, frames_file as ff, split as split_module
 from kosmo_camera.truth import TruthError, read_truth, session_folders
 
 JPEG_QUALITY = 95
@@ -120,17 +119,11 @@ def _jpeg(pixels):
 
 
 def _write_bytes(path, data):
-    fd, temp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    """Atomic write shared with the other camera files (`drift_file.replace_atomic`); an OS failure stays an OSError."""
     try:
-        with os.fdopen(fd, "wb") as handle:
-            handle.write(data)
-        os.replace(temp, path)
-    except BaseException:
-        try:
-            os.unlink(temp)
-        except FileNotFoundError:
-            pass
-        raise
+        drift_file.replace_atomic(path, data)
+    except drift_file.DriftFileError as error:
+        raise OSError(str(error)) from error
 
 
 def _one(dart, volley, folder, truth, before_ms):
@@ -178,7 +171,8 @@ def _remove_unlisted(target_dir, listed):
     if not target_dir.is_dir():
         return
     for path in target_dir.iterdir():
-        if path.name not in listed and (path.name.startswith("video-") or path.name.endswith(".tmp")):
+        stale = path.name.startswith("video-") or path.name.endswith(".tmp")
+        if path.is_file() and stale and path.name not in listed:  # a folder or a link target is never touched
             path.unlink()
 
 

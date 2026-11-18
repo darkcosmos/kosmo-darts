@@ -3,6 +3,7 @@ import dataclasses
 import hashlib
 import json
 import os
+import random
 import shutil
 import subprocess
 import sys
@@ -16,6 +17,8 @@ PIL_Image = pytest.importorskip("PIL.Image")
 
 from kosmo_camera import config, frames_file as ff, split as sp, synth, video_frames as vf  # noqa: E402
 from kosmo_camera.truth import read_truth  # noqa: E402
+
+NOISE = random.Random(20261118).randbytes(4096)  # fixed bytes: a failure reproduces
 
 ROOT = Path(__file__).resolve().parent.parent
 NAME = "20261101-100000"
@@ -84,7 +87,7 @@ def test_missing_video_and_a_folder_in_its_place_are_video_missing(tmp_path):
 
 def test_file_of_random_bytes_and_truncated_video_are_unreadable_s13(video, tmp_path):
     noise = tmp_path / "noise.mp4"
-    noise.write_bytes(os.urandom(4096))
+    noise.write_bytes(NOISE)
     cut = tmp_path / "cut.mp4"
     cut.write_bytes(video.read_bytes()[:video.stat().st_size // 2])
     empty = tmp_path / "empty.mp4"
@@ -164,6 +167,15 @@ def test_stale_files_are_removed_and_only_listed_files_stay(captures, tmp_path):
     assert sorted(p.name for p in folder.iterdir()) == [f.file for f in result.frames]
 
 
+def test_stale_cleanup_never_touches_a_folder_cv26(captures, tmp_path):
+    folder = tmp_path / "session"
+    (folder / "video-777.jpg").mkdir(parents=True)  # a folder named like a frame
+    (folder / "video-777.jpg" / "keep.txt").write_bytes(b"x")
+    (folder / "other.tmp").mkdir()
+    _extract(captures / NAME, tmp_path)
+    assert (folder / "video-777.jpg" / "keep.txt").is_file() and (folder / "other.tmp").is_dir()
+
+
 def test_same_input_gives_the_same_files(captures, tmp_path):
     first = _extract(captures / NAME, tmp_path / "a")
     second = _extract(captures / NAME, tmp_path / "b")
@@ -200,7 +212,7 @@ def test_a_corrupt_video_does_not_stop_the_next_session_s13(captures, tmp_path, 
     root = _copy(captures, tmp_path, "20261101-100000")
     shutil.copytree(captures / NAME, root / OTHER)
     bad = root / NAME / "volley-002.mp4"
-    bad.write_bytes(os.urandom(4096) if damage == "noise" else bad.read_bytes()[:3000])
+    bad.write_bytes(NOISE if damage == "noise" else bad.read_bytes()[:3000])
     split = sp.Split("session", (sp.Unit(NAME, None, None, "dev"), sp.Unit(OTHER, None, None, "dev")), {})
     result = vf.run(root, captures / "annotations", split, tmp_path / "out")
     first, second = result.sessions

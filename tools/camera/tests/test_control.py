@@ -30,6 +30,13 @@ def test_eval_session_samples_every_judged_dart_and_video_55_to_60_cv26():
     assert s.video_darts == (55, 56, 58, 59, 60)
 
 
+def test_eval_video_window_is_by_dart_number_not_by_judged_rank_cv26():
+    # dart 10 is voided: dart 55 is the 54th judged dart, yet the window is still the darts numbered 55 to 60
+    s = control.sample(_session(70, voided=(10,)), None, control.EVAL)
+    assert s.video_darts == (55, 56, 57, 58, 59, 60)
+    assert s.photo_darts == tuple(n for n in range(1, 71) if n != 10)
+
+
 def test_short_eval_session_has_no_video_control_cv26():
     assert control.sample(_session(40), None, control.EVAL).video_darts == ()
 
