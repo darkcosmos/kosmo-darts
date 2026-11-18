@@ -570,7 +570,8 @@ def validate_against(annotations, session) -> list:
 
     Errors: other session name, dart number absent from the truth, dart not judged (CV5), segment photo that is not a
     photo of the session, segment after the first whose `fromDart` is not a judged dart or whose photo is not that
-    dart's photo (CV20), tip outside the truth photo size, control on a dart that is absent or not judged, video
+    dart's photo (CV20), tip outside the truth photo size, photo control whose size differs from the truth photo size (video frames
+    differ in size, not checked), control on a dart that is absent or not judged, video
     control whose volley has no video or whose entry has no `videoPositionMs` (CV25). Warning: `truthSha256` differs
     from the truth file (the session may have been copied again; editing stays allowed).
     """
@@ -588,7 +589,7 @@ def validate_against(annotations, session) -> list:
             _point({"x": annotation.tip[0], "y": annotation.tip[1]}, f"$.darts[{i}].tip",
                    session.photo_width, session.photo_height)
     _segments_against(annotations.calibrations, darts)
-    _controls_against(annotations.controls, darts, volleys)
+    _controls_against(annotations.controls, darts, volleys, session)
     if annotations.truth_sha256 != session.sha256:
         return [f"$.truthSha256: differs from the truth file ({session.sha256}); the session was copied again"]
     return []
@@ -611,7 +612,7 @@ def _segments_against(segments, darts):
             _fail(f"{path}.photo", f"expected '{dart.photo.file}', the photo of dart {segment.from_dart} (CV20)")
 
 
-def _controls_against(controls, darts, volleys):
+def _controls_against(controls, darts, volleys, session):
     for i, control in enumerate(controls):
         path = f"$.controls[{i}].dart"
         dart = darts.get(control.dart)
@@ -620,6 +621,10 @@ def _controls_against(controls, darts, volleys):
         if not dart.judged:
             _fail(path, f"dart {control.dart} is not judged (voided or no photo, CV5)")
         if control.source != VIDEO:
+            if (control.width, control.height) != (session.photo_width, session.photo_height):
+                _fail(f"$.controls[{i}].width",
+                      f"a photo control is {session.photo_width} x {session.photo_height}, the photo size of the "
+                      f"truth file (CV25)")
             continue
         if not volleys[control.dart].video:
             _fail(path, f"the volley of dart {control.dart} has no video (CV25)")

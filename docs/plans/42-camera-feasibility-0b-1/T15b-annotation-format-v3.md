@@ -61,8 +61,8 @@ Kosmo's real v1 and v2 files.
   `SOURCES`, `SNAPPED`, `UNSNAPPED`, `MANUAL`, `MANUAL_SNAP`, `MAX_CONTROLS`, `VERSION_2`.
 - Version 2 kept as its own model: `CalibrationV2`, `AnnotationsV2`, `_annotations_v2`, `_calibrations_v2`.
   `migrate_v1` now returns `AnnotationsV2` (was the v2 `Annotations`); `decode` runs `migrate_v2(migrate_v1(...))`.
-- Point encoding of a control: `{x, y}` objects like segments and tips (root CV25 text says `[x, y]`; the rule in
-  `docs/rules/camera.md` says `{x, y}` to match the existing point encoding of the file).
+- Point encoding of a control: `{x, y}` objects like segments and tips (root CV25 and the rule in `docs/rules/camera.md`
+  say `{x, y}` too, to match the existing point encoding of the file).
 - Deviation: `segments_sha256` hashes the segments WITHOUT `snap`, so the hash is identical before and after the v2 to
   v3 migration and Kosmo's existing `drift.json` flags (compared in `server.py`) stay current. `controls_sha256`
   includes `snap`. Covered by a test on the tool-written v2 fixture.

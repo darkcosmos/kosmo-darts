@@ -113,12 +113,14 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   points}` plus `positionMs` when `source` is `video`; `source` is `photo` or `video`; `points` holds exactly 4
   entries in CV2 order, each a point `{x, y}` in stored pixels of that image or `null` (hidden); sorted by dart then
   photo before video, at most one control per (dart, source), at most `MAX_CONTROLS` (1024). A control belongs to a
-  judged dart (CV5); a video control needs a volley video and a non-null `entry.videoPositionMs`. Controls are
+  judged dart (CV5); a photo control has the size of the truth photo (`photoWidth` x `photoHeight`; video frames
+  differ in size, not checked); a video control needs a volley video and a non-null `entry.videoPositionMs`. Controls are
   independent of segments (CV20) and never change them. Each control and each segment carries `snap`: 4 entries
   aligned with `points`, `"snapped"` or `"unsnapped"` (CV31) for a point, `null` exactly when the point is `null`;
   segments may also hold `"manual"` (clicked before snapping existed). A version 2 file is migrated without loss
-  (`controls: []`, every segment `snap: ["manual", "manual", "manual", "manual"]`); writers write version 3 only. Use:
-  CV9 reference and diagnosis (CV28); on dev, label source only through T16b (P2). Details in
+  (`controls: []`, every segment `snap: ["manual", "manual", "manual", "manual"]`); writers write version 3 only.
+  `segments_sha256` excludes `snap` (drift flags stay valid across the v2-to-v3 migration), `controls_sha256` includes
+  it. Use: CV9 reference and diagnosis (CV28); on dev, label source only through T16b (P2). Details in
   `docs/camera/annotation-format.md`.
 - CV31 Assisted click, snap part (Kosmo, Q10, D39; design D43, D46; tool flow in T15n): `snap.snap_point(luma, start)`
   returns the sub-pixel crossing of a radial wire and a ring wire or colour edge within `SNAP_RADIUS_PX` of the start

@@ -903,6 +903,19 @@ def test_video_control_whose_volley_has_no_video_is_rejected_cv25(tmp_path):
         an.validate_against(_with_controls(_consistent(session), _control(1, an.VIDEO)), session)
 
 
+def test_photo_control_with_another_size_than_the_truth_photo_is_rejected_cv25(tmp_path):
+    session = _session(tmp_path)
+    wrong = Control(1, an.PHOTO, None, 4080, 3071, ((1.0, 2.0),) * 4, (an.SNAPPED,) * 4)
+    with pytest.raises(AnnotationError, match=r"\$\.controls\[0\]\.width: a photo control is 4080 x 3072"):
+        an.validate_against(_with_controls(_consistent(session), wrong), session)
+
+
+def test_video_control_may_have_another_size_than_the_photo_cv25(tmp_path):
+    session = _session(tmp_path)
+    video = Control(1, an.VIDEO, 500, 1920, 1080, ((1.0, 2.0),) * 4, (an.SNAPPED,) * 4)
+    assert an.validate_against(_with_controls(_consistent(session), video), session) == []
+
+
 # ---- atomic write (CV16) ------------------------------------------------------------------------------------------
 
 def test_write_atomic_writes_the_encoded_text_and_leaves_no_temp_file(tmp_path):
