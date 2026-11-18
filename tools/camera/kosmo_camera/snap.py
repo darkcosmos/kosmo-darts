@@ -25,6 +25,10 @@ below `SNAP_MIN_CONTRAST` times the noise), `residual` (detected points farther 
 their fitted curve, or a profile fit that fails), `angle` (fitted lines closer than `SNAP_MIN_ANGLE_DEG`),
 `no_convergence`, `too_far` (more than `SNAP_RADIUS_PX` from the start), `border` (window or result outside the image), `ambiguous`
 (two or more distinct crossings of the lattice within `SNAP_RADIUS_PX` of the start: the click does not say which one).
+
+Diagnosis (CV32, T17a): `snap_detail` runs the same snap and also returns `stage`, the exact check that stopped it (one
+of STAGES, None when snapped), and numeric descriptors of what the checks saw (`SnapDescriptors`). `snap_point` is
+`snap_detail(...).result`: the stages and descriptors never change a result.
 """
 import math
 from dataclasses import dataclass
@@ -45,6 +49,26 @@ TOO_FAR = "too_far"
 BORDER = "border"
 AMBIGUOUS = "ambiguous"
 REASONS = (SUPPORT, CONTRAST, RESIDUAL, ANGLE, NO_CONVERGENCE, TOO_FAR, BORDER, AMBIGUOUS)
+
+# Stages (CV32): the check that stopped a snap, finer than its reason (a reason can come from several checks).
+COARSE_NO_RIDGE = "coarse_no_ridge"  # coarse region: no detected point, or no ridge line that is a wire
+COARSE_NO_PAIR = "coarse_no_pair"  # coarse region: no second line at the minimum angle from a wire
+COARSE_NOT_REACHING = "coarse_not_reaching"  # coarse region: a pair crosses in range but a line stops short of it
+COARSE_TOO_FAR = "coarse_too_far"  # coarse region: every crossing lies beyond the radius (plus the coarse slack)
+FINE_SUPPORT = "fine_support"  # fine window: a line with too few points, or too few pixels for its profile
+FINE_ANGLE = "fine_angle"  # fine window: the fitted lines closer than the minimum angle
+FINE_CONTRAST = "fine_contrast"  # fine window: a fitted wire or edge contrast below the floor
+FINE_BLUR = "fine_blur"  # fine window: a fitted wire or edge blurrier than `_SHARP_BLUR_PX`
+STANDS_OUT = "stands_out"  # fine window: a line shows on neither flank of the crossing
+REFINE_SHIFT = "refine_shift"  # fine window: the profile crossing moved more than `_REFINE_SHIFT_PX` from the detected
+FIT_FAILURE = "fit_failure"  # a profile fit that is not finite, or a singular system
+STAGE_TOO_FAR = "too_far"  # the refined crossing lies beyond the radius from the start
+STAGE_BORDER = "border"  # window or result outside the image, or a non-finite start
+STAGE_AMBIGUOUS = "ambiguous"  # two or more distinct crossings within the radius
+STAGE_NO_CONVERGENCE = "no_convergence"  # still moving after `max_iter` windows
+STAGES = (COARSE_NO_RIDGE, COARSE_NO_PAIR, COARSE_NOT_REACHING, COARSE_TOO_FAR, FINE_SUPPORT, FINE_ANGLE, FINE_CONTRAST,
+          FINE_BLUR, STANDS_OUT, REFINE_SHIFT, FIT_FAILURE, STAGE_TOO_FAR, STAGE_BORDER, STAGE_AMBIGUOUS,
+          STAGE_NO_CONVERGENCE)
 
 _NOISE_FLOOR = 0.5  # grey levels: 8-bit quantisation and JPEG keep at least this much noise
 _MAD_TO_SIGMA = 1.4826
@@ -98,10 +122,38 @@ class SnapResult:
     iterations: int  # windows analysed, at most `max_iter`
 
 
+@dataclass(frozen=True)
+class SnapDescriptors:
+    """What the checks of one snap saw (CV32), None where the snap stopped before measuring it. Grey levels are those
+    of the luma array."""
+    noise: Optional[float] = None  # robust noise of the coarse region, grey levels
+    bright_wires: Optional[bool] = None  # polarity: True when the wires are brighter than their sides
+    stem_px: Optional[float] = None  # shorter arm of the two lines beyond their crossing (T junction: about 0)
+    width_px: Optional[float] = None  # larger fitted wire width of the two lines (0 for two bare edges)
+    blur_px: Optional[float] = None  # larger fitted blur of the two lines
+    contrast_to_noise: Optional[float] = None  # smaller fitted contrast over the noise of the fine window
+    halo: Optional[float] = None  # larger RMS of the profile model residual over the noise (reflections, halos)
+
+
+@dataclass(frozen=True)
+class SnapDetail:
+    result: SnapResult  # exactly what `snap_point` returns
+    stage: Optional[str]  # one of STAGES exactly when the result is UNSNAPPED
+    descriptors: SnapDescriptors
+
+
+class _Trace:
+    """Mutable record of the descriptors, filled while a snap runs."""
+
+    def __init__(self):
+        self.values = {}
+
+
 class _NoCrossing(Exception):
-    def __init__(self, reason):
+    def __init__(self, reason, stage):
         super().__init__(reason)
         self.reason = reason
+        self.stage = stage
 
 
 # ---- derivatives --------------------------------------------------------------------------------------------------
@@ -445,6 +497,7 @@ class _Fitted:
     band: float  # half width of the pixels it disturbs
     width: float
     blur: float
+    rms: float = 0.0  # grey levels: RMS of the profile model residual on its band (diagnosis only, CV32)
 
 
 def _profile_pass(window, grid, origin, q, allowed, side, bar, straight, noise):
@@ -455,11 +508,11 @@ def _profile_pass(window, grid, origin, q, allowed, side, bar, straight, noise):
     for _ in range(2):
         mask = allowed & keep & _band(q, origin, xs, ys, band)
         if mask.sum() < 16:
-            raise _NoCrossing(SUPPORT)
+            raise _NoCrossing(SUPPORT, FINE_SUPPORT)
         profile = _Profile(xs[mask], ys[mask], window[mask], side[mask], bar, straight)
         q, levels, cost = _fit_profile(profile, origin, q)
         if not numpy.all(numpy.isfinite(q)) or not numpy.all(numpy.isfinite(levels)):
-            raise _NoCrossing(RESIDUAL)
+            raise _NoCrossing(RESIDUAL, FIT_FAILURE)
         residual = numpy.zeros_like(window)
         residual[mask] = profile.solve(origin, q)[0]
         spread = _MAD_TO_SIGMA * float(numpy.median(numpy.abs(residual[mask])))
@@ -485,18 +538,18 @@ def _refine(window, grid, clear, origin, curve, other, other_band, inlier_points
     straight = len(halves) == 1  # the stem of the T (radial wire or sector edge) is straight in any perspective
     width, blur = (max(previous.width, 1.0), previous.blur) if previous else (max(1.0, sigma), 1.0)
     start = numpy.array([curve.angle, curve.c, 0.0 if straight else curve.k, width, blur])
-    q, levels, _, band = _profile_pass(window, grid, origin, start, allowed, side, True, straight, noise)
+    q, levels, mean_square, band = _profile_pass(window, grid, origin, start, allowed, side, True, straight, noise)
     wire = levels[count] - levels[:count]
     excess = float(numpy.min(numpy.abs(wire))) * min(1.0, abs(q[3]))  # a thin wire only fixes width times level
     step = float(numpy.mean(numpy.abs(levels[1:count:2] - levels[0:count:2])))
     if (numpy.all(wire > 0) or numpy.all(wire < 0)) and excess >= max(floor, _WIRE_TO_STEP * step):
         contrast = excess
     else:
-        q, levels, _, band = _profile_pass(window, grid, origin, numpy.array([q[0], q[1], q[2], 0.0, q[4]]),
-                                           allowed, side, False, straight, noise)
+        q, levels, mean_square, band = _profile_pass(window, grid, origin, numpy.array([q[0], q[1], q[2], 0.0, q[4]]),
+                                                     allowed, side, False, straight, noise)
         contrast = float(numpy.mean(numpy.abs(levels[1:count:2] - levels[0:count:2])))
     return _Fitted(_Curve(origin, float(q[0]), float(q[1]), float(q[2])), contrast, band, abs(float(q[3])),
-                   float(q[4]))
+                   float(q[4]), math.sqrt(max(float(mean_square), 0.0)))
 
 
 def _stands_out(scan, curve, point, floor):
@@ -546,7 +599,7 @@ def _region(luma, centre, half, margin):
     rows, columns = luma.shape
     row, column = int(math.floor(centre[1])), int(math.floor(centre[0]))
     if row - half < 0 or column - half < 0 or row + half >= rows or column + half >= columns:
-        raise _NoCrossing(BORDER)
+        raise _NoCrossing(BORDER, STAGE_BORDER)
     top, left = row - half - margin, column - half - margin
     bottom, right = row + half + margin + 1, column + half + margin + 1
     pad = ((max(0, -top), max(0, bottom - rows)), (max(0, -left), max(0, right - columns)))
@@ -638,20 +691,53 @@ def _reaches(line, point, gap):
     return line.extent[0] - gap <= along <= line.extent[1] + gap
 
 
-def _coarse(luma, start, params):
+def _stem(scan, first, second, point, floor):
+    """Shortest arm of the two lines beyond their crossing (CV32 T-junction indicator, diagnosis only): for each line
+    and each side of `point`, the distance along the line up to which it keeps standing out (a wire above both of its
+    sides, or a step between them, by `floor` grey levels), from where the other line's band ends; 0 when it does not
+    stand out there (a radial wire that ends at the ring wire), capped by the scanned region."""
+    side = 2.0 * scan.sigma + _LINE_BAND_PX
+    sine = max(math.sin(math.radians(float(_angle_between(first.angle, second.angle)))), 0.5)
+    begin = 2.0 * side / sine  # the side samples clear the other line's band from here
+    corner = numpy.array([scan.grid[0][0, 0], scan.grid[1][0, 0]])
+    size = scan.window.shape[0]
+    brighter = -scan.polarity
+    arms = []
+    for curve in (first, second):
+        theta = math.radians(curve.angle)
+        direction = numpy.array([math.cos(theta), math.sin(theta)])
+        normal = numpy.array([-direction[1], direction[0]])
+        for sign in (1.0, -1.0):
+            arm, along = 0.0, begin
+            while True:
+                at = numpy.array(point) + sign * along * direction - corner
+                samples = numpy.array([at, at - side * normal, at + side * normal])
+                if samples.min() < 0.0 or samples.max() > size - 1.0:
+                    break
+                centre, low, high = _bilinear(scan.window, samples[:, 0], samples[:, 1])
+                if max(min(brighter * (centre - low), brighter * (centre - high)), abs(high - low)) < floor:
+                    break
+                arm, along = along, along + 1.0
+            arms.append(arm)
+    return float(min(arms))
+
+
+def _coarse(luma, start, params, trace):
     """Coarse stage: the lines of a region of half side `window_px + radius_px` around the start, and the crossing of
     two of them (angle at least `min_angle_deg`, both lines reaching it) nearest the start within `radius_px`.
 
     Returns (estimate, first, second, others) or raises _NoCrossing."""
     scan = _scan(luma, start, params.window_px + int(math.ceil(params.radius_px)), params)
+    trace.values["noise"] = scan.noise
+    trace.values["bright_wires"] = scan.polarity < 0
     if len(scan.ridge[0]) == 0 and len(scan.edge[0]) == 0:
-        raise _NoCrossing(CONTRAST)
+        raise _NoCrossing(CONTRAST, COARSE_NO_RIDGE)
     exclusion = 2.0 * scan.sigma + _LINE_BAND_PX
     ridges = [line for line in _lines(*scan.ridge, start, _RIDGE, exclusion, params)
               if _is_wire(line, scan, exclusion, params.min_contrast * scan.noise)]
     edges = _lines(*scan.edge, start, _EDGE, exclusion, params, ridges)
     if not ridges:
-        raise _NoCrossing(SUPPORT if len(scan.ridge[0]) else CONTRAST)
+        raise _NoCrossing(SUPPORT if len(scan.ridge[0]) else CONTRAST, COARSE_NO_RIDGE)
     gap = _GAP_SIGMAS * scan.sigma + _GAP_PX
     seen, best, found = set(), None, []
     for index, first in enumerate(ridges):
@@ -670,10 +756,13 @@ def _coarse(luma, start, params):
                     found.append(point)
                 if best is None or distance < best[0]:
                     best = (distance, point, first, second)
+    if best is not None:
+        trace.values["stem_px"] = _stem(scan, best[2].curve, best[3].curve, best[1], params.min_contrast * scan.noise)
     if len(found) > 1:
-        raise _NoCrossing(AMBIGUOUS)
+        raise _NoCrossing(AMBIGUOUS, STAGE_AMBIGUOUS)
     if best is None:
-        raise _NoCrossing(next((r for r in (TOO_FAR, SUPPORT, ANGLE) if r in seen), SUPPORT))
+        stages = ((TOO_FAR, COARSE_TOO_FAR), (SUPPORT, COARSE_NOT_REACHING), (ANGLE, COARSE_NO_PAIR))
+        raise _NoCrossing(*next((pair for pair in stages if pair[0] in seen), (SUPPORT, COARSE_NO_PAIR)))
     _, point, first, second = best
     keep = 2.0 * scan.sigma + _GAP_PX
     others = tuple(line for line in ridges + edges if line is not first and line is not second and not any(
@@ -684,7 +773,7 @@ def _coarse(luma, start, params):
     return _crossing(first.curve, second.curve), first, second, others
 
 
-def _fine(luma, estimate, first, second, others, params):
+def _fine(luma, estimate, first, second, others, params, trace):
     """Fine stage, one iteration: both lines refitted on the points of the window around `estimate`, then refined
     by their profiles. Returns (crossing, first, second) or raises _NoCrossing."""
     scan = _scan(luma, estimate, params.window_px, params)
@@ -702,11 +791,11 @@ def _fine(luma, estimate, first, second, others, params):
             if result is not None:
                 break
         if result is None:
-            raise _NoCrossing(SUPPORT)
+            raise _NoCrossing(SUPPORT, FINE_SUPPORT)
         fitted.append((result[0], points[result[1]]))
     (first_curve, first_points), (second_curve, second_points) = fitted
     if _angle_between(first_curve.angle, second_curve.angle) < params.min_angle_deg:
-        raise _NoCrossing(ANGLE)
+        raise _NoCrossing(ANGLE, FINE_ANGLE)
     detected = _crossing(first_curve, second_curve)
     clear = _cell(scan.grid, [line.curve for line in others], estimate, sigma + 2.0)  # profiles stop at other lines
     band = 2.0 * sigma + 2.0
@@ -717,48 +806,59 @@ def _fine(luma, estimate, first, second, others, params):
                              scan.noise, floor, refined_first)  # both wires of a crossing have about the same width
     refined_first = _refine(*common, refined_first.curve, refined_second.curve, refined_second.band, first_points,
                             sigma, scan.noise, floor, refined_first)
+    pair = (refined_first, refined_second)
+    trace.values.update(width_px=max(f.width for f in pair), blur_px=max(f.blur for f in pair),
+                        contrast_to_noise=min(f.contrast for f in pair) / scan.noise,
+                        halo=max(f.rms for f in pair) / scan.noise)
     if min(refined_first.contrast, refined_second.contrast) < floor:
-        raise _NoCrossing(CONTRAST)
+        raise _NoCrossing(CONTRAST, FINE_CONTRAST)
     if _angle_between(refined_first.curve.angle, refined_second.curve.angle) < params.min_angle_deg:
-        raise _NoCrossing(ANGLE)
+        raise _NoCrossing(ANGLE, FINE_ANGLE)
     refined = _crossing(refined_first.curve, refined_second.curve)
     if math.hypot(refined[0] - detected[0], refined[1] - detected[1]) > _REFINE_SHIFT_PX:
-        raise _NoCrossing(RESIDUAL)
+        raise _NoCrossing(RESIDUAL, REFINE_SHIFT)
     if max(refined_first.blur, refined_second.blur) > _SHARP_BLUR_PX:
-        raise _NoCrossing(RESIDUAL)
+        raise _NoCrossing(RESIDUAL, FINE_BLUR)
     if not all(_stands_out(scan, fitted.curve, refined, floor) for fitted in (refined_first, refined_second)):
-        raise _NoCrossing(CONTRAST)
+        raise _NoCrossing(CONTRAST, STANDS_OUT)
     return refined, _Line(refined_first.curve, first.kind, ()), _Line(refined_second.curve, second.kind, ())
 
 
 # ---- public -------------------------------------------------------------------------------------------------------
 
-def snap_point(luma, start, params=SnapParams()) -> SnapResult:
-    """The sub-pixel crossing near `start` (CV31), or the start itself with status `unsnapped` and its reason."""
+def snap_detail(luma, start, params=SnapParams()) -> SnapDetail:
+    """The snap of `snap_point` with the stage that stopped it and the descriptors its checks measured (CV32)."""
     start = (float(start[0]), float(start[1]))
     rows, columns = luma.shape
     estimate = start
     iterations = 0
+    trace = _Trace()
     try:
         if not all(math.isfinite(v) for v in start):
-            raise _NoCrossing(BORDER)
-        estimate, first, second, others = _coarse(luma, start, params)
+            raise _NoCrossing(BORDER, STAGE_BORDER)
+        estimate, first, second, others = _coarse(luma, start, params, trace)
         while iterations < params.max_iter:
             iterations += 1
-            found, first, second = _fine(luma, estimate, first, second, others, params)
+            found, first, second = _fine(luma, estimate, first, second, others, params, trace)
             if not (0.0 <= found[0] < columns and 0.0 <= found[1] < rows):
-                raise _NoCrossing(BORDER)
+                raise _NoCrossing(BORDER, STAGE_BORDER)
             if math.hypot(found[0] - start[0], found[1] - start[1]) > params.radius_px:
-                raise _NoCrossing(TOO_FAR)
+                raise _NoCrossing(TOO_FAR, STAGE_TOO_FAR)
             moved = math.hypot(found[0] - estimate[0], found[1] - estimate[1])
             estimate = found
             if moved < params.converge_px:
-                return SnapResult(found, SNAPPED, None, iterations)
-        raise _NoCrossing(NO_CONVERGENCE)
+                return SnapDetail(SnapResult(found, SNAPPED, None, iterations), None, SnapDescriptors(**trace.values))
+        raise _NoCrossing(NO_CONVERGENCE, STAGE_NO_CONVERGENCE)
     except _NoCrossing as failure:
-        return SnapResult(start, UNSNAPPED, failure.reason, iterations)
+        result, stage = SnapResult(start, UNSNAPPED, failure.reason, iterations), failure.stage
     except numpy.linalg.LinAlgError:
-        return SnapResult(start, UNSNAPPED, RESIDUAL, iterations)
+        result, stage = SnapResult(start, UNSNAPPED, RESIDUAL, iterations), FIT_FAILURE
+    return SnapDetail(result, stage, SnapDescriptors(**trace.values))
+
+
+def snap_point(luma, start, params=SnapParams()) -> SnapResult:
+    """The sub-pixel crossing near `start` (CV31), or the start itself with status `unsnapped` and its reason."""
+    return snap_detail(luma, start, params).result
 
 
 def _board_mm(image_to_board, point):
