@@ -48,6 +48,8 @@ def test_committed_defaults_load_and_are_exposed_as_constants():
     assert (config.SNAP_MIN_ANGLE_DEG, config.SNAP_MIN_SUPPORT_PX, config.SNAP_MIN_CONTRAST) == (30.0, 8, 4.0)
     assert (config.SNAP_MAX_RESIDUAL_PX, config.SNAP_CONVERGE_PX, config.SNAP_MAX_ITER) == (0.75, 0.05, 5)
     assert (config.SNAP_REPEAT_DIRECTIONS, config.SNAP_REPEAT_OFFSET_PX, config.SNAP_REPEAT_MAX_MM) == (8, 3.0, 0.25)
+    # Tool flow of the assisted click (CV31, T15n): images kept decoded, click replacement radius in source px.
+    assert (config.SNAP_CACHE_IMAGES, config.CLICK_REPLACE_RADIUS_PX) == (2, 100.0)
 
 
 def test_unknown_key_raises(tmp_path):
