@@ -1215,10 +1215,10 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     - Messages d'indisponibilité :
       - lancé avec `python3` seul, l'outil s'ouvre et dit « Recalage indisponible : relancer l'outil avec
         ~/kosmo-tool-venv/bin/python (K7.1b) » ;
-    - une session d'évaluation courte (moins de 55 fléchettes) n'a aucune image vidéo à contrôler : sa carte dit
-      « Contrôle vidéo : aucune image prévue pour cette session », jamais « Images vidéo absentes », et elle peut
-      être « Terminée » sans extraction ni image vidéo ;
-    - sans `--split`, la ligne en haut dit « Contrôle indisponible : relancer l'outil avec --split (K7.3) » et la carte
+      - une session d'évaluation courte (moins de 55 fléchettes) n'a aucune image vidéo à contrôler : sa carte dit
+        « Contrôle vidéo : aucune image prévue pour cette session », jamais « Images vidéo absentes », et elle peut
+        être « Terminée » sans extraction ni image vidéo ;
+      - sans `--split`, la ligne en haut dit « Contrôle indisponible : relancer l'outil avec --split (K7.3) » et la carte
         « Contrôle : indisponible (option --split absente) » ; sans `--frames`, la ligne dit « Images vidéo absentes :
         lancer l'extraction (K7.2) » ; jamais « Contrôle terminé ».
 - K5b (complete PR B branch, after T14b; commands in `training.md` "Run", "Trois entraînements" and "Dev loop"):
