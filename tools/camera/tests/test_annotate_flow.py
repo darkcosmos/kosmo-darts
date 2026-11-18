@@ -811,6 +811,22 @@ def test_first_video_item_has_no_proposal_four_clicks_then_save_stores_position_
     assert points_of(cursor) == POINTS  # the next video item proposes the previous video control, not the photo's
 
 
+def test_control_progress_counts_each_source_on_its_own_when_photos_and_video_are_partly_done_cv26(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items(photo=(1, 3, 4), video=(1, 3))
+    cursor = open_control(annotations, session, control)[1]
+    for _ in range(3):
+        annotations, cursor = save_control(annotations, session, cursor, control)
+    for x, y in POINTS:
+        _, cursor = step(annotations, session, Action("click", x, y, size=FRAME), cursor, control)
+    annotations, cursor = save_control(annotations, session, cursor, control, size=FRAME)
+    partial = replace(annotations, controls=tuple(c for c in annotations.controls if (c.dart, c.source) != (3, "photo")))
+    assert flow.control_progress(annotations, control) == {"photo": {"done": 3, "total": 3},
+                                                           "video": {"done": 1, "total": 2}}
+    assert flow.control_progress(partial, control) == {"photo": {"done": 2, "total": 3},
+                                                       "video": {"done": 1, "total": 2}}
+
+
 def test_hidden_points_are_saved_as_null_with_a_null_snap_and_four_hidden_count_done_u18(tmp_path):
     session = control_session(tmp_path)
     annotations, control = calibrated(session), plan_of_items(photo=(), video=(1, 3))
