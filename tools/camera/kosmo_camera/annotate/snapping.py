@@ -4,7 +4,7 @@
 asked. Only a `ModuleNotFoundError` for numpy or PIL means "Recalage indisponible"; any other import error (a bug in
 `snap.py`, a broken install) propagates, so it is never hidden as an absent venv (A32). Images are decoded by
 `luma.decode_luma` only (S8, S14): an image that cannot be read leaves the point at the click, `unsnapped` with reason
-`unreadable`, and never raises. The decoded luma of at most `SNAP_CACHE_IMAGES` images is kept (LRU, keyed by resolved
+`unreadable`, and never raises. The decoded luma of at most `SNAP_CACHE_IMAGES` images is kept (LRU, keyed by absolute
 path, size and modification time). Paths come from the session listing only, never from a request.
 """
 import importlib
@@ -36,7 +36,7 @@ class Snapper:
                  cache_images=config.SNAP_CACHE_IMAGES):
         self._names = (snap_module, luma_module)
         self._modules = None  # (snap, luma), or False once numpy or Pillow is known to be missing
-        self._cache = OrderedDict()  # (resolved path, size, mtime) -> luma array
+        self._cache = OrderedDict()  # (path, size, mtime, expected size) -> luma array
         self._cache_images = cache_images
         self._lock = threading.RLock()
 
@@ -65,8 +65,8 @@ class Snapper:
         """The luma array of an image, or None when it cannot be read; never an exception (S14)."""
         _, luma = self._load()
         try:
-            resolved = os.path.realpath(path)
-            info = os.stat(resolved)
+            resolved = os.path.abspath(path)  # never resolved: the decoder itself refuses a link (S8)
+            info = os.lstat(resolved)
         except OSError:
             return None
         key = (resolved, info.st_size, info.st_mtime_ns, None if expected_size is None else tuple(expected_size))

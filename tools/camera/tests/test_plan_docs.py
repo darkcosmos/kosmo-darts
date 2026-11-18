@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[3]
 ADR_16 = ROOT / "docs" / "adr" / "0016-camera-feasibility-tooling.md"
 ADR_17 = ROOT / "docs" / "adr" / "0017-per-image-calibration.md"
 PLANS = ROOT / "docs" / "plans" / "42-camera-feasibility-0b-1"
+RULES_CAMERA = ROOT / "docs" / "rules" / "camera.md"
 
 ADR_16_STATUS = (
     "Status: Not validated and suspended on 2026-11-15 (D30): compensation, threshold and guard are replaced at "
@@ -60,3 +61,28 @@ def test_each_held_task_file_starts_with_the_held_by_d30_line(task_id):
 
     assert lines[0].startswith("# ")
     assert first_non_blank(lines[1:]).startswith(HELD_PREFIX)
+
+
+def flat(path):
+    """A document with every run of white space (line breaks of the wrapped markdown included) as one space."""
+    return " ".join(path.read_text(encoding="utf-8").split())
+
+
+def test_a31_adr_0016_decision_2_says_it_is_amended_by_the_assisted_click_section():
+    text = ADR_16.read_text(encoding="utf-8")
+
+    assert "Amended: see section Assisted click (D43, D44)." in flat(ADR_16)
+    assert "\n## Assisted click\n" in text
+
+
+def test_a31_adr_0016_decision_2_lists_the_stdlib_core_with_drift_file_and_strict_json():
+    core = "(`config`, `truth`, `split`, `annotations`, `board`, `drift_file`, `strict_json`)"
+
+    assert f"Stdlib-only core {core}" in flat(ADR_16)
+
+
+def test_a31_cv16_carries_the_after_d39_and_d43_sentence():
+    sentence = ("After D39 and D43: the stdlib-only rule covers every module except `snap.py` and the shared decoder "
+                "`luma.py`")
+
+    assert sentence in flat(RULES_CAMERA)

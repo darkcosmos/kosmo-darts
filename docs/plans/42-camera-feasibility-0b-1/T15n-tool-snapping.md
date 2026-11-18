@@ -77,3 +77,26 @@ sonnet. Why: wiring and flow rules specified in CV31 and "Screens and states", f
 as T6a and T6c.
 
 ## Implementation notes
+- Decoding goes through `luma.decode_luma` only (`convert("L")`, no `draft`); `SNAP_CACHE_IMAGES` stays 2 (48 MB per
+  12 Mpx image, `luma.py` docstring). The cache key is the absolute path (never resolved: the decoder refuses a
+  link), size, mtime and expected size; an unreadable image is not cached.
+- Slots: `flow.Slot(point, status, reason)`, `flow.BLANK`; `Cursor.pending` is 4 slots on the calibration and
+  recalibration screens, `Cursor.selected` (1 to 4) and `Cursor.history` (earlier `(pending, selected)`, for undo).
+  `apply(..., snapping)` takes an object with `available` and `snap(photo, start)`; the server binds the session
+  folder and the truth photo size (`_BoundSnapping`), photo names come from the plan only.
+- Actions: `select` (`number` 1 to 4) and `save` (`number` = the open item: 1 on the calibration screen, the dart on
+  a recalibration; `size` added by the server); `clear` is the undo (history, else the saved segment is removed at
+  once as before, else the item is left); `hidden` and `off_board` on these screens: 409. A click consumes the
+  selection; a refused click keeps it. The view gives `cursor.slots`, `selected`, `ready`, `snapAvailable`;
+  `cursor.pending` stays the list of positioned points so the page of T6b keeps loading until T15f.
+- T2 (click rule): two points at the same distance give the lowest index; the click consumes the selection (tests
+  `test_two_points_at_the_same_distance...`, `test_an_accepted_click_consumes_the_selection...`).
+- `calibrate` in "calibrate and save refused" is read as: clicks and `save` on the calibration and recalibration
+  screens, and `recalibrate` (it needs the proposals); dart tips, navigation and `clear` still work. `ambiguous` and
+  `unreadable` are both shown « non recalé » by the page (T15f); the reason is in the view.
+- `--help` ends with « Recalage : disponible » or « Recalage : indisponible (numpy ou Pillow absent) »; the same line
+  is printed at start with the K7.1b hint when unavailable.
+- Decoding a real 4080 x 3072 board with ring wires through the server (clicks 5 px off) gives 4 `snapped` points
+  within 0.25 px (`test_d46_...`). The 3.14 run: 296 passed (7 files of `TOOL_TESTS`).
+- A31 doc tests added to `test_plan_docs.py`; each checked by hand to fail when its line is removed (ADR "Amended"
+  sentence, CV16 "After D39 and D43" sentence).
