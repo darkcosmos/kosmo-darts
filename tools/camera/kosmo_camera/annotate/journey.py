@@ -209,8 +209,7 @@ def _screen_title(cursor):
 
 
 def session_fields(state) -> dict:
-    """The journey fields of a session in the JSON answers: `badge` (`state` keeps the load state the page reads until
-    T15g), `steps`, `info`, and `role` when there is one."""
+    """The journey fields of a session in the JSON answers: `badge` (the only state the page reads), `steps`, `info`, and `role` when there is one."""
     fields = {"badge": state.state, "info": list(state.info),
               "steps": [{"key": s.key, "done": s.done, "total": s.total, "status": s.status, "reason": s.reason}
                         for s in state.steps]}

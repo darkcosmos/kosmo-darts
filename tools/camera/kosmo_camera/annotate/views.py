@@ -105,30 +105,27 @@ def control_view(loaded, info) -> dict:
             "video": progress["video"], "framesPresent": info.frames_present, "frameMissing": dict(info.frame_reasons)}
 
 
-def summary(loaded, drift=NO_DRIFT, control_info=None) -> dict:
-    label, stale, _ = drift_view(loaded, drift)
-    return {"name": loaded.name, "state": loaded.state, "message": loaded.message, "warning": loaded.warning,
+def summary(loaded, control_info=None) -> dict:
+    return {"name": loaded.name, "message": loaded.message, "warning": loaded.warning,
             "label": IGNORED_LABEL if loaded.state == IGNORED else None, "progress": _progress(loaded),
             "calibrated": bool(loaded.annotations.calibrations) if loaded.state == OK else None,
             "calibrationLabel": calibration_label(loaded),
-            "driftLabel": label, "driftStale": stale,
             "control": control_view(loaded, control_info) if loaded.state == OK and control_info is not None else None}
 
 
-def view(loaded, cursor, drift, snap_available, control_info=None) -> dict:
-    """The full session view: the summary, the darts with their drift flags, the segments and the open item."""
-    result = summary(loaded, drift, control_info)
+def view(loaded, cursor, snap_available, control_info=None) -> dict:
+    """The full session view: the summary, the darts, the segments and the open item."""
+    result = summary(loaded, control_info)
     result["readOnly"] = loaded.state != OK
     if loaded.state != OK:  # read-only states show their message, with no photo flow
         return result
     by_number = {d.number: d for d in loaded.annotations.darts}
     result["photoSize"] = [loaded.truth.photo_width, loaded.truth.photo_height]
-    flags = drift_view(loaded, drift)[2]
     by_dart = {d.number: (_value_label(d), v.index) for v in loaded.truth.volleys for d in v.darts}
     result["darts"] = [{"number": number, "photo": photo, "value": by_dart[number][0], "volley": by_dart[number][1],
                         "status": by_number[number].status.value if number in by_number else None,
                         "tip": list(by_number[number].tip) if number in by_number and by_number[number].tip
-                        else None, "drift": _dart_drift(flags, number)} for number, photo in loaded.plan.darts]
+                        else None} for number, photo in loaded.plan.darts]
     result["skipped"] = list(loaded.plan.skipped)
     result["calibrationPhoto"] = loaded.plan.first_photo
     segments = loaded.annotations.calibrations  # the page shows segment 0, from dart 1 (CV20)
@@ -145,20 +142,19 @@ def view(loaded, cursor, drift, snap_available, control_info=None) -> dict:
                                    "reason": slot.reason} for slot in cursor.pending],
                         "source": cursor.source, "selected": cursor.selected, "ready": flow.ready_count(cursor.pending),
                         "nextSlot": flow.next_slot(cursor.pending, cursor.selected),
-                        "diagram": flow.shows_diagram(cursor),
+                        "diagram": flow.shows_diagram(cursor), "canSave": flow.can_save(cursor),
+                        "previousPoints": _previous_points(segments, cursor),
                         "unreadable": any(slot.reason == UNREADABLE for slot in cursor.pending)}
     return result
 
 
-def _dart_drift(flags, number):
-    """"suggested", "beyond", "unmeasurable" or None for one dart (the strongest flag wins)."""
-    if flags is None:
+def _previous_points(segments, cursor):
+    """The points of the segment in force before dart `cursor.number`, for a recalibration only (CV20: segments come
+    in ascending order, the last one that starts earlier); None otherwise, so the page filters nothing."""
+    if cursor.kind != flow.RECALIBRATION:
         return None
-    for name, numbers in (("suggested", flags.suggested), ("beyond", flags.beyond),
-                          ("unmeasurable", flags.unmeasurable)):
-        if number in numbers:
-            return name
-    return None
+    earlier = [c for c in segments if c.from_dart < cursor.number]
+    return [list(p) for p in earlier[-1].points] if earlier else None
 
 
 def _value_label(dart) -> str:

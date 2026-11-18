@@ -171,38 +171,24 @@ def test_key_actions_match_the_flow_action_names_and_no_letter_is_used_twice():
     assert sorted(labels) == sorted(letter.upper() for letter in mapping)
 
 
-def test_string_table_has_the_recalibration_and_drift_strings():
+def test_string_table_has_the_recalibration_strings_and_no_drift_string_a7():
     table = string_table()
     assert table["btnRecalibrate"] == "Recalibrer à partir de cette fléchette (R)"
-    assert table["driftSuggestedBanner"] == "Dérive au-delà du seuil : recalibrer à partir d'ici (R)"
-    assert table["driftBeyond"] == "Dérive" and table["driftUnmeasurable"] == "Dérive non mesurable"
-    assert table["staleMeasure"] == "(mesure périmée)"
-    assert table["pickerSuggested"] == "{number} !"
-    assert table["pickerSuggestedLabel"] == "Fléchette {number}, à recalibrer"
-    assert table["pickerSuggestedDone"] == "{number} ✓ !"
-    assert table["pickerSuggestedDoneLabel"] == "Fléchette {number}, annotée, à recalibrer"
     assert table["oldPoint"] == "ancien {n}"
+    assert not [key for key in table if "drift" in key.lower() or "stale" in key.lower() or "Suggested" in key]
 
 
 def test_old_points_are_drawn_as_hollow_crosses_labelled_ancien_k():
     source = read("app.js")
     assert "function drawHollowCross" in source
     assert re.search(r"fill\(TEXT\.oldPoint,\s*\{\s*n:\s*index \+ 1\s*\}\)", source)
-    assert "previousSegment(view, cursor.number)" in source
+    assert "cursor.previousPoints" in source and "previousSegment" not in source and "view.segments" not in source  # A9
 
 
-def test_picker_label_building_keeps_the_marker_and_the_stale_suffix():
-    source = read("app.js")
-    body = re.search(r"function pickerText\(dart, stale\) \{(.*?)\n\}\n", source, re.DOTALL).group(1)
-    assert "TEXT.pickerSuggested" in body and "TEXT.pickerSuggestedLabel" in body
-    assert re.search(r"if \(stale\) \{\s*aria = `\$\{aria\} \$\{TEXT\.staleMeasure\}`;", body)
-    assert "pickerText(dart, state.view.driftStale)" in source
-
-
-def test_picker_keeps_the_annotated_mark_on_a_suggested_dart():
-    body = re.search(r"function pickerText\(dart, stale\) \{(.*?)\n\}\n", read("app.js"), re.DOTALL).group(1)
-    assert "TEXT.pickerSuggestedDone" in body and "TEXT.pickerSuggestedDoneLabel" in body
-    assert "dart.status !== null" in body
+def test_picker_label_is_the_number_ticked_when_annotated_without_any_drift_mark_a7():
+    body = function_body("pickerText")
+    assert "TEXT.pickerDone" in body and "TEXT.pickerLabel" in body and "dart.status === null" in body
+    assert "!" not in re.sub(r"!==|!=", "", body) and "pickerText(dart)" in read("app.js")
 
 
 def test_the_page_shows_the_server_progress_badge_and_calibration_label_without_counting_a3():
@@ -217,13 +203,12 @@ def test_the_page_shows_the_server_progress_badge_and_calibration_label_without_
     assert "calibrated" not in source and "segments" not in function_body("renderPanel")
 
 
-def test_stale_measure_text_is_shown_in_the_banner_and_the_state_text():
-    source = read("app.js")
-    panel = re.search(r"function bannerMessage\(view, suggested\) \{(.*?)\n\}\n", source, re.DOTALL).group(1)
-    assert "TEXT.staleMeasure" in panel and "view.driftStale" in panel
-    drift_text = re.search(r"function driftText\(dart, stale\) \{(.*?)\n\}\n", source, re.DOTALL).group(1)
-    assert "TEXT.staleMeasure" in drift_text
-    assert "driftText(dart, state.view.driftStale)" in source
+def test_no_dérive_text_nor_drift_field_remains_in_the_page_cv30_a7():
+    for name in FILES:
+        text = read(name)
+        assert "dérive" not in text.lower() and "À recalibrer" not in text, name
+        assert not re.search(r"driftLabel|driftStale|\.drift\b|item\.state|view\.state|staleMeasure|session-stale|"
+                             r"banner\.drift", text), name
 
 
 def test_the_recalibration_row_is_full_width_and_at_least_48px_high():
@@ -238,7 +223,7 @@ def test_the_recalibration_row_is_full_width_and_at_least_48px_high():
 def test_list_reads_the_sessions_object_and_the_drift_warning_and_uses_text_content_only():
     source = read("app.js")
     assert "data.sessions" in source and "data.driftWarning" in source
-    assert "item.driftLabel" in source
+    assert "item.info" in source  # drift information is an info line of the card (CV30), never an instruction
 
 
 def test_warning_colour_has_a_contrast_of_at_least_4_5_on_background_and_panel():
@@ -309,7 +294,7 @@ def test_entree_always_saves_with_the_repeat_and_save_guards_u25_u29():
 
 def test_save_sends_the_open_item_and_the_control_source():
     body = function_body("saveItem")
-    assert 'action: "save", number, source: cursor.source' in body and "cursor.ready < POINT_COUNT" in body
+    assert 'action: "save", number, source: cursor.source' in body and "!cursor.canSave" in body and "POINT_COUNT" not in read("app.js")  # A8: the server says
 
 
 def test_every_assisted_button_blurs_after_its_click_u25():

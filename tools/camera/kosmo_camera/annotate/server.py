@@ -146,7 +146,7 @@ class SessionStore:
             drift, snapshot = self.read_drift(), self.controls.read()
             rows = self._states(drift, snapshot)
             instruction = journey.global_instruction([state for _, _, state in rows])
-            sessions = [{**views.summary(loaded, drift, info), **journey.session_fields(state)}
+            sessions = [{**views.summary(loaded, info), **journey.session_fields(state)}
                         for loaded, info, state in rows]
             return {"sessions": sessions, "driftWarning": drift.warning,
                     "controlWarning": " ; ".join(snapshot.warnings) or None, "instruction": instruction.text,
@@ -158,7 +158,7 @@ class SessionStore:
         rows = self._states(drift, snapshot, loaded)
         focus = journey.global_instruction([state for _, _, state in rows]).focus
         info, state = next((i, s) for l, i, s in rows if l.name == loaded.name)
-        result = views.view(loaded, cursor, drift, self.snapper.available, info)
+        result = views.view(loaded, cursor, self.snapper.available, info)
         result.update(journey.session_fields(state))
         result["instruction"] = journey.session_instruction(state, focus, cursor)
         return result

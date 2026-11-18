@@ -223,6 +223,11 @@ def click_target(slots, click, selected=None) -> int:
     raise FlowConflict(FAR_CLICK)
 
 
+def can_save(cursor) -> bool:
+    """True when `save` is accepted for the open item: an assisted item with its 4 points ready (CV31, U16)."""
+    return cursor.kind in (CALIBRATION, RECALIBRATION, CONTROL) and ready_count(cursor.pending) >= CALIBRATION_POINTS
+
+
 def next_slot(slots, selected=None) -> Optional[int]:
     """Index of the point the next click fills when it is far from every positioned point (U27), None when none can:
     the answer `click_target` gives, so the page highlights what a click does."""

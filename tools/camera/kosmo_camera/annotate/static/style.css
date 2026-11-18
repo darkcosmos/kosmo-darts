@@ -119,8 +119,6 @@ button.primary { background: var(--primary-bg); color: var(--primary-text); bord
 #diagram { width: 100%; max-width: 280px; height: auto; display: block; margin: 8px 0; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
 #recalibrate-actions button { flex: 1 1 100%; width: 100%; min-height: 48px; white-space: normal; }
-.session-stale { color: var(--warn); }
-#banner.drift { color: var(--warn); border-color: var(--warn); }
 .picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .picker button.current { border-color: var(--primary-bg); border-width: 3px; }
 a { color: var(--link); }

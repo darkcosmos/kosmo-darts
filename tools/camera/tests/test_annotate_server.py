@@ -178,17 +178,17 @@ def test_session_list_and_open_with_progress_and_resume_cursor(tool):
     session = body["sessions"][0]
     journey_keys = {"badge", "steps", "info"}  # the journey fields, tested in test_annotate_journey.py
     assert {k: v for k, v in session.items() if k not in journey_keys} == {
-        "name": NAME, "state": "ok", "message": None, "warning": None, "label": None,
+        "name": NAME, "message": None, "warning": None, "label": None,
         "progress": {"done": 0, "total": 3}, "calibrated": False, "calibrationLabel": "Non calibrée",
-        "driftLabel": None, "driftStale": False, "control": {"available": False, "reason": "Contrôle : indisponible (option --split absente)", "role": None}}
-    assert set(session) == journey_keys | {"name", "state", "message", "warning", "label", "progress", "calibrated",
-                                           "calibrationLabel", "driftLabel", "driftStale", "control"}  # no role without --split
+        "control": {"available": False, "reason": "Contrôle : indisponible (option --split absente)", "role": None}}
+    assert set(session) == journey_keys | {"name", "message", "warning", "label", "progress", "calibrated",
+                                           "calibrationLabel", "control"}  # no role without --split
     assert body["driftWarning"] is None and body["controlWarning"] is None
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
     assert view["cursor"] == {"kind": "calibration", "number": None, "photo": "dart-001.jpg", "pending": [],
                               "slots": [{"point": None, "status": None, "reason": None}] * 4, "source": None,
                               "selected": None, "ready": 0, "nextSlot": 0, "diagram": True,
-                              "unreadable": False}
+                              "canSave": False, "previousPoints": None, "unreadable": False}
     assert view["snapAvailable"] is True
     assert [d["number"] for d in view["darts"]] == [1, 3, 4] and view["skipped"] == [2, 5]
     assert view["readOnly"] is False and view["photoSize"] == list(SIZE)
@@ -419,8 +419,8 @@ def test_invalid_truth_reaches_the_list_with_its_cause_and_is_not_writable(tool)
     make_session(tool.captures, name="20261101-100000")
     tool.start()
     listed = states(tool)
-    assert listed[NAME]["state"] == "truth_invalid" and "invalide" in listed[NAME]["message"] and "JSON" in listed[NAME]["message"]
-    assert listed["20261101-100000"]["state"] == "ok"  # one bad session does not hide the others
+    assert "invalide" in listed[NAME]["message"] and "JSON" in listed[NAME]["message"]
+    assert listed["20261101-100000"]["message"] is None  # one bad session does not hide the others
     assert tool.act("hidden")[0] == 409
     assert not annotation_file(tool).exists()
 
@@ -429,7 +429,7 @@ def test_truth_of_another_session_name_is_invalid(tool):
     folder, _ = make_session(tool.captures)
     folder.rename(tool.captures / "20261101-100000")
     tool.start()
-    assert states(tool)["20261101-100000"]["state"] == "truth_invalid"
+    assert "invalide" in states(tool)["20261101-100000"]["message"]
 
 
 def test_rejected_annotation_file_is_read_only_with_cause_and_never_overwritten(tool):
@@ -439,7 +439,7 @@ def test_rejected_annotation_file_is_read_only_with_cause_and_never_overwritten(
     tool.start()
     before = tree_listing(tool.root)
     listed = states(tool)[NAME]
-    assert listed["state"] == "annotation_rejected" and "format" in listed["message"] and listed["progress"] is None
+    assert "format" in listed["message"] and listed["progress"] is None
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
     assert view["readOnly"] is True
     assert tool.act("hidden")[0] == 409 and tool.act("click", x=1, y=1)[0] == 409
@@ -452,7 +452,7 @@ def test_annotation_contradicting_the_truth_is_rejected_too(tool):
     bad = an.Annotations(NAME, sha, (), (an.DartAnnotation(2, an.Status.HIDDEN, None),))  # dart 2 is voided
     annotation_file(tool).write_text(an.encode(bad), encoding="utf-8")
     tool.start()
-    assert states(tool)[NAME]["state"] == "annotation_rejected"
+    assert states(tool)[NAME]["message"] and states(tool)[NAME]["progress"] is None
 
 
 def test_annotation_file_over_1_mib_is_refused_and_untouched(tool):
@@ -462,7 +462,7 @@ def test_annotation_file_over_1_mib_is_refused_and_untouched(tool):
     tool.start()
     before = tree_listing(tool.root)
     listed = states(tool)[NAME]
-    assert listed["state"] == "annotation_too_large" and "1 Mio" in listed["message"]
+    assert "1 Mio" in listed["message"]
     assert tool.act("hidden")[0] == 409
     assert tree_listing(tool.root) == before
 
@@ -474,7 +474,7 @@ def test_stale_annotation_warns_and_still_allows_editing(tool):
     annotation_file(tool).write_text(an.encode(stale), encoding="utf-8")
     tool.start()
     listed = states(tool)[NAME]
-    assert listed["state"] == "ok" and "changé" in listed["warning"]
+    assert listed["message"] is None and "changé" in listed["warning"]
     status, result = tool.act("click", x=1, y=1)
     assert status == 200 and result["session"]["warning"]
 
@@ -495,7 +495,7 @@ def test_v1_file_opened_listed_and_browsed_stays_byte_identical_cv16_cv20(tool):
     tool.start()
     before = tree_listing(tool.root)
     listed = states(tool)[NAME]
-    assert listed["state"] == "ok" and listed["calibrated"] is True and listed["progress"] == {"done": 2, "total": 3}
+    assert listed["message"] is None and listed["calibrated"] is True and listed["progress"] == {"done": 2, "total": 3}
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
     assert view["cursor"]["number"] == 4 and view["calibration"]["points"] == [list(map(float, p)) for p in POINTS]
     for action in ("previous", "next"):
@@ -528,7 +528,7 @@ def test_stale_v1_file_keeps_its_warning_after_migration_cv20(tool):
     annotation_file(tool).write_text(_v1_text("0" * 64), encoding="utf-8")
     tool.start()
     listed = states(tool)[NAME]
-    assert listed["state"] == "ok" and "changé" in listed["warning"]
+    assert listed["message"] is None and "changé" in listed["warning"]
 
 
 def test_session_without_judged_dart_is_listed_as_ignored_and_not_openable_cv3(tool):
@@ -538,13 +538,13 @@ def test_session_without_judged_dart_is_listed_as_ignored_and_not_openable_cv3(t
     tool.start()
     listed = states(tool)
     for name in ("20261101-100000", "20261102-100000"):
-        assert listed[name]["state"] == "ignored" and listed[name]["label"] == IGNORED_LABEL
+        assert listed[name]["badge"] == "Ignorée" and listed[name]["label"] == IGNORED_LABEL
         assert listed[name]["progress"] is None
         assert 400 <= tool.act("click", name, x=1, y=1)[0] < 500
         assert 400 <= tool.act("hidden", name)[0] < 500
         status, view = tool.json("GET", f"/api/sessions/{name}")
         assert view["readOnly"] is True and "cursor" not in view
-    assert listed[NAME]["state"] == "ok" and IGNORED_LABEL == "Ignorée : aucune fléchette jugée"
+    assert listed[NAME]["badge"] != "Ignorée" and IGNORED_LABEL == "Ignorée : aucune fléchette jugée"
     assert [p.name for p in tool.annotations.iterdir()] == []  # no file created
 
 
@@ -651,6 +651,25 @@ def _recalibrate_at(tool, number, points=NEW_POINTS):
     return tool.act("save", number=number)
 
 
+def test_the_cursor_says_can_save_and_sends_the_previous_points_of_a_recalibration_a8_a9(tool):
+    make_session(tool.captures)
+    tool.start()
+    cursor = lambda result: result[1]["session"]["cursor"]
+    first = tool.act("select", number=1)
+    assert (cursor(first)["canSave"], cursor(first)["previousPoints"]) == (False, None)  # no point yet
+    for index, (x, y) in enumerate(POINTS, start=1):
+        tool.act("select", number=index)
+        result = tool.act("click", x=x, y=y)
+        assert cursor(result)["canSave"] is (index == 4)  # the server decides: 4 ready points, not 3
+    tool.act("save", number=1)
+    dart = _go_to(tool, 3)
+    assert dart["session"]["cursor"]["canSave"] is False and dart["session"]["cursor"]["previousPoints"] is None  # a dart screen
+    result = tool.act("recalibrate")
+    assert cursor(result)["kind"] == "recalibration"
+    assert cursor(result)["previousPoints"] == [list(map(float, p)) for p in POINTS]
+    assert cursor(result)["canSave"] is True  # the proposals are the segment in force (CV31)
+
+
 def test_recalibration_from_a_dart_is_saved_with_its_photo_and_real_jpeg_size_cv20(tool):
     make_session(tool.captures, jpeg_size=(2000, 1000))
     tool.start()
@@ -746,7 +765,7 @@ def test_session_list_labels_come_from_the_drift_file_cv16(tool, flags, label):
     tool.calibrate()
     _write_drift(drift, _flags(sha=_sha(tool), **flags))
     body = _list(tool)
-    assert body["sessions"][0]["driftLabel"] == label and body["sessions"][0]["driftStale"] is False
+    assert label in body["sessions"][0]["info"] and not any("périmée" in line for line in body["sessions"][0]["info"])
     assert body["driftWarning"] is None
 
 
@@ -756,7 +775,7 @@ def test_session_absent_from_the_drift_file_is_not_measured_and_unlisted_ones_ar
     _write_drift(drift, _flags(session="20250101-000000"))
     tool.start(drift)
     body = _list(tool)
-    assert [s["driftLabel"] for s in body["sessions"]] == ["Dérive non mesurée"] and body["driftWarning"] is None
+    assert "Dérive non mesurée" in body["sessions"][0]["info"] and body["driftWarning"] is None
 
 
 def test_stale_flags_keep_the_suggested_darts_with_the_stale_mention_and_mark_each_dart_u7(tool):
@@ -766,22 +785,22 @@ def test_stale_flags_keep_the_suggested_darts_with_the_stale_mention_and_mark_ea
     tool.calibrate()
     _write_drift(drift, _flags(sha=_sha(tool), beyond=[3, 4], suggested=[3], unmeasurable=[1]))
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert view["driftStale"] is False
-    assert [d["drift"] for d in view["darts"]] == ["unmeasurable", "suggested", "beyond"]
+    assert "drift" not in view["darts"][0] and "driftStale" not in view  # the page reads no drift field (A7)
     _recalibrate_at(tool, 4)  # the segments change after the measure
     body = _list(tool)
-    assert body["sessions"][0]["driftLabel"] == ("À recalibrer à partir de la fléchette 3 ; 1 photo non mesurable "
-                                                 "(mesure périmée : relancer la mesure)")
-    assert body["sessions"][0]["driftStale"] is True
-    status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert view["driftStale"] is True and [d["drift"] for d in view["darts"]] == ["unmeasurable", "suggested", "beyond"]
+    assert ("À recalibrer à partir de la fléchette 3 ; 1 photo non mesurable "
+            "(mesure périmée : relancer la mesure)") in body["sessions"][0]["info"]
+    assert "driftStale" not in body["sessions"][0]
 
 
-def test_darts_without_flags_have_a_null_drift(tool):
+def test_the_views_carry_no_drift_field_nor_the_old_state_a7(tool):
     make_session(tool.captures)
     tool.start()
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert [d["drift"] for d in view["darts"]] == [None, None, None] and view["driftStale"] is False
+    session = _list(tool)["sessions"][0]
+    assert not {"driftLabel", "driftStale", "state"} & set(session)
+    assert not {"driftLabel", "driftStale", "state"} & set(view)
+    assert all("drift" not in dart for dart in view["darts"])
 
 
 @pytest.mark.parametrize("content", [b"{not json", b"", b"x" * (drift_file.MAX_BYTES + 1), None])
@@ -793,9 +812,9 @@ def test_unreadable_oversized_or_missing_drift_file_warns_once_and_the_tool_serv
     tool.start(drift)
     body = _list(tool)
     assert body["driftWarning"].startswith("Mesure de dérive illisible : ")
-    assert [s["driftLabel"] for s in body["sessions"]] == [None]
+    assert not any("dérive" in line.lower() for line in body["sessions"][0]["info"])
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert status == 200 and [d["drift"] for d in view["darts"]] == [None, None, None]
+    assert status == 200
     assert tool.calibrate()["saved"]
 
 
@@ -805,10 +824,10 @@ def test_the_flag_file_is_read_again_at_every_list_and_never_written_cv16(tool):
     tool.start(drift)
     tool.calibrate()
     _write_drift(drift, _flags(sha=_sha(tool), beyond=[3], suggested=[3]))
-    assert _list(tool)["sessions"][0]["driftLabel"].startswith("À recalibrer")
+    assert any(line.startswith("À recalibrer") for line in _list(tool)["sessions"][0]["info"])
     _write_drift(drift, _flags(sha=_sha(tool), max_mm=0.2))
     digest = hashlib.sha256(drift.read_bytes()).hexdigest()
-    assert _list(tool)["sessions"][0]["driftLabel"] == "Dérive OK (max 0,2 mm)"
+    assert "Dérive OK (max 0,2 mm)" in _list(tool)["sessions"][0]["info"]
     _recalibrate_at(tool, 3)
     tool.act("recalibrate")
     tool.act("clear")

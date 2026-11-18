@@ -57,14 +57,6 @@ const TEXT = {
   snapUnavailable: "Recalage indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)",
   photoUnreadable: "Photo illisible : le recalage est impossible pour cette photo",
   oldPoint: "ancien {n}",
-  driftSuggestedBanner: "Dérive au-delà du seuil : recalibrer à partir d'ici (R)",
-  driftBeyond: "Dérive",
-  driftUnmeasurable: "Dérive non mesurable",
-  staleMeasure: "(mesure périmée)",
-  pickerSuggested: "{number} !",
-  pickerSuggestedLabel: "Fléchette {number}, à recalibrer",
-  pickerSuggestedDone: "{number} ✓ !",
-  pickerSuggestedDoneLabel: "Fléchette {number}, annotée, à recalibrer",
 };
 
 const WIRES = ["5|20", "13|6", "17|3", "8|11"]; // CV2 order
@@ -72,7 +64,6 @@ const WIRE_ANGLES = [-9, 81, 171, 261]; // degrees clockwise from the top, 20 on
 const BOARD_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
 const KEY_ACTIONS = { h: "hidden", o: "off_board", u: "clear", n: "next", p: "previous", r: "recalibrate", k: "control" };
 const ASSISTED_KINDS = ["calibration", "recalibration", "control"];
-const POINT_COUNT = 4;
 const DONE_MARK = "✓"; // a placed or hidden diagram point is ticked as well as green, not by colour alone (U39)
 const SNAP_INSET_PX = 60; // source pixels shown around a point (CV31)
 const INSET_SIZE = 180; // CSS pixels of one inset: a x3 zoom of SNAP_INSET_PX
@@ -161,23 +152,23 @@ function sessionLine(item) {
   setText(name, item.name);
   const info = document.createElement("div");
   info.className = "session-info";
-  if (item.state === "ok") {
+  if (item.message) {
+    setText(info, `${TEXT.readOnly} - ${item.message}`);
+    info.className = "session-info session-warning";
+  } else if (item.label) {
+    setText(info, item.label);
+  } else {
     setText(info, `${item.badge} - ${fill(TEXT.progress, item.progress)} - ${item.calibrationLabel}`);
     line.appendChild(makeButton(TEXT.open, () => openSession(item.name), "primary"));
-  } else if (item.state === "ignored") {
-    setText(info, item.label || TEXT.ignoredLabel);
-  } else {
-    setText(info, `${TEXT.readOnly} - ${item.message || ""}`);
-    info.className = "session-info session-warning";
   }
   line.insertBefore(info, line.firstChild);
   line.insertBefore(name, line.firstChild);
-  if (item.driftLabel) {
-    const drift = document.createElement("div");
-    drift.className = item.driftStale ? "session-info session-stale" : "session-info";
-    setText(drift, item.driftLabel);
-    line.insertBefore(drift, info.nextSibling);
-  }
+  item.info.forEach((text) => { // information lines only (CV30): never an instruction
+    const extra = document.createElement("div");
+    extra.className = "session-info";
+    setText(extra, text);
+    line.insertBefore(extra, info.nextSibling);
+  });
   if (item.warning) {
     const warning = document.createElement("div");
     warning.className = "session-warning";
@@ -354,9 +345,8 @@ function currentDart() {
   return cursor.kind === "dart" ? dartsOfView().find((d) => d.number === cursor.number) : null;
 }
 
-// The banner message of the open screen, by priority: blocked, snapping unavailable, warning, unreadable photo, notice, drift.
-function bannerMessage(view, suggested) {
-  const driftBanner = view.driftStale ? `${TEXT.driftSuggestedBanner} ${TEXT.staleMeasure}` : TEXT.driftSuggestedBanner;
+// The banner message of the open screen, by priority: blocked, snapping unavailable, warning, unreadable photo, notice.
+function bannerMessage(view) {
   if (state.blocked) {
     return { text: state.blocked, kind: "error" };
   }
@@ -372,7 +362,7 @@ function bannerMessage(view, suggested) {
   if (state.notice) {
     return { text: state.notice, kind: "" };
   }
-  return suggested ? { text: driftBanner, kind: "drift" } : null;
+  return null;
 }
 
 function renderPanel() {
@@ -382,7 +372,7 @@ function renderPanel() {
   setText($("progress"), assisted && cursor.kind === "control" ? controlProgressText(view)
     : `${fill(TEXT.progress, view.progress)} - ${view.calibrationLabel}`);
   const banner = $("banner");
-  const message = bannerMessage(view, cursor.kind === "dart" && currentDart().drift === "suggested");
+  const message = bannerMessage(view);
   banner.hidden = !message;
   banner.className = message ? message.kind : "";
   setText(banner, message ? message.text : "");
@@ -444,39 +434,16 @@ function renderAssistedPanel(view) {
   drawDiagram(cursor.slots, cursor.nextSlot);
 }
 
-// Segment in force before dart `number`: the last one that starts earlier (segments come in ascending order, CV20).
-function previousSegment(view, number) {
-  const earlier = (view.segments || []).filter((segment) => segment.fromDart < number);
-  return earlier.length > 0 ? earlier[earlier.length - 1] : null;
-}
-
-function driftText(dart, stale) {
-  const names = { beyond: TEXT.driftBeyond, unmeasurable: TEXT.driftUnmeasurable };
-  const name = names[dart.drift] || "";
-  return name && stale ? `${name} ${TEXT.staleMeasure}` : name;
-}
-
 function stateText(dart) {
   const names = { VISIBLE: TEXT.stateVisible, HIDDEN: TEXT.stateHidden, OFF_BOARD: TEXT.stateOffBoard };
   const base = dart.status === null ? TEXT.stateNone : names[dart.status];
-  const drift = driftText(dart, state.view.driftStale);
-  return drift ? `${base} - ${drift}` : base;
+  return base;
 }
 
-// Picker label of a dart: "59 !" (or "59 ✓ !" when annotated) for a dart to recalibrate (text, not colour only), "(mesure périmée)" when stale.
-function pickerText(dart, stale) {
-  const suggested = dart.drift === "suggested";
-  let label = dart.status === null ? String(dart.number) : fill(TEXT.pickerDone, { number: dart.number });
-  let aria = fill(TEXT.pickerLabel, { number: dart.number });
-  if (suggested) {
-    const annotated = dart.status !== null;
-    label = fill(annotated ? TEXT.pickerSuggestedDone : TEXT.pickerSuggested, { number: dart.number });
-    aria = fill(annotated ? TEXT.pickerSuggestedDoneLabel : TEXT.pickerSuggestedLabel, { number: dart.number });
-    if (stale) {
-      aria = `${aria} ${TEXT.staleMeasure}`;
-    }
-  }
-  return { label, aria };
+// Picker label of a dart: its number, ticked when annotated (text, not colour only).
+function pickerText(dart) {
+  const label = dart.status === null ? String(dart.number) : fill(TEXT.pickerDone, { number: dart.number });
+  return { label, aria: fill(TEXT.pickerLabel, { number: dart.number }) };
 }
 
 function renderDartPanel(dart) {
@@ -503,7 +470,7 @@ function renderAssistedActions(box, off) {
   const cursor = state.view.cursor;
   const noSnap = state.view.snapAvailable === false;
   const save = assistedButton(TEXT.btnSave, saveItem, "primary");
-  save.disabled = off || noSnap || cursor.ready < POINT_COUNT;
+  save.disabled = off || noSnap || !cursor.canSave;
   box.appendChild(save);
   if (cursor.kind === "control") {
     const hide = assistedButton(TEXT.btnHidePoint, () => perform({ action: "hidden_point" }));
@@ -569,7 +536,7 @@ function renderPicker() {
   const off = state.busy || state.blocked !== null;
   const cursor = state.view.cursor;
   dartsOfView().forEach((dart) => {
-    const text = pickerText(dart, state.view.driftStale);
+    const text = pickerText(dart);
     const button = makeButton(text.label, () => perform({ action: "goto", number: dart.number }),
       cursor.number === dart.number && (cursor.kind === "dart" || cursor.kind === "recalibration") ? "current" : "");
     button.setAttribute("aria-label", text.aria);
@@ -695,9 +662,8 @@ function drawStage() {
   const view = state.view;
   const cursor = view.cursor;
   if (isAssisted(view)) {
-    const previous = cursor.kind === "recalibration" ? previousSegment(view, cursor.number) : null;
-    if (previous) {
-      previous.points.forEach((point, index) => drawHollowCross(context, point, fill(TEXT.oldPoint, { n: index + 1 })));
+    if (cursor.previousPoints) {
+      cursor.previousPoints.forEach((point, index) => drawHollowCross(context, point, fill(TEXT.oldPoint, { n: index + 1 })));
     }
     cursor.slots.forEach((slot, index) => slot.point && drawCross(context, slot.point, String(index + 1)));
     drawInsets(cursor);
@@ -868,7 +834,7 @@ function saveItem() {
   if (!isAssisted(state.view)) {
     return;
   }
-  if (cursor.ready < POINT_COUNT) {
+  if (!cursor.canSave) {
     setStatus(fill(TEXT.pointsMissing, { n: cursor.ready }), "error"); // Entrée gives its reason (U37)
     return;
   }
