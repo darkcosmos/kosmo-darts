@@ -44,6 +44,7 @@ const TEXT = {
   btnQuit: "Quitter (Échap)",
   controlProgress: "Photos contrôlées : {photo} / {photoTotal} · Images vidéo : {video} / {videoTotal}",
   pointsReady: "Points prêts : {n} / 4 (Entrée pour enregistrer)",
+  pointsMissing: "Points prêts : {n} / 4 : placer les points manquants",
   insetCaption: "{n} : {wires}",
   insetAria: "Point {n}, {status}",
   insetSelected: "(choisi)",
@@ -836,6 +837,8 @@ async function perform(payload) {
     return;
   }
   state.busy = true;
+  state.notice = null;
+  setStatus(""); // one place for a message: the status line, cleared at the next action (U36)
   render();
   try {
     const result = await request("POST", `${sessionUrl(state.name)}/actions`, payload);
@@ -861,7 +864,11 @@ async function perform(payload) {
 // What Entrée and the Enregistrer button send: the open item of the screen (CV31, U29).
 function saveItem() {
   const cursor = state.view.cursor;
-  if (!isAssisted(state.view) || cursor.ready < POINT_COUNT) {
+  if (!isAssisted(state.view)) {
+    return;
+  }
+  if (cursor.ready < POINT_COUNT) {
+    setStatus(fill(TEXT.pointsMissing, { n: cursor.ready }), "error"); // Entrée gives its reason (U37)
     return;
   }
   const number = cursor.kind === "calibration" ? 1 : cursor.number;

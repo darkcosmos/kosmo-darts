@@ -252,7 +252,8 @@ def test_warning_colour_has_a_contrast_of_at_least_4_5_on_background_and_panel()
 ASSISTED_STRINGS = (
     "Enregistrer (Entrée)", "Point caché (H)", "Annuler (U)", "Quitter (Échap)", "Contrôle de calibration (K)",
     "Photos contrôlées : {photo} / {photoTotal} · Images vidéo : {video} / {videoTotal}",
-    "Points prêts : {n} / 4 (Entrée pour enregistrer)", "Point {n}, {status}", "recalé", "non recalé", "caché",
+    "Points prêts : {n} / 4 (Entrée pour enregistrer)", "Points prêts : {n} / 4 : placer les points manquants",
+    "Point {n}, {status}", "recalé", "non recalé", "caché",
     "à cliquer", "Cliquer près du bon croisement : l'outil le recale.", "H seulement si une fléchette cache le point",
     "Recalage indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)",
     "Photo illisible : le recalage est impossible pour cette photo")
@@ -367,3 +368,18 @@ def test_the_page_draws_the_next_slot_and_the_diagram_flag_of_the_server_a5():
     panel = function_body("renderAssistedPanel")
     assert "cursor.nextSlot" in panel and "findIndex" not in panel
     assert "cursor.diagram" in function_body("renderPanel")
+
+
+def test_a_message_has_one_place_and_is_cleared_at_the_next_action_u36():
+    perform = function_body("perform")
+    assert perform.index('setStatus("")') < perform.index("await request(")  # refusals never outlive the next action
+    assert "state.notice = null" in perform and perform.index("state.notice = null") < perform.index("await request(")
+    assert 'setStatus("")' in function_body("openSession") and 'setStatus("")' in function_body("showList")
+    assert "state.notice" in function_body("bannerMessage")  # the server notice goes to #banner, refusals to #status
+
+
+def test_entree_with_fewer_than_four_points_says_why_u37():
+    body = function_body("saveItem")
+    assert "TEXT.pointsMissing" in body and "cursor.ready" in body and "setStatus(" in body
+    assert body.index("TEXT.pointsMissing") < body.index("perform(")
+    assert string_table()["pointsMissing"] == "Points prêts : {n} / 4 : placer les points manquants"
