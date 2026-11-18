@@ -866,6 +866,25 @@ def test_undo_takes_back_the_last_change_then_the_previous_control_which_comes_b
     assert same == reopened_file and cursor.number == 1
 
 
+def test_only_the_clear_that_goes_back_to_the_previous_control_sets_the_reopened_flag_u28(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items()
+    _, cursor = open_control(annotations, session, control)
+    assert cursor.reopened is False
+    annotations, cursor = save_control(annotations, session, cursor, control)
+    assert cursor.reopened is False  # a save is not a reopening
+    _, cursor = step(annotations, session, Action("select", number=2), cursor, control)
+    _, cursor = step(annotations, session, Action("click", 7.0, 8.0, size=SIZE), cursor, control)
+    _, cursor = step(annotations, session, Action("clear"), cursor, control)  # undoes the click only
+    assert cursor.reopened is False
+    annotations, cursor = step(annotations, session, Action("clear"), cursor, control)  # nothing left: go back
+    assert cursor.reopened is True and cursor.number == 1
+    _, after_select = step(annotations, session, Action("select", number=1), cursor, control)
+    assert after_select.reopened is False  # any later action drops the flag
+    same, cursor = step(annotations, session, Action("clear"), cursor, control)  # the first item: nothing before it
+    assert cursor.reopened is False and same == annotations
+
+
 @pytest.mark.parametrize("leave", [Action("next"), Action("previous"), Action("goto", number=4)])
 def test_leaving_the_control_screen_drops_the_unsaved_points_and_the_file_is_unchanged_u16(tmp_path, leave):
     session = control_session(tmp_path)

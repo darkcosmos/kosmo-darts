@@ -255,8 +255,7 @@ ASSISTED_STRINGS = (
     "Points prêts : {n} / 4 (Entrée pour enregistrer)", "Point {n}, {status}", "recalé", "non recalé", "caché",
     "à cliquer", "Cliquer près du bon croisement : l'outil le recale.", "H seulement si une fléchette cache le point",
     "Recalage indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)",
-    "Photo illisible : le recalage est impossible pour cette photo",
-    "Photo précédente rouverte : son enregistrement est retiré jusqu'à Entrée")
+    "Photo illisible : le recalage est impossible pour cette photo")
 
 
 def function_body(name):
@@ -331,7 +330,7 @@ def test_insets_are_drawn_from_the_loaded_image_with_an_aria_label_u31():
 def test_the_unreadable_and_unavailable_banners_and_the_ignored_clicks_are_wired():
     banner = function_body("bannerMessage")
     assert "TEXT.snapUnavailable" in banner and "TEXT.photoUnreadable" in banner and "view.cursor.unreadable" in banner
-    assert "state.notice" in banner and "TEXT.reopened" in function_body("perform")
+    assert "state.notice" in banner and "result.notice" in function_body("perform")
     assert "snapAvailable === false" in function_body("onStageClick")
 
 
@@ -344,3 +343,19 @@ def test_video_frames_load_from_the_frame_route_and_skip_the_truth_size_check():
 def test_the_page_builds_text_with_textcontent_only_on_the_assisted_screen():
     for name in ("renderAssistedPanel", "drawInsets", "bannerMessage", "controlProgressText"):
         assert not re.search(r"innerHTML|insertAdjacent", function_body(name))
+
+
+def test_the_reopened_notice_comes_from_the_server_and_the_page_infers_no_flow_event_a4():
+    source = read("app.js")
+    assert "reopenedItem" not in source and "TEXT.reopened" not in source and "rouverte" not in source
+    perform = function_body("perform")
+    assert "result.notice" in perform and "before" not in perform and "cursor.number" not in perform
+    assert "state.notice" in function_body("bannerMessage")
+    assert "setText(banner," in function_body("renderPanel")  # textContent only
+
+
+def test_the_page_strings_that_the_server_also_knows_equal_the_python_constants_a6():
+    from kosmo_camera.annotate import flow
+    table = string_table()
+    assert table["snapUnavailable"] == flow.UNAVAILABLE
+    assert table["photoUnreadable"] == flow.PHOTO_UNREADABLE

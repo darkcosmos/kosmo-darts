@@ -1339,3 +1339,24 @@ def test_a_session_with_nothing_left_has_the_terminee_badge_in_the_view_and_the_
         result = tool.act("save", number=number, source=source)[1]
     assert result["session"]["badge"] == "Terminée" and _list(tool)["sessions"][0]["badge"] == "Terminée"
     assert result["session"]["progress"] == {"done": 3, "total": 3}
+
+
+def test_the_undo_that_reopens_the_previous_control_answers_with_the_fixed_notice_and_no_other_action_does_u28(tool):
+    control_tool(tool, frames={NAME: {1: 1850, 4: 3850}})
+    _tip_all(tool)
+    view = open_control(tool)
+    notice = "Photo précédente rouverte : son enregistrement est retiré jusqu'à Entrée"
+    result = save_item(tool, view)[1]
+    assert "notice" not in result  # a save is not a reopening
+    result = tool.act("select", number=2)[1]
+    assert "notice" not in result
+    result = tool.act("click", x=7.0, y=8.0)[1]
+    assert "notice" not in result
+    result = tool.act("clear")[1]  # takes back the click only
+    assert "notice" not in result
+    result = tool.act("clear")[1]  # now the previous control comes back
+    assert result["notice"] == notice and result["session"]["cursor"]["number"] == 1
+    assert "notice" not in tool.act("select", number=1)[1]  # gone at the next answer
+    assert "notice" not in tool.act("clear")[1]  # the first item: nothing before it
+    status, error = tool.act("clear", notice="x")  # the request keys stay the whitelist
+    assert status == 400 and "notice" not in error

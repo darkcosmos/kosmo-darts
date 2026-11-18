@@ -55,7 +55,6 @@ const TEXT = {
   hintHide: "H seulement si une fléchette cache le point",
   snapUnavailable: "Recalage indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)",
   photoUnreadable: "Photo illisible : le recalage est impossible pour cette photo",
-  reopened: "Photo précédente rouverte : son enregistrement est retiré jusqu'à Entrée",
   oldPoint: "ancien {n}",
   driftSuggestedBanner: "Dérive au-delà du seuil : recalibrer à partir d'ici (R)",
   driftBeyond: "Dérive",
@@ -857,12 +856,11 @@ async function perform(payload) {
   if (state.busy || state.blocked !== null || !state.view) {
     return;
   }
-  const before = state.view.cursor;
   state.busy = true;
   render();
   try {
     const result = await request("POST", `${sessionUrl(state.name)}/actions`, payload);
-    state.notice = reopenedItem(payload, before, result.session.cursor) ? TEXT.reopened : null;
+    state.notice = result.notice || null; // a fixed French text chosen by the server (U28)
     if (payload.action === "save") {
       state.lastSaveAt = Date.now();
     }
@@ -879,12 +877,6 @@ async function perform(payload) {
     setStatus(error.message || TEXT.networkError, "error");
     render();
   }
-}
-
-// U with nothing left to undo reopens the previous control item: its saved control is removed until Entrée (U28).
-function reopenedItem(payload, before, after) {
-  return payload.action === "clear" && after.kind === "control" && before.kind !== "dart"
-    && (before.kind === "control_done" || before.number !== after.number || before.source !== after.source);
 }
 
 // What Entrée and the Enregistrer button send: the open item of the screen (CV31, U29).

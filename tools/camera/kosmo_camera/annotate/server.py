@@ -177,7 +177,7 @@ class SessionStore:
     # ---- the write route -------------------------------------------------------------------------------------------
 
     def act(self, name, payload) -> dict:
-        """Apply one action of the flow and save at once. Returns the session view and `saved` or `error`."""
+        """Apply one action of the flow and save at once. Returns the session view, `saved` or `error`, and `notice` when U reopened the previous control."""
         with self.lock:
             loaded = self.load(name)
             if loaded.state != OK:
@@ -202,6 +202,8 @@ class SessionStore:
                 result.update(self._save(name, updated))
             view = self.view(replace(loaded, annotations=updated), new_cursor, snapshot=snapshot)
             result["session"] = view
+            if new_cursor.reopened:
+                result["notice"] = flow.REOPENED  # a fixed text chosen by the flow, never built from the request
             return result
 
     @staticmethod

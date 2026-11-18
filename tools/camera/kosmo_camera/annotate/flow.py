@@ -37,6 +37,8 @@ CONTROL_OFF = "Contrôle : indisponible (option --split absente)"
 NO_HIDDEN_SEGMENT = "Un segment demande 4 points : cet écran n'accepte pas « caché »."
 CONTROL_NO_STATUS = "Sur cet écran, H cache un point : une fléchette n'a pas de statut ici."
 HIDE_REFUSED = "Choisir le point à cacher : touche 1 à 4, puis H"
+REOPENED = "Photo précédente rouverte : son enregistrement est retiré jusqu'à Entrée"  # U28
+PHOTO_UNREADABLE = "Photo illisible : le recalage est impossible pour cette photo"  # shown by the page (S14)
 UNAVAILABLE = "Recalage indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)"
 ALREADY_SAVED = "Photo déjà enregistrée"
 FAR_CLICK = "Clic loin des 4 points : choisir le point avec les touches 1 à 4, puis cliquer"
@@ -78,6 +80,7 @@ class Cursor:
     source: Optional[str] = None  # PHOTO or VIDEO when kind is CONTROL
     selected: Optional[int] = None  # point 1 to 4 chosen with the keys, taken by the next click
     history: tuple = ()  # earlier (pending, selected) of this item, for undo
+    reopened: bool = False  # True only on the cursor `apply` returns when U reopened the previous control (U28)
 
 
 @dataclass(frozen=True)
@@ -455,7 +458,7 @@ def _control_clear(annotations, plan, cursor, snapping, control):
     if saved is not None:
         updated = replace(annotations, controls=tuple(c for c in annotations.controls if c is not saved))
     points = None if saved is None else saved.points
-    return updated, _open_control(updated, plan, control, previous, snapping, points)
+    return updated, replace(_open_control(updated, plan, control, previous, snapping, points), reopened=True)
 
 
 def _dart_mark(annotations, plan, action, cursor):
@@ -515,6 +518,7 @@ def apply(annotations, session, action, cursor=None, snapping=None, control=None
     if plan.first_photo is None:
         raise FlowError("Aucune fléchette jugée dans cette session.")
     cursor = cursor if cursor is not None else resume(annotations, session)
+    cursor = replace(cursor, reopened=False)  # only the answer of the action that reopens carries the flag
     if action.kind == "clear":
         return _clear(annotations, plan, cursor, snapping, control)
     if action.kind in ("next", "previous"):
