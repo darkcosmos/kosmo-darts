@@ -661,6 +661,7 @@ def test_the_cursor_says_can_save_and_sends_the_previous_points_of_a_recalibrati
         tool.act("select", number=index)
         result = tool.act("click", x=x, y=y)
         assert cursor(result)["canSave"] is (index == 4)  # the server decides: 4 ready points, not 3
+        assert cursor(result)["previousPoints"] is None  # a calibration never carries a previous segment
     tool.act("save", number=1)
     dart = _go_to(tool, 3)
     assert dart["session"]["cursor"]["canSave"] is False and dart["session"]["cursor"]["previousPoints"] is None  # a dart screen
@@ -668,6 +669,12 @@ def test_the_cursor_says_can_save_and_sends_the_previous_points_of_a_recalibrati
     assert cursor(result)["kind"] == "recalibration"
     assert cursor(result)["previousPoints"] == [list(map(float, p)) for p in POINTS]
     assert cursor(result)["canSave"] is True  # the proposals are the segment in force (CV31)
+
+
+def test_previous_points_are_sent_on_a_recalibration_cursor_only_not_on_a_control_cv31(tool):
+    control_tool(tool, frames={NAME: {1: 1850, 4: 3850}})
+    cursor = open_control(tool)["cursor"]
+    assert (cursor["kind"], cursor["previousPoints"]) == ("control", None)
 
 
 def test_recalibration_from_a_dart_is_saved_with_its_photo_and_real_jpeg_size_cv20(tool):
