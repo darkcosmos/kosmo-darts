@@ -1,5 +1,7 @@
 # T16b (CONDITIONAL): Per-photo calibration in the label build
 
+CANCELLED (2026-11-18): stopped; global per-image registration R replaces it (ADR 0020).
+
 Status: conditional. Built if the T15j verdict says the photos moved (H2, H3 or "photos déplacées") and Kosmo
 confirms at plan update P2. Finalized at P2.
 

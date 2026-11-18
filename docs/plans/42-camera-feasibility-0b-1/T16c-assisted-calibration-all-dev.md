@@ -1,5 +1,7 @@
 # T16c (CONDITIONAL): Assisted manual calibration of every dev photo
 
+CANCELLED (2026-11-18): stopped; global per-image registration R replaces it (ADR 0020).
+
 Status: conditional. Built only if the photos moved and no automatic per-photo calibration passes the CV30 gate,
 and Kosmo accepts the clicking time at plan update P2. Finalized at P2.
 

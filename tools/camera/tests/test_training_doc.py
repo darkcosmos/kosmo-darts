@@ -111,12 +111,15 @@ def test_the_docker_run_block_keeps_the_sandbox_flags_and_mounts_the_data_read_o
     assert "--privileged" not in words and "--network=host" not in words
 
 
-def test_the_section_names_the_steps_the_expected_texts_and_retires_k5():
+def test_the_section_names_the_steps_the_expected_texts_and_retires_k5_and_k7():
     text = " ".join(section().split())
     for step in ("K7.0", "K7.1", "K7.1b", "K7.2", "K7.3", "K7.C", "K7.4 à K7.6"):
         assert step in text, step
     assert "K5.2" not in text and "drift.json" not in text  # K5 is retired (D30)
     assert "Étape K5 suspendue le 15/11/2026" in text
+    assert "Étapes K7 arrêtées le 18/11/2026 (nouvelle stratégie de l'issue #42)" in text  # ADR 0020
+    assert "aucun nouveau clic ne vous sera demandé" in text  # N5
+    assert "K7.4 à K7.6 : annulées le 18/11/2026" in text and "prochaine livraison" not in text
     for expected in ("Recalage indisponible", "non recalé", "Points prêts", "Contrôle indisponible",
                      "Images vidéo absentes", "Continuer", "Entrée"):
         assert expected in text, expected

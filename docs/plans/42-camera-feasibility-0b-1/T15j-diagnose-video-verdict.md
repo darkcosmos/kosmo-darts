@@ -1,5 +1,7 @@
 # T15j: Diagnosis, video side and verdict: photo versus untouched phone, decision rule
 
+CANCELLED (2026-11-18): the H1/H2 diagnosis is stopped (ADR 0020, root plan "Kept and stopped").
+
 ## Goal
 Measure whether the photo differs from the video frame of the untouched phone about 1 s before the entry (H2),
 whether the board moves durably between darts (H3), and print the verdict of the decision rule written in advance

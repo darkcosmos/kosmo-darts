@@ -1,5 +1,7 @@
 # T12: Arrival and empty-board events on video
 
+CANCELLED (2026-11-18): events are rewritten in phase 2 (D1, difference of registered images) after its prototype (root plan N18).
+
 ## Goal
 Detect dart arrivals and the empty board on each volley video, as the phone pipeline will (motion first, model only
 on stable frames), and score them against the entry times.

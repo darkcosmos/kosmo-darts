@@ -1,5 +1,7 @@
 # T15l: training.md, diagnosis steps (K7.4 to K7.6)
 
+CANCELLED (2026-11-18): the H1/H2 diagnosis is stopped (ADR 0020, root plan "Kept and stopped").
+
 ## Goal
 Give Kosmo the copy-paste steps to run the diagnosis, paste the report in the chat and open the visual check
 (D30 points 2 and 3).

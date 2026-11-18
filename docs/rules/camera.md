@@ -6,6 +6,12 @@ Status: v1 (issue #42, phase 0b-1, detection feasibility measured offline on Kos
 never collide with the other rule documents in this folder. The truth file format is `docs/camera/capture-format.md`;
 the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
 
+Status of 2026-11-18 (Kosmo's registration strategy, ADR 0020): CV18, CV19 and CV31 are stopped (their code is
+frozen until task C1 of the plan, never developed further); CV6, CV9, CV12 and CV14 are rewritten in phases 1 and 3 so
+that the reference and the predicted calibration both come from the global registration of each image and Kosmo's
+clicks. CV22 to CV24 and CV28 to CV30, defined only in the replaced plan, are retired, and CV32 (closed PR #90) was
+never adopted: these numbers are not reused. New rules start at CV33.
+
 - CV1 Board geometry in mm, origin bull centre, y towards 20, x towards 6, radii and border ownership of BC1 and BC5.
 - CV2 Calibration points `cal1` to `cal4`: 170 mm radius on wires 5|20, 13|6, 17|3, 8|11, in this order.
 - CV3 Split of `captures/`, about 70/30 dev/eval, computed once. Key of a unit: SHA-256 of `"kosmo-0b1-split-v1:"`
@@ -75,7 +81,7 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   only and recomputed at every request; drift flags are information only, never an instruction.
 - CV17 Sessions in `~/kosmo-data/captures-eval/` (confirmation campaign, later) are always eval: never in the split,
   never in training or tuning; `measure --set campaign` reads them under the same `frozen.json` guard.
-- CV18 Drift of a judged photo: compared with the reference photo of its segment (CV20), both decoded to luma in
+- CV18 Stopped on 2026-11-18 (ADR 0020). Drift of a judged photo: compared with the reference photo of its segment (CV20), both decoded to luma in
   stored pixel order (D8). (1) Coarse: the box of the 4 segment points enlarged by 15 % is cropped from both,
   block-averaged so its longer side is at most `DRIFT_COARSE_PX` (512), and phase-correlated (zero mean, Hann window,
   normalised cross-power spectrum with a Gaussian low-pass, `numpy.fft`): shift `t0`. (2) Fine, per point `i`: square
@@ -90,7 +96,7 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   oversized file: Pillow's decompression bomb limit is kept). Drift is annotation quality control, independent of any
   model, so it reads every session, dev and eval, without the split lock (CV4 unaffected). The `drift` command writes a
   numbers-only report (CV15) and the local flag file `drift.json`. CV18 status (D30): not validated. Its results are information only until a measure passes the CV30 gate; the report starts with "Mesure de dérive non validée (diagnostic en cours) : ne pas recalibrer d'après ce rapport".
-- CV19 Drift threshold and compensation: a photo is "beyond" when drift mm > `DRIFT_MAX_MM` (1.0 mm =
+- CV19 Stopped on 2026-11-18 (ADR 0020). Drift threshold and compensation: a photo is "beyond" when drift mm > `DRIFT_MAX_MM` (1.0 mm =
   `CAL_MAX_ERROR_MM` / 2, Kosmo, D18). Reference calibration of a photo = its compensated points `p_i + d_i` when
   measured and not beyond; none otherwise. Used for the `cal1`-`cal4` training labels, CV9, CV12 and CV14. Photos
   without reference calibration are dropped from the dataset and excluded from CV9 and CV12, each counted by reason.
@@ -153,7 +159,7 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   (512 MiB) or needing more than `VIDEO_MAX_DECODED_FRAMES` (20000) decoded frames is `video_unreadable`; any decode
   error is `video_unreadable` for that dart and the run continues (exit 0); the output prints
   `Images vidéo absentes : N` with the count per reason, and no session name.
-- CV31 Assisted click, snap part (Kosmo, Q10, D39; design D43, D46; tool flow in T15n): `snap.snap_point(luma, start)`
+- CV31 Stopped on 2026-11-18 (ADR 0020). Assisted click, snap part (Kosmo, Q10, D39; design D43, D46; tool flow in T15n): `snap.snap_point(luma, start)`
   returns the sub-pixel crossing of a radial wire and a ring wire or colour edge within `SNAP_RADIUS_PX` of the start
   (status `snapped`), or the start itself (status `unsnapped`) with exactly one reason: `support`, `contrast`,
   `residual`, `angle`, `no_convergence`, `too_far`, `border`, or `ambiguous` (two or more distinct crossings of the

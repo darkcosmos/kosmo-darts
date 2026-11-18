@@ -1,5 +1,7 @@
 # T15i: Diagnosis, photo side: true drift, error of the automatic measure, where it fails
 
+CANCELLED (2026-11-18): the H1/H2 diagnosis is stopped (ADR 0020, root plan "Kept and stopped").
+
 ## Goal
 From Kosmo's snapped control clicks, measure per photo the true drift and the error of the current automatic
 measure (CV18), the machine-measured snapping dispersion `D` (Kosmo, Q10, D39), and where the automatic measure

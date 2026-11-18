@@ -21,7 +21,7 @@ must stay reproducible, offline and cheap to review, and a trained model that ne
    in other modules. Amended: see section Assisted click (D43, D44).
 3. Keypoints as objects: the detector (RF-DETR Nano) finds 5 classes (`tip`, `cal1` to `cal4`), each a fixed square
    box centred on the point. Alternative rejected: a dedicated keypoint model, which would leave the object-detection
-   export route of `rfdetr`.
+   export route of `rfdetr`. Superseded by ADR 0020 (calibration by registration, tip by a heatmap model).
 4. Measures run on the exported `.tflite` only, through `ai_edge_litert` with our own pre- and post-processing, the
    exact chain the next phase ports to Kotlin. Alternative rejected: `RFDETRInference`, which hides that chain.
 5. No OpenCV: a numpy homography (normalised DLT) and PyAV cover the needs, one dependency less.
@@ -86,6 +86,8 @@ Decisions (rule CV25, `docs/camera/annotation-format.md`):
 
 ## Assisted click
 
+Status: Superseded by ADR 0020 on 2026-11-18: the snapping of clicks is stopped (rule CV31, 0 of 697 real photo points snapped); the code is frozen until task C1.
+
 Context: Kosmo's clicks designate the right wire crossing, they do not locate it (D39, CV31): a human does not hold 1 to
 2 px for an hour. The tool therefore snaps every calibration-point click (first calibration, recalibration, control)
 to the exact crossing with `snap.py` (numpy, on the luma of `luma.py`, numpy and Pillow). The standard library cannot
@@ -110,7 +112,7 @@ Decisions:
 
 ## Tripod drift
 
-Status: Not validated and suspended on 2026-11-15 (D30): compensation, threshold and guard are replaced at plan update P2; see ADR 0017 and rules CV18 to CV19, CV30.
+Status: Superseded by ADR 0020 on 2026-11-18: the drift measure and its compensation are stopped (rules CV18, CV19); the code is frozen until task C1. Was: not validated and suspended on 2026-11-15 (D30).
 
 Context: the clicked calibration of a segment is only true for the photo it was clicked on; between two clicks the
 tripod moves by a few pixels. Decisions (rules CV18 and CV19, `tools/camera/kosmo_camera/drift.py`):

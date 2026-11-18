@@ -1,5 +1,7 @@
 # T9: Fold plan, run chain and COCO dataset builder per fold
 
+CANCELLED (2026-11-18): the RF-DETR chain is not built; this work is rewritten in phases 2 to 4 after their prototypes (root plan N12, N18).
+
 HELD by D30: the drift guard and compensation parts are replaced at P2; needs per-photo labels (root plan "Tasks").
 
 ## Goal

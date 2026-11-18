@@ -121,6 +121,8 @@ collez toute la sortie dans le chat et arrêtez-vous là.
 
 Étape K5 suspendue le 15/11/2026 : la mesure de dérive n'est pas fiable (presque toutes les photos sortent au-delà du seuil, et le déplacement vu à l'œil à partir de la fléchette 57 de la session d'éval de 18h24 n'apparaît pas). Ne recalibrez plus d'après le rapport de dérive. Les recalibrations déjà faites sont gardées. La suite est l'étape K7 (contrôle de calibration).
 
+Étapes K7 arrêtées le 18/11/2026 (nouvelle stratégie de l'issue #42) : vos clics de contrôle sont terminés et gardés comme vérité de référence ; aucun nouveau clic ne vous sera demandé. Le recalage des points (« recalé », « non recalé ») et la mesure de dérive ne seront plus développés. Les étapes K7.0 à K7.3 ci-dessous ne servent plus qu'à consulter vos annotations : l'outil devient une visionneuse. La suite (phase 1) sera une seule commande, après que vous aurez confirmé sur #42 que le dossier d'images réelles est monté.
+
 K7.0. Dans votre clone : `git fetch origin`, puis `git switch feat/camera-feasibility-0b-1-detection` et `git pull`. (1 min)
 
 ```bash
@@ -181,11 +183,10 @@ reprend où vous étiez). Un point « non recalé » est gardé à votre clic et
 avec `python3` au lieu de `~/kosmo-tool-venv/bin/python`, il affiche « Recalage indisponible » : relancer
 comme indiqué. Rien à coller.
 
-K7.4 à K7.6 : le diagnostic arrive dans la prochaine livraison.
+K7.4 à K7.6 : annulées le 18/11/2026 (le diagnostic n'est plus prévu).
 
 K7.C. Checklist (ce que seul Kosmo peut vérifier, le JavaScript ne tourne pas dans le bac à sable). Le contrôle visuel
-(alternance, touches 1, 2, 3, N, Espace, flèches, « Photo i / n ») n'existe pas encore : il sera à vérifier à la
-prochaine livraison, avec K7.4 à K7.6.
+prévu avec K7.4 à K7.6 est annulé le 18/11/2026.
 
 - Liste des sessions :
   - une seule consigne affichée à la fois, jamais une consigne déjà faite ;

@@ -1,6 +1,6 @@
 # ADR 0017: Per-image calibration and automatic recalibration in the game app (camera phases 1 to 3)
 
-- Status: Proposed (Kosmo's requirement of 2026-11-15, D30 point 6). Date: 2026-11-15.
+- Status: Superseded by ADR 0020 on 2026-11-18 (its requirement on the game app is carried in ADR 0020 decision 6). Was: Proposed (Kosmo's requirement of 2026-11-15, D30 point 6). Date: 2026-11-15.
 
 ## Context
 
