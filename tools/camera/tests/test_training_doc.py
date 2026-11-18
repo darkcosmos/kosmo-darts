@@ -121,7 +121,7 @@ def test_the_section_names_the_steps_the_expected_texts_and_retires_k5():
                      "Images vidéo absentes", "Continuer", "Entrée"):
         assert expected in text, expected
     from kosmo_camera.annotate import flow, journey  # the texts the tool really shows, not retyped
-    for exact in (journey.NO_SPLIT_TEXT, flow.CONTROL_OFF, journey.NO_FRAMES_TEXT, flow.UNAVAILABLE):
+    for exact in (journey.NO_SPLIT_TEXT, flow.CONTROL_OFF, journey.NO_FRAMES_TEXT, journey.NO_VIDEO_PLANNED, flow.UNAVAILABLE):
         assert exact in text, exact
     assert "frames.json" in text and "restent sur votre ordinateur : ne les collez jamais" in text  # CV15
     assert "git switch feat/camera-feasibility-0b-1-detection" in text
