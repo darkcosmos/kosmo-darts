@@ -9,7 +9,8 @@ Give Kosmo the copy-paste steps to run the diagnosis, paste the report in the ch
   container), K7.5 (paste `diagnostic-report.md` in the chat, numbers and roles only), K7.6 (start the tool with
   `--diagnostic` and do the visual check), in French, copied from root plan "How Kosmo verifies", replacing the
   T15h line "K7.4 à K7.6 : le diagnostic arrive dans la prochaine livraison"; the checklist K7.C gains its visual
-  check lines (arrows in dart order, "Photo i / n" in that order, U24).
+  check lines (alternation, keys 1, 2, 3, N, Espace, arrows in dart order, "Photo i / n" in that order, U24), and
+  loses the sentence that says the visual check is not there yet (they were taken out of K7.C at T15h: U41).
 - Same file: a short paragraph « Recalage des clics » under K7.4 explaining that section of the report (T15i) in
   plain French: points recalés and non recalés counted per role and source with their reasons; the dispersion `D`
   is measured by the machine (recalage relancé depuis 8 départs décalés de 3 px autour de chaque point), p95

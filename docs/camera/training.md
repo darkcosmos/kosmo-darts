@@ -148,7 +148,7 @@ docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges -
 ```
 
 Elle affiche le nombre d'images extraites, la ligne « Images vidéo absentes : N » et les manquantes par raison ; une
-vidéo illisible ne l'arrête pas. Rien à coller. (2 à 5 min)
+vidéo illisible ne l'arrête pas. Rien à coller. Le fichier `frames.json` et le dossier `~/kosmo-runs/frames` restent sur votre ordinateur : ne les collez jamais. (2 à 5 min)
 
 K7.3. Relancer l'outil d'annotation dans WSL, depuis `tools/camera/`, avec l'environnement de K7.1b :
 
@@ -176,40 +176,51 @@ exacts s'affichent sur la carte de chaque session, « Contrôle photo : D / T »
 touche par photo (environ 5 s), 4 clics sur la première image vidéo de chaque session (4 images), quelques
 clics après un déplacement : environ 20 à 30 min au total (au lieu de 1 h 15), en plusieurs fois si vous voulez (l'outil
 reprend où vous étiez). Un point « non recalé » est gardé à votre clic et compté dans le diagnostic. Sans
-`--split` ou sans `--frames`, l'outil affiche « Contrôle indisponible » ou « Images vidéo absentes » ; lancé
+`--split`, la ligne en haut dit « Contrôle indisponible : relancer l'outil avec --split (K7.3) » ; sans `--frames`,
+« Images vidéo absentes : lancer l'extraction (K7.2) » ; lancé
 avec `python3` au lieu de `~/kosmo-tool-venv/bin/python`, il affiche « Recalage indisponible » : relancer
 comme indiqué. Rien à coller.
 
 K7.4 à K7.6 : le diagnostic arrive dans la prochaine livraison.
 
-K7.C. Checklist (ce que seul Kosmo peut vérifier, le JavaScript ne tourne pas dans le bac à sable) : une seule
-consigne affichée à la fois et jamais une consigne déjà faite ; chaque carte de session dit ce qui est fait et
-ce qui reste ; aucun « Dérive au-delà du seuil » ni « À recalibrer » ; l'écran de recalibration explique ce que
-fait une recalibration, sur le côté, et la photo reste entière à l'écran en 1080p sans faire défiler ; sur la
-liste, la carte « Prochaine étape » est celle de la session annoncée, la consigne ne cite aucune touche et le
-bouton « Continuer » ouvre l'étape annoncée ; Entrée lance « Continuer » seulement quand aucun autre bouton
-n'a le focus (après Tab sur un autre bouton, Entrée active ce bouton-là) ; en contrôle, les 4 points proposés
-apparaissent déjà recalés, chacun dans sa vignette agrandie avec son état en toutes lettres ; un clic à
-quelques pixels du bon croisement déplace le point le plus proche et le recale exactement sur le croisement
-(vignette à l'appui) ; un clic loin de tout croisement net donne « non recalé » ; Entrée enregistre seulement
-quand les 4 points sont prêts, même quand un bouton a le focus (après un clic sur « Point caché (H) », Entrée
-enregistre) ; Entrée gardée enfoncée ou pressée deux fois vite n'enregistre pas la photo suivante sans la
-voir ; les 4 vignettes, « Points prêts » et « Enregistrer (Entrée) » se voient ensemble sans faire défiler en
-1080p ; H sans point choisi ni point « à cliquer » affiche « Choisir le point à cacher : touche 1 à 4, puis
-H » et ne cache rien ; touches 1 à 4, H, U, Échap, la touche 0, la molette et K marchent, K aussi
-depuis « Terminé » ; « Points prêts : n / 4 » suit les changements et « Enregistré à HH:MM:SS » apparaît
-après Entrée ; après un clic puis Échap, puis K, la même photo revient avec les points proposés ; U sans
-changement revient à la photo précédente avec ses points ; la progression « Photos contrôlées » augmente ; la
-recalibration (R) propose les points en vigueur, recalés, et s'enregistre par Entrée ; lancé avec `python3`
-seul, l'outil s'ouvre et dit « Recalage indisponible » ; relancé sans `--split` ou sans `--frames`, l'outil
-dit « Contrôle indisponible » ou « Images vidéo absentes » et jamais « Contrôle terminé » ; en contrôle
-visuel, l'alternance, les touches 1, 2, 3, N, Espace et les flèches marchent, les flèches suivent l'ordre des
-fléchettes et « Photo i / n » suit le même ordre (après N ou à l'ouverture, i est le rang de la photo
-affichée), et les chiffres s'affichent ; en 1080p, le panneau de l'écran à points (vignettes, « Points prêts »,
-« Enregistrer (Entrée) », boutons) se voit en entier sans faire défiler, le schéma du cadran étant placé après
-les boutons ; sur le schéma, un point posé ou caché est vert, plein et marqué d'un « ✓ » (pas seulement la
-couleur) et le prochain point est le jaune agrandi ; Entrée avec moins de 4 points affiche « Points prêts : n / 4 :
-placer les points manquants » ; un refus (en rouge, en haut) disparaît à l'action suivante.
+K7.C. Checklist (ce que seul Kosmo peut vérifier, le JavaScript ne tourne pas dans le bac à sable). Le contrôle visuel
+(alternance, touches 1, 2, 3, N, Espace, flèches, « Photo i / n ») n'existe pas encore : il sera à vérifier à la
+prochaine livraison, avec K7.4 à K7.6.
+
+- Liste des sessions :
+  - une seule consigne affichée à la fois, jamais une consigne déjà faite ;
+  - chaque carte de session dit ce qui est fait et ce qui reste ; aucun « Dérive au-delà du seuil » ni « À recalibrer » ;
+  - la carte « Prochaine étape » est celle de la session annoncée, la consigne ne cite aucune touche et le bouton
+    « Continuer » ouvre l'étape annoncée ;
+  - Entrée lance « Continuer » seulement quand aucun autre bouton n'a le focus (après Tab sur un autre bouton, Entrée
+    active ce bouton-là).
+- Contrôle de calibration (K) :
+  - les 4 points proposés apparaissent déjà recalés, chacun dans sa vignette agrandie avec son état en toutes lettres ;
+  - un clic à quelques pixels du bon croisement déplace le point le plus proche et le recale exactement sur le
+    croisement (vignette à l'appui) ; un clic loin de tout croisement net donne « non recalé » ;
+  - Entrée enregistre seulement quand les 4 points sont prêts, même quand un bouton a le focus (après un clic sur
+    « Point caché (H) », Entrée enregistre) ; avec moins de 4 points elle affiche « Points prêts : n / 4 : placer les
+    points manquants » ; gardée enfoncée ou pressée deux fois vite, elle n'enregistre pas la photo suivante sans la voir ;
+  - en 1080p, les 4 vignettes, « Points prêts », « Enregistrer (Entrée) » et les boutons se voient ensemble sans
+    faire défiler, le schéma du cadran étant placé après les boutons ;
+  - sur le schéma, un point posé ou caché est vert, plein et marqué d'un « ✓ » (pas seulement la couleur) et le
+    prochain point est le jaune agrandi ;
+  - H sans point choisi ni point « à cliquer » affiche « Choisir le point à cacher : touche 1 à 4, puis H » et ne
+    cache rien ; les touches 1 à 4, H, U, Échap, la touche 0, la molette et K marchent, K aussi depuis « Terminé » ;
+  - « Points prêts : n / 4 » suit les changements et « Enregistré à HH:MM:SS » apparaît après Entrée ; la progression
+    « Photos contrôlées » augmente ;
+  - après un clic puis Échap, puis K, la même photo revient avec les points proposés ; U sans changement revient à la
+    photo précédente avec ses points ; un refus (en rouge, en haut) disparaît à l'action suivante.
+- Recalibration (R) :
+  - l'écran explique ce que fait une recalibration, sur le côté, et la photo reste entière à l'écran en 1080p sans
+    faire défiler ;
+  - elle propose les points en vigueur, recalés, et s'enregistre par Entrée.
+- Messages d'indisponibilité :
+  - lancé avec `python3` seul, l'outil s'ouvre et dit « Recalage indisponible : relancer l'outil avec
+    ~/kosmo-tool-venv/bin/python (K7.1b) » ;
+  - sans `--split`, la ligne en haut dit « Contrôle indisponible : relancer l'outil avec --split (K7.3) » et la carte
+    « Contrôle : indisponible (option --split absente) » ; sans `--frames`, la ligne dit « Images vidéo absentes :
+    lancer l'extraction (K7.2) » ; jamais « Contrôle terminé ».
 
 ## Confirmation campaign protocol
 
