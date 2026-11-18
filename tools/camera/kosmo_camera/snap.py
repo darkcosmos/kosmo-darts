@@ -54,13 +54,20 @@ _INLIER_PX = 1.0
 _FIT_ROUNDS = 3
 _LM_ROUNDS = 20
 _BAND_MARGIN_PX = 2.5  # flat pixels on each side of a fitted wire profile
-_MIN_BLUR_PX = 0.3
-_PARALLEL_STRONG = 0.5  # a line is chosen among the parallel offset peaks of at least this share of the highest
+_MIN_BLUR_PX = 0.05
+_MIN_FOOTPRINT_PX = 0.02  # pixel footprint sides never below this (the trapezoid formula divides by them)
 _WIRE_TO_STEP = 0.5  # a bar weaker than this share of the step it sits on is the blur of a bare edge
 _EXTENT_MARGIN_PX = 2.0  # the profile of a line stops this far beyond its last detected point
-_STEM_REACH_PX = 14.0  # the second line is searched within this distance beyond the first line band
-_PARALLEL_SEEN = 0.2  # parallel peaks of at least this share are kept out of the other line's profile
 _REFINE_SHIFT_PX = 4.0  # a refinement farther than this from the detected crossing is a wrong model
+_RIDGE = "ridge"
+_EDGE = "edge"
+_LINE_BAND_PX = 1.5  # points this close to a line hypothesis start its fit
+_CURVED_EXTENT_PX = 24.0  # a line whose points span less than this is fitted straight
+_MAX_LINES = 6  # lines looked for per kind in the coarse region
+_GAP_SIGMAS = 2.0  # a line reaches a crossing when its points come within this many scales plus _GAP_PX of it
+_GAP_PX = 3.0
+_SCALE_SHARE = 0.8  # the smallest scale whose ridge response reaches this share of the strongest
+_COARSE_SLACK_PX = 2.0  # coarse crossings this far beyond `radius_px` are still refined (the result is checked)
 
 
 @dataclass(frozen=True)
@@ -232,84 +239,94 @@ class _Curve:
         return across - self.c - self.k * along * along
 
 
-def _fit_curve(points, weights, origin, angle):
-    """Weighted least squares of the across offset as a quadratic of the along position (b folded into the angle)."""
+def _fit_curve(points, weights, origin, angle, curved=True):
+    """Weighted least squares of the across offset as a line, or a quadratic, of the along position (the slope is
+    folded into the angle)."""
     for _ in range(2):
         curve = _Curve(origin, angle, 0.0, 0.0)
         along, across = curve.frame(points[:, 0], points[:, 1])
-        design = numpy.column_stack([numpy.ones_like(along), along, along * along])
+        terms = [numpy.ones_like(along), along] + ([along * along] if curved else [])
+        design = numpy.column_stack(terms)
         root = numpy.sqrt(weights)
         solution = numpy.linalg.lstsq(design * root[:, None], across * root, rcond=None)[0]
         angle = angle + math.degrees(math.atan(solution[1]))
-    return _Curve(origin, angle, float(solution[0]), float(solution[2]))
+    return _Curve(origin, angle, float(solution[0]), float(solution[2]) if curved else 0.0)
 
 
-def _nearest_parallel(points, weights, selected, origin, angle):
-    """Among parallel lines of one orientation (the two wires of a ring), the strong one nearest the window centre: a
-    histogram of the offsets, its peaks of at least half the highest one, the peak of smallest offset."""
-    offsets = _Curve(origin, angle, 0.0, 0.0).frame(points[:, 0], points[:, 1])[1]
-    reach = int(numpy.ceil(numpy.max(numpy.abs(offsets[selected])))) + 2
-    histogram = numpy.bincount(numpy.rint(offsets[selected]).astype(int) + reach, weights=weights[selected],
-                               minlength=2 * reach + 1)
-    smoothed = numpy.convolve(histogram, [0.5, 1.0, 0.5], mode="same")
-    peaks = [i - reach for i in range(1, len(smoothed) - 1)
-             if smoothed[i] >= smoothed[i - 1] and smoothed[i] > smoothed[i + 1]
-             and smoothed[i] >= _PARALLEL_SEEN * smoothed.max()]
-    strong = [i for i in peaks if smoothed[i + reach] >= _PARALLEL_STRONG * smoothed.max()]
-    best = min(strong, key=abs)
-    return numpy.abs(offsets - best) <= _INLIER_PX + 1.0, tuple(float(i - best) for i in peaks if i != best)
+@dataclass(frozen=True)
+class _Line:
+    """A detected wire (ridge) or bare colour edge: its curve and the along extent of its points on that curve."""
+    curve: _Curve
+    kind: str  # _RIDGE or _EDGE
+    extent: tuple  # (first, last) along position of its inlier points
+    points: numpy.ndarray = None  # its inlier points (coarse stage)
 
 
-def _hough_angle(points, directions, weights, origin):
-    """Orientation of the strongest straight alignment of points: for each angle of a 2-degree grid, the heaviest
+def _peak(points, directions, weights, origin):
+    """(angle, offset) of the heaviest straight alignment of points: for each angle of a 2-degree grid, the heaviest
     1-px offset bin of the points whose own direction agrees within the gate (per-point directions of a thin wire are
     noisy, positions are not)."""
-    best, best_angle = -1.0, 0.0
+    best, best_angle, best_offset = -1.0, 0.0, 0.0
     for angle in numpy.arange(0.0, 180.0, _HOUGH_STEP_DEG):
         gate = _angle_between(directions, angle) <= _HOUGH_GATE_DEG
         if not gate.any():
             continue
         offsets = _Curve(origin, float(angle), 0.0, 0.0).frame(points[gate, 0], points[gate, 1])[1]
         bins = numpy.rint(offsets).astype(int)
-        bins -= bins.min()
-        histogram = numpy.bincount(bins, weights=weights[gate])
-        score = float(numpy.max(numpy.convolve(histogram, [0.5, 1.0, 0.5])))
-        if score > best:
-            best, best_angle = score, float(angle)
-    return best_angle
+        low = int(bins.min())
+        smoothed = numpy.convolve(numpy.bincount(bins - low, weights=weights[gate]), [0.5, 1.0, 0.5], mode="same")
+        index = int(numpy.argmax(smoothed))
+        if smoothed[index] > best:
+            best, best_angle, best_offset = float(smoothed[index]), float(angle), float(index + low)
+    return best_angle, best_offset
 
 
-def _detect_line(points, normals, weights, origin, params):
-    """Strongest orientation, then the curve through the inliers of its nearest strong offset: (curve, inlier mask)."""
-    directions = _direction_degrees(normals)
-    angle = _hough_angle(points, directions, weights, origin)
-    selected = _angle_between(directions, angle) <= _HOUGH_GATE_DEG
-    if selected.sum() < params.min_support_px:
-        raise _NoCrossing(SUPPORT)
-    nearest, parallels = _nearest_parallel(points, weights, selected, origin, angle)
-    selected &= nearest
-    if selected.sum() < params.min_support_px:
-        raise _NoCrossing(SUPPORT)
-    mean = numpy.average(points[selected], axis=0, weights=weights[selected])
-    centred = points[selected] - mean
-    covariance = (centred * weights[selected, None]).T @ centred
-    eigenvalues, eigenvectors = numpy.linalg.eigh(covariance)
-    direction = eigenvectors[:, int(numpy.argmax(eigenvalues))]
-    angle = math.degrees(math.atan2(direction[1], direction[0]))
-    curve = _Curve(origin, angle, 0.0, 0.0)
-    curve = _Curve(origin, angle, float(curve.frame(mean[0], mean[1])[1]), 0.0)
+def _fit_line(points, weights, selected, curve, origin, params, band=_LINE_BAND_PX):
+    """The curve (frame at `origin`) through the points of `selected` near `curve`, refitted on its inliers:
+    (curve, inlier mask), or None when fewer than `min_support_px` points or an RMS residual above `max_residual_px`.
+    Straight while the inliers span less than `_CURVED_EXTENT_PX`, else with the quadratic term of a ring."""
+    inliers = selected & (numpy.abs(curve.distance(points[:, 0], points[:, 1])) <= band)
+    angle = curve.angle
     for _ in range(_FIT_ROUNDS):
-        inliers = selected & (numpy.abs(curve.distance(points[:, 0], points[:, 1])) <= _INLIER_PX)
         if inliers.sum() < params.min_support_px:
-            raise _NoCrossing(SUPPORT)
-        curve = _fit_curve(points[inliers], weights[inliers], origin, curve.angle)
-    inliers = selected & (numpy.abs(curve.distance(points[:, 0], points[:, 1])) <= _INLIER_PX)
+            return None
+        along = _Curve(origin, angle, 0.0, 0.0).frame(points[inliers, 0], points[inliers, 1])[0]
+        curve = _fit_curve(points[inliers], weights[inliers], origin, angle,
+                           float(numpy.ptp(along)) >= _CURVED_EXTENT_PX)
+        angle = curve.angle
+        inliers = selected & (numpy.abs(curve.distance(points[:, 0], points[:, 1])) <= _INLIER_PX)
     if inliers.sum() < params.min_support_px:
-        raise _NoCrossing(SUPPORT)
+        return None
     residual = float(numpy.sqrt(numpy.mean(curve.distance(points[inliers, 0], points[inliers, 1]) ** 2)))
     if residual > params.max_residual_px:
-        raise _NoCrossing(RESIDUAL)
-    return curve, inliers, tuple(_Curve(origin, curve.angle, curve.c + d, curve.k) for d in parallels)
+        return None
+    return curve, inliers
+
+
+def _lines(points, normals, weights, origin, kind, exclusion, params, known=()):
+    """Up to `_MAX_LINES` lines of one kind, strongest first. A point near a line already found (this kind, or one of
+    `known`, within `exclusion` px) is not used again: the flanks of a wire are not taken for colour edges."""
+    directions = _direction_degrees(normals)
+    free = numpy.ones(len(points), dtype=bool)
+    for line in known:
+        free &= numpy.abs(line.curve.distance(points[:, 0], points[:, 1])) > exclusion
+    found = []
+    while len(found) < _MAX_LINES and free.sum() >= params.min_support_px:
+        angle, offset = _peak(points[free], directions[free], weights[free], origin)
+        guess = _Curve(origin, angle, offset, 0.0)
+        selected = free & (_angle_between(directions, angle) <= _HOUGH_GATE_DEG)
+        fitted = _fit_line(points, weights, selected, guess, origin, params)
+        if fitted is None:
+            used = selected & (numpy.abs(guess.distance(points[:, 0], points[:, 1])) <= _LINE_BAND_PX)
+            if not used.any():
+                break
+            free &= ~used
+            continue
+        curve, inliers = fitted
+        along = curve.frame(points[inliers, 0], points[inliers, 1])[0]
+        found.append(_Line(curve, kind, (float(along.min()), float(along.max())), points[inliers]))
+        free &= numpy.abs(curve.distance(points[:, 0], points[:, 1])) > max(_LINE_BAND_PX, exclusion / 2)
+    return found
 
 
 # ---- profile refinement -------------------------------------------------------------------------------------------
@@ -327,6 +344,24 @@ def _cdf(z):
     return 0.5 * (1.0 + _erf(z / math.sqrt(2.0)))
 
 
+def _cdf_second_integral(z):
+    """Second antiderivative of the standard normal CDF."""
+    return 0.5 * ((z * z + 1.0) * _cdf(z) + z * numpy.exp(-0.5 * z * z) / math.sqrt(2.0 * math.pi))
+
+
+def _pixel_step(x, blur, angle):
+    """Share of a pixel beyond a blurred straight edge, its centre at signed distance `x` past the edge: the unit
+    square projected on the edge normal (a trapezoid of sides |cos| and |sin| of the angle) convolved with the
+    Gaussian blur. Sampling a blurred step at the pixel centre instead biases sharp edges by up to 0.1 px."""
+    theta = math.radians(angle)
+    a = max(abs(math.cos(theta)), _MIN_FOOTPRINT_PX)
+    c = max(abs(math.sin(theta)), _MIN_FOOTPRINT_PX)
+    total = 0.0
+    for sign_a, sign_c, weight in ((1, 1, 1.0), (1, -1, -1.0), (-1, 1, -1.0), (-1, -1, 1.0)):
+        total = total + weight * _cdf_second_integral((x + sign_a * a / 2 + sign_c * c / 2) / blur)
+    return total * blur * blur / (a * c)
+
+
 class _Profile:
     """Blurred profile across one curve on a fixed pixel set; levels solved linearly (variable projection)."""
 
@@ -340,8 +375,8 @@ class _Profile:
         along, across = curve.frame(self.xs, self.ys)
         u = across - c - k * along * along
         blur = max(blur, _MIN_BLUR_PX)
-        left = _cdf((-abs(width) / 2 - u) / blur)
-        right = _cdf((u - abs(width) / 2) / blur)
+        left = _pixel_step(-abs(width) / 2 - u, blur, angle)
+        right = _pixel_step(u - abs(width) / 2, blur, angle)
         columns = []
         for half in numpy.unique(self.halves):
             mask = self.halves == half
@@ -493,69 +528,170 @@ def _region(luma, centre, half, margin):
     return region, (row - half, column - half)
 
 
-def _clear(grid, curves, band):
-    clear = numpy.ones(grid[0].shape, dtype=bool)
+def _cell(grid, curves, point, band):
+    """Pixels on the side of `point` of every curve, farther than `band` from it: the cell of the crossing."""
+    cell = numpy.ones(grid[0].shape, dtype=bool)
     for curve in curves:
-        clear &= numpy.abs(curve.distance(grid[0], grid[1])) > band
-    return clear
+        offsets = curve.distance(grid[0], grid[1])
+        cell &= (numpy.abs(offsets) > band) & (numpy.sign(offsets) == numpy.sign(curve.distance(*point)))
+    return cell
 
 
-def _away(points, normals, curve, band, params):
-    return ((_angle_between(_direction_degrees(normals), curve.angle) >= params.min_angle_deg)
-            & (numpy.abs(curve.distance(points[:, 0], points[:, 1])) > band)
-            & (numpy.abs(curve.distance(points[:, 0], points[:, 1])) <= band + _STEM_REACH_PX))
+@dataclass(frozen=True)
+class _Scan:
+    """One window at its best scale: pixel grid, noise, detected ridge and step-edge points."""
+    window: numpy.ndarray
+    grid: tuple
+    noise: float
+    sigma: float
+    polarity: float  # sign of the ridge response of the wires: -1 for bright wires
+    ridge: tuple  # (points, normals, weights)
+    edge: tuple
+
+    def points(self, kind):
+        return self.ridge if kind == _RIDGE else self.edge
 
 
-def _locate(luma, estimate, params):
-    """One iteration: the crossing seen in the window around `estimate`, or _NoCrossing."""
-    half = params.window_px
+def _scan(luma, centre, half, params):
     margin = int(math.ceil(3 * max(params.sigmas_px)))
-    region, (top, left) = _region(luma, estimate, half, margin)
+    region, (top, left) = _region(luma, centre, half, margin)
     window = region[margin:margin + 2 * half + 1, margin:margin + 2 * half + 1]
     noise = _noise(window)
     scales = [_Scale(region, margin, sigma) for sigma in params.sigmas_px]
     rows, columns = numpy.mgrid[0:2 * half + 1, 0:2 * half + 1]
     grid = (columns + left + 0.5, rows + top + 0.5)
-    scale = scales[int(numpy.argmax([float(numpy.max(numpy.abs(s.ridge))) for s in scales]))]
+    responses = [float(numpy.max(numpy.abs(s.ridge))) for s in scales]
+    scale = next(s for s, r in zip(scales, responses) if r >= _SCALE_SHARE * max(responses))
     strongest = numpy.unravel_index(int(numpy.argmax(numpy.abs(scale.ridge))), scale.ridge.shape)
     polarity = 1.0 if scale.ridge[strongest] > 0 else -1.0
     ridge_threshold, edge_threshold = scale.thresholds(noise, params.min_contrast)
-    points, normals, weights = _ridge_points(scale, polarity, ridge_threshold, grid)
-    if len(points) == 0:
+    return _Scan(window, grid, noise, scale.sigma, polarity, _ridge_points(scale, polarity, ridge_threshold, grid),
+                 _edge_points(scale, edge_threshold, grid))
+
+
+def _is_wire(line, scan, offset, floor):
+    """A wire stands out from both of its sides; the ridge seen on the bright side of a bare colour edge does not (one
+    side is as bright as its centre). Median over the line's points of the smaller of the two differences."""
+    points = line.points
+    theta = math.radians(line.curve.angle)
+    normal = numpy.array([-math.sin(theta), math.cos(theta)])
+    corner = numpy.array([scan.grid[0][0, 0], scan.grid[1][0, 0]])
+
+    def sample(shift):
+        at = points + shift * normal - corner
+        return _bilinear(scan.window, at[:, 0], at[:, 1])
+
+    centre = sample(0.0)
+    brighter = -scan.polarity  # a bright wire has a negative ridge response
+    excess = numpy.minimum(brighter * (centre - sample(offset)), brighter * (centre - sample(-offset)))
+    return float(numpy.median(excess)) >= floor
+
+
+def _in_cell(line, point, partner, others, exclusion, params, origin):
+    """The line refitted on its points of the cell of `point` (on the side of `point` of every other line, farther
+    than `exclusion` from them and from `partner`): beyond the next ring a radial wire runs between a cream and a
+    black single and its ridge points are offset; near a junction they bend."""
+    cell = numpy.abs(partner.curve.distance(line.points[:, 0], line.points[:, 1])) > exclusion
+    for other in others:
+        offsets = other.curve.distance(line.points[:, 0], line.points[:, 1])
+        cell &= (numpy.abs(offsets) > exclusion) & (numpy.sign(offsets) == numpy.sign(other.curve.distance(*point)))
+    if cell.sum() < params.min_support_px or cell.all():
+        return line
+    points = line.points[cell]
+    along = line.curve.frame(points[:, 0], points[:, 1])[0]
+    curve = _fit_curve(points, numpy.ones(len(points)), origin, line.curve.angle,
+                       float(numpy.ptp(along)) >= _CURVED_EXTENT_PX)
+    return _Line(curve, line.kind, (float(along.min()), float(along.max())), points)
+
+
+def _reaches(line, point, gap):
+    """The line's points come within `gap` px (along the line) of `point`: it passes through it or ends at it."""
+    along = line.curve.frame(point[0], point[1])[0]
+    return line.extent[0] - gap <= along <= line.extent[1] + gap
+
+
+def _coarse(luma, start, params):
+    """Coarse stage: the lines of a region of half side `window_px + radius_px` around the start, and the crossing of
+    two of them (angle at least `min_angle_deg`, both lines reaching it) nearest the start within `radius_px`.
+
+    Returns (estimate, first, second, others) or raises _NoCrossing."""
+    scan = _scan(luma, start, params.window_px + int(math.ceil(params.radius_px)), params)
+    if len(scan.ridge[0]) == 0 and len(scan.edge[0]) == 0:
         raise _NoCrossing(CONTRAST)
-    first, first_inliers, first_parallels = _detect_line(points, normals, weights, estimate, params)
-    band = 2.0 * scale.sigma + 2.0
-    e_points, e_normals, e_weights = _edge_points(scale, edge_threshold, grid)
-    away = _away(points, normals, first, band, params)
-    e_away = _away(e_points, e_normals, first, band, params)
-    if away.sum() == 0 and e_away.sum() == 0:
-        raise _NoCrossing(CONTRAST)
-    if away.sum() < params.min_support_px:  # no second wire: a bare colour edge
-        candidates = (e_points[e_away], e_normals[e_away], e_weights[e_away])
-    else:
-        candidates = (points[away], normals[away], weights[away])
-    second, second_inliers, second_parallels = _detect_line(*candidates, estimate, params)
-    if _angle_between(first.angle, second.angle) < params.min_angle_deg:
+    exclusion = 2.0 * scan.sigma + _LINE_BAND_PX
+    ridges = [line for line in _lines(*scan.ridge, start, _RIDGE, exclusion, params)
+              if _is_wire(line, scan, exclusion, params.min_contrast * scan.noise)]
+    edges = _lines(*scan.edge, start, _EDGE, exclusion, params, ridges)
+    if not ridges:
+        raise _NoCrossing(SUPPORT if len(scan.ridge[0]) else CONTRAST)
+    gap = _GAP_SIGMAS * scan.sigma + _GAP_PX
+    seen, best = set(), None
+    for index, first in enumerate(ridges):
+        for second in ridges[index + 1:] + edges:
+            if _angle_between(first.curve.angle, second.curve.angle) < params.min_angle_deg:
+                seen.add(ANGLE)
+                continue
+            point = _crossing(first.curve, second.curve)
+            distance = math.hypot(point[0] - start[0], point[1] - start[1])
+            if not math.isfinite(distance) or distance > params.radius_px + _COARSE_SLACK_PX:
+                seen.add(TOO_FAR)
+            elif not (_reaches(first, point, gap) and _reaches(second, point, gap)):
+                seen.add(SUPPORT)
+            elif best is None or distance < best[0]:
+                best = (distance, point, first, second)
+    if best is None:
+        raise _NoCrossing(next((r for r in (TOO_FAR, SUPPORT, ANGLE) if r in seen), SUPPORT))
+    _, point, first, second = best
+    keep = 2.0 * scan.sigma + _GAP_PX
+    others = tuple(line for line in ridges + edges if line is not first and line is not second and not any(
+        _angle_between(line.curve.angle, chosen.curve.angle) < params.min_angle_deg
+        and abs(line.curve.distance(*point) - chosen.curve.distance(*point)) < keep for chosen in (first, second)))
+    first, second = (_in_cell(first, point, second, others, exclusion, params, start),
+                     _in_cell(second, point, first, others, exclusion, params, start))
+    return _crossing(first.curve, second.curve), first, second, others
+
+
+def _fine(luma, estimate, first, second, others, params):
+    """Fine stage, one iteration: both lines refitted on the points of the window around `estimate`, then refined
+    by their profiles. Returns (crossing, first, second) or raises _NoCrossing."""
+    scan = _scan(luma, estimate, params.window_px, params)
+    sigma = scan.sigma
+    fitted = []
+    for line, other in ((first, second), (second, first)):
+        result = None
+        for kind in (line.kind, _EDGE if line.kind == _RIDGE else _RIDGE):  # a bare edge also has a bright-side ridge
+            points, normals, weights = scan.points(kind)
+            if len(points) == 0:
+                continue
+            selected = ((_angle_between(_direction_degrees(normals), line.curve.angle) <= _HOUGH_GATE_DEG)
+                        & (numpy.abs(other.curve.distance(points[:, 0], points[:, 1])) > sigma + _LINE_BAND_PX))
+            result = _fit_line(points, weights, selected, line.curve, estimate, params, 2.0 * sigma + _LINE_BAND_PX)
+            if result is not None:
+                break
+        if result is None:
+            raise _NoCrossing(SUPPORT)
+        fitted.append((result[0], points[result[1]]))
+    (first_curve, first_points), (second_curve, second_points) = fitted
+    if _angle_between(first_curve.angle, second_curve.angle) < params.min_angle_deg:
         raise _NoCrossing(ANGLE)
-    first_points, second_points = points[first_inliers], candidates[0][second_inliers]
-    detected = _crossing(first, second)
-    first_clear = _clear(grid, second_parallels, scale.sigma + 2.0)  # a profile never covers a parallel line
-    second_clear = _clear(grid, first_parallels, scale.sigma + 2.0)
-    floor = params.min_contrast * noise
-    refined_first = _refine(window, grid, first_clear, estimate, first, second, band + 2.0, first_points, scale.sigma,
-                            noise, floor)
-    refined_second = _refine(window, grid, second_clear, estimate, second, refined_first.curve, refined_first.band,
-                             second_points, scale.sigma, noise, floor)
-    refined_first = _refine(window, grid, first_clear, estimate, refined_first.curve, refined_second.curve,
-                            refined_second.band, first_points, scale.sigma, noise, floor, refined_first)
-    if min(refined_first.contrast, refined_second.contrast) < params.min_contrast * noise:
+    detected = _crossing(first_curve, second_curve)
+    clear = _cell(scan.grid, [line.curve for line in others], estimate, sigma + 2.0)  # profiles stop at other lines
+    band = 2.0 * sigma + 2.0
+    floor = params.min_contrast * scan.noise
+    common = (scan.window, scan.grid, clear, estimate)
+    refined_first = _refine(*common, first_curve, second_curve, band + 2.0, first_points, sigma, scan.noise, floor)
+    refined_second = _refine(*common, second_curve, refined_first.curve, refined_first.band, second_points, sigma,
+                             scan.noise, floor, refined_first)  # both wires of a crossing have about the same width
+    refined_first = _refine(*common, refined_first.curve, refined_second.curve, refined_second.band, first_points,
+                            sigma, scan.noise, floor, refined_first)
+    if min(refined_first.contrast, refined_second.contrast) < floor:
         raise _NoCrossing(CONTRAST)
     if _angle_between(refined_first.curve.angle, refined_second.curve.angle) < params.min_angle_deg:
         raise _NoCrossing(ANGLE)
     refined = _crossing(refined_first.curve, refined_second.curve)
     if math.hypot(refined[0] - detected[0], refined[1] - detected[1]) > _REFINE_SHIFT_PX:
         raise _NoCrossing(RESIDUAL)
-    return refined
+    return refined, _Line(refined_first.curve, first.kind, ()), _Line(refined_second.curve, second.kind, ())
 
 
 # ---- public -------------------------------------------------------------------------------------------------------
@@ -569,9 +705,10 @@ def snap_point(luma, start, params=SnapParams()) -> SnapResult:
     try:
         if not all(math.isfinite(v) for v in start):
             raise _NoCrossing(BORDER)
+        estimate, first, second, others = _coarse(luma, start, params)
         while iterations < params.max_iter:
             iterations += 1
-            found = _locate(luma, estimate, params)
+            found, first, second = _fine(luma, estimate, first, second, others, params)
             if not (0.0 <= found[0] < columns and 0.0 <= found[1] < rows):
                 raise _NoCrossing(BORDER)
             if math.hypot(found[0] - start[0], found[1] - start[1]) > params.radius_px:
