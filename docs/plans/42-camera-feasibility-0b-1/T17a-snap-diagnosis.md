@@ -58,3 +58,19 @@ opus. Why: case 3, the refusal causes on real images are unknown and the cause t
 checks of T15m's algorithm; a wrong diagnosis wastes one of Kosmo's runs within the 10-minute budget (D48).
 
 ## Implementation notes
+- Where: `snap.snap_detail` (stages `snap.STAGES`, `SnapDescriptors`, `SnapDetail`; `snap_point` is its `.result`);
+  `snap_report.py` (`collect`, `run_snaps`, `render`, `report`, `main`, `CATEGORY_OF_STAGE`, `planned_minutes`).
+- Deviations: three stages beyond the task list, each mapped once: `coarse_too_far` (every coarse crossing beyond the
+  radius, « hors rayon »), `fine_angle` (« forme »), `fit_failure` (non-finite profile or singular system, « autre »).
+  `stem_px` = shorter of the 4 arms of the two lines beyond the crossing, sampled on the line flanks (0 at a T);
+  `halo` = largest RMS of the profile-model residual over the noise; `bright_wires` = polarity.
+- Config: `SNAP_SWEEP_FACTORS` [1, 2, 4] and `SNAP_LATTICE_STARTS` 4 added (defaults.json, config.py, test_config.py).
+- Planned K7.6 duration counts every stored point (unreadable included, hidden excluded): (sweep factors +
+  `SNAP_REPEAT_DIRECTIONS`) per point plus `SNAP_LATTICE_STARTS` per photo control point, times the median snap time
+  of the run, rounded up to the minute; « inconnue » when no snap ran.
+- A video control point is snapped only when `frames.json` lists a frame for its dart at its `positionMs`; otherwise
+  it is counted « sans image vidéo listée » and `unreadable`. Images are decoded once per file (control and segment
+  on the same photo share it).
+- For T17b: the 4x sweep often turns a recovered point ambiguous (inner crossings come in range); read 2x. The
+  scripted boards of `test_cv32_each_stage_is_reached_by_a_scripted_board` are starting points for the synthetic
+  cases. For T17c: `report()` returns the outcomes; groups are `GROUPS` (split, source, kind).
