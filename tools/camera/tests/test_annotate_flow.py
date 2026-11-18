@@ -1,5 +1,7 @@
 """Per-dart flow (T6a): CV2 calibration order, CV5 judged darts, resume cursor, replace, clear, skips, autosave;
 segment 0 of the calibration list (T5b, CV20)."""
+from dataclasses import replace
+
 import pytest
 
 from annotate_support import NAME, SIZE, FakeSnapping, make_session, truth_dict
@@ -639,3 +641,260 @@ def test_without_a_snapper_clicks_saves_and_recalibration_are_refused_and_nothin
     assert (3, (7.0, 8.0)) in _tips(updated)  # tips do not need the snapper
     with pytest.raises(FlowConflict, match="Recalage indisponible"):
         flow.apply(annotations, session, click(), cursor=None, snapping=None)  # no snapper object at all
+
+
+# ---- control items (T15d: CV25, CV26, CV31, U25, U29) ---------------------------------------------------------------
+
+FRAME = (2400, 2100)  # a video frame: its own size (D8), the control stores the size given with the save
+SHIFT = (0.5, 0.25)
+
+
+def plan_of_items(photo=(1, 3, 4), video=()):
+    return flow.ControlPlan(tuple(photo), tuple((d, f"video-{d:03d}.jpg", 1000 + d) for d in video))
+
+
+def control_session(tmp_path):
+    return session_of(tmp_path, judged=(1, 3, 4, 6, 7), voided=(2,), no_photo=(5,))
+
+
+def step(annotations, session, action, cursor, control, snapping=None):
+    return flow.apply(annotations, session, action, cursor, FakeSnapping() if snapping is None else snapping, control)
+
+
+def open_control(annotations, session, control, snapping=None, cursor=None):
+    cursor = flow.resume(annotations, session) if cursor is None else cursor
+    return step(annotations, session, Action("control"), cursor, control, snapping)
+
+
+def save_control(annotations, session, cursor, control, size=SIZE, snapping=None):
+    return step(annotations, session, Action("save", number=cursor.number, source=cursor.source, size=size), cursor,
+                control, snapping)
+
+
+def test_control_opens_the_first_sampled_photo_with_the_segment_snapped_then_saves_and_proposes_the_next_cv31(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control, snapping = calibrated(session), plan_of_items(), FakeSnapping(shift=SHIFT)
+    _, cursor = open_control(annotations, session, control, snapping)
+    assert (cursor.kind, cursor.number, cursor.source, cursor.photo) == (flow.CONTROL, 1, "photo", "dart-001.jpg")
+    moved = tuple((x + SHIFT[0], y + SHIFT[1]) for x, y in POINTS)
+    assert points_of(cursor) == moved and all(slot.status == "snapped" for slot in cursor.pending)
+    assert snapping.calls[0] == ("dart-001.jpg", POINTS[0])
+    saved, cursor = save_control(annotations, session, cursor, control, snapping=snapping)
+    (control_1,) = saved.controls
+    assert (control_1.dart, control_1.source, control_1.position_ms, (control_1.width, control_1.height)) \
+        == (1, "photo", None, SIZE)
+    assert control_1.points == moved and control_1.snap == ("snapped",) * 4
+    assert saved.calibrations == annotations.calibrations and saved.darts == annotations.darts  # CV25: nothing else
+    assert (cursor.number, cursor.photo) == (3, "dart-003.jpg")
+    assert points_of(cursor) == tuple((x + SHIFT[0], y + SHIFT[1]) for x, y in moved)  # the saved points, snapped again
+
+
+def test_resume_after_a_restart_opens_the_first_item_without_a_control_cv26(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items(video=(1,))
+    annotations, cursor = open_control(annotations, session, control)[0], None
+    _, cursor = open_control(annotations, session, control)
+    annotations, cursor = save_control(annotations, session, cursor, control)
+    restarted = flow.resume(annotations, session)  # a new process: the cursor starts again from the file
+    _, cursor = open_control(annotations, session, control, cursor=restarted)
+    assert (cursor.source, cursor.number) == ("photo", 3)
+
+
+def test_control_from_a_dart_cursor_opens_that_dart_when_it_is_sampled_and_open(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items()
+    _, cursor = open_control(annotations, session, control, cursor=_at_dart(annotations, session, 4))
+    assert (cursor.source, cursor.number) == ("photo", 4)
+    _, cursor = open_control(annotations, session, control, cursor=_at_dart(annotations, session, 6))  # not sampled
+    assert (cursor.source, cursor.number) == ("photo", 1)
+
+
+def test_control_is_accepted_from_every_cursor_and_done_when_nothing_is_left_u15(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items()
+    _, recalibration = _recalibrate(annotations, session, 3)
+    for cursor in (_at_dart(annotations, session, 3), Cursor(flow.COMPLETE), recalibration,
+                   Cursor(flow.CALIBRATION, photo="dart-001.jpg", pending=flow.BLANK)):
+        _, opened = open_control(annotations, session, control, cursor=cursor)
+        assert (opened.kind, opened.source, opened.number) == (flow.CONTROL, "photo", 3 if cursor.kind == flow.DART else 1)
+    cursor = open_control(annotations, session, control)[1]
+    for _ in range(3):
+        annotations, cursor = save_control(annotations, session, cursor, control)
+    assert cursor.kind == flow.CONTROL_DONE
+    assert open_control(annotations, session, control, cursor=Cursor(flow.COMPLETE))[1].kind == flow.CONTROL_DONE
+
+
+def test_control_without_a_plan_is_off_and_nothing_changes_cv16(tmp_path):
+    session = control_session(tmp_path)
+    annotations = calibrated(session)
+    with pytest.raises(FlowConflict, match=r"^Contrôle : indisponible \(option --split absente\)$"):
+        step(annotations, session, Action("control"), flow.resume(annotations, session), None)
+
+
+def test_a_proposal_that_does_not_snap_is_clicked_and_a_click_replaces_the_near_slot_not_the_empty_one_u27(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items()
+    snapping = FakeSnapping(failing={POINTS[3]: "contrast"})
+    _, cursor = open_control(annotations, session, control, snapping)
+    assert cursor.pending[3] == flow.EMPTY and flow.ready_count(cursor.pending) == 3
+    with pytest.raises(FlowConflict, match=r"^Points prêts : 3 / 4$"):
+        save_control(annotations, session, cursor, control, snapping=snapping)
+    near = (POINTS[2][0] + 2, POINTS[2][1])
+    _, cursor = step(annotations, session, Action("click", *near, size=SIZE), cursor, control, snapping)
+    assert cursor.pending[2].point == near and cursor.pending[3] == flow.EMPTY  # slot 3 replaced, slot 4 still empty
+    _, cursor = step(annotations, session, Action("click", *POINTS[3], size=SIZE), cursor, control, snapping)
+    assert cursor.pending[3] == Slot(POINTS[3], an.UNSNAPPED, "contrast")
+    saved, _ = save_control(annotations, session, cursor, control, snapping=snapping)
+    assert saved.controls[0].snap == ("snapped", "snapped", "snapped", "unsnapped")
+    assert saved.controls[0].points[3] == POINTS[3]  # a point that did not snap is stored at the click
+
+
+def test_an_unreadable_image_leaves_the_proposals_to_click_and_remembers_the_reason_s14(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items()
+    snapping = FakeSnapping(failing={POINTS[0]: "unreadable", POINTS[1]: "unreadable"})
+    _, cursor = open_control(annotations, session, control, snapping)
+    assert cursor.pending[0] == Slot(None, None, "unreadable") and flow.ready_count(cursor.pending) == 2
+    _, cursor = step(annotations, session, Action("click", *POINTS[0], size=SIZE), cursor, control, snapping)
+    assert cursor.pending[0] == Slot(POINTS[0], an.UNSNAPPED, "unreadable")
+
+
+def test_hide_takes_the_selected_slot_then_clears_the_selection_else_the_first_to_click_else_409_u25(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items()
+    _, cursor = open_control(annotations, session, control)
+    _, cursor = step(annotations, session, Action("select", number=2), cursor, control)
+    _, cursor = step(annotations, session, Action("hidden_point"), cursor, control)
+    assert cursor.pending[1] == Slot(None, flow.HIDDEN) and cursor.selected is None
+    assert flow.ready_count(cursor.pending) == 4
+    with pytest.raises(FlowConflict, match="^Choisir le point à cacher : touche 1 à 4, puis H$"):
+        step(annotations, session, Action("hidden_point"), cursor, control)
+    _, cursor = open_control(annotations, session, control, FakeSnapping(failing={POINTS[2]: "contrast"}))
+    _, hidden = step(annotations, session, Action("hidden_point"), cursor, control)
+    assert hidden.pending[2] == Slot(None, flow.HIDDEN) and hidden.pending[:2] == cursor.pending[:2]
+
+
+def test_hide_is_refused_outside_the_control_screen(tmp_path):
+    session = control_session(tmp_path)
+    annotations = calibrated(session)
+    with pytest.raises(FlowConflict, match="4 points"):
+        step(annotations, session, Action("hidden_point"), _recalibrate(annotations, session, 3)[1], None)
+    with pytest.raises(FlowError):
+        step(annotations, session, Action("hidden_point"), _at_dart(annotations, session, 3), None)
+
+
+def test_two_saves_for_the_same_item_write_one_control_and_the_second_is_409_u29(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items()
+    _, cursor = open_control(annotations, session, control)
+    first = Action("save", number=1, source="photo", size=SIZE)
+    saved, cursor = step(annotations, session, first, cursor, control)
+    with pytest.raises(FlowConflict, match="^Photo déjà enregistrée$"):
+        step(saved, session, first, cursor, control)
+    assert len(saved.controls) == 1
+    with pytest.raises(FlowConflict, match="^Photo déjà enregistrée$"):  # the right dart, the other source
+        step(saved, session, Action("save", number=3, source="video", size=SIZE), cursor, control)
+
+
+def test_first_video_item_has_no_proposal_four_clicks_then_save_stores_position_and_frame_size_cv25(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items(photo=(1,), video=(1, 4))
+    _, cursor = open_control(annotations, session, control)
+    annotations, cursor = save_control(annotations, session, cursor, control)
+    assert (cursor.source, cursor.number, cursor.photo, cursor.pending) == ("video", 1, "video-001.jpg", flow.BLANK)
+    for x, y in POINTS:
+        _, cursor = step(annotations, session, Action("click", x, y, size=FRAME), cursor, control)
+    saved, cursor = save_control(annotations, session, cursor, control, size=FRAME)
+    video = saved.controls[1]
+    assert (video.dart, video.source, video.position_ms, (video.width, video.height)) == (1, "video", 1001, FRAME)
+    assert video.points == POINTS and video.snap == ("snapped",) * 4
+    assert points_of(cursor) == POINTS  # the next video item proposes the previous video control, not the photo's
+
+
+def test_hidden_points_are_saved_as_null_with_a_null_snap_and_four_hidden_count_done_u18(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items(photo=(), video=(1, 3))
+    _, cursor = open_control(annotations, session, control)
+    for _ in range(2):
+        _, cursor = step(annotations, session, Action("hidden_point"), cursor, control)
+    for x, y in POINTS[:2]:  # a hidden slot is not "the first empty slot": the clicks fill slots 3 and 4
+        _, cursor = step(annotations, session, Action("click", x, y, size=FRAME), cursor, control)
+    saved, cursor = save_control(annotations, session, cursor, control, size=FRAME)
+    assert saved.controls[0].points == (None, None, POINTS[0], POINTS[1])
+    assert saved.controls[0].snap == (None, None, "snapped", "snapped")
+    assert cursor.pending[:2] == (flow.EMPTY, flow.EMPTY)  # the previous control's hidden points are not proposed
+    for number in range(1, 5):  # U18: 1 H 2 H 3 H 4 H
+        _, cursor = step(saved, session, Action("select", number=number), cursor, control)
+        _, cursor = step(saved, session, Action("hidden_point"), cursor, control)
+    saved, cursor = save_control(saved, session, cursor, control, size=FRAME)
+    assert saved.controls[1].points == (None,) * 4 and saved.controls[1].snap == (None,) * 4
+    assert flow.control_progress(saved, control) == {"photo": {"done": 0, "total": 0}, "video": {"done": 2, "total": 2}}
+    assert cursor.kind == flow.CONTROL_DONE
+
+
+def test_undo_takes_back_the_last_change_then_the_previous_control_which_comes_back_as_proposals_u28(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items()
+    _, cursor = open_control(annotations, session, control)
+    annotations, cursor = save_control(annotations, session, cursor, control)  # item 1 saved, item 3 open
+    opened = cursor
+    _, cursor = step(annotations, session, Action("select", number=2), cursor, control)
+    _, cursor = step(annotations, session, Action("click", 7.0, 8.0, size=SIZE), cursor, control)
+    assert cursor.pending[1].point == (7.0, 8.0)
+    _, cursor = step(annotations, session, Action("clear"), cursor, control)
+    assert cursor.pending == opened.pending and cursor.selected == 2  # back before the click, key 2 still chosen
+    reopened_file, cursor = step(annotations, session, Action("clear"), cursor, control)  # no change left: go back
+    assert reopened_file.controls == () and (cursor.number, cursor.photo) == (1, "dart-001.jpg")
+    assert points_of(cursor) == POINTS  # the removed control's points, as proposals
+    same, cursor = step(reopened_file, session, Action("clear"), cursor, control)  # the first item: nothing before it
+    assert same == reopened_file and cursor.number == 1
+
+
+@pytest.mark.parametrize("leave", [Action("next"), Action("previous"), Action("goto", number=4)])
+def test_leaving_the_control_screen_drops_the_unsaved_points_and_the_file_is_unchanged_u16(tmp_path, leave):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items()
+    _, cursor = open_control(annotations, session, control)
+    _, cursor = step(annotations, session, Action("select", number=1), cursor, control)
+    _, cursor = step(annotations, session, Action("click", 7.0, 8.0, size=SIZE), cursor, control)
+    same, left = step(annotations, session, leave, cursor, control)
+    assert same == annotations and left.kind == flow.DART and left.pending == ()
+    reopened = flow.resume(same, session)  # Escape: the server reopens the session from the file
+    assert reopened.kind == flow.DART
+
+
+def test_without_a_snapper_control_and_save_give_409_and_nothing_changes_a32(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control, off = calibrated(session), plan_of_items(), FakeSnapping(available=False)
+    with pytest.raises(FlowConflict, match="Recalage indisponible"):
+        open_control(annotations, session, control, off)
+    _, cursor = open_control(annotations, session, control)
+    with pytest.raises(FlowConflict, match="Recalage indisponible"):
+        save_control(annotations, session, cursor, control, snapping=off)
+
+
+def test_the_control_cap_answers_409_and_the_file_is_unchanged_cv25(tmp_path):
+    session = control_session(tmp_path)
+    full = tuple(an.Control(n, "photo", None, *SIZE, POINTS, ("snapped",) * 4) for n in range(100, 100 + an.MAX_CONTROLS))
+    annotations = replace(calibrated(session), controls=full)
+    control = plan_of_items()
+    _, cursor = open_control(annotations, session, control)
+    with pytest.raises(FlowConflict, match=r"^Nombre maximal de contrôles atteint \(1024\)$"):
+        save_control(annotations, session, cursor, control)
+
+
+def test_a_saved_control_replaces_the_one_of_the_same_item_and_stays_sorted_photo_before_video_cv25(tmp_path):
+    session = control_session(tmp_path)
+    annotations, control = calibrated(session), plan_of_items(photo=(1, 3), video=(1, 3))
+    cursor = open_control(annotations, session, control)[1]
+    for _ in range(2):
+        annotations, cursor = save_control(annotations, session, cursor, control)
+    for x, y in POINTS:
+        _, cursor = step(annotations, session, Action("click", x, y, size=FRAME), cursor, control)
+    for _ in range(2):
+        annotations, cursor = save_control(annotations, session, cursor, control, size=FRAME)
+    assert [(c.dart, c.source) for c in annotations.controls] == [(1, "photo"), (1, "video"), (3, "photo"), (3, "video")]
+    assert flow.control_progress(annotations, control) == {"photo": {"done": 2, "total": 2},
+                                                           "video": {"done": 2, "total": 2}}
+    redone = flow.control_progress(replace(annotations, darts=(DartAnnotation(1, Status.HIDDEN, None),)), control)
+    assert redone["photo"]["done"] == 2  # a tip change never moves the counts
