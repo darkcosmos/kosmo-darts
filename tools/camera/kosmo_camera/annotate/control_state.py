@@ -45,7 +45,7 @@ OFF = ControlInfo(reason=flow.CONTROL_OFF)
 class ControlSnapshot:
     configured: bool = False  # `--split` given
     warning: Optional[str] = None  # the split was refused (list warning)
-    roles: dict = field(default_factory=dict)  # session name -> role
+    roles: dict = field(default_factory=dict)  # session name -> control.Role
     frames_dir: Optional[Path] = None
     frames: dict = field(default_factory=dict)  # session name -> frames_file.SessionFrames
     frames_warning: Optional[str] = None
@@ -62,7 +62,7 @@ class ControlSnapshot:
         role = self.roles.get(name)
         if role is None:
             return ControlInfo(reason=NOT_IN_SPLIT)
-        sample = control.sample(truth, annotations, role.split()[0])
+        sample = control.sample(truth, annotations, role.set_name)
         session_frames = self.frames.get(name)
         listed = {} if session_frames is None else {f.dart: f for f in session_frames.frames}
         video = tuple((dart, listed[dart].file, listed[dart].position_ms) for dart in sample.video_darts
@@ -70,7 +70,7 @@ class ControlSnapshot:
         files = {listed[dart].file: (self.frames_dir / name / listed[dart].file,
                                      (listed[dart].width, listed[dart].height)) for dart, _, _ in video}
         reasons = {} if session_frames is None else dict(Counter(m.reason for m in session_frames.missing))
-        return ControlInfo(flow.ControlPlan(sample.photo_darts, video), role, None, session_frames is not None,
+        return ControlInfo(flow.ControlPlan(sample.photo_darts, video), role.label, None, session_frames is not None,
                            reasons, files)
 
 

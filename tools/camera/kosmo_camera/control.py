@@ -18,15 +18,26 @@ class Sample:
     video_darts: tuple  # ascending dart numbers of the video controls
 
 
+@dataclass(frozen=True)
+class Role:
+    """The place of a session in the locked split: its set and its number in that set (1-based)."""
+    set_name: str
+    number: int
+
+    @property
+    def label(self) -> str:
+        return f"{self.set_name} {self.number}"
+
+
 def roles(split) -> dict:
-    """Session name to role: `dev 1`, `dev 2`, `eval 1`... in ascending CV3 unit key within each set (CV24)."""
+    """Session name to `Role` (`dev 1`, `dev 2`, `eval 1`...) in ascending CV3 unit key within each set (CV24)."""
     if split.mode != "session":
         raise split_module.SplitError("roles need a session-mode split (CV24)")
     result = {}
     for set_name in split_module.SETS:
         names = sorted((u.session for u in split.units if u.set == set_name), key=split_module.unit_key)
         for number, name in enumerate(names, start=1):
-            result[name] = f"{set_name} {number}"
+            result[name] = Role(set_name, number)
     return result
 
 

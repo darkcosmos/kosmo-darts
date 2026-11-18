@@ -92,18 +92,18 @@ def control_view(loaded, info) -> dict:
             "video": progress["video"], "framesPresent": info.frames_present, "frameMissing": dict(info.frame_reasons)}
 
 
-def summary(loaded, drift=NO_DRIFT, control=None) -> dict:
+def summary(loaded, drift=NO_DRIFT, control_info=None) -> dict:
     label, stale, _ = drift_view(loaded, drift)
     return {"name": loaded.name, "state": loaded.state, "message": loaded.message, "warning": loaded.warning,
             "label": IGNORED_LABEL if loaded.state == IGNORED else None, "progress": _progress(loaded),
             "calibrated": bool(loaded.annotations.calibrations) if loaded.state == OK else None,
             "driftLabel": label, "driftStale": stale,
-            "control": control_view(loaded, control) if loaded.state == OK and control is not None else None}
+            "control": control_view(loaded, control_info) if loaded.state == OK and control_info is not None else None}
 
 
-def view(loaded, cursor, drift, snap_available, control=None) -> dict:
+def view(loaded, cursor, drift, snap_available, control_info=None) -> dict:
     """The full session view: the summary, the darts with their drift flags, the segments and the open item."""
-    result = summary(loaded, drift, control)
+    result = summary(loaded, drift, control_info)
     result["readOnly"] = loaded.state != OK
     if loaded.state != OK:  # read-only states show their message, with no photo flow
         return result

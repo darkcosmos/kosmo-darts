@@ -89,8 +89,8 @@ def test_roles_follow_the_cv3_key_order_not_the_name_order_cv15():
     result = control.roles(_split(dev=names[:2], eval=names[2:]))
     for set_name, group in (("dev", names[:2]), ("eval", names[2:])):
         by_key = sorted(group, key=sp.unit_key)
-        assert [result[n] for n in by_key] == [f"{set_name} 1", f"{set_name} 2"]
-    assert sorted(result.values()) == ["dev 1", "dev 2", "eval 1", "eval 2"]
+        assert [result[n] for n in by_key] == [control.Role(set_name, 1), control.Role(set_name, 2)]
+    assert sorted(role.label for role in result.values()) == ["dev 1", "dev 2", "eval 1", "eval 2"]
 
 
 def test_roles_refuse_a_block_split():
