@@ -187,7 +187,8 @@ def test_session_list_and_open_with_progress_and_resume_cursor(tool):
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
     assert view["cursor"] == {"kind": "calibration", "number": None, "photo": "dart-001.jpg", "pending": [],
                               "slots": [{"point": None, "status": None, "reason": None}] * 4, "source": None,
-                              "selected": None, "ready": 0, "unreadable": False}
+                              "selected": None, "ready": 0, "nextSlot": 0, "diagram": True,
+                              "unreadable": False}
     assert view["snapAvailable"] is True
     assert [d["number"] for d in view["darts"]] == [1, 3, 4] and view["skipped"] == [2, 5]
     assert view["readOnly"] is False and view["photoSize"] == list(SIZE)

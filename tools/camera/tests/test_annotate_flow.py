@@ -933,3 +933,38 @@ def test_a_saved_control_replaces_the_one_of_the_same_item_and_stays_sorted_phot
                                                            "video": {"done": 2, "total": 2}}
     redone = flow.control_progress(replace(annotations, darts=(DartAnnotation(1, Status.HIDDEN, None),)), control)
     assert redone["photo"]["done"] == 2  # a tip change never moves the counts
+
+
+SNAPPED_SLOT = flow.Slot((5.0, 5.0), "snapped", None)
+HIDDEN_SLOT = flow.Slot(None, flow.HIDDEN)
+
+
+@pytest.mark.parametrize("slots,selected,expected", [
+    ((flow.EMPTY,) * 4, None, 0),
+    ((SNAPPED_SLOT, flow.EMPTY, flow.EMPTY, flow.EMPTY), None, 1),
+    ((SNAPPED_SLOT, HIDDEN_SLOT, flow.EMPTY, flow.EMPTY), None, 2),  # a hidden point is not empty
+    ((SNAPPED_SLOT,) * 4, None, None),  # nothing can take a click far from the points
+    ((SNAPPED_SLOT,) * 4, 3, 2),  # the chosen point takes it
+    ((flow.EMPTY,) * 4, 4, 3),
+    ((), None, None),
+])
+def test_next_slot_is_what_a_far_click_does_u27(slots, selected, expected):
+    assert flow.next_slot(slots, selected) == expected
+    try:
+        target = flow.click_target(slots, (10_000.0, 10_000.0), selected)
+    except flow.FlowConflict:
+        target = None
+    assert flow.next_slot(slots, selected) == target  # the same rule, not a copy of it
+
+
+def test_the_diagram_stays_for_an_item_opened_without_proposals_and_never_for_one_with_proposals_u27():
+    empty = flow.Cursor(flow.CALIBRATION, photo="a.jpg", pending=(flow.EMPTY,) * 4)
+    assert flow.shows_diagram(empty) is True
+    clicked = replace(empty, pending=(SNAPPED_SLOT,) + (flow.EMPTY,) * 3, history=(((flow.EMPTY,) * 4, None),))
+    assert flow.shows_diagram(clicked) is True  # still shown after the first click
+    proposed = flow.Cursor(flow.CONTROL, 1, "a.jpg", (SNAPPED_SLOT,) * 4, "photo")
+    assert flow.shows_diagram(proposed) is False
+    undone = replace(proposed, pending=(SNAPPED_SLOT,) * 3 + (flow.EMPTY,), history=((proposed.pending, None),))
+    assert flow.shows_diagram(undone) is False
+    assert flow.shows_diagram(flow.Cursor(flow.DART, 1, "a.jpg")) is False
+    assert flow.shows_diagram(flow.Cursor(flow.COMPLETE)) is False

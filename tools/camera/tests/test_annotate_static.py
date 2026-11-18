@@ -359,3 +359,11 @@ def test_the_page_strings_that_the_server_also_knows_equal_the_python_constants_
     table = string_table()
     assert table["snapUnavailable"] == flow.UNAVAILABLE
     assert table["photoUnreadable"] == flow.PHOTO_UNREADABLE
+
+
+def test_the_page_draws_the_next_slot_and_the_diagram_flag_of_the_server_a5():
+    source = read("app.js")
+    assert "nextSlotIndex" not in source and "noProposals" not in source and "trackItem" not in source
+    panel = function_body("renderAssistedPanel")
+    assert "cursor.nextSlot" in panel and "findIndex" not in panel
+    assert "cursor.diagram" in function_body("renderPanel")

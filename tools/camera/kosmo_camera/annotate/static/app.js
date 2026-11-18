@@ -89,8 +89,6 @@ const state = {
   lastActionAt: 0,
   lastSaveAt: 0,
   notice: null,
-  noProposals: false,
-  itemKey: null,
   viewKey: null,
   blocked: null,
   imageReady: false,
@@ -246,20 +244,9 @@ function isAssisted(view) {
   return ASSISTED_KINDS.includes(view.cursor.kind);
 }
 
-// The item shown by the assisted screen; the CV2 diagram stays for an item opened without proposals (U27).
-function trackItem(view) {
-  const cursor = view.cursor;
-  const key = `${cursor.kind}:${cursor.number}:${cursor.source}`;
-  if (key !== state.itemKey) {
-    state.itemKey = key;
-    state.noProposals = cursor.slots ? cursor.slots.every((slot) => slot.point === null && slot.status === null) : false;
-  }
-}
-
 function applyView(view, force) {
   const previousPhoto = currentPhoto();
   state.view = view;
-  trackItem(view);
   const photo = currentPhoto();
   const image = $("photo");
   if (photo && (force || photo !== previousPhoto)) {
@@ -402,7 +389,7 @@ function renderPanel() {
   $("state").hidden = assisted;
   $("insets").hidden = !assisted;
   $("ready").hidden = !assisted;
-  $("diagram").hidden = !(assisted && state.noProposals);
+  $("diagram").hidden = !(assisted && cursor.diagram);
   if (assisted) {
     renderAssistedPanel(view);
   } else if (cursor.kind === "dart") {
@@ -452,15 +439,7 @@ function renderAssistedPanel(view) {
     canvas.setAttribute("aria-label", fill(TEXT.insetAria, { n: index + 1, status }));
     canvas.classList.toggle("chosen", chosen);
   });
-  drawDiagram(cursor.slots, nextSlotIndex(cursor));
-}
-
-// The point the next click fills (U27): the selected one, else the first without a position.
-function nextSlotIndex(cursor) {
-  if (cursor.selected) {
-    return cursor.selected - 1;
-  }
-  return cursor.slots.findIndex((slot) => slot.point === null && slot.status === null);
+  drawDiagram(cursor.slots, cursor.nextSlot);
 }
 
 // Segment in force before dart `number`: the last one that starts earlier (segments come in ascending order, CV20).

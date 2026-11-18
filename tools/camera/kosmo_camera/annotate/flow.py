@@ -223,6 +223,24 @@ def click_target(slots, click, selected=None) -> int:
     raise FlowConflict(FAR_CLICK)
 
 
+def next_slot(slots, selected=None) -> Optional[int]:
+    """Index of the point the next click fills when it is far from every positioned point (U27), None when none can:
+    the answer `click_target` gives, so the page highlights what a click does."""
+    try:
+        return click_target(slots, (math.inf, math.inf), selected)
+    except FlowConflict:
+        return None
+
+
+def shows_diagram(cursor) -> bool:
+    """True for an assisted item opened without any proposal: the CV2 diagram guides the clicks, and stays while the
+    item is open (U27). The first state of the item is the oldest undo step, else the current slots."""
+    if cursor.kind not in (CALIBRATION, RECALIBRATION, CONTROL):
+        return False
+    first = cursor.history[0][0] if cursor.history else cursor.pending
+    return all(slot.point is None and slot.status is None for slot in first)
+
+
 def _require_snapping(snapping):
     if snapping is None or not snapping.available:
         raise FlowConflict(UNAVAILABLE)

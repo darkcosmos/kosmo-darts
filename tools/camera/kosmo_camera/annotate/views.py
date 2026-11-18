@@ -144,6 +144,8 @@ def view(loaded, cursor, drift, snap_available, control_info=None) -> dict:
                         "slots": [{"point": None if slot.point is None else list(slot.point), "status": slot.status,
                                    "reason": slot.reason} for slot in cursor.pending],
                         "source": cursor.source, "selected": cursor.selected, "ready": flow.ready_count(cursor.pending),
+                        "nextSlot": flow.next_slot(cursor.pending, cursor.selected),
+                        "diagram": flow.shows_diagram(cursor),
                         "unreadable": any(slot.reason == UNREADABLE for slot in cursor.pending)}
     return result
 
