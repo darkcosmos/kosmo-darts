@@ -55,3 +55,11 @@ Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
 sonnet. Why: page change from a specified screen and strings, same patterns as T6b and T6d.
 
 ## Implementation notes
+- Page: the titles of the three assisted screens come from the server (`view.instruction`), so the page holds no
+  title template; the old click-placed calibration texts and `pending` use are removed. The server sends no banner text
+  for `unreadable` (`cursor.unreadable`) nor for the reopened photo: the page builds both (`bannerMessage`, and
+  `reopenedItem` after a `clear` that moves a control cursor to another item). Refusals (409) stay in the header status.
+- `renderAssistedPanel`, `drawInsets` (canvas `drawImage` from `#photo`), `assistedButton` (blur), `onEnter`/`saveItem`
+  (guards, save payload by kind), `onAssistedKey`; video items load from `/api/frame/...` and skip the truth size check.
+- Kosmo-only checks (no JavaScript runtime here): root plan K7.C. The CV2 diagram shows only for an item opened with
+  all four slots empty (`state.noProposals`). T15g still owns the list, `#journey`/`#help` and the Continuer card.
