@@ -170,6 +170,27 @@ jobs:
         working-directory: tools/camera
         run: python -m pytest -q -m "not slow"
 
+      # Python 3.14: Kosmo's WSL interpreter for the annotation tool and its snapping (issue #42, Q14).
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        id: py314
+        if: ${{ hashFiles('tools/camera/requirements-tool.txt') != '' }}
+        with:
+          python-version: "3.14"
+          update-environment: false
+
+      - name: Tool and snapping tests on Python 3.14 (tool requirements only, hashes required, wheels only)
+        if: ${{ hashFiles('tools/camera/requirements-tool.txt') != '' }}
+        working-directory: tools/camera
+        env:
+          PY314: ${{ steps.py314.outputs.python-path }}
+        run: |
+          "$PY314" -m venv "$RUNNER_TEMP/tool-venv"
+          "$RUNNER_TEMP/tool-venv/bin/pip" install --require-hashes --only-binary=:all: \
+            -r requirements-tool.txt -r requirements-tool-test.txt
+          "$RUNNER_TEMP/tool-venv/bin/python" -m pytest -q -m "not slow" \
+            tests/test_snap.py tests/test_luma.py tests/test_annotate_snapping.py tests/test_annotate_flow.py \
+            tests/test_annotate_server.py tests/test_annotate_static.py tests/test_requirements.py
+
   detekt:
     name: detekt
     runs-on: ubuntu-26.04
