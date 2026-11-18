@@ -186,7 +186,9 @@ class BoardStyle:
     wall: tuple = _WALL
 
 
-_SUPERSAMPLE = 4  # sub-samples per pixel side near an edge
+# Sub-samples per pixel side near an edge. 4 x 4 moved a wire nearly parallel to a pixel axis by up to 0.15 px (its
+# coverage steps by 1/4); 8 x 8 keeps every crossing within 0.03 px of `project` on the T15m boards.
+_SUPERSAMPLE = 8
 _SURROUND_MM = DOUBLE_OUTER_MM + 25
 _RING_WIRES_MM = (TRIPLE_INNER_MM, TRIPLE_OUTER_MM, DOUBLE_INNER_MM, DOUBLE_OUTER_MM)
 _EDGES_MM = (BULL_RADIUS_MM, OUTER_BULL_RADIUS_MM) + _RING_WIRES_MM + (_SURROUND_MM,)
