@@ -38,6 +38,7 @@ RECALIBRATION_EXPLANATION = (
     "Recalibrer veut dire : la cible ou le téléphone a bougé à partir de cette fléchette. Les 4 points enregistrés ici "
     "remplacent la calibration pour cette fléchette et les suivantes, jusqu'à la prochaine recalibration. Les "
     "fléchettes déjà pointées ne changent pas. Ne recalibrer que si le déplacement se voit à l'œil.")
+NO_VIDEO_PLANNED = "Contrôle vidéo : aucune image prévue pour cette session"  # e.g. an eval session below dart 55
 NO_FRAMES_REASON = "Contrôle vidéo : indisponible (images vidéo absentes)"
 DRIFT_INFO = "Mesure de dérive non validée : information seulement"
 NO_USABLE_FRAMES = "Aucune image vidéo utilisable pour cette session ({n} manquantes)"
@@ -122,6 +123,8 @@ def _control_steps(loaded, control_info):
             first_open[source] = number
     photo = Step(CONTROL_PHOTO, progress[PHOTO]["done"], progress[PHOTO]["total"],
                  _status(progress[PHOTO]["done"], progress[PHOTO]["total"]))
+    if control_info.video_planned == 0:  # the sample plans no frame: nothing to extract, not an absence (CV26)
+        return photo, Step(CONTROL_VIDEO, 0, 0, DONE), first_open
     if not control_info.frames_present:
         return photo, Step(CONTROL_VIDEO, 0, 0, UNAVAILABLE, NO_FRAMES_REASON), first_open
     video = Step(CONTROL_VIDEO, progress[VIDEO]["done"], progress[VIDEO]["total"],
@@ -136,7 +139,9 @@ def _info_lines(loaded, control_info, drift, steps):
     lines += [step.reason for step in steps if step.status == UNAVAILABLE]
     missing = sum(control_info.frame_reasons.values())
     video = next(step for step in steps if step.key == CONTROL_VIDEO)
-    if video.status == DONE and video.total == 0 and missing:
+    if control_info.video_planned == 0:
+        lines.append(NO_VIDEO_PLANNED)
+    elif video.status == DONE and video.total == 0 and missing:
         lines.append(NO_USABLE_FRAMES.format(n=missing))
     return tuple(dict.fromkeys(lines))  # both control rows may share the same reason: said once
 

@@ -54,9 +54,9 @@ def loaded_of(truth, folder, calibrated=True, darts=(), controls=(), name=NAME):
     return Loaded(name, folder, OK, truth=truth, plan=flow.plan_of(truth), annotations=annotations)
 
 
-def control_info(photo=(1, 3), video=(1,), frames=True, role="dev 1", reasons=None):
+def control_info(photo=(1, 3), video=(1,), frames=True, role="dev 1", reasons=None, planned=None):
     plan = flow.ControlPlan(tuple(photo), tuple((d, f"video-{d:03d}.jpg", 1000 + d) for d in video))
-    return ControlInfo(plan, role, None, frames, dict(reasons or {}), {})
+    return ControlInfo(plan, role, None, frames, dict(reasons or {}), {}, planned)
 
 
 def state_of(loaded, info=None, drift=NO_DRIFT, snap=True):
@@ -316,3 +316,31 @@ def test_the_continue_payload_follows_the_action_and_the_recalibration_text_is_d
         assert journey.Instruction("x", "s", action, number).continue_payload() == expected
     assert journey.RECALIBRATION_EXPLANATION.startswith("Recalibrer veut dire : la cible ou le téléphone a bougé")
     assert journey.RECALIBRATION_EXPLANATION.endswith("Ne recalibrer que si le déplacement se voit à l'œil.")
+
+
+NO_VIDEO_PLANNED = "Contrôle vidéo : aucune image prévue pour cette session"
+
+
+def test_a_session_with_no_video_frame_planned_is_done_not_missing_cv26(session):
+    """An eval session shorter than the video range (darts 55 to 60) plans no frame: nothing to do, not an absence."""
+    folder, truth = session
+    controls = [photo_control(1), photo_control(3)]
+    info = control_info(video=(), frames=False, role="eval 1", planned=0)  # not listed in the manifest: nothing planned
+    short = state_of(loaded_of(truth, folder, darts=all_tips(), controls=controls), info)
+    assert [s.status for s in short.steps] == ["done", "done", "done", "done"]
+    assert (short.steps[3].done, short.steps[3].total) == (0, 0)
+    assert short.state == "Terminée" and short.next_step is None
+    assert NO_VIDEO_PLANNED in short.info and NO_FRAMES not in short.info
+    assert "Contrôle vidéo : indisponible (images vidéo absentes)" not in short.info
+    assert journey.global_instruction([short]).text == "Contrôle terminé : fermer l'outil et lancer le diagnostic (K7.4)"
+    open_photo = state_of(loaded_of(truth, folder, darts=all_tips(), controls=[photo_control(1)]), info)
+    assert open_photo.next_step.text == "Contrôle de calibration : photo de la fléchette 3"  # photo control still asked
+
+
+def test_planned_frames_missing_from_the_manifest_stay_unavailable_cv27(session):
+    folder, truth = session
+    loaded = loaded_of(truth, folder, darts=all_tips(), controls=[photo_control(1), photo_control(3)])
+    for planned in (1, 2):
+        absent = state_of(loaded, control_info(video=(), frames=False, role="eval 1", planned=planned))
+        assert absent.next_step.text == NO_FRAMES and absent.steps[3].status == "unavailable"
+        assert NO_VIDEO_PLANNED not in absent.info and absent.state == "En cours"

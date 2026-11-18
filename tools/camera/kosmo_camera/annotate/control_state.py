@@ -36,6 +36,7 @@ class ControlInfo:
     frames_present: bool = False  # the session is listed in the frame manifest
     frame_reasons: dict = field(default_factory=dict)  # reason of `frames_file.REASONS` -> number of darts
     frames: dict = field(default_factory=dict)  # video-NNN.jpg -> (path, (width, height)), the listed frames only
+    video_planned: Optional[int] = None  # darts of the CV26 video sample; 0 means no frame is due (None: unknown)
 
 
 OFF = ControlInfo(reason=flow.CONTROL_OFF)
@@ -71,7 +72,7 @@ class ControlSnapshot:
                                      (listed[dart].width, listed[dart].height)) for dart, _, _ in video}
         reasons = {} if session_frames is None else dict(Counter(m.reason for m in session_frames.missing))
         return ControlInfo(flow.ControlPlan(sample.photo_darts, video), role.label, None, session_frames is not None,
-                           reasons, files)
+                           reasons, files, len(sample.video_darts))
 
 
 def split_reason(error) -> str:

@@ -1419,3 +1419,35 @@ def test_the_undo_that_reopens_the_previous_control_answers_with_the_fixed_notic
     assert "notice" not in tool.act("clear")[1]  # the first item: nothing before it
     status, error = tool.act("clear", notice="x")  # the request keys stay the whitelist
     assert status == 400 and "notice" not in error
+
+
+def test_an_eval_session_shorter_than_the_video_range_ends_with_no_missing_frames_message_cv26(tool):
+    make_session(tool.captures)  # darts 1, 3, 4: none in the eval video range, so no frame is planned or extracted
+    tool.start(controls=control_sources(tool, dev=(), eval=(NAME,), frames={}))
+    tool.calibrate()
+    _tip_all(tool)
+    view = open_control(tool)
+    for _ in range(3):  # the photo controls of darts 1, 3 and 4
+        result = save_item(tool, view)[1]
+        view = result["session"]
+    assert view["cursor"]["kind"] == "control_done"
+    listed = _list(tool)
+    assert listed["sessions"][0]["badge"] == "Terminée" and view["badge"] == "Terminée"
+    assert listed["instruction"] == "Contrôle terminé : fermer l'outil et lancer le diagnostic (K7.4)"
+    assert "Images vidéo absentes" not in listed["instruction"] and "Images vidéo absentes" not in view["instruction"]
+    assert "Contrôle vidéo : aucune image prévue pour cette session" in view["info"]
+    video = next(s for s in view["steps"] if s["key"] == "control_video")
+    assert (video["status"], video["done"], video["total"]) == ("done", 0, 0)
+
+
+def test_planned_video_frames_absent_from_the_manifest_keep_the_missing_frames_message_cv27(tool):
+    make_session(tool.captures)
+    tool.start(controls=control_sources(tool, dev=(NAME,), frames={}))  # a dev session always plans frames
+    tool.calibrate()
+    _tip_all(tool)
+    view = open_control(tool)
+    while view["cursor"]["kind"] == "control":
+        view = save_item(tool, view)[1]["session"]
+    assert _list(tool)["instruction"] == "Images vidéo absentes : lancer l'extraction (K7.2)"
+    assert "Contrôle vidéo : indisponible (images vidéo absentes)" in view["info"]
+    assert view["badge"] == "En cours" and "Contrôle vidéo : aucune image prévue pour cette session" not in view["info"]
