@@ -5,7 +5,6 @@ session list; file paths are built from that listed name, never from the request
 `<annotations folder>/<session>.json` through `annotations.write_atomic`. All messages shown to Kosmo are in French.
 """
 import json
-import math
 import re
 import threading
 import time
@@ -310,8 +309,7 @@ class SessionStore:
             raise HttpError(400, "Numéro de fléchette invalide.")
         for key in ("x", "y"):
             value = payload.get(key)
-            if value is not None and (isinstance(value, bool) or not isinstance(value, (int, float))
-                                      or not math.isfinite(value)):
+            if value is not None and not flow.is_coordinate(value):
                 raise HttpError(400, "Coordonnées invalides.")
         return flow.Action(kind, payload.get("x"), payload.get("y"), number)
 

@@ -242,6 +242,18 @@ def test_flow_errors_answer_400_and_change_nothing(tool):
     assert tree_listing(tool.root) == before
 
 
+def test_a_huge_integer_coordinate_answers_400_not_500_and_changes_nothing(tool):
+    make_session(tool.captures)
+    tool.start()
+    tool.calibrate()
+    before = tree_listing(tool.root)
+    for body in ({"action": "click", "x": 10 ** 400, "y": 5}, {"action": "click", "x": 5, "y": -(10 ** 400)}):
+        status, result = tool.json("POST", f"/api/sessions/{NAME}/actions", body)
+        assert (status, result) == (400, {"error": "Coordonnées invalides."}), body
+    assert tree_listing(tool.root) == before
+    assert tool.act("hidden")[0] == 200  # the server still serves
+
+
 def test_clicks_are_checked_against_the_real_jpeg_size_not_only_the_truth_size_d8(tool):
     # truth says 4080x3072 but the stored JPEG is 2000x1000: the calibration takes the real size, clicks beyond it fail
     make_session(tool.captures, jpeg_size=(2000, 1000))

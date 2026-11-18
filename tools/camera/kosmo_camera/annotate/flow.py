@@ -129,9 +129,19 @@ def _after(annotations, plan, number):
     return _first_open(annotations, plan)
 
 
+def is_coordinate(value) -> bool:
+    """A finite number: a bool, a string, nan, an infinity or an integer too large for a float are not."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:  # an integer beyond the float range
+        return False
+
+
 def _check_point(action):
     for value in (action.x, action.y):
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+        if not is_coordinate(value):
             raise FlowError("Coordonnées invalides.")
     if action.size is None:
         raise FlowError("Taille de la photo inconnue.")
