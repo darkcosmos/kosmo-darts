@@ -28,6 +28,7 @@ SNAP_UNAVAILABLE_TEXT = flow.UNAVAILABLE  # "Recalage indisponible : ..." (D43),
 NO_SPLIT_TEXT = "Contrôle indisponible : relancer l'outil avec --split (K7.3)"
 NO_FRAMES_TEXT = "Images vidéo absentes : lancer l'extraction (K7.2)"
 SESSION_DONE_TEXT = "Session terminée : passer à la session suivante"
+BLOCKED_TEXT = "Session illisible ou refusée : voir l'information de la carte"  # only a blocked session is left (U35)
 ALL_DONE_TEXT = "Contrôle terminé : fermer l'outil et lancer le diagnostic (K7.4)"
 LIST_HINT = "(bouton Continuer)"
 CONTROL_KEY_HINT = "(touche K)"
@@ -76,7 +77,7 @@ class SessionState:
 
 @dataclass(frozen=True)
 class Instruction:
-    text: Optional[str]  # None while a session is blocked and nothing else is left
+    text: str  # BLOCKED_TEXT while a session is blocked and nothing else is left
     focus: Optional[str]  # the focus session name
     action: Optional[str] = None
     number: Optional[int] = None
@@ -177,7 +178,7 @@ def global_instruction(states) -> Instruction:
         step = focus.next_step
         return Instruction(step.for_list(), focus.name, step.action, step.number)
     if any(s.blocked for s in states):
-        return Instruction(None, None)
+        return Instruction(BLOCKED_TEXT, None)
     return Instruction(ALL_DONE_TEXT, None)
 
 

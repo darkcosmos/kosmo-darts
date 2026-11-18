@@ -147,10 +147,32 @@ def test_a_blocked_session_never_gives_the_final_row_and_is_never_the_focus(sess
     folder, truth = session
     blocked = state_of(Loaded(NAME, folder, REJECTED, "Fichier d'annotations refusé"))
     assert blocked.blocked and blocked.info == ("Fichier d'annotations refusé",)
-    assert journey.global_instruction([blocked]).text is None
     assert journey.session_instruction(blocked, None) is None
     left = state_of(loaded_of(truth, folder, calibrated=False), control_info())
     assert journey.global_instruction([blocked, left]).focus == NAME
+
+
+BLOCKED = "Session illisible ou refusée : voir l'information de la carte"
+
+
+def test_only_a_blocked_session_left_gives_the_blocked_row_without_focus_u35(session):
+    folder, truth = session
+    blocked = state_of(Loaded(NAME, folder, REJECTED, "Fichier d'annotations refusé"))
+    only = journey.global_instruction([blocked])
+    assert (only.text, only.focus, only.action, only.number) == (BLOCKED, None, None, None)
+    done = state_of(loaded_of(truth, folder, darts=all_tips(), controls=[photo_control(1), photo_control(3),
+                                                                         video_control(1)]), control_info())
+    both = journey.global_instruction([done, blocked])
+    assert (both.text, both.focus) == (BLOCKED, None)  # the final row is never shown while a session is blocked (U17)
+    assert both.text != ALL_DONE
+
+
+def test_a_blocked_session_and_an_actionable_row_give_the_actionable_row_u35(session):
+    folder, truth = session
+    blocked = state_of(Loaded(NAME, folder, REJECTED, "Fichier d'annotations refusé"))
+    left = state_of(loaded_of(truth, folder, calibrated=False, name="20261101-090000"), control_info())
+    both = journey.global_instruction([blocked, left])
+    assert (both.text, both.focus) == (CALIBRATE_1 + " (bouton Continuer)", "20261101-090000")
 
 
 def test_without_snapping_the_calibration_and_control_rows_are_replaced_and_tips_are_not_d43(session):

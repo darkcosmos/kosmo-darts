@@ -829,10 +829,11 @@ After D30 (T15d to T15g, T15k). Exact French strings; each lives once as a const
   | controls left, no `--split` | `Contrôle indisponible : relancer l'outil avec --split (K7.3)` | none | none |
   | video controls left, no frames | `Images vidéo absentes : lancer l'extraction (K7.2)` | none | none |
   | session done, others left | `Session terminée : passer à la session suivante` | none | `goto` focus |
+  | no row above matches any session, and at least one session is blocked (files unreadable or refused; U35) | `Session illisible ou refusée : voir l'information de la carte` | none | none, no focus |
   | every row of every session done | `Contrôle terminé : fermer l'outil et lancer le diagnostic (K7.4)` | none | none |
 
-  The final row is reached only when no row of any non-ignored session is left or unavailable (U17): an
-  "indisponible" row is shown instead. On the control screen `#journey` shows the control title instead; on the
+  The final row is reached only when no row of any non-ignored session is left, unavailable or blocked (U17,
+  U35): an "indisponible" row, or the blocked-session row, is shown instead. On the control screen `#journey` shows the control title instead; on the
   recalibration screen, the recalibration title. No stale text: recomputed from the server state after every
   save.
 - **Assisted point screen** (T15f; the control screen, and the calibration and recalibration screens, which keep
