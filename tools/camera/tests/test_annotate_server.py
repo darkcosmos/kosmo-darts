@@ -175,11 +175,14 @@ def test_session_list_and_open_with_progress_and_resume_cursor(tool):
     make_session(tool.captures)
     tool.start()
     status, body = tool.json("GET", "/api/sessions")
-    assert body["sessions"] == [{"name": NAME, "state": "ok", "message": None, "warning": None, "label": None,
-                                 "progress": {"done": 0, "total": 3}, "calibrated": False,
-                                 "driftLabel": None, "driftStale": False,
-                                 "control": {"available": False, "reason": "Contrôle : indisponible (option --split "
-                                             "absente)", "role": None}}]
+    session = body["sessions"][0]
+    journey_keys = {"badge", "steps", "info"}  # the journey fields, tested in test_annotate_journey.py
+    assert {k: v for k, v in session.items() if k not in journey_keys} == {
+        "name": NAME, "state": "ok", "message": None, "warning": None, "label": None,
+        "progress": {"done": 0, "total": 3}, "calibrated": False, "driftLabel": None, "driftStale": False,
+        "control": {"available": False, "reason": "Contrôle : indisponible (option --split absente)", "role": None}}
+    assert set(session) == journey_keys | {"name", "state", "message", "warning", "label", "progress", "calibrated",
+                                           "driftLabel", "driftStale", "control"}  # no role without --split
     assert body["driftWarning"] is None and body["controlWarning"] is None
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
     assert view["cursor"] == {"kind": "calibration", "number": None, "photo": "dart-001.jpg", "pending": [],
@@ -572,7 +575,7 @@ def test_handler_failure_answers_a_json_500_and_the_thread_survives(tool, monkey
     def boom(self):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(server_module.SessionStore, "sessions_with_warning", boom)
+    monkeypatch.setattr(server_module.SessionStore, "session_list", boom)
     status, body = tool.json("GET", "/api/sessions")
     assert status == 500 and "error" in body
     monkeypatch.undo()
@@ -1207,3 +1210,82 @@ def test_without_numpy_or_pillow_control_is_refused_with_409_and_nothing_changes
     status, result = tool.act("control")
     assert status == 409 and result["error"].startswith("Recalage indisponible")
     assert not annotation_file(tool).exists()
+
+
+def _tip_all(tool):
+    for _ in range(3):  # darts 1, 3 and 4: one click sets the tip and moves on
+        assert tool.act("click", x=50.5, y=60.5)[0] == 200
+
+
+def test_the_list_gives_the_roles_the_focus_session_and_its_instruction_q9_cv16(tool):
+    make_session(tool.captures)
+    make_session(tool.captures, name=OTHER)
+    tool.start(controls=control_sources(tool, dev=(NAME,), eval=(OTHER,)))
+    body = _list(tool)
+    assert (body["focus"], body["instruction"]) == (NAME, "Cliquer les 4 points de calibration de la photo de la "
+                                                           "fléchette 1 (bouton Continuer)")
+    assert [(s["name"], s["role"], s["badge"]) for s in body["sessions"]] == [(NAME, "dev 1", "À faire"),
+                                                                              (OTHER, "eval 1", "À faire")]
+    tool.calibrate()
+    body = _list(tool)
+    assert body["instruction"] == "Pointer les fléchettes : prochaine fléchette 1 (bouton Continuer)"
+    assert body["sessions"][0]["badge"] == "En cours"
+    assert [(s["key"], s["done"], s["total"], s["status"]) for s in body["sessions"][0]["steps"]] == [
+        ("calibration", 1, 1, "done"), ("tips", 0, 3, "todo"), ("control_photo", 0, 2, "todo"),
+        ("control_video", 0, 0, "unavailable")]
+    assert body["sessions"][1]["steps"][0]["status"] == "todo"
+
+
+def test_without_split_the_list_has_no_role_and_says_control_is_unavailable_u17(tool):
+    make_session(tool.captures)
+    tool.start()
+    tool.calibrate()
+    _tip_all(tool)
+    body = _list(tool)
+    assert "role" not in body["sessions"][0]
+    assert body["instruction"] == "Contrôle indisponible : relancer l'outil avec --split (K7.3)"
+    assert body["instruction"] != "Contrôle terminé : fermer l'outil et lancer le diagnostic (K7.4)"
+    status, view = tool.json("GET", f"/api/sessions/{NAME}")
+    assert view["instruction"] == "Contrôle indisponible : relancer l'outil avec --split (K7.3)"
+    assert "Contrôle : indisponible (option --split absente)" in body["sessions"][0]["info"]
+
+
+def test_the_instruction_follows_every_save_with_no_cached_text_cv16(tool):
+    control_tool(tool, frames={NAME: {1: 1850, 4: 3850}})
+    _tip_all(tool)
+    assert _list(tool)["instruction"] == "Contrôle de calibration : photo de la fléchette 1 (bouton Continuer)"
+    view = open_control(tool)
+    assert view["instruction"] == "Contrôle de calibration : photo de la fléchette 1"  # the screen's own title
+    result = save_item(tool, view)[1]
+    assert result["session"]["instruction"] == "Contrôle de calibration : photo de la fléchette 4"
+    result = save_item(tool, result["session"])[1]
+    assert result["session"]["instruction"] == "Contrôle de calibration : image vidéo de la fléchette 1"
+    assert _list(tool)["instruction"] == ("Contrôle de calibration : image vidéo de la fléchette 1 "
+                                          "(bouton Continuer)")
+    for x, y in POINTS:
+        tool.act("click", x=x, y=y)
+    result = tool.act("save", number=1, source="video")[1]
+    assert result["session"]["instruction"] == "Contrôle de calibration : image vidéo de la fléchette 4"
+    for x, y in POINTS:
+        tool.act("click", x=x, y=y)  # the next video item proposes the previous one: these clicks replace nothing
+    result = tool.act("save", number=4, source="video")[1]
+    final = "Contrôle terminé : fermer l'outil et lancer le diagnostic (K7.4)"
+    assert result["session"]["instruction"] == final and _list(tool)["instruction"] == final
+    assert _list(tool)["sessions"][0]["badge"] == "Terminée" and _list(tool)["focus"] is None
+
+
+def test_drift_flags_never_change_the_instruction_and_stay_in_the_information_lines_cv30(tool):
+    make_session(tool.captures)
+    drift = tool.root / "drift.json"
+    tool.start(drift)
+    tool.calibrate()
+    before = (_list(tool)["instruction"], tool.json("GET", f"/api/sessions/{NAME}")[1]["instruction"])
+    _write_drift(drift, _flags(sha=_sha(tool), beyond=[3, 4], suggested=[3], unmeasurable=[1]))
+    body = _list(tool)
+    view = tool.json("GET", f"/api/sessions/{NAME}")[1]
+    assert (body["instruction"], view["instruction"]) == before
+    assert body["sessions"][0]["info"][0] == "Mesure de dérive non validée : information seulement"
+    for text in (body["instruction"], view["instruction"], body["driftWarning"], view["warning"], view["message"]):
+        assert text is None or "Dérive" not in text
+    drift.write_text("{not json", encoding="utf-8")
+    assert _list(tool)["instruction"] == before[0]

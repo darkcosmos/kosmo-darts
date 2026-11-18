@@ -95,3 +95,11 @@ def test_a31_cv16_carries_the_control_mode_sentence_with_split_frames_and_the_fr
                 "only a file listed in `frames.json` for a listed session.")
 
     assert sentence in flat(RULES_CAMERA)
+
+
+def test_cv16_carries_the_journey_sentence_one_instruction_and_drift_as_information():
+    sentence = ("Journey (T15e): the tool gives one active instruction, derived from the annotation file and the "
+                "presence of frames only and recomputed at every request; drift flags are information only, never an "
+                "instruction.")
+
+    assert sentence in flat(RULES_CAMERA)

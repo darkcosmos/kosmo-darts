@@ -15,7 +15,7 @@ from urllib.parse import unquote, urlsplit
 
 from kosmo_camera import annotations as annotation_file
 from kosmo_camera import drift_file
-from kosmo_camera.annotate import flow, views
+from kosmo_camera.annotate import flow, journey, views
 from kosmo_camera.annotate.control_state import ControlSources
 from kosmo_camera.annotate.jpeg_size import JpegError, jpeg_size
 from kosmo_camera.annotate.snapping import Snapper
@@ -131,20 +131,37 @@ class SessionStore:
             return None
         return snapshot.info(loaded.name, loaded.truth, loaded.annotations)
 
-    def sessions_with_warning(self) -> tuple:
-        """The session summaries, the drift flag file warning and the control inputs warning (or None)."""
+    def _states(self, drift, snapshot, open_loaded=None) -> list:
+        """(loaded, journey state) of every listed session in list order; `open_loaded` replaces its own session."""
+        result = []
+        for name in self.listing():
+            loaded = open_loaded if open_loaded is not None and open_loaded.name == name else self.load(name)
+            info = self._control_info(snapshot, loaded)
+            result.append((loaded, info, journey.session_state(loaded, info, drift, self.snapper.available)))
+        return result
+
+    def session_list(self) -> dict:
+        """The list answer: the session summaries with their journey, the focus and its instruction, the warnings."""
         with self.lock:
             drift, snapshot = self.read_drift(), self.controls.read()
-            sessions = []
-            for name in self.listing():
-                loaded = self.load(name)
-                sessions.append(views.summary(loaded, drift, self._control_info(snapshot, loaded)))
-            return sessions, drift.warning, " ; ".join(snapshot.warnings) or None
+            rows = self._states(drift, snapshot)
+            instruction = journey.global_instruction([state for _, _, state in rows])
+            sessions = [{**views.summary(loaded, drift, info), **journey.session_fields(state)}
+                        for loaded, info, state in rows]
+            return {"sessions": sessions, "driftWarning": drift.warning,
+                    "controlWarning": " ; ".join(snapshot.warnings) or None, "instruction": instruction.text,
+                    "focus": instruction.focus}
 
     def view(self, loaded, cursor, drift=None, snapshot=None) -> dict:
         drift = self.read_drift() if drift is None else drift
         snapshot = self.controls.read() if snapshot is None else snapshot
-        return views.view(loaded, cursor, drift, self.snapper.available, self._control_info(snapshot, loaded))
+        rows = self._states(drift, snapshot, loaded)
+        focus = journey.global_instruction([state for _, _, state in rows]).focus
+        info, state = next((i, s) for l, i, s in rows if l.name == loaded.name)
+        result = views.view(loaded, cursor, drift, self.snapper.available, info)
+        result.update(journey.session_fields(state))
+        result["instruction"] = journey.session_instruction(state, focus, cursor)
+        return result
 
     def open_session(self, name) -> dict:
         with self.lock:
@@ -361,9 +378,7 @@ def _make_handler(store, static_dir):
             if len(parts) == 2 and parts[0] == "static":
                 return self._static(parts[1])
             if parts == ["api", "sessions"]:
-                sessions, warning, control_warning = store.sessions_with_warning()
-                return self._json(200, {"sessions": sessions, "driftWarning": warning,
-                                        "controlWarning": control_warning})
+                return self._json(200, store.session_list())
             if len(parts) == 3 and parts[:2] == ["api", "sessions"]:
                 return self._json(200, store.open_session(parts[2]))
             if len(parts) == 3 and parts[0] == "photo":

@@ -71,6 +71,8 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   split that does not match its lock, or an unreadable `frames.json`, gives one list warning and switches control (or
   the video items) off; `GET /api/frame/<session>/<file>` serves only a file listed in `frames.json` for a listed
   session.
+  Journey (T15e): the tool gives one active instruction, derived from the annotation file and the presence of frames
+  only and recomputed at every request; drift flags are information only, never an instruction.
 - CV17 Sessions in `~/kosmo-data/captures-eval/` (confirmation campaign, later) are always eval: never in the split,
   never in training or tuning; `measure --set campaign` reads them under the same `frozen.json` guard.
 - CV18 Drift of a judged photo: compared with the reference photo of its segment (CV20), both decoded to luma in
