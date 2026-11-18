@@ -217,8 +217,7 @@ def test_cv31_a_plain_sector_is_unsnapped_without_contrast_or_support():
     luma, truth = _render(DOMAIN["photo-1600"])
     point = _plain_sector_point(truth)
     result = snap.snap_point(luma, point)
-    assert (result.status, result.point) == (snap.UNSNAPPED, point)
-    assert result.reason in (snap.CONTRAST, snap.SUPPORT, snap.ANGLE)
+    assert (result.status, result.point, result.reason) == (snap.UNSNAPPED, point, snap.CONTRAST)
 
 
 def test_cv31_a_flat_dark_area_is_unsnapped_with_contrast():
@@ -231,7 +230,7 @@ def test_cv31_a_single_wire_is_not_a_crossing():
     luma = numpy.full((200, 200), 40, dtype=numpy.uint8)
     luma[:, 99:101] = 220  # one vertical wire, no second line
     result = snap.snap_point(luma, (100.0, 100.0))
-    assert result.status == snap.UNSNAPPED and result.reason in (snap.SUPPORT, snap.ANGLE, snap.CONTRAST)
+    assert (result.status, result.reason, result.point) == (snap.UNSNAPPED, snap.CONTRAST, (100.0, 100.0))
 
 
 def test_cv31_a_start_near_the_image_border_is_unsnapped_with_border():
@@ -257,6 +256,41 @@ def test_cv31_a_start_farther_than_the_radius_is_never_snapped_wrongly():
             assert math.dist(result.point, start) <= SEARCH
         else:
             assert result.point == start and result.reason in snap.REASONS
+
+
+def test_cv31_too_far_when_the_crossing_lies_beyond_the_search_radius():
+    luma, truth = _render(DOMAIN["photo-1600"])
+    point = truth.calibration[0]
+    start = (point[0] + SEARCH + 1.0, point[1])  # the crossing is 11 px away: seen by the coarse stage, then refused
+    result = snap.snap_point(luma, start)
+    assert (result.status, result.reason, result.point) == (snap.UNSNAPPED, snap.TOO_FAR, start)
+
+
+def test_cv31_no_convergence_when_the_estimate_keeps_moving_within_the_iteration_cap():
+    luma, truth = _render(DOMAIN["photo-1600"])
+    point = truth.calibration[0]
+    start = (point[0] + 4.0, point[1] + 1.0)
+    strict = snap.SnapParams(max_iter=1, converge_px=1e-12)  # one window and a step that can never be small enough
+    result = snap.snap_point(luma, start, strict)
+    assert (result.status, result.reason, result.point, result.iterations) == (snap.UNSNAPPED, snap.NO_CONVERGENCE,
+                                                                               start, 1)
+
+
+def test_cv31_residual_when_the_profile_fit_is_not_finite(monkeypatch):
+    luma, truth = _render(DOMAIN["photo-1600"])
+    point = truth.calibration[0]
+    real = snap._fit_profile
+
+    def broken(*args, **kwargs):  # a degenerate fit: a NaN parameter, as a singular design matrix would give
+        q, levels, cost = real(*args, **kwargs)
+        q = q.copy()
+        q[0] = math.nan
+        return q, levels, cost
+
+    monkeypatch.setattr(snap, "_fit_profile", broken)
+    start = (point[0] + 3.0, point[1] + 1.0)
+    result = snap.snap_point(luma, start)
+    assert (result.status, result.reason, result.point) == (snap.UNSNAPPED, snap.RESIDUAL, start)
 
 
 def test_cv31_the_reasons_are_the_documented_ones():
