@@ -150,7 +150,7 @@ class SessionStore:
                         for loaded, info, state in rows]
             return {"sessions": sessions, "driftWarning": drift.warning,
                     "controlWarning": " ; ".join(snapshot.warnings) or None, "instruction": instruction.text,
-                    "focus": instruction.focus}
+                    "focus": instruction.focus, "continuePayload": instruction.continue_payload()}
 
     def view(self, loaded, cursor, drift=None, snapshot=None) -> dict:
         drift = self.read_drift() if drift is None else drift

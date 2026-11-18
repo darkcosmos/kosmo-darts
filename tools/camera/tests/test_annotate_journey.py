@@ -307,3 +307,12 @@ def test_the_recalibration_screen_keeps_its_own_title(session):
     cursor = flow.Cursor(flow.RECALIBRATION, 3, "dart-003.jpg", (flow.Slot((1.0, 2.0), SNAPPED, None),))
     state = state_of(loaded_of(truth, folder, darts=all_tips()), control_info())
     assert journey.session_instruction(state, None, cursor) == "Recalibration à partir de la fléchette 3 : point 2 sur 4"
+
+
+def test_the_continue_payload_follows_the_action_and_the_recalibration_text_is_defined_here_u15(session):
+    payloads = {(None, None): None, ("calibrate", 1): {}, ("goto", 3): {"action": "goto", "number": 3},
+                ("control", 2): {"action": "control"}}
+    for (action, number), expected in payloads.items():
+        assert journey.Instruction("x", "s", action, number).continue_payload() == expected
+    assert journey.RECALIBRATION_EXPLANATION.startswith("Recalibrer veut dire : la cible ou le téléphone a bougé")
+    assert journey.RECALIBRATION_EXPLANATION.endswith("Ne recalibrer que si le déplacement se voit à l'œil.")

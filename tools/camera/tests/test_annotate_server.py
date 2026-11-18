@@ -1259,6 +1259,38 @@ def test_the_list_gives_the_roles_the_focus_session_and_its_instruction_q9_cv16(
     assert body["sessions"][1]["steps"][0]["status"] == "todo"
 
 
+def test_the_list_sends_the_payload_of_the_continue_button_and_none_without_a_button_u15_u23(tool):
+    make_session(tool.captures)
+    tool.start(controls=control_sources(tool, dev=(NAME,)))
+    assert _list(tool)["continuePayload"] == {}  # calibration: opening the session is enough
+    tool.calibrate()
+    assert _list(tool)["continuePayload"] == {"action": "goto", "number": 1}
+    _tip_all(tool)
+    body = _list(tool)
+    assert body["instruction"].startswith("Contrôle de calibration : photo de la fléchette 1")
+    assert body["continuePayload"] == {"action": "control"}
+
+
+def test_the_list_has_no_continue_payload_when_the_instruction_has_no_action_u35(tool):
+    make_session(tool.captures)
+    tool.start()
+    tool.calibrate()
+    _tip_all(tool)
+    body = _list(tool)  # no --split: "Contrôle indisponible", no button
+    assert body["instruction"].startswith("Contrôle indisponible") and body["continuePayload"] is None
+    assert body["focus"] == NAME
+
+
+def test_a_blocked_session_alone_gives_its_instruction_and_no_focus_u35(tool):
+    folder, _ = make_session(tool.captures)
+    (folder / "truth.json").write_text("{", encoding="utf-8")
+    tool.start()
+    body = _list(tool)
+    assert body["instruction"] == "Session illisible ou refusée : voir l'information de la carte"
+    assert (body["focus"], body["continuePayload"]) == (None, None)
+    assert "invalide" in body["sessions"][0]["info"][0]
+
+
 def test_the_badge_values_are_pinned_for_the_list_page_t15g(tool):
     make_session(tool.captures)
     make_session(tool.captures, name=OTHER, judged=(), voided=(1, 2), no_photo=(3,))

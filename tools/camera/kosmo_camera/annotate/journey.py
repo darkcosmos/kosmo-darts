@@ -34,6 +34,10 @@ LIST_HINT = "(bouton Continuer)"
 CONTROL_KEY_HINT = "(touche K)"
 CALIBRATION_TITLE = "Calibration : point {n} sur 4"
 RECALIBRATION_TITLE = "Recalibration à partir de la fléchette {number} : point {n} sur 4"
+RECALIBRATION_EXPLANATION = (
+    "Recalibrer veut dire : la cible ou le téléphone a bougé à partir de cette fléchette. Les 4 points enregistrés ici "
+    "remplacent la calibration pour cette fléchette et les suivantes, jusqu'à la prochaine recalibration. Les "
+    "fléchettes déjà pointées ne changent pas. Ne recalibrer que si le déplacement se voit à l'œil.")
 NO_FRAMES_REASON = "Contrôle vidéo : indisponible (images vidéo absentes)"
 DRIFT_INFO = "Mesure de dérive non validée : information seulement"
 NO_USABLE_FRAMES = "Aucune image vidéo utilisable pour cette session ({n} manquantes)"
@@ -81,6 +85,15 @@ class Instruction:
     focus: Optional[str]  # the focus session name
     action: Optional[str] = None
     number: Optional[int] = None
+
+    def continue_payload(self) -> Optional[dict]:
+        """What the "Continuer" button of the list sends once the focus session is open: None when there is no button
+        (no action), `{}` when opening the session is enough (the calibration screen), else the flow action (U15)."""
+        if self.action == GOTO:
+            return {"action": "goto", "number": self.number}
+        if self.action == CONTROL:
+            return {"action": "control"}
+        return {} if self.action == CALIBRATE else None
 
 
 def _status(done, total):
