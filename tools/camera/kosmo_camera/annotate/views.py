@@ -6,6 +6,7 @@ from typing import Optional
 
 from kosmo_camera import annotations as annotation_file
 from kosmo_camera.annotate import flow
+from kosmo_camera.annotate.snapping import UNREADABLE
 
 IGNORED_LABEL = "Ignorée : aucune fléchette jugée"
 OK = "ok"
@@ -82,17 +83,27 @@ def _progress(loaded):
     return {"done": len({d.number for d in loaded.annotations.darts} & numbers), "total": len(numbers)}
 
 
-def summary(loaded, drift=NO_DRIFT) -> dict:
+def control_view(loaded, info) -> dict:
+    """Control mode of an open session (CV26): counts per source, the role, the frame reasons counted (S13)."""
+    if info.plan is None:
+        return {"available": False, "reason": info.reason, "role": info.role}
+    progress = flow.control_progress(loaded.annotations, info.plan)
+    return {"available": True, "reason": None, "role": info.role, "photo": progress["photo"],
+            "video": progress["video"], "framesPresent": info.frames_present, "frameMissing": dict(info.frame_reasons)}
+
+
+def summary(loaded, drift=NO_DRIFT, control=None) -> dict:
     label, stale, _ = drift_view(loaded, drift)
     return {"name": loaded.name, "state": loaded.state, "message": loaded.message, "warning": loaded.warning,
             "label": IGNORED_LABEL if loaded.state == IGNORED else None, "progress": _progress(loaded),
             "calibrated": bool(loaded.annotations.calibrations) if loaded.state == OK else None,
-            "driftLabel": label, "driftStale": stale}
+            "driftLabel": label, "driftStale": stale,
+            "control": control_view(loaded, control) if loaded.state == OK and control is not None else None}
 
 
-def view(loaded, cursor, drift, snap_available) -> dict:
+def view(loaded, cursor, drift, snap_available, control=None) -> dict:
     """The full session view: the summary, the darts with their drift flags, the segments and the open item."""
-    result = summary(loaded, drift)
+    result = summary(loaded, drift, control)
     result["readOnly"] = loaded.state != OK
     if loaded.state != OK:  # read-only states show their message, with no photo flow
         return result
@@ -118,7 +129,8 @@ def view(loaded, cursor, drift, snap_available) -> dict:
                         "pending": [list(slot.point) for slot in cursor.pending if slot.point is not None],
                         "slots": [{"point": None if slot.point is None else list(slot.point), "status": slot.status,
                                    "reason": slot.reason} for slot in cursor.pending],
-                        "selected": cursor.selected, "ready": flow.ready_count(cursor.pending)}
+                        "source": cursor.source, "selected": cursor.selected, "ready": flow.ready_count(cursor.pending),
+                        "unreadable": any(slot.reason == UNREADABLE for slot in cursor.pending)}
     return result
 
 
