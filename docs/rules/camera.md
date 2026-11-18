@@ -52,7 +52,9 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   CV19), zoom bin.
 - CV15 Reports contain numbers and group labels only: no image, path, file or session name. The drift report labels
   sessions `S01`, `S02`... in session-name order. The drift flag file `drift.json` (CV18) holds session names and is,
-  like the split file, a local working file in `~/kosmo-runs/`: never pasted, never committed.
+  like the split file, a local working file in `~/kosmo-runs/`: never pasted, never committed. The video frame manifest `frames.json` and
+  the extracted frames folder (CV27) hold session names and are local working files too. After D30 reports name
+  sessions by role only (`dev 1`, `eval 1`, CV26).
 - CV16 Annotation tool: stdlib only, `127.0.0.1` only, no external resource, captures read-only, writes only in the
   annotations folder, atomic; every route resolves the session name against the listed sessions; never overwrites
   an annotation file that the strict reader rejects (a version 1 file is accepted and written back as version 2 on
@@ -122,6 +124,23 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   `segments_sha256` excludes `snap` (drift flags stay valid across the v2-to-v3 migration), `controls_sha256` includes
   it. Use: CV9 reference and diagnosis (CV28); on dev, label source only through T16b (P2). Details in
   `docs/camera/annotation-format.md`.
+- CV26 Control sample (computed, never chosen by hand; roles of CV15): photo controls: every judged eval photo; per dev
+  session the judged darts of rank 1, 1 + `CONTROL_DEV_STRIDE` (10), ... in dart order, plus the last judged dart, plus
+  the reference photo of every segment (when it is a judged dart); video controls: the dev photo sample, plus the
+  judged darts `CONTROL_EVAL_VIDEO_FIRST` (55) to `CONTROL_EVAL_VIDEO_LAST` (60) of every eval session (Kosmo, Q7, D36).
+  Order of work: session list order, then dart order, photo before video. Roles: sessions named `dev 1`, `dev 2`,
+  `eval 1`... in ascending CV3 unit key within each set of a session-mode split read through its lock.
+- CV27 Video frame before the entry: target `entry.videoPositionMs` - `VIDEO_BEFORE_ENTRY_MS` (1000); the frame used is
+  the last decoded frame whose time is at or before the target, its position floored to the millisecond, pixels in
+  stored order (rotation metadata ignored, D8). Reasons for no frame, counted: `no_position`, `before_start` (target
+  before the first frame), `too_close` (the target precedes the `photo` stamp of the nearest earlier dart of the volley
+  that has one: the phone may still be moving from the previous tap), `past_end` (the target is a frame period or more
+  after the last frame), `video_missing`, `video_unreadable`, `orientation_mismatch` (frame and photo orientations
+  differ; never rotated). Saved as `<session>/video-NNN.jpg` (JPEG quality 95) with its size and SHA-256 in
+  `frames.json` (CV15; strict reader `frames_file`, at most 4 MiB). Bounds (S13): a video larger than `VIDEO_MAX_BYTES`
+  (512 MiB) or needing more than `VIDEO_MAX_DECODED_FRAMES` (20000) decoded frames is `video_unreadable`; any decode
+  error is `video_unreadable` for that dart and the run continues (exit 0); the output prints
+  `Images vidéo absentes : N` with the count per reason, and no session name.
 - CV31 Assisted click, snap part (Kosmo, Q10, D39; design D43, D46; tool flow in T15n): `snap.snap_point(luma, start)`
   returns the sub-pixel crossing of a radial wire and a ring wire or colour edge within `SNAP_RADIUS_PX` of the start
   (status `snapped`), or the start itself (status `unsnapped`) with exactly one reason: `support`, `contrast`,

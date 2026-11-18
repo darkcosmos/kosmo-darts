@@ -60,3 +60,18 @@ kosmo_camera.frames_file"` from `tools/camera` works, `kosmo-detekt` exit 0.
 sonnet. Why: sample rule, frame choice and reasons fully specified in CV26 and CV27; derived, regenerable file.
 
 ## Implementation notes
+Done (sonnet). Where: `control.py` (sample, roles, `read_split`), `frames_file.py` (strict reader; reuses the JSON
+helpers and `replace_atomic` of `drift_file`), `video_frames.py` (`frame_at`, `extract_session`, `run`, `main`).
+- `frame_at` raises `FrameError(reason)` (reasons are the constants of `frames_file`); it decodes from the start of the
+  video (no seek) and stops at the first frame after the target, so the `VIDEO_MAX_DECODED_FRAMES` budget is per call.
+- `past_end`: the target is a frame period (from the average rate) or more after the last frame.
+- `too_close` is tested before the video is opened, against the `photo` stamp of the nearest earlier dart of the same
+  volley that has one. With the synthetic default step of 1 s between entries every dart after the first of a volley is
+  `too_close`; the tests use `synth._ENTRY_STEP_MS` = 2500 for frames to exist.
+- `roles` and the sample need a session-mode split (block mode raises `SplitError`). `main` has an extra `--lock`
+  (default: the committed `config/split-lock.json`), exit 2 on a bad folder, split or lock, 0 otherwise.
+- Dev sample uses the segments of the annotation file `<annotations>/<session>.json`; an unreadable or absent file
+  means no segment photos. Eval video darts are the dart NUMBERS 55 to 60 that are judged.
+- Unreadable truth files and sessions outside the split are skipped silently; stale `video-*.jpg` of a session folder
+  are removed so it holds only the listed files.
+- The "stdlib only" import check is in `test_frames_file.py` (`control` and `frames_file`).
