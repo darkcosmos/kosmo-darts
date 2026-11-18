@@ -86,3 +86,12 @@ def test_a31_cv16_carries_the_after_d39_and_d43_sentence():
                 "`luma.py`")
 
     assert sentence in flat(RULES_CAMERA)
+
+
+def test_a31_cv16_carries_the_control_mode_sentence_with_split_frames_and_the_frame_route():
+    sentence = ("Control mode (T15d): `--split` (with `--lock`) and `--frames` are read again at every request and "
+                "never written; a split that does not match its lock, or an unreadable `frames.json`, gives one list "
+                "warning and switches control (or the video items) off; `GET /api/frame/<session>/<file>` serves "
+                "only a file listed in `frames.json` for a listed session.")
+
+    assert sentence in flat(RULES_CAMERA)
