@@ -60,7 +60,7 @@ CV16, CV25, CV31, S8, S14, D8, D45 (A31, A32, U27, U29). The page change (insets
 - `--help` and module import in a subprocess with `-I -S` and numpy made unimportable (`sys.modules` blocker in a
   `sitecustomize`-free child): tool starts, unavailable path.
 - Real `snap.py` once end to end: calibration on a T7 photo with ring wires, rough clicks 5 px off, saved points
-  within 0.1 px of truth, `snap` all `"snapped"`.
+  within 0.25 px of truth (D46), `snap` all `"snapped"`.
 - Cache: third image evicts the first; mtime change reloads.
 
 ## Done when

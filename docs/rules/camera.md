@@ -120,3 +120,17 @@ the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
   (`controls: []`, every segment `snap: ["manual", "manual", "manual", "manual"]`); writers write version 3 only. Use:
   CV9 reference and diagnosis (CV28); on dev, label source only through T16b (P2). Details in
   `docs/camera/annotation-format.md`.
+- CV31 Assisted click, snap part (Kosmo, Q10, D39; design D43, D46; tool flow in T15n): `snap.snap_point(luma, start)`
+  returns the sub-pixel crossing of a radial wire and a ring wire or colour edge within `SNAP_RADIUS_PX` of the start
+  (status `snapped`), or the start itself (status `unsnapped`) with exactly one reason: `support`, `contrast`,
+  `residual`, `angle`, `no_convergence`, `too_far`, `border`, or `ambiguous` (two or more distinct crossings of the
+  board lattice within `SNAP_RADIUS_PX` of the start; with one in range only that one is accepted). The tool adds
+  `unreadable` when the image cannot be decoded (`luma.decode_luma`). A snap never ends on a wrong crossing: the
+  shape is two sharp wires or edges crossing at the found point, and an ambiguous start is refused. Quality is proven
+  against the `board.py` truth on synthetic boards (CV4: never tuned on Kosmo's photos), on the domain of photos
+  of 12 Mpx and video of 1080p (wires of at least 2 px, blur at most 0.5 px, noise at most 3 grey levels): at most
+  0.25 px for every snapped point and at least 90 % of the starts snapped per case, the others staying at the click
+  and counted. Repeatability `D` (CV28): the snap restarted from `SNAP_REPEAT_DIRECTIONS` starts at
+  `SNAP_REPEAT_OFFSET_PX` around a snapped point; the largest board-plane distance in mm (through the homography of
+  the control) to the stored point, a failed restart counting as infinite; target at most `SNAP_REPEAT_MAX_MM`. `D`
+  measures repeatability, not accuracy. Constants `SNAP_*` in `defaults.json`, each pinned once in `test_config.py`.

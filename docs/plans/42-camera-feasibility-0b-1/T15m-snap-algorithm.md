@@ -13,7 +13,7 @@ how repeatable that location is (Kosmo, D39; squad design D43).
 - Added `tools/camera/kosmo_camera/snap.py` (numpy only, works on a luma array, no image decoding):
   `snap_point(luma, start, params)` -> `SnapResult(point,
   status, reason)`, status `"snapped"` or `"unsnapped"`, reason one of `support`, `contrast`, `residual`, `angle`,
-  `no_convergence`, `too_far`, `border`; `restart_dispersion(luma, point, homography, params)` -> mm or `inf`.
+  `no_convergence`, `too_far`, `border`, `ambiguous` (D46); `restart_dispersion(luma, point, homography, params)` -> mm or `inf`.
   Algorithm as root plan "Approach, Assisted click" (window, Hessian ridge and gradient scales, line A, line B,
   intersection, iteration, the "no clear crossing" tests). Pure functions, no file or network access; never
   imported by the stdlib modules at import time.
@@ -38,11 +38,17 @@ CV31, CV2 (the 4 points are double-ring outer edge on radial wires), CV4 (no tun
 - Root plan "Test plan", T15m entry, every case, with the rule identifier in each test name.
 - Truth from `board.py` geometry projected by the T7 homography, never from the snap itself; a converged wrong
   crossing is caught by its distance to that truth, not by the dispersion (T2); one board in a seed and style not
-  used for tuning meets the 0.1 px bound (T1); `luma.py` cases (bomb, truncated, random, wrong size, cap and
+  used for tuning meets the 0.25 px bound (T1); `luma.py` cases (bomb, truncated, random, wrong size, cap and
   cap + 1, T8b drift tests unchanged) as root "Test plan".
 - Determinism: same input, same output bit for bit; no random state without the T7 seed.
-- Speed: one snap on a 12 MP luma under 50 ms and `luma.decode_luma` of a 12 MP JPEG under 1 s on the sandbox CPU,
-  marked `slow` if above the CI budget.
+- Bounds (D46, option a): domain = wires of at least 2 px (1600 x 1200 and larger, 12 Mpx, 1080p video), blur at most
+  0.5 px, noise at most 3. On it: every snapped point within 0.25 px of truth, at least 90 % of the starts snapped per
+  case, median and max printed per case (px and mm). Noise 5: never a wrong crossing (no rate or accuracy bound).
+  Outside the domain (1200 x 900, blur 0.8 and 1.2): structure asserted, numbers printed, no bound.
+- Criterion 2: two crossings in range give `unsnapped` / `ambiguous`; the noise-5 start that ended 17.07 px away
+  (calibration point 1, start offset (-6.7, +6.7)) is refused.
+- Speed: no wall-clock assertion in the default suite (80 to 140 ms per snap accepted, D46); a `slow` test bounds one
+  snap on a 12 MP luma at 1 s, and `luma.decode_luma` of a 12 MP JPEG under 1 s on the sandbox CPU, also `slow`.
 
 ## Done when
 Python checks of root "Test plan" green (CI command too), `python3 -S -m kosmo_camera.annotate --help` run from
@@ -89,3 +95,15 @@ Third build agent (STOPPED, bound not met; `test_snap.py`, CV31 text and SNAP_* 
   at 0.31 px (stem fitted on few ridge points, tilted by its part beyond the inner ring); Gaussian blur 0.8 px:
   75 % (`support`, `too_far`), blur 1.2 px: 69 % and one point at 0.22 px (short stem between the rings,
   contaminated by the ring wires within about 3 blur widths). Snap time about 80 to 140 ms (target 50 ms).
+
+Fourth build agent (D46, DONE): `snap.py`: reason `ambiguous` (`_coarse` collects the distinct crossings of the
+lattice, those closer than `_DISTINCT_PX` 3 px counting as one, within `SNAP_RADIUS_PX` of the click; two or more are
+refused, one is accepted); explicit shape check in `_fine` (`_stands_out`: each fitted line stands out by the contrast
+floor on at least one flank of the crossing, `_SHARP_BLUR_PX` 2); `_SCALE_SHARE` 0.8 -> 0.7 (at blur 0.5 px one
+calibration point of a yaw 30 board switched to scale 2 px and lost its radial wire). `SNAP_*` values unchanged.
+`tests/test_snap.py` (accuracy, rate, ambiguity, regression, reasons, repeatability D, determinism, `slow` 12 Mpx).
+Test bounds `MAX_ERROR_PX` 0.25 and `MIN_SNAPPED_SHARE` 0.9 are named constants of `test_snap.py`, not `SNAP_*` values.
+Per case (52 starts: 4 calibration points x centre, 4 at 4 px, 4 at 7 px, 4 at 9.5 px; harness with 100 starts agrees):
+see the table in the hand-back report. Out of the domain: 1200 x 900 noise 2 still has one start converging 12 px
+away (reported, no bound, cause not analysed); noise 3 at 1200 x 900 has none. The mm equivalent uses 2.1 to 2.5 px/mm (1080p, 1600) and 6.3
+px/mm (12 Mpx).
