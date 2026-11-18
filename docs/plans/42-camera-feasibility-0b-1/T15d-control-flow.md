@@ -82,3 +82,14 @@ exit 0.
 sonnet. Why: flow, undo and server rules specified, same patterns as T6c.
 
 ## Implementation notes
+- Control state lives in `annotate/control_state.py` (`ControlSources.read()` per request, `ControlSnapshot.info(name,
+  truth, annotations)` gives `ControlInfo` with the `flow.ControlPlan`, role, frames and missing reasons); views in
+  `annotate/views.py` (`control_view`, cursor gains `source` and `unreadable`); the list answers `controlWarning`.
+- The server binds `_BoundSnapping` with the frame paths and sizes of `frames.json` (a frame has its own size); the
+  `source` key of an action is validated (`photo` or `video`). The `control` action opens the item named by the plan.
+- Click rule: a hidden slot counts as filled (`click_target` skips `HIDDEN`). Item to open: the current dart's photo
+  item if sampled and open, else the first open item (photos then video).
+- Carry-over minors done in their own commits: shared `tests/snap_support.py`, unreadable-photo server test, huge
+  coordinate answers 400, views extracted to `annotate/views.py`. CV16 gains a control-mode sentence.
+- Checks: pytest -m "not slow" 1096 passed; 3.14 venv run of TOOL_TESTS 334 passed; `--help` lists the new options;
+  kosmo-detekt exit 0; git diff --check clean. The page (T15f/T15g) is not changed.
