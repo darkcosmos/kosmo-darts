@@ -53,3 +53,22 @@ opus. Why: rule still open after design review (case 3): the detector, the "no c
 thresholds are outlined, not specified, and their quality bounds the reference truth of the whole diagnosis.
 
 ## Implementation notes
+Status: PARTIAL (two build agents). Done and committed: `luma.py` with `test_luma.py` (no RGB copy besides
+`convert("L")`; `Image.draft` not used because it changes the luma values, see the module docstring; the 12 MP timing
+test is `slow`), `drift.py` on `luma.decode_luma` (T8b drift tests unchanged and green), the T8b static check
+parametrized over `drift.py`, `luma.py`, `snap.py`; `synth.py` `ring_wires` and `BoardStyle` (analytic renderer from
+`board.py` geometry, edges supersampled 4x4; default output byte-identical, pinned by sha256 in `test_synth.py`);
+`SNAP_*` in `defaults.json` and `config.py`, pinned once in `test_config.py`, initial values unchanged.
+
+Not done: `snap.py` is committed as work in progress, without `test_snap.py`, CV31 in `docs/rules/camera.md`, or
+tuned values. It does NOT meet the Tests section. Measured on `render_board(..., ring_wires=True)` with noise 2,
+luma by `convert("L")`, starts at 0, 3, 6 and 9.5 px around each of the 4 `truth.calibration` pixels (100 starts per
+board): when it snaps it is usually within 0.02 to 0.07 px of the `board.py` truth, but 20 to 75 % of starts end
+`unsnapped` (mostly `support` from `_detect_line` on the second line, the stem: too few sub-pixel ridge points
+between the two double-ring wires, about 16 to 20 px at 1600 x 1200), and some converge 2 to 17 px away (inner
+double wire crossing, or a wrong second line) on a wide-wire board and on an unseen style (yaw -30, pitch -10, roll
+8, wire 1.2 mm). Tried without a clear gain: scale with the most points instead of the strongest response, a
+narrower first-line band, thresholds from white noise only, unlimited stem reach, window 24 or 32, edges as a
+fallback for the stem, every pixel above threshold instead of sub-pixel points. The profile refinement
+(`_refine`, `_Profile`) is the accurate part; the detection (`_detect_line`, `_nearest_parallel`, `_away`) needs a
+redesign: e.g. a coarse junction stage that gets within 1 to 2 px first, then the window centred on it.
