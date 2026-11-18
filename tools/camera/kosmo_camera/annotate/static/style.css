@@ -124,3 +124,12 @@ button.primary { background: var(--primary-bg); color: var(--primary-text); bord
 .picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .picker button.current { border-color: var(--primary-bg); border-width: 3px; }
 a { color: var(--link); }
+#panel.assisted { flex: 0 1 400px; }
+#insets { display: grid; grid-template-columns: repeat(2, 180px); gap: 8px; margin: 8px 0; }
+.inset { margin: 0; }
+.inset canvas { width: 180px; height: 180px; display: block; border: 2px solid var(--line); }
+.inset canvas.chosen { border-color: var(--primary-bg); }
+.inset figcaption { color: var(--text); font-size: 14px; }
+#ready { margin: 4px 0; font-weight: bold; }
+#panel.assisted #diagram { max-width: 140px; margin: 4px 0; }
+#control-actions button { flex: 1 1 100%; width: 100%; white-space: normal; }

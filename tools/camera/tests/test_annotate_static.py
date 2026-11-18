@@ -10,7 +10,7 @@ import pytest
 STATIC = Path(__file__).parent.parent / "kosmo_camera" / "annotate" / "static"
 FILES = ("index.html", "app.js", "style.css")
 ACTION_KEYS = {"btnHidden": "H", "btnOffBoard": "O", "btnClear": "U", "btnNext": "N", "btnPrevious": "P",
-               "btnRecalibrate": "R"}
+               "btnRecalibrate": "R", "btnControl": "K"}
 ENGLISH_WORDS = re.compile(r"\b(next|previous|hidden|clear|cancel|loading|error|back|save|saved|dart|darts"
                            r"|the|and|please|click|off board|undo|none|yes|no)\b", re.IGNORECASE)
 
@@ -70,7 +70,7 @@ def test_each_action_button_label_ends_with_its_key_letter():
 def test_the_key_handler_maps_the_same_letters_to_the_same_actions():
     source = read("app.js")
     for letter, action in (("h", "hidden"), ("o", "off_board"), ("u", "clear"), ("n", "next"), ("p", "previous"),
-                           ("r", "recalibrate")):
+                           ("r", "recalibrate"), ("k", "control")):
         assert re.search(rf'{letter}:\s*"{action}"', source), letter
 
 
@@ -175,8 +175,6 @@ def test_key_actions_match_the_flow_action_names_and_no_letter_is_used_twice():
 def test_string_table_has_the_recalibration_and_drift_strings():
     table = string_table()
     assert table["btnRecalibrate"] == "Recalibrer à partir de cette fléchette (R)"
-    assert table["recalibrationTitle"] == "Recalibration à partir de la fléchette {number} : point {n} sur 4"
-    assert table["recalibrationHint"] == "Effacer (U) retire le dernier point ; sans point, retour à la fléchette"
     assert table["driftSuggestedBanner"] == "Dérive au-delà du seuil : recalibrer à partir d'ici (R)"
     assert table["driftBeyond"] == "Dérive" and table["driftUnmeasurable"] == "Dérive non mesurable"
     assert table["calibratedSegments"] == "Calibrée ({count} segments)"
@@ -217,7 +215,7 @@ def test_calibration_status_distinguishes_none_one_and_several_segments():
 
 def test_stale_measure_text_is_shown_in_the_banner_and_the_state_text():
     source = read("app.js")
-    panel = re.search(r"function renderPanel\(\) \{(.*?)\n\}\n", source, re.DOTALL).group(1)
+    panel = re.search(r"function bannerMessage\(view, suggested\) \{(.*?)\n\}\n", source, re.DOTALL).group(1)
     assert "TEXT.staleMeasure" in panel and "view.driftStale" in panel
     drift_text = re.search(r"function driftText\(dart, stale\) \{(.*?)\n\}\n", source, re.DOTALL).group(1)
     assert "TEXT.staleMeasure" in drift_text
@@ -243,3 +241,102 @@ def test_warning_colour_has_a_contrast_of_at_least_4_5_on_background_and_panel()
     declared = colors()
     assert contrast(declared["--warn"], declared["--bg"]) >= 4.5
     assert contrast(declared["--warn"], declared["--panel"]) >= 4.5
+
+
+# ---- assisted point screen (T15f: CV16, CV25, CV31, D45 U25 to U29, U31; no browser nor node in the sandbox) ---------
+
+ASSISTED_STRINGS = (
+    "Enregistrer (Entrée)", "Point caché (H)", "Annuler (U)", "Quitter (Échap)", "Contrôle de calibration (K)",
+    "Photos contrôlées : {photo} / {photoTotal} · Images vidéo : {video} / {videoTotal}",
+    "Points prêts : {n} / 4 (Entrée pour enregistrer)", "Point {n}, {status}", "recalé", "non recalé", "caché",
+    "à cliquer", "Cliquer près du bon croisement : l'outil le recale.", "H seulement si une fléchette cache le point",
+    "Recalage indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)",
+    "Photo illisible : le recalage est impossible pour cette photo",
+    "Photo précédente rouverte : son enregistrement est retiré jusqu'à Entrée")
+
+
+def function_body(name):
+    match = re.search(rf"function {name}\([^)]*\) \{{(.*?)\n\}}\n", read("app.js"), re.DOTALL)
+    assert match, name
+    return match.group(1)
+
+
+@pytest.mark.parametrize("text", ASSISTED_STRINGS)
+def test_each_assisted_screen_string_is_a_constant_written_once(text):
+    assert read("app.js").count(f'"{text}"') == 1
+    assert text in string_table().values()
+
+
+def test_the_inset_zoom_is_60_source_px_shown_at_180_css_px_and_the_save_guard_is_300_ms():
+    source = read("app.js")
+    assert re.search(r"const SNAP_INSET_PX = 60;", source) and re.search(r"const INSET_SIZE = 180;", source)
+    assert re.search(r"const SAVE_GUARD_MS = 300;", source) and re.search(r"const CLICK_GUARD_MS = 300;", source)
+    assert source.index("const CLICK_GUARD_MS") < source.index("const SAVE_GUARD_MS")
+
+
+def test_the_obsolete_strings_are_gone_and_the_panel_is_400px_on_the_assisted_screen():
+    source = read("app.js")
+    assert "Points posés" not in source and "zoomCentre" not in source
+    assert re.search(r"#panel\.assisted\s*\{[^}]*flex:\s*0 1 400px", read("style.css"))
+
+
+def test_the_keys_of_the_assisted_screen_are_bound_in_the_document_handler():
+    source = read("app.js")
+    assert 'document.addEventListener("keydown", onKey)' in source
+    assert '"Enter"' in source and "/^[1-4]$/" in function_body("onAssistedKey")
+    assistant = function_body("onAssistedKey")
+    assert 'key === "h"' in assistant and '"hidden_point"' in assistant and 'key === "u"' in assistant
+    handler = function_body("onKey")
+    assert 'key === "Escape"' in handler and 'key === "0"' in handler and "Arrow" in handler
+    assert 'k: "control"' in source  # K reaches every session screen, Terminé included, through the shared handler
+    assert re.search(r'stage\.addEventListener\("wheel", onWheel', source)
+
+
+def test_entree_always_saves_with_the_repeat_and_save_guards_u25_u29():
+    enter = function_body("onEnter")
+    assert "event.preventDefault()" in enter and "event.repeat" in enter
+    assert "SAVE_GUARD_MS" in enter and "state.lastSaveAt" in enter
+    assert enter.index("preventDefault") < enter.index("saveItem()")
+    handler = function_body("onKey")
+    assert 'key === "Enter" && isAssisted(state.view)' in handler
+    assert handler.index('"Enter"') < handler.index("state.busy")  # a busy Entrée is still not a button click
+    assert "state.lastSaveAt = Date.now()" in read("app.js")
+
+
+def test_save_sends_the_open_item_and_the_control_source():
+    body = function_body("saveItem")
+    assert 'action: "save", number, source: cursor.source' in body and "cursor.ready < POINT_COUNT" in body
+
+
+def test_every_assisted_button_blurs_after_its_click_u25():
+    assert "button.blur()" in function_body("assistedButton")
+    body = function_body("renderAssistedActions")
+    assert body.count("assistedButton(") == 4 and "makeButton(" not in body
+
+
+def test_insets_are_drawn_from_the_loaded_image_with_an_aria_label_u31():
+    body = function_body("drawInsets")
+    assert "context.drawImage(image," in body
+    assert not re.search(r"fetch|new Image|\.src\s*=|/photo|/api", body)  # no new request
+    assert 'canvas.setAttribute("aria-label", fill(TEXT.insetAria' in function_body("renderAssistedPanel")
+    assert 'id="inset-4"' in read("index.html") and 'role="img"' in read("index.html")
+    for status in ("pointSnapped", "pointUnsnapped", "pointHidden", "pointEmpty"):
+        assert f"TEXT.{status}" in function_body("pointStatusText")
+
+
+def test_the_unreadable_and_unavailable_banners_and_the_ignored_clicks_are_wired():
+    banner = function_body("bannerMessage")
+    assert "TEXT.snapUnavailable" in banner and "TEXT.photoUnreadable" in banner and "view.cursor.unreadable" in banner
+    assert "state.notice" in banner and "TEXT.reopened" in function_body("perform")
+    assert "snapAvailable === false" in function_body("onStageClick")
+
+
+def test_video_frames_load_from_the_frame_route_and_skip_the_truth_size_check():
+    source = read("app.js")
+    assert '"/api/frame"' in function_body("imageUrl") and '"/photo"' in function_body("imageUrl")
+    assert 'cursor.source === "video"' in function_body("imageLoaded")
+
+
+def test_the_page_builds_text_with_textcontent_only_on_the_assisted_screen():
+    for name in ("renderAssistedPanel", "drawInsets", "bannerMessage", "controlProgressText"):
+        assert not re.search(r"innerHTML|insertAdjacent", function_body(name))

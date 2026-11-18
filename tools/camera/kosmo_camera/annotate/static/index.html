@@ -31,8 +31,16 @@
           <p id="state"></p>
           <p id="progress"></p>
           <p id="instruction"></p>
+          <div id="insets" hidden>
+            <figure class="inset"><canvas id="inset-1" width="180" height="180" role="img"></canvas><figcaption id="inset-label-1"></figcaption></figure>
+            <figure class="inset"><canvas id="inset-2" width="180" height="180" role="img"></canvas><figcaption id="inset-label-2"></figcaption></figure>
+            <figure class="inset"><canvas id="inset-3" width="180" height="180" role="img"></canvas><figcaption id="inset-label-3"></figcaption></figure>
+            <figure class="inset"><canvas id="inset-4" width="180" height="180" role="img"></canvas><figcaption id="inset-label-4"></figcaption></figure>
+          </div>
+          <p id="ready" hidden></p>
           <canvas id="diagram" width="280" height="280" aria-label="Schéma du cadran avec les quatre points de calibration"></canvas>
           <div class="actions" id="actions"></div>
+          <div class="actions" id="control-actions"></div>
           <div class="actions" id="recalibrate-actions"></div>
           <div class="actions" id="zoom-actions"></div>
           <div class="picker" id="picker"></div>
