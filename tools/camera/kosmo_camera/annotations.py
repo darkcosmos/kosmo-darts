@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from kosmo_camera import strict_json
+
 MAX_BYTES = 1024 * 1024
 MAX_SEGMENTS = 64  # CV20: calibration segments per file
 MAX_CONTROLS = 1024  # CV25: control clicks per file
@@ -49,7 +51,7 @@ def photo_name(number: int) -> str:
     return f"dart-{number:03d}.jpg"
 
 
-_SESSION = re.compile(r"\d{8}-\d{6}(-[2-9]|-[1-9]\d+)?")
+SESSION_NAME = re.compile(r"\d{8}-\d{6}(-[2-9]|-[1-9]\d+)?")  # a capture folder name (shared by the file readers)
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
@@ -329,7 +331,7 @@ def _darts(value, path):
 
 
 def _session_and_sha(root):
-    return (_pattern(root["session"], "$.session", _SESSION, "a capture session name 'YYYYMMDD-HHMMSS[-N]'"),
+    return (_pattern(root["session"], "$.session", SESSION_NAME, "a capture session name 'YYYYMMDD-HHMMSS[-N]'"),
             _pattern(root["truthSha256"], "$.truthSha256", _SHA256, "64 lowercase hexadecimal digits"))
 
 
@@ -377,39 +379,16 @@ def migrate_v2(v2) -> Annotations:
 
 # ---- parsing ------------------------------------------------------------------------------------------------------
 
-def _no_duplicates(pairs):
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise AnnotationError(f"$: duplicate key '{key}'")
-        result[key] = value
-    return result
-
-
-def _reject_constant(name):
-    raise AnnotationError(f"$: invalid number {name}")
-
-
-def _depth(value):
-    """Nesting depth, computed iteratively so a hostile file cannot exhaust the stack."""
-    deepest = 0
-    stack = [(value, 1)]
-    while stack:
-        item, level = stack.pop()
-        if isinstance(item, (dict, list)):
-            deepest = max(deepest, level)
-            children = item.values() if isinstance(item, dict) else item
-            stack.extend((child, level + 1) for child in children)
-    return deepest
-
-
 def _parse(text):
     if text.startswith("\ufeff"):
         raise AnnotationError("$: byte order mark not allowed")
     try:
-        return json.loads(text, object_pairs_hook=_no_duplicates, parse_constant=_reject_constant)
+        return json.loads(text, object_pairs_hook=strict_json.no_duplicates,
+                          parse_constant=strict_json.reject_constant)
     except (json.JSONDecodeError, RecursionError) as error:
         raise AnnotationError(f"$: invalid JSON: {error}") from error
+    except strict_json.StrictJsonError as error:
+        raise AnnotationError(str(error)) from error
 
 
 def decode(text) -> Annotations:
@@ -419,7 +398,7 @@ def decode(text) -> Annotations:
     CV20, CV25).
     """
     root = _parse(text)
-    if _depth(root) > MAX_DEPTH:
+    if strict_json.depth(root) > MAX_DEPTH:
         raise AnnotationError(f"$: nesting deeper than {MAX_DEPTH} levels")
     if not isinstance(root, dict):
         raise AnnotationError("$: expected an object")

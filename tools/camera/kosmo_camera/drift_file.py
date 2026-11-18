@@ -16,12 +16,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from kosmo_camera import strict_json
+from kosmo_camera.annotations import SESSION_NAME
+
 MAX_BYTES = 1024 * 1024
 MAX_DEPTH = 6
 FORMAT = "kosmo-camera-drift"
 VERSION = 1
 
-_SESSION = re.compile(r"\d{8}-\d{6}(-[2-9]|-[1-9]\d+)?")  # same pattern as annotations._SESSION (capture folder name)
 _LABEL = re.compile(r"S\d{2,}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _ROOT_KEYS = ("format", "version", "thresholdMm", "sessions")
@@ -94,7 +96,7 @@ def _session(value, path):
     _object(value, path, _SESSION_KEYS)
     maximum = value["maxDriftMm"]
     return SessionFlags(
-        _pattern(value["session"], f"{path}.session", _SESSION, "a capture session name"),
+        _pattern(value["session"], f"{path}.session", SESSION_NAME, "a capture session name"),
         _pattern(value["label"], f"{path}.label", _LABEL, "a label such as S01"),
         _pattern(value["segmentsSha256"], f"{path}.segmentsSha256", _SHA256, "64 lowercase hex characters"),
         None if maximum is None else _number(maximum, f"{path}.maxDriftMm"),
@@ -103,39 +105,17 @@ def _session(value, path):
         _numbers(value["unmeasurable"], f"{path}.unmeasurable"))
 
 
-def _no_duplicates(pairs):
-    result = {}
-    for key, value in pairs:
-        if key in result:
-            raise DriftFileError(f"$: duplicate key '{key}'")
-        result[key] = value
-    return result
-
-
-def _reject_constant(name):
-    raise DriftFileError(f"$: invalid number {name}")
-
-
-def _depth(value):
-    deepest, stack = 0, [(value, 1)]
-    while stack:
-        item, level = stack.pop()
-        if isinstance(item, (dict, list)):
-            deepest = max(deepest, level)
-            children = item.values() if isinstance(item, dict) else item
-            stack.extend((child, level + 1) for child in children)
-    return deepest
-
-
 def decode(text) -> DriftFile:
     """Validate the text of a drift file; raise DriftFileError on any deviation."""
     if text.startswith("﻿"):
         raise DriftFileError("$: byte order mark not allowed")
     try:
-        root = json.loads(text, object_pairs_hook=_no_duplicates, parse_constant=_reject_constant)
+        root = json.loads(text, object_pairs_hook=strict_json.no_duplicates, parse_constant=strict_json.reject_constant)
     except (json.JSONDecodeError, RecursionError) as error:
         raise DriftFileError(f"$: invalid JSON: {error}") from error
-    if _depth(root) > MAX_DEPTH:
+    except strict_json.StrictJsonError as error:
+        raise DriftFileError(str(error)) from error
+    if strict_json.depth(root) > MAX_DEPTH:
         raise DriftFileError(f"$: nesting deeper than {MAX_DEPTH} levels")
     _object(root, "$", _ROOT_KEYS)
     if root["format"] != FORMAT:

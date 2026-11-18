@@ -11,7 +11,8 @@ import json
 import re
 from dataclasses import dataclass
 
-from kosmo_camera import drift_file
+from kosmo_camera import drift_file, strict_json
+from kosmo_camera.annotations import SESSION_NAME
 
 MAX_BYTES = 4 * 1024 * 1024
 MAX_DEPTH = 6
@@ -27,7 +28,6 @@ VIDEO_UNREADABLE = "video_unreadable"
 ORIENTATION_MISMATCH = "orientation_mismatch"
 REASONS = (NO_POSITION, BEFORE_START, TOO_CLOSE, PAST_END, VIDEO_MISSING, VIDEO_UNREADABLE, ORIENTATION_MISMATCH)
 
-_SESSION = re.compile(r"\d{8}-\d{6}(-[2-9]|-[1-9]\d+)?")  # same pattern as annotations._SESSION (capture folder name)
 _FILE = re.compile(r"video-(\d{3,})\.jpg")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _ROOT_KEYS = ("format", "version", "beforeEntryMs", "sessions")
@@ -144,7 +144,7 @@ def _session(value, path):
     both = {f.dart for f in frames} & {m.dart for m in missing}
     if both:
         _fail(path, f"dart {min(both)} is both framed and missing")
-    return SessionFrames(_pattern(value["session"], f"{path}.session", _SESSION, "a capture session name"),
+    return SessionFrames(_pattern(value["session"], f"{path}.session", SESSION_NAME, "a capture session name"),
                          frames, missing)
 
 
@@ -153,12 +153,12 @@ def decode(text) -> FramesFile:
     if text.startswith("﻿"):
         raise FramesFileError("$: byte order mark not allowed")
     try:
-        root = json.loads(text, object_pairs_hook=drift_file._no_duplicates, parse_constant=drift_file._reject_constant)
+        root = json.loads(text, object_pairs_hook=strict_json.no_duplicates, parse_constant=strict_json.reject_constant)
     except (json.JSONDecodeError, RecursionError) as error:
         raise FramesFileError(f"$: invalid JSON: {error}") from error
-    except drift_file.DriftFileError as error:
+    except strict_json.StrictJsonError as error:
         raise FramesFileError(str(error)) from error
-    if drift_file._depth(root) > MAX_DEPTH:
+    if strict_json.depth(root) > MAX_DEPTH:
         raise FramesFileError(f"$: nesting deeper than {MAX_DEPTH} levels")
     _object(root, "$", _ROOT_KEYS)
     if root["format"] != FORMAT:
