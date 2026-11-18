@@ -50,6 +50,8 @@ def test_committed_defaults_load_and_are_exposed_as_constants():
     assert (config.SNAP_REPEAT_DIRECTIONS, config.SNAP_REPEAT_OFFSET_PX, config.SNAP_REPEAT_MAX_MM) == (8, 3.0, 0.25)
     # Tool flow of the assisted click (CV31, T15n): images kept decoded, click replacement radius in source px.
     assert (config.SNAP_CACHE_IMAGES, config.CLICK_REPLACE_RADIUS_PX) == (2, 100.0)
+    # Snapping diagnosis (CV32, D54, T17a): radius sweep factors and lattice starts per photo control point.
+    assert (config.SNAP_SWEEP_FACTORS, config.SNAP_LATTICE_STARTS) == ((1.0, 2.0, 4.0), 4)
 
 
 def test_unknown_key_raises(tmp_path):
