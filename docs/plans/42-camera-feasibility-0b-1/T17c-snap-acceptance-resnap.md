@@ -8,7 +8,8 @@ its human precision, counted apart (D49, root "Approach, Automatic re-snap").
 ## Files
 - Changed `tools/camera/kosmo_camera/snap_report.py` (same command as K7.4): section « Acceptation » (share of photo
   control points snapped from the stored click with its Wilson interval against `SNAP_ACCEPT_MIN_SHARE`, lattice
-  consistency, restart stability, per role and source) and section « Précision des clics » (click-to-snap distance
+  consistency, restart stability, per role and source; decided on the eval photo control points only, the dev
+  values printed « pour information », CV32 independence, D54) and section « Précision des clics » (click-to-snap distance
   px and mm, median and p95 with CV13 intervals: Kosmo's hand measured by the machine). The verdict line is
   « Recalage accepté » or « Recalage non accepté : <cause> »; `snapped-points.json` is written only when accepted.
 - Added `tools/camera/kosmo_camera/lattice.py` (numpy): the consistency check of CV32: the homography of the 4
@@ -37,6 +38,10 @@ CV32, CV31, CV28 (`D` per point stored for T15i), CV13, CV15, D48.
 ## Tests
 - Acceptance at the boundary: 0.90 accepted, one point fewer refused; one suspect point refuses with its cause line;
   a restart converging elsewhere refuses; failed restarts counted, not suspect.
+- Independence (D54): dev at 0.50 and eval at 0.95 accepted; dev at 0.95 and eval at 0.85 refused; a suspect point
+  or an unstable restart on dev only does not refuse; the dev line is marked « pour information ».
+- Planned duration: on the test sessions, the number of snaps the acceptance run performs equals the starts of the
+  K7.4 « Durée prévue de K7.6 » formula (CV32), so the planned duration is not underestimated.
 - Lattice: radial lens distortion k1 giving 3 px at the image corners (4080 px wide) never flagged, over 20 seeded
   boards (seeds 0 to 19); the chosen `SNAP_LATTICE_MAX_PX` lies above the largest distortion residual of those
   boards and below 4 px (a calibration point moved onto a dart-shaft crossing 4 px away is flagged); boundary: a

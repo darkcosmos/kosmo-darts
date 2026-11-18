@@ -5,6 +5,10 @@ P3 records here the confirmed causes, the chosen fix and the rejected alternativ
 radius, changed wire profile test), with the one-case-per-cause list, and returns to design review before T17b
 is built.
 
+## Independence (CV32, D54)
+P3 and this task read only the dev figures of the K7.4 report and the segment-point figures; the eval control
+figures are never used to choose a cause, a fix or a parameter (they decide the acceptance in T17c).
+
 ## Goal
 Make the snap work on Kosmo's real targets for the dominant refusal causes of the T17a report, without ever ending
 on a wrong crossing (CV31 criterion 2), and prove it on synthetic cases that reproduce those causes (D49).
@@ -30,7 +34,7 @@ on a wrong crossing (CV31 criterion 2), and prove it on synthetic cases that rep
 T17a; Kosmo's K7.4 report; plan update P3.
 
 ## Rules
-CV31, CV32, CV4 (parameters tuned on synthetic boards only; the real report gives causes, never values).
+CV31, CV32 (independence, D54), CV4 (parameters tuned on synthetic boards only; the real report gives causes, never values).
 
 ## Tests
 - Every T15m case keeps its bounds (0.25 px, at least 90 % snapped per realistic case, never a wrong crossing,

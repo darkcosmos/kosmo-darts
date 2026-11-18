@@ -16,10 +16,13 @@ squad build realistic synthetic cases (root "Approach, Snapping on real data").
   --frames DIR --out DIR`; reads controls and segments (v3, read-only), roles from `control.roles`; starts = the
   stored points (the click for `unsnapped`, the stored point for `snapped`, D49); radius sweep at 1x, 2x, 4x
   `SNAP_RADIUS_PX` (diagnostic only); proposal distance between consecutive controls of a session and source;
-  writes `<out>/snap-report.md` and prints its path, the run time and the median time per snap.
+  writes `<out>/snap-report.md` and prints its path, the run time, the median time per snap and the line
+  « Durée prévue de K7.6 : environ N min » (CV32 planned duration, D54: stored points x starts per point x median
+  time per snap of this run), also written in « Durées ».
 - Report sections « Échantillon », « Causes de refus » (Kosmo's categories: pas de croisement, forme, ambiguïté,
   hors rayon, autre; each with its detailed `stage`), per source (photo, vidéo) and role, « Descripteurs » (median
-  and p10/p90 per category), « Rayon », « Propositions », « Durées »; numbers and roles only (CV15).
+  and p10/p90 per category), « Rayon », « Propositions », « Durées »; every section split by split (dev, eval, from
+  the split lock) and by source (CV32 independence, D54); numbers and roles only (CV15).
 - Changed `docs/rules/camera.md`: CV32 (diagnosis part) of root "Rules".
 - Added `tests/test_snap_report.py`; changed `tests/test_snap.py`; `TOOL_TESTS` gains `test_snap_report.py`.
 
@@ -38,6 +41,10 @@ CV32, CV31, CV15, CV16 (images never leave the PC), CV4 (nothing tuned here), D4
   « Échantillon ».
 - T-junction descriptor: a radial wire ending at the ring wire versus one crossing it (synthetic, `synth.py`).
 - Sweep: a start 15 px from a clean crossing is `too_far` at 1x and snapped at 2x.
+- Split: a dev and an eval session written by the test: every section shows dev and eval apart, and dev plus eval
+  equals the total of each count.
+- Planned K7.6 duration: with an injected median time per snap, the printed and written line equals the CV32
+  formula for the test's counts (points, `SNAP_REPEAT_DIRECTIONS`, 4 lattice starts per photo control point).
 - Report on a T7 session with controls written by the test: counts add up per source and role; hidden (null)
   points counted apart; unreadable image counted `unreadable`; privacy scan (no session or file name, no path).
 - `main()` in a subprocess with numpy and Pillow only (no `av` importable).

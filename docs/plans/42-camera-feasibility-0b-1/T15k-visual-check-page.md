@@ -5,11 +5,11 @@ Let Kosmo see with his own eyes, on his PC only, whether a photo moved: the refe
 alternate, aligned by the automatic measure or by the control clicks, with the shift shown (D30 point 3). The
 French text says « alignement », never « recalage », which names the snap only (U30, D45).
 
-## Change of lot 3b (D48, D52, Q15)
-- Built only if Kosmo keeps the visual check at Q15 (it is outside the paste-only budget of ADR 0018); otherwise
-  held until a verdict asks for it. The state strings below say « relancer le diagnostic (K7.7) » (lot 3b step
-  numbers) and the static test pins that one string; the step itself is K7.8 (« facultatif »). Whether K7.8 counts
-  toward the 10-minute budget is part of Q15 (Kosmo's).
+## Change of lot 3b (D48, D52, Q15, D54)
+- DEFERRED (Q15 option 2, D54): not built until a verdict asks for the visual check. Then plan update P2 or P3
+  rewrites this task and step K7.8 to fit the 10-minute budget of ADR 0018 (for example a sample of about 2 min);
+  otherwise it is never built. The state strings below say « relancer le diagnostic (K7.7) » (lot 3b step
+  numbers) and the static test pins that one string.
 - `clicks` reads `controlPoints` from `diagnostic.json`, which since T15i lot 3b are the re-snapped points
   (`snapped-points.json`); the label stays « Alignement d'après les clics » (they come from Kosmo's clicks).
 
