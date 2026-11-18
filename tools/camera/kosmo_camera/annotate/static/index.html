@@ -12,6 +12,7 @@
     <button id="back" type="button" hidden></button>
     <span id="status" role="status" aria-live="polite"></span>
   </header>
+  <p id="journey" hidden></p>
   <main>
     <section id="screen-list">
       <h2 id="list-title"></h2>
@@ -30,10 +31,20 @@
           <p id="entry"></p>
           <p id="state"></p>
           <p id="progress"></p>
-          <p id="instruction"></p>
-          <canvas id="diagram" width="280" height="280" aria-label="Schéma du cadran avec les quatre points de calibration"></canvas>
+          <p id="help"></p>
+          <p id="recalibration-help" hidden></p>
+          <div id="insets" hidden>
+            <figure class="inset"><canvas id="inset-1" width="180" height="180" role="img"></canvas><figcaption id="inset-label-1"></figcaption></figure>
+            <figure class="inset"><canvas id="inset-2" width="180" height="180" role="img"></canvas><figcaption id="inset-label-2"></figcaption></figure>
+            <figure class="inset"><canvas id="inset-3" width="180" height="180" role="img"></canvas><figcaption id="inset-label-3"></figcaption></figure>
+            <figure class="inset"><canvas id="inset-4" width="180" height="180" role="img"></canvas><figcaption id="inset-label-4"></figcaption></figure>
+          </div>
+          <p id="ready" hidden></p>
           <div class="actions" id="actions"></div>
+          <div class="actions" id="control-actions"></div>
+          <div class="actions" id="recalibrate-actions"></div>
           <div class="actions" id="zoom-actions"></div>
+          <canvas id="diagram" width="280" height="280" aria-label="Schéma du cadran avec les quatre points de calibration"></canvas>
           <div class="picker" id="picker"></div>
         </aside>
       </div>

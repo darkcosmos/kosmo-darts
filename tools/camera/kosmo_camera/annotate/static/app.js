@@ -6,12 +6,18 @@ const TEXT = {
   backToList: "Liste (Échap)",
   noSession: "Aucune session trouvée dans le dossier des captures.",
   progress: "{done} sur {total} fléchettes annotées",
-  calibrated: "Calibrée",
-  notCalibrated: "Non calibrée",
-  finished: "Terminée",
   ignoredLabel: "Ignorée : aucune fléchette jugée",
   readOnly: "Lecture seule",
   open: "Ouvrir",
+  nextStep: "Prochaine étape",
+  btnContinue: "Continuer",
+  infoTitle: "Information",
+  stepCalibrationDone: "Calibration : faite",
+  stepCalibrationTodo: "Calibration : à faire",
+  stepTips: "Pointes : {done} / {total}",
+  stepControlPhoto: "Contrôle photo : {done} / {total}",
+  stepControlVideo: "Contrôle vidéo : {done} / {total}",
+  recalibrationExplanation: "Recalibrer veut dire : la cible ou le téléphone a bougé à partir de cette fléchette. Les 4 points enregistrés ici remplacent la calibration pour cette fléchette et les suivantes, jusqu'à la prochaine recalibration. Les fléchettes déjà pointées ne changent pas. Ne recalibrer que si le déplacement se voit à l'œil.",
   btnHidden: "Cachée (H)",
   btnOffBoard: "Hors cible (O)",
   btnClear: "Effacer (U)",
@@ -20,9 +26,6 @@ const TEXT = {
   zoomIn: "Zoom + (+)",
   zoomOut: "Zoom − (-)",
   zoomReset: "Vue entière (0)",
-  calibrationTitle: "Calibration : point {n} sur 4",
-  calibrationDone: "Les quatre points sont placés. Effacer (U) retire le dernier point pour le refaire.",
-  calibrationHelp: "Cliquez sur le point {n} : coin extérieur du double, entre les fils {wires}.",
   dartEntry: "Fléchette n° {number}, volée {volley}",
   dartHelp: "Cliquez sur la pointe de la fléchette, ou choisissez Cachée ou Hors cible.",
   stateNone: "Pas encore annotée",
@@ -42,17 +45,49 @@ const TEXT = {
   busy: "Enregistrement en cours.",
   networkError: "Le serveur ne répond pas.",
   warningPrefix: "Attention : ",
+  btnRecalibrate: "Recalibrer à partir de cette fléchette (R)",
+  btnControl: "Contrôle de calibration (K)",
+  btnSave: "Enregistrer (Entrée)",
+  btnHidePoint: "Point caché (H)",
+  btnUndo: "Annuler (U)",
+  btnQuit: "Quitter (Échap)",
+  controlProgress: "Photos contrôlées : {photo} / {photoTotal} · Images vidéo : {video} / {videoTotal}",
+  pointsReady: "Points prêts : {n} / 4 (Entrée pour enregistrer)",
+  pointsMissing: "Points prêts : {n} / 4 : placer les points manquants",
+  insetCaption: "{n} : {wires}",
+  insetAria: "Point {n}, {status}",
+  insetSelected: "(choisi)",
+  pointSnapped: "recalé",
+  pointUnsnapped: "non recalé",
+  pointHidden: "caché",
+  pointEmpty: "à cliquer",
+  hintClick: "Cliquer près du bon croisement : l'outil le recale.",
+  hintHide: "H seulement si une fléchette cache le point",
+  snapUnavailable: "Recalage indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)",
+  photoUnreadable: "Photo illisible : le recalage est impossible pour cette photo",
+  oldPoint: "ancien {n}",
 };
 
+// Server values the page only displays (pinned to the constants of journey.py by static tests): the badge of a
+// session, the status of a step row and the key of a step row. The page decides nothing from them.
+const BADGE_CLASS = { "À faire": "badge-todo", "En cours": "badge-progress", "Terminée": "badge-done", "Ignorée": "badge-ignored" };
+const STEP_DONE = "done";
+const STEP_UNAVAILABLE = "unavailable";
+const STEP_TEXT = { calibration: null, tips: "stepTips", control_photo: "stepControlPhoto", control_video: "stepControlVideo" };
 const WIRES = ["5|20", "13|6", "17|3", "8|11"]; // CV2 order
 const WIRE_ANGLES = [-9, 81, 171, 261]; // degrees clockwise from the top, 20 on top
 const BOARD_ORDER = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17, 3, 19, 7, 16, 8, 11, 14, 9, 12, 5];
-const KEY_ACTIONS = { h: "hidden", o: "off_board", u: "clear", n: "next", p: "previous" };
+const KEY_ACTIONS = { h: "hidden", o: "off_board", u: "clear", n: "next", p: "previous", r: "recalibrate", k: "control" };
+const ASSISTED_KINDS = ["calibration", "recalibration", "control"];
+const DONE_MARK = "✓"; // a placed or hidden diagram point is ticked as well as green, not by colour alone (U39)
+const SNAP_INSET_PX = 60; // source pixels shown around a point (CV31)
+const INSET_SIZE = 180; // CSS pixels of one inset: a x3 zoom of SNAP_INSET_PX
 const MAGNIFIER_SIZE = 160;
 const MAGNIFICATION = 4;
 const PAN_STEP = 60;
 const ZOOM_STEP = 1.25;
 const CLICK_GUARD_MS = 300; // a double click must not land on the next dart
+const SAVE_GUARD_MS = 300; // a held or doubled Entrée must not save the next item unseen (U29)
 const MAX_ZOOM = 40;
 
 const state = {
@@ -60,6 +95,9 @@ const state = {
   name: null,
   busy: false,
   lastActionAt: 0,
+  lastSaveAt: 0,
+  list: null,
+  notice: null,
   viewKey: null,
   blocked: null,
   imageReady: false,
@@ -96,6 +134,13 @@ function makeButton(label, handler, className) {
   return button;
 }
 
+// The one journey instruction of the server, at the top of every screen (U19); nothing else is styled as one.
+function setJourney(text) {
+  const journey = $("journey");
+  setText(journey, text || "");
+  journey.hidden = !text;
+}
+
 function setStatus(text, kind) {
   const status = $("status");
   setText(status, text || "");
@@ -123,40 +168,135 @@ function sessionUrl(name) {
 
 // ---- session list ------------------------------------------------------------------------------------------------
 
-function sessionLine(item) {
-  const line = document.createElement("li");
-  const name = document.createElement("div");
+function stepText(step) {
+  if (step.status === STEP_UNAVAILABLE) {
+    return step.reason; // the server says why, in French
+  }
+  if (step.key === "calibration") {
+    return step.status === STEP_DONE ? TEXT.stepCalibrationDone : TEXT.stepCalibrationTodo;
+  }
+  return fill(TEXT[STEP_TEXT[step.key]], step);
+}
+
+function sessionHead(item) {
+  const head = document.createElement("div");
+  head.className = "session-head";
+  const name = document.createElement("span");
   name.className = "session-name";
   setText(name, item.name);
-  const info = document.createElement("div");
-  info.className = "session-info";
-  if (item.state === "ok") {
-    const finished = item.calibrated && item.progress.total > 0 && item.progress.done === item.progress.total;
-    const calibration = item.calibrated ? TEXT.calibrated : TEXT.notCalibrated;
-    const progress = finished ? TEXT.finished : fill(TEXT.progress, item.progress);
-    setText(info, `${progress} - ${calibration}`);
-    line.appendChild(makeButton(TEXT.open, () => openSession(item.name), "primary"));
-  } else if (item.state === "ignored") {
-    setText(info, item.label || TEXT.ignoredLabel);
-  } else {
-    setText(info, `${TEXT.readOnly} - ${item.message || ""}`);
-    info.className = "session-info session-warning";
+  head.appendChild(name);
+  if (item.role) {
+    const role = document.createElement("span");
+    role.className = "session-role";
+    setText(role, item.role);
+    head.appendChild(role);
   }
-  line.insertBefore(info, line.firstChild);
-  line.insertBefore(name, line.firstChild);
+  const badge = document.createElement("span");
+  if (item.message) { // unreadable or refused files: read only, no journey state
+    badge.className = "badge session-warning";
+    setText(badge, TEXT.readOnly);
+  } else {
+    badge.className = `badge ${BADGE_CLASS[item.badge]}`;
+    setText(badge, item.badge);
+  }
+  head.appendChild(badge);
+  return head;
+}
+
+function stepRows(item) {
+  const steps = document.createElement("ul");
+  steps.className = "steps";
+  item.steps.forEach((step) => {
+    const row = document.createElement("li");
+    setText(row, stepText(step));
+    steps.appendChild(row);
+  });
+  return steps;
+}
+
+// Grey box below the steps: information lines only (CV30), never an instruction.
+function infoBox(item) {
+  const shown = new Set(item.steps.map(stepText)); // a line already said by a step row is not repeated
+  const lines = item.info.filter((text) => !shown.has(text));
+  if (lines.length === 0) {
+    return null;
+  }
+  const box = document.createElement("div");
+  box.className = "info-box";
+  const title = document.createElement("div");
+  title.className = "info-title";
+  setText(title, TEXT.infoTitle);
+  box.appendChild(title);
+  lines.forEach((text) => {
+    const line = document.createElement("div");
+    line.className = "session-info";
+    setText(line, text);
+    box.appendChild(line);
+  });
+  return box;
+}
+
+function sessionActions(item, focus) {
+  const actions = document.createElement("div");
+  actions.className = "session-actions";
+  if (focus && state.list.continuePayload) {
+    actions.appendChild(makeButton(TEXT.btnContinue, continueFocus, "primary"));
+  }
+  actions.appendChild(makeButton(TEXT.open, () => openSession(item.name)));
+  return actions;
+}
+
+function sessionLine(item, focus) {
+  const line = document.createElement("li");
+  line.appendChild(sessionHead(item));
+  if (focus) {
+    line.className = "focus";
+    const mark = document.createElement("div");
+    mark.className = "focus-mark";
+    setText(mark, TEXT.nextStep);
+    line.appendChild(mark);
+  }
+  if (item.label) {
+    const label = document.createElement("div");
+    label.className = "session-info";
+    setText(label, item.label);
+    line.appendChild(label);
+  }
+  line.appendChild(stepRows(item));
+  const box = infoBox(item);
+  if (box) {
+    line.appendChild(box);
+  }
   if (item.warning) {
     const warning = document.createElement("div");
     warning.className = "session-warning";
     setText(warning, item.warning);
     line.appendChild(warning);
   }
+  if (!item.message && !item.label) {
+    line.appendChild(sessionActions(item, focus));
+  }
   return line;
+}
+
+// "Continuer": open the focus session of the server and send the action it gives (calibration: opening is enough).
+async function continueFocus() {
+  const list = state.list;
+  if (state.busy || !list || !list.focus || !list.continuePayload) {
+    return;
+  }
+  await openSession(list.focus);
+  if (list.continuePayload.action) {
+    perform(list.continuePayload);
+  }
 }
 
 async function showList() {
   state.view = null;
   state.name = null;
   state.blocked = null;
+  state.list = null;
+  setJourney("");
   $("screen-session").hidden = true;
   $("screen-list").hidden = false;
   $("back").hidden = true;
@@ -165,12 +305,17 @@ async function showList() {
   clearChildren(list);
   try {
     const data = await request("GET", "/api/sessions");
+    if (data.driftWarning) {
+      setStatus(TEXT.warningPrefix + data.driftWarning, "error");
+    }
     if (data.sessions.length === 0) {
       const empty = document.createElement("li");
       setText(empty, TEXT.noSession);
       list.appendChild(empty);
     }
-    data.sessions.forEach((item) => list.appendChild(sessionLine(item)));
+    state.list = data;
+    setJourney(data.instruction);
+    data.sessions.forEach((item) => list.appendChild(sessionLine(item, item.name === data.focus)));
   } catch (error) {
     setStatus(error.message || TEXT.networkError, "error");
   }
@@ -181,6 +326,7 @@ async function openSession(name) {
     const view = await request("GET", sessionUrl(name));
     state.name = name;
     state.blocked = null;
+    state.notice = null;
     state.imageReady = false;
     $("screen-list").hidden = true;
     $("screen-session").hidden = false;
@@ -199,6 +345,15 @@ function currentPhoto() {
   return view && view.cursor && view.cursor.kind !== "complete" ? view.cursor.photo : null;
 }
 
+function imageUrl(cursor, photo) {
+  const route = cursor.kind === "control" && cursor.source === "video" ? "/api/frame" : "/photo";
+  return `${route}/${encodeURIComponent(state.name)}/${encodeURIComponent(photo)}`;
+}
+
+function isAssisted(view) {
+  return ASSISTED_KINDS.includes(view.cursor.kind);
+}
+
 function applyView(view, force) {
   const previousPhoto = currentPhoto();
   state.view = view;
@@ -207,7 +362,7 @@ function applyView(view, force) {
   if (photo && (force || photo !== previousPhoto)) {
     state.imageReady = false;
     image.hidden = false;
-    image.src = `/photo/${encodeURIComponent(state.name)}/${encodeURIComponent(photo)}`;
+    image.src = imageUrl(view.cursor, photo);
   } else if (!photo) {
     state.imageReady = false;
     image.hidden = true;
@@ -222,7 +377,10 @@ function imageLoaded() {
   const [truthWidth, truthHeight] = view.photoSize;
   const width = image.naturalWidth;
   const height = image.naturalHeight;
-  if (width !== truthWidth || height !== truthHeight) {
+  const frame = view.cursor.kind === "control" && view.cursor.source === "video"; // size checked by the server
+  if (frame) {
+    state.blocked = null;
+  } else if (width !== truthWidth || height !== truthHeight) {
     state.blocked = fill(TEXT.sizeMismatch, { width, height, truthWidth, truthHeight });
   } else if (view.calibration && (view.calibration.width !== width || view.calibration.height !== height)) {
     state.blocked = fill(TEXT.calibrationMismatch,
@@ -304,58 +462,145 @@ function currentDart() {
   return cursor.kind === "dart" ? dartsOfView().find((d) => d.number === cursor.number) : null;
 }
 
+// The banner message of the open screen, by priority: blocked, snapping unavailable, warning, unreadable photo, notice.
+function bannerMessage(view) {
+  if (state.blocked) {
+    return { text: state.blocked, kind: "error" };
+  }
+  if (isAssisted(view) && view.snapAvailable === false) {
+    return { text: TEXT.snapUnavailable, kind: "error" };
+  }
+  if (view.warning) {
+    return { text: TEXT.warningPrefix + view.warning, kind: "" };
+  }
+  if (isAssisted(view) && view.cursor.unreadable) {
+    return { text: TEXT.photoUnreadable, kind: "error" };
+  }
+  if (state.notice) {
+    return { text: state.notice, kind: "" };
+  }
+  return null;
+}
+
 function renderPanel() {
   const view = state.view;
   const cursor = view.cursor;
-  const done = dartsOfView().filter((d) => d.status !== null).length;
-  setText($("progress"), fill(TEXT.progress, { done, total: dartsOfView().length }));
+  const assisted = isAssisted(view);
+  setText($("progress"), assisted && cursor.kind === "control" ? controlProgressText(view)
+    : `${fill(TEXT.progress, view.progress)} - ${view.calibrationLabel}`);
   const banner = $("banner");
-  const message = state.blocked || view.warning || null;
+  const message = bannerMessage(view);
   banner.hidden = !message;
-  banner.className = state.blocked ? "error" : "";
-  setText(banner, message ? (state.blocked ? message : TEXT.warningPrefix + message) : "");
-  const diagram = $("diagram");
-  diagram.hidden = cursor.kind !== "calibration";
-  if (cursor.kind === "calibration") {
-    renderCalibrationPanel(cursor);
+  banner.className = message ? message.kind : "";
+  setText(banner, message ? message.text : "");
+  setJourney(view.instruction);
+  setText($("recalibration-help"), TEXT.recalibrationExplanation);
+  $("recalibration-help").hidden = cursor.kind !== "recalibration";
+  $("panel").classList.toggle("assisted", assisted);
+  $("value").hidden = assisted;
+  $("state").hidden = assisted;
+  $("insets").hidden = !assisted;
+  $("ready").hidden = !assisted;
+  $("diagram").hidden = !(assisted && cursor.diagram);
+  if (assisted) {
+    renderAssistedPanel(view);
   } else if (cursor.kind === "dart") {
     renderDartPanel(currentDart());
   } else {
     setText($("value"), TEXT.completeTitle);
     setText($("entry"), "");
     setText($("state"), "");
-    setText($("instruction"), TEXT.completeHelp);
+    setText($("help"), TEXT.completeHelp);
   }
   renderActions();
   renderPicker();
 }
 
-function renderCalibrationPanel(cursor) {
-  const placed = cursor.pending.length;
-  const next = Math.min(placed + 1, 4);
-  setText($("value"), String(next));
-  setText($("entry"), fill(TEXT.calibrationTitle, { n: next }));
-  setText($("state"), "");
-  setText($("instruction"), placed >= 4
-    ? TEXT.calibrationDone
-    : fill(TEXT.calibrationHelp, { n: next, wires: WIRES[next - 1] }));
-  drawDiagram(placed);
+function controlProgressText(view) {
+  const control = view.control;
+  if (!control || !control.available) {
+    return "";
+  }
+  return fill(TEXT.controlProgress, { photo: control.photo.done, photoTotal: control.photo.total,
+    video: control.video.done, videoTotal: control.video.total });
+}
+
+function pointStatusText(slot) {
+  if (slot.status === "hidden") {
+    return TEXT.pointHidden;
+  }
+  if (slot.point === null) {
+    return TEXT.pointEmpty;
+  }
+  return slot.status === "snapped" ? TEXT.pointSnapped : TEXT.pointUnsnapped;
+}
+
+// The shared screen of the control, the first calibration and the recalibration (CV31): the title comes from the server.
+function renderAssistedPanel(view) {
+  const cursor = view.cursor;
+  setText($("entry"), "");
+  const hint = cursor.kind === "control" ? `${TEXT.hintClick} ${TEXT.hintHide}` : TEXT.hintClick;
+  setText($("help"), hint);
+  setText($("ready"), fill(TEXT.pointsReady, { n: cursor.ready }));
+  cursor.slots.forEach((slot, index) => {
+    const status = pointStatusText(slot);
+    const chosen = cursor.selected === index + 1;
+    const caption = fill(TEXT.insetCaption, { n: index + 1, wires: WIRES[index] });
+    setText($(`inset-label-${index + 1}`), `${caption} ${status}${chosen ? ` ${TEXT.insetSelected}` : ""}`);
+    const canvas = $(`inset-${index + 1}`);
+    canvas.setAttribute("aria-label", fill(TEXT.insetAria, { n: index + 1, status }));
+    canvas.classList.toggle("chosen", chosen);
+  });
+  drawDiagram(cursor.slots, cursor.nextSlot);
 }
 
 function stateText(dart) {
   const names = { VISIBLE: TEXT.stateVisible, HIDDEN: TEXT.stateHidden, OFF_BOARD: TEXT.stateOffBoard };
-  return dart.status === null ? TEXT.stateNone : names[dart.status];
+  const base = dart.status === null ? TEXT.stateNone : names[dart.status];
+  return base;
+}
+
+// Picker label of a dart: its number, ticked when annotated (text, not colour only).
+function pickerText(dart) {
+  const label = dart.status === null ? String(dart.number) : fill(TEXT.pickerDone, { number: dart.number });
+  return { label, aria: fill(TEXT.pickerLabel, { number: dart.number }) };
 }
 
 function renderDartPanel(dart) {
   setText($("value"), dart.value);
   setText($("entry"), fill(TEXT.dartEntry, { number: dart.number, volley: dart.volley }));
   setText($("state"), stateText(dart));
-  setText($("instruction"), TEXT.dartHelp);
+  setText($("help"), TEXT.dartHelp);
   const skipped = state.view.skipped;
   if (skipped.length > 0) {
-    setText($("instruction"), `${TEXT.dartHelp} ${fill(TEXT.skipped, { list: skipped.join(", ") })}`);
+    setText($("help"), `${TEXT.dartHelp} ${fill(TEXT.skipped, { list: skipped.join(", ") })}`);
   }
+}
+
+// A button of the assisted screen: it gives the focus back after its click, so that Entrée keeps meaning Enregistrer.
+function assistedButton(label, handler, className) {
+  const button = makeButton(label, () => {
+    handler();
+    button.blur();
+  }, className);
+  return button;
+}
+
+function renderAssistedActions(box, off) {
+  const cursor = state.view.cursor;
+  const noSnap = state.view.snapAvailable === false;
+  const save = assistedButton(TEXT.btnSave, saveItem, "primary");
+  save.disabled = off || noSnap || !cursor.canSave;
+  box.appendChild(save);
+  if (cursor.kind === "control") {
+    const hide = assistedButton(TEXT.btnHidePoint, () => perform({ action: "hidden_point" }));
+    hide.disabled = off || noSnap;
+    box.appendChild(hide);
+  }
+  const undo = assistedButton(TEXT.btnUndo, () => perform({ action: "clear" }));
+  undo.disabled = off;
+  box.appendChild(undo);
+  box.appendChild(assistedButton(TEXT.btnQuit, showList));
 }
 
 function renderActions() {
@@ -363,6 +608,17 @@ function renderActions() {
   clearChildren(box);
   const kind = state.view.cursor.kind;
   const off = state.busy || state.blocked !== null;
+  const control = $("control-actions");
+  clearChildren(control);
+  if (isAssisted(state.view)) {
+    renderAssistedActions(box, off);
+    clearChildren($("recalibrate-actions"));
+    renderZoomActions();
+    return;
+  }
+  const controlButton = makeButton(TEXT.btnControl, () => perform({ action: "control" }));
+  controlButton.disabled = off;
+  control.appendChild(controlButton);
   const specs = [
     [TEXT.btnHidden, "hidden", kind === "dart"],
     [TEXT.btnOffBoard, "off_board", kind === "dart"],
@@ -375,6 +631,15 @@ function renderActions() {
     button.disabled = off || !enabled;
     box.appendChild(button);
   });
+  const recalibrate = $("recalibrate-actions");
+  clearChildren(recalibrate);
+  const recalibrateButton = makeButton(TEXT.btnRecalibrate, () => perform({ action: "recalibrate" }));
+  recalibrateButton.disabled = off || kind !== "dart";
+  recalibrate.appendChild(recalibrateButton);
+  renderZoomActions();
+}
+
+function renderZoomActions() {
   const zoom = $("zoom-actions");
   clearChildren(zoom);
   zoom.appendChild(makeButton(TEXT.zoomIn, () => zoomCentered(ZOOM_STEP)));
@@ -391,10 +656,10 @@ function renderPicker() {
   const off = state.busy || state.blocked !== null;
   const cursor = state.view.cursor;
   dartsOfView().forEach((dart) => {
-    const label = dart.status === null ? String(dart.number) : fill(TEXT.pickerDone, { number: dart.number });
-    const button = makeButton(label, () => perform({ action: "goto", number: dart.number }),
-      cursor.kind === "dart" && cursor.number === dart.number ? "current" : "");
-    button.setAttribute("aria-label", fill(TEXT.pickerLabel, { number: dart.number }));
+    const text = pickerText(dart);
+    const button = makeButton(text.label, () => perform({ action: "goto", number: dart.number }),
+      cursor.number === dart.number && (cursor.kind === "dart" || cursor.kind === "recalibration") ? "current" : "");
+    button.setAttribute("aria-label", text.aria);
     button.disabled = off;
     picker.appendChild(button);
   });
@@ -457,6 +722,25 @@ function drawCross(context, point, text) {
   label(context, text, p.x + 12, p.y - 10);
 }
 
+// Hollow cross (outline only, light core removed) for the points of the previous segment, labelled "ancien k".
+function drawHollowCross(context, point, text) {
+  const p = toScreen(point);
+  context.lineCap = "round";
+  context.strokeStyle = "#ffe14d";
+  context.lineWidth = 5;
+  context.beginPath();
+  context.moveTo(p.x - 10, p.y - 10);
+  context.lineTo(p.x + 10, p.y + 10);
+  context.moveTo(p.x + 10, p.y - 10);
+  context.lineTo(p.x - 10, p.y + 10);
+  context.stroke();
+  context.globalCompositeOperation = "destination-out";
+  context.lineWidth = 2;
+  context.stroke();
+  context.globalCompositeOperation = "source-over";
+  label(context, text, p.x + 12, p.y + 22);
+}
+
 function drawHollowCircle(context, point, text) {
   const p = toScreen(point);
   outlined(context, () => {
@@ -497,8 +781,12 @@ function drawStage() {
   }
   const view = state.view;
   const cursor = view.cursor;
-  if (cursor.kind === "calibration") {
-    cursor.pending.forEach((point, index) => drawCross(context, point, String(index + 1)));
+  if (isAssisted(view)) {
+    if (cursor.previousPoints) {
+      cursor.previousPoints.forEach((point, index) => drawHollowCross(context, point, fill(TEXT.oldPoint, { n: index + 1 })));
+    }
+    cursor.slots.forEach((slot, index) => slot.point && drawCross(context, slot.point, String(index + 1)));
+    drawInsets(cursor);
   } else if (cursor.kind === "dart") {
     if (view.calibration && view.calibration.photo === cursor.photo) {
       view.calibration.points.forEach((point, index) => drawCross(context, point, String(index + 1)));
@@ -512,6 +800,33 @@ function drawStage() {
     }
   }
   drawMagnifier();
+}
+
+// Insets: a x3 zoom of the already loaded image around each point, by canvas drawImage (no request, CV31).
+function drawInsets(cursor) {
+  const image = $("photo");
+  cursor.slots.forEach((slot, index) => {
+    const canvas = $(`inset-${index + 1}`);
+    const context = canvas.getContext("2d");
+    context.imageSmoothingEnabled = false;
+    context.fillStyle = "#000000";
+    context.fillRect(0, 0, INSET_SIZE, INSET_SIZE);
+    if (!slot.point) {
+      return;
+    }
+    const half = SNAP_INSET_PX / 2;
+    context.drawImage(image, slot.point[0] - half, slot.point[1] - half, SNAP_INSET_PX, SNAP_INSET_PX,
+      0, 0, INSET_SIZE, INSET_SIZE);
+    const middle = INSET_SIZE / 2;
+    context.lineWidth = 1;
+    context.strokeStyle = "#ffe14d";
+    context.beginPath();
+    context.moveTo(middle - 14, middle);
+    context.lineTo(middle + 14, middle);
+    context.moveTo(middle, middle - 14);
+    context.lineTo(middle, middle + 14);
+    context.stroke();
+  });
 }
 
 function drawMagnifier() {
@@ -550,7 +865,7 @@ function drawMagnifier() {
   });
 }
 
-function drawDiagram(placed) {
+function drawDiagram(slots, nextIndex) {
   const canvas = $("diagram");
   const context = canvas.getContext("2d");
   const size = canvas.width;
@@ -583,22 +898,23 @@ function drawDiagram(placed) {
     const p = polar(i * 18, radius * 1.13);
     context.fillText(String(segment), p.x, p.y);
   });
-  WIRE_ANGLES.forEach((degrees, index) => drawDiagramPoint(context, polar(degrees, radius), index, placed));
+  WIRE_ANGLES.forEach((degrees, index) => {
+    const filled = slots[index].point !== null || slots[index].status !== null;
+    drawDiagramPoint(context, polar(degrees, radius), index, index === nextIndex, filled);
+  });
 }
 
-function drawDiagramPoint(context, p, index, placed) {
-  const isNext = index === placed;
-  const isDone = index < placed;
+function drawDiagramPoint(context, p, index, isNext, isDone) {
   context.beginPath();
   context.arc(p.x, p.y, isNext ? 14 : 9, 0, 2 * Math.PI);
-  context.fillStyle = isNext ? "#ffe14d" : "#121212";
+  context.fillStyle = isNext ? "#ffe14d" : (isDone ? "#8fd6a0" : "#121212"); // filled green and a tick: placed
   context.fill();
   context.lineWidth = isNext ? 4 : 2;
   context.strokeStyle = isDone ? "#8fd6a0" : "#ffe14d";
   context.stroke();
-  context.fillStyle = isNext ? "#000000" : "#ffffff";
+  context.fillStyle = isNext || isDone ? "#000000" : "#ffffff";
   context.font = isNext ? "bold 16px system-ui, sans-serif" : "bold 11px system-ui, sans-serif";
-  context.fillText(String(index + 1), p.x, p.y);
+  context.fillText(isDone ? `${index + 1}${DONE_MARK}` : String(index + 1), p.x, p.y);
 }
 
 // ---- actions -----------------------------------------------------------------------------------------------------
@@ -608,9 +924,15 @@ async function perform(payload) {
     return;
   }
   state.busy = true;
+  state.notice = null;
+  setStatus(""); // one place for a message: the status line, cleared at the next action (U36)
   render();
   try {
     const result = await request("POST", `${sessionUrl(state.name)}/actions`, payload);
+    state.notice = result.notice || null; // a fixed French text chosen by the server (U28)
+    if (payload.action === "save") {
+      state.lastSaveAt = Date.now();
+    }
     if (result.error) {
       setStatus(result.error, "error");
     } else if (result.saved) {
@@ -626,9 +948,26 @@ async function perform(payload) {
   }
 }
 
+// What Entrée and the Enregistrer button send: the open item of the screen (CV31, U29).
+function saveItem() {
+  const cursor = state.view.cursor;
+  if (!isAssisted(state.view)) {
+    return;
+  }
+  if (!cursor.canSave) {
+    setStatus(fill(TEXT.pointsMissing, { n: cursor.ready }), "error"); // Entrée gives its reason (U37)
+    return;
+  }
+  const number = cursor.kind === "calibration" ? 1 : cursor.number;
+  perform(cursor.kind === "control" ? { action: "save", number, source: cursor.source } : { action: "save", number });
+}
+
 function onStageClick(event) {
   if (!state.view || !state.imageReady || Date.now() - state.lastActionAt < CLICK_GUARD_MS) {
     return;
+  }
+  if (isAssisted(state.view) && state.view.snapAvailable === false) {
+    return; // no click is accepted without the snapping (D43)
   }
   const point = toNatural(event.clientX, event.clientY);
   const image = $("photo");
@@ -665,14 +1004,56 @@ function typingInField(event) {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (event.target && event.target.isContentEditable);
 }
 
-function onKey(event) {
-  if (event.ctrlKey || event.metaKey || event.altKey || typingInField(event) || state.busy) {
+// Entrée always means Enregistrer on the assisted screen, whichever button has the focus (U25, D45).
+function onEnter(event) {
+  event.preventDefault();
+  if (event.repeat || state.busy || Date.now() - state.lastSaveAt < SAVE_GUARD_MS) {
     return;
   }
-  if (!state.view) {
+  saveItem();
+}
+
+// The keys of the assisted screen; O, N, P and R belong to the dart screen. Returns whether the key was used.
+function onAssistedKey(key) {
+  if (/^[1-4]$/.test(key)) {
+    perform({ action: "select", number: Number(key) });
+  } else if (key === "h" && state.view.cursor.kind === "control") {
+    perform({ action: "hidden_point" });
+  } else if (key === "u" || key === "k") {
+    perform({ action: KEY_ACTIONS[key] });
+  } else {
+    return false;
+  }
+  return true;
+}
+
+// Entrée on the list runs "Continuer" only when no button or link has the focus: on a focused button it keeps its own
+// action (U23, D42). The assisted screen has the opposite rule (U25).
+function onListKey(key, event) {
+  const active = document.activeElement;
+  if (key !== "Enter" || event.repeat || (active && (active.tagName === "BUTTON" || active.tagName === "A"))) {
+    return;
+  }
+  event.preventDefault();
+  continueFocus();
+}
+
+function onKey(event) {
+  if (event.ctrlKey || event.metaKey || event.altKey || typingInField(event)) {
     return;
   }
   const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+  if (!state.view) {
+    onListKey(key, event);
+    return;
+  }
+  if (key === "Enter" && isAssisted(state.view)) {
+    onEnter(event);
+    return;
+  }
+  if (state.busy) {
+    return;
+  }
   if (key === "Escape") {
     showList();
   } else if (key === "+" || key === "=") {
@@ -684,6 +1065,10 @@ function onKey(event) {
     render();
   } else if (key.startsWith("Arrow")) {
     panBy(key);
+  } else if (isAssisted(state.view)) {
+    if (!onAssistedKey(key)) {
+      return;
+    }
   } else if (KEY_ACTIONS[key]) {
     perform({ action: KEY_ACTIONS[key] });
   } else {

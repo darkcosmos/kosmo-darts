@@ -42,3 +42,10 @@ Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
 sonnet. Why: formulas specified in CV9 and CV14.
 
 ## Implementation notes
+- Conventions: `H_true` maps board mm to pixels (as `synth`), `board_from_image` maps pixels to mm. `homography` raises
+  `geometry.DegenerateError` (a ValueError) for fewer than 4 or collinear points.
+- `near_far`: near side = where the depth (H third row) decreases; a front view splits by x (x < 0 near).
+- `tripod_group` returns `TripodGroup(angle, side, distance)`; distance = major axis / smaller image side / zoom (a
+  front view fills 0.7 of it in `synth`, whatever the synth distance, so tests scale the pixels). Side is the image
+  direction of the near half: synth positive pitch is a camera below (side `below`), positive yaw a camera on the right.
+- Bin limits added to `defaults.json` (ANGLE_*, DISTANCE_*, LIGHT_*, ZOOM_*), boundaries inclusive on the middle bin.

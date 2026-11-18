@@ -11,22 +11,21 @@ fonctionnent sans aucun jeu public.
 - Sont exclus : les licences AGPL, les licences non commerciales (NC), les jeux sans licence, et le jeu DeepDarts.
 - Un jeu n'est téléchargé qu'une fois accepté.
 
-## Candidates
+## Sets
 
-| set | link | licence | attribution | status |
-|---|---|---|---|---|
-| Recherche « dartboard » (Roboflow Universe) | https://universe.roboflow.com/search?q=dartboard | à vérifier | à relever | to check |
-| Recherche « dart » (Hugging Face) | https://huggingface.co/datasets?search=dart | à vérifier | à relever | to check |
-| Recherche « dartboard » (Kaggle) | https://www.kaggle.com/datasets?search=dartboard | à vérifier | à relever | to check |
-| Recherche « dartboard » (Zenodo) | https://zenodo.org/search?q=dartboard | à vérifier | à relever | to check |
+Une ligne par jeu. Le dossier de `~/kosmo-data/public/<slug>/` porte le nom du `slug`. Statuts : `accepted` (utilisé tel
+quel), `conditional` (utilisable seulement par la méthode du motif) et `rejected` (jamais ouvert, sans entrée dans la
+table de correspondance).
 
-Les lignes ci-dessus sont des points d'entrée de recherche, pas des jeux. Chaque jeu retenu aura sa propre ligne avec
-son lien direct, sa licence exacte, son attribution et son statut (`to check`, `accepted` ou `rejected`).
+| slug (dossier) | jeu | lien | licence | attribution | statut | motif |
+|---|---|---|---|---|---|---|
 
 ## How a set is added
 
-1. Vous donnez dans le chat le lien de la page du jeu, et sa licence telle que vous la lisez.
-2. Le squad ajoute une ligne dans ce tableau avec le statut `to check`, puis la passe à `accepted` ou `rejected` après
-   votre réponse.
-3. Pour un jeu accepté, le squad ajoute la table de correspondance des classes utilisée par le constructeur de
-   jeu de données (tâche T9).
+1. Vous donnez dans le chat le lien de la page du jeu, et sa licence telle que vous la lisez (avec la date où vous avez
+   vu la page).
+2. Le squad ajoute une ligne dans le tableau ci-dessus : licence au format `CC BY 4.0 (page vue par Kosmo le AAAA-MM-JJ)`,
+   attribution `<jeu> par <auteur>, <lien>, CC BY 4.0 ; modifié : ...`, statut et motif.
+3. Pour un jeu `accepted` ou `conditional`, le squad ajoute son entrée dans `tools/camera/config/public-class-maps.json`
+   (source name vers cible `tip`, `whole-dart-checked`, `pseudo-tip-box`, `ignore` ou `drop-image`). Un jeu avec une cible
+   `pseudo-tip-box` est `conditional`, tout autre est `accepted`. Un jeu `rejected` n'a aucune entrée.

@@ -1,0 +1,178 @@
+{
+  "format": "kosmo-camera-annotations",
+  "version": 3,
+  "session": "20261031-140322",
+  "truthSha256": "24c0d987d33c4c93aba546caf5d77fa49ee86b3eb2dc62c4763734f3d5083fcf",
+  "calibrations": [
+    {
+      "fromDart": 1,
+      "photo": "dart-001.jpg",
+      "width": 4080,
+      "height": 3072,
+      "points": [
+        {
+          "x": 2040.5,
+          "y": 610.25
+        },
+        {
+          "x": 3301.0,
+          "y": 1290.0
+        },
+        {
+          "x": 2702.75,
+          "y": 2650.0
+        },
+        {
+          "x": 1102.0,
+          "y": 2300.5
+        }
+      ],
+      "snap": [
+        "manual",
+        "manual",
+        "manual",
+        "manual"
+      ]
+    },
+    {
+      "fromDart": 3,
+      "photo": "dart-003.jpg",
+      "width": 4080,
+      "height": 3072,
+      "points": [
+        {
+          "x": 2044.25,
+          "y": 612.5
+        },
+        {
+          "x": 3303.5,
+          "y": 1291.75
+        },
+        {
+          "x": 2701.0,
+          "y": 2652.25
+        },
+        {
+          "x": 1100.75,
+          "y": 2301.0
+        }
+      ],
+      "snap": [
+        "snapped",
+        "snapped",
+        "snapped",
+        "snapped"
+      ]
+    }
+  ],
+  "controls": [
+    {
+      "dart": 1,
+      "source": "photo",
+      "width": 4080,
+      "height": 3072,
+      "points": [
+        {
+          "x": 2041.0,
+          "y": 611.5
+        },
+        {
+          "x": 3301.25,
+          "y": 1290.5
+        },
+        {
+          "x": 2702.5,
+          "y": 2650.75
+        },
+        null
+      ],
+      "snap": [
+        "snapped",
+        "snapped",
+        "snapped",
+        null
+      ]
+    },
+    {
+      "dart": 1,
+      "source": "video",
+      "positionMs": 750,
+      "width": 3840,
+      "height": 2160,
+      "points": [
+        {
+          "x": 1921.5,
+          "y": 430.25
+        },
+        {
+          "x": 3106.0,
+          "y": 907.5
+        },
+        {
+          "x": 2543.75,
+          "y": 1864.0
+        },
+        {
+          "x": 1037.25,
+          "y": 1617.5
+        }
+      ],
+      "snap": [
+        "snapped",
+        "snapped",
+        "snapped",
+        "snapped"
+      ]
+    },
+    {
+      "dart": 3,
+      "source": "photo",
+      "width": 4080,
+      "height": 3072,
+      "points": [
+        {
+          "x": 2044.0,
+          "y": 612.75
+        },
+        {
+          "x": 3303.25,
+          "y": 1292.0
+        },
+        {
+          "x": 2701.5,
+          "y": 2652.0
+        },
+        {
+          "x": 1100.5,
+          "y": 2301.25
+        }
+      ],
+      "snap": [
+        "snapped",
+        "unsnapped",
+        "snapped",
+        "snapped"
+      ]
+    }
+  ],
+  "darts": [
+    {
+      "number": 1,
+      "status": "VISIBLE",
+      "tip": {
+        "x": 2010.5,
+        "y": 640.0
+      }
+    },
+    {
+      "number": 2,
+      "status": "HIDDEN",
+      "tip": null
+    },
+    {
+      "number": 3,
+      "status": "OFF_BOARD",
+      "tip": null
+    }
+  ]
+}

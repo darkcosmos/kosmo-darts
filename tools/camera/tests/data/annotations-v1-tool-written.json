@@ -1,0 +1,85 @@
+{
+  "format": "kosmo-camera-annotations",
+  "version": 1,
+  "session": "20261031-140322",
+  "truthSha256": "f68357026936e72ec7bdd5ca2f7b944a98ecf2cd0e55b6631996ad10053705aa",
+  "calibration": {
+    "photo": "dart-001.jpg",
+    "width": 4080,
+    "height": 3072,
+    "points": [
+      {
+        "x": 2040.5,
+        "y": 610.25
+      },
+      {
+        "x": 3301.0,
+        "y": 1290.0
+      },
+      {
+        "x": 2702.75,
+        "y": 2650.0
+      },
+      {
+        "x": 1102.0,
+        "y": 2300.5
+      }
+    ]
+  },
+  "darts": [
+    {
+      "number": 1,
+      "status": "VISIBLE",
+      "tip": {
+        "x": 2010.5,
+        "y": 640.0
+      }
+    },
+    {
+      "number": 2,
+      "status": "HIDDEN",
+      "tip": null
+    },
+    {
+      "number": 3,
+      "status": "OFF_BOARD",
+      "tip": null
+    },
+    {
+      "number": 4,
+      "status": "VISIBLE",
+      "tip": {
+        "x": 1500.125,
+        "y": 1720.75
+      }
+    },
+    {
+      "number": 5,
+      "status": "OFF_BOARD",
+      "tip": null
+    },
+    {
+      "number": 6,
+      "status": "HIDDEN",
+      "tip": null
+    },
+    {
+      "number": 7,
+      "status": "VISIBLE",
+      "tip": {
+        "x": 3999.0,
+        "y": 3071.5
+      }
+    },
+    {
+      "number": 8,
+      "status": "HIDDEN",
+      "tip": null
+    },
+    {
+      "number": 9,
+      "status": "OFF_BOARD",
+      "tip": null
+    }
+  ]
+}

@@ -18,7 +18,10 @@ or a miss, plus the predicted calibration, as the input of every measure.
 T3, T8.
 
 ## Rules
-CV5, CV6, CV7. Order of judgement: by entry number inside the volley; voided entries and null photos skipped (CV5).
+CV5, CV6, CV7, D16. Detector contract (T3): `detect` returns one point per query in image pixels (best of the 5
+classes, the no-object slot ignored), sorted by score, unthresholded; `decide` applies `tau_low` itself. The
+decision never reads the clicked calibration or the drift (CV19): it uses the predicted calibration only, so CV7
+does not depend on Kosmo's calibration clicks. Order of judgement: by entry number inside the volley; voided entries and null photos skipped (CV5).
 Flagged when the best new candidate score is in `[tau_low, tau_sure)` or when the photo's calibration is `None`
 (then the announced value is the one from the previous successful calibration of the volley, or none).
 
@@ -33,6 +36,12 @@ Flagged when the best new candidate score is in `[tau_low, tau_sure)` or when th
 - Missing `cal3` on one photo: flagged, value from the previous calibration; on the first photo: flagged, no value.
 - Voided entry between two darts and a dart with null photo are skipped.
 - On a synthetic session with a perfect fake detector (truth points), every dart is correct and unflagged.
+- Contract (D16): fake raw tensors `boxes [1,300,4]` and `logits [1,300,6]` decoded by T3's `detector.decode(boxes,
+  logits, width, height)` (the path `LiteRtDetector.detect` uses) for a non-square image: a query whose highest logit is slot 5 still yields its best of slots 0 to 4
+  (slot 5 never a class), and a box centre maps to x and y with independent scales (squash from 384x384), then
+  feeds `decide_volley` (T4 of the design review).
+- Same session with its annotation calibration segments removed or shifted: identical decisions (CV7 independent
+  of the clicked calibration).
 
 ## Done when
 Python checks of root "Test plan" green, `kosmo-detekt` exit 0.
