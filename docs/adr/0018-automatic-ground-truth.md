@@ -30,6 +30,17 @@ ready on synthetic targets only.
   another crossing), then automatic snapping of every stored click into the pixel-level truth.
 - Each step asks Kosmo only to run one command and paste a report of numbers; the plan counts his time per step.
 
+## Re-snap file
+
+- The pixel-level truth is `snapped-points.json`, a derived and regenerable local file (format
+  `"kosmo-camera-snapped"`, version 1, strict reader, 4 MiB cap). It is never pasted and never leaves the PC.
+- It carries the SHA-256 of the segments and controls of each annotation file it was computed from; a reader
+  refuses it when they differ from the current annotation files (stale truth).
+- It is written only when the acceptance on the real data passed; a refused run leaves no such file. The annotation
+  files keep Kosmo's clicks and are never rewritten.
+- Per point it holds the snapped point or, when the snap failed, the click with its reason; a failed restart is the
+  string `"failed"` (JSON has no infinity).
+
 ## Alternatives rejected
 
 - Clicking again with a better tool: the clicks are already there; a new manual pass breaks the budget.

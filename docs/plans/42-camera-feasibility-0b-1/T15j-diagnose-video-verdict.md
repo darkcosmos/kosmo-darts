@@ -45,6 +45,9 @@ CV28, CV31, CV32, CV27, CV15, D50. Every threshold is read from `config.py`; non
   counts per reason.
 - Tracking: a frame sequence with a fast blur or a person crossing the point fails the forward-backward return
   and is dropped with `suivi`; a tracked point that re-snaps on a neighbouring crossing fails `TRACK_MAX_SNAP_PX`.
+- Frame B at or before frame A (photo stamp not after the CV27 target): `O` = 0 from the single frame, no division
+  by zero; a missing or undecodable frame between A and B: dart « non mesurable » `video_unreadable`, counted.
+- Synthetic videos are deterministic: fixed seeds, encoder settings fixed in the test (codec, CRF, GOP, pixel format).
 - A photo is never read by the H2 code (static check: no photo path in the tracking functions).
 - A start point stored `unsnapped` is tracked from the click and flagged; `O` from it is counted apart (CV28).
 - Report privacy scan as T15i. The CV29 verdict and its tests are T15o.

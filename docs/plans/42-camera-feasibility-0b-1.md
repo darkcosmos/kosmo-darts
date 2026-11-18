@@ -1232,9 +1232,12 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     `git pull`, puis depuis `tools/camera/` :
     `~/kosmo-tool-venv/bin/python -m kosmo_camera.snap_report --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations --split ~/kosmo-runs/split.json --frames ~/kosmo-runs/frames --out ~/kosmo-runs/snap`.
     Elle lit vos fichiers sans les modifier et affiche le chemin du rapport et sa durée. Coller dans le chat le
-    contenu de `~/kosmo-runs/snap/snap-report.md` (des chiffres et des rôles, aucun nom de session, aucune image).
+    contenu de `~/kosmo-runs/snap/snap-report.md` (des chiffres et des rôles, aucun nom de session, aucune image) ;
+    le rapport peut tenir sur plusieurs écrans : tout coller, rien d'autre n'est demandé.
     (attention : 3 min ; calcul : quelques minutes, sans surveillance)
-  - K7.5 et la suite arrivent dans la livraison suivante (lot 3b-2), après la correction du recalage (T17b, T17c) :
+  - K7.5 et la suite arrivent dans la livraison suivante (lot 3b-2), après la correction du recalage (T17b, T17c).
+    En lot 3b-1, `training.md` imprime seulement cette ligne (T17d) ; les étapes K7.5 à K7.8 ci-dessous n'y sont
+    écrites qu'avec le lot 3b-2 (T15l) :
   - K7.5 `git pull`, puis reconstruire l'image comme en K7.1. (attention : 1 min ; calcul 2 à 5 min)
   - K7.6 Relancer la commande de K7.4 : le rapport gagne les sections « Acceptation » et « Précision des clics » et
     la ligne « Recalage accepté » ou « Recalage non accepté : … ». Accepté : le fichier
@@ -1245,7 +1248,8 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     `docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,size=2g -v ~/kosmo-data:/data:ro -v ~/kosmo-runs:/runs:rw kosmo-camera:gpu python -m kosmo_camera.diagnose --captures /data/captures --annotations /data/annotations --split /runs/split.json --runs /runs --frames /runs/frames --snapped /runs/snap/snapped-points.json`.
     Coller le contenu de `~/kosmo-runs/diagnostic/diagnostic-report.md` (chiffres et rôles « dev 1 », « eval 2 »).
     Ne jamais coller `diagnostic.json` ni `frames.json`. (attention : 2 min ; calcul : 5 à 15 min)
-  - K7.8 (facultatif, selon Q15, hors budget) Contrôle visuel : relancer l'outil avec `--diagnostic
+  - K7.8 (facultatif, selon Q15 ; s'il compte ou non dans le budget de 10 min est à décider par Kosmo dans Q15)
+    Contrôle visuel : relancer l'outil avec `--diagnostic
     ~/kosmo-runs/diagnostic/diagnostic.json`, appuyer sur V ; touches 1, 2, 3, Espace, flèches, N ; dire ce que
     vous voyez. (10 min)
   - K7.C Checklist (ce que seul Kosmo peut vérifier, le JavaScript ne tourne pas dans le bac à sable). Le contrôle visuel
@@ -1513,7 +1517,7 @@ P2; T9p done at 474ebdc):
 | T17a | Snapping diagnosis on Kosmo's stored clicks: `snap_detail` stages, `snap_report` (refusal causes per source and role, descriptors, radius sweep, proposals, timings), CV32 diagnosis part | `42-camera-feasibility-0b-1/T17a-snap-diagnosis.md` | T15m, T15c, T15b | opus | Case 3: refusal causes on real images unknown, the taxonomy must map onto T15m's internal checks; a wrong diagnosis wastes one of Kosmo's budgeted runs |
 | T17d | `training.md`: K7.4, K7.3 and K2 marked done and never to redo, ADR 0018 sentence, ADR 0018 and 0019 doc test | `42-camera-feasibility-0b-1/T17d-snap-steps-doc.md` | T17a | haiku | Documentation copied from this plan, doc tests on the T15a and T15h patterns |
 | - | Push lot 3b-1 (main decides PR or push), main tells Kosmo: K7.4, paste `snap-report.md` | - | T17d | - | - |
-| - | Plan update P3 (developer-plan) from the pasted K7.4 report: T17b "Cause and fix" confirmed or rewritten | - | K7.4 | - | - |
+| - | Plan update P3 (developer-plan) from the pasted K7.4 report: T17b "Cause and fix" confirmed or rewritten (confirmed causes, chosen fix, rejected alternatives, one synthetic case per cause), then design review again before T17b | - | K7.4 | - | - |
 | T17b | Snapping fix for the causes found, realistic synthetic cases, CV31 amended | `42-camera-feasibility-0b-1/T17b-snap-fix.md` | T17a, P3 | opus | Case 3: the CV31 shape rule changes according to a cause known only from the real report, and it bounds the reference truth |
 | T17c | Real-data acceptance of the snap (share, lattice consistency, restarts), click precision `C`, automatic re-snap file `snapped-points.json` | `42-camera-feasibility-0b-1/T17c-snap-acceptance-resnap.md` | T17b, T17a | opus | Case 3: "no point on another crossing" has no real ground truth; the lattice check and its thresholds against lens distortion are unspecified and gate the truth |
 | T15i | Diagnosis, photo side: `T`, `E`, `E_seeded`, `R`, `D`, points not snapped, error location, `diagnostic.json`; truth read from `snapped-points.json`, `C`, non-snapped apart | `42-camera-feasibility-0b-1/T15i-diagnose-photos.md` | T15c, T8b, T15m, T17c | sonnet | Every quantity defined in CV28, CV31 and CV32 on top of T8, T8b, T15m and T17c's reader, synthetic tests |
@@ -1632,6 +1636,7 @@ revised at P2. If the K7.6 acceptance fails twice, the squad stops and updates t
 | D50 | Kosmo, 2026-11-18, video frames are cropped top and bottom (photo 4:3 4080x3072, video 16:9, possibly a stabilization crop; the preview followed the photo framing): H2 does not compare photo to video; it is measured inside the video stream, the frame about 1 s before `entry.videoPositionMs` (video control points, snapped when possible) against the frame at `photo.videoPositionMs`, by automatic frame-to-frame tracking; 2 or 3 visible points accepted (translation or similarity), out-of-frame points counted; tracking validated where possible (consistency with snapped points, forward-backward return), limits in the report. Squad's application: CV28 video part, T15j reshaped (`M` and `MAP_*` dropped, `TRACK_*` added), the verdict split out as T15o, T12 counts `board_cut`. | CV28, CV29 |
 | D51 | Kosmo, 2026-11-18, requirement for future capture and the game app (no implementation now): the preview shows exactly the analysed or recorded field (common ViewPort through UseCaseGroup, or a single source); stabilization disabled or its crop accounted for; the recorded framing written in the truth file. Squad's application: ADR 0019 (`docs/adr/0019-capture-framing.md`), cited by the Capture proposal of "PR material". | - |
 | D52 | Squad's design of lot 3b (Kosmo's order: snapping first, diagnosis then fix, then the rest of the diagnosis with D50): new branch from main; T17a and T17d first, push, K7.4 report, plan update P3, then T17b, T17c, T15i, T15j, T15o, T15k (Q15), T15l. The snap diagnosis and acceptance run in the WSL tool venv (numpy and Pillow only, no image rebuild for K7.4); `snapped-points.json` is a derived, regenerable local file, annotations are never rewritten; segment points are also re-snapped and counted apart (squad's choice, flagged for review); one fix round, a second failed acceptance stops for a plan update; Kosmo's attention about 8 min, at most 10 (K7.4 3 min, K7.5 1 min, K7.6 2 min, K7.7 2 min), compute times from real counts and recomputed from K7.4's timing; Q15 opened for the visual check. | CV32 |
+| D53 | Design review of 3e636db (test changes requested; architecture, security, ux approve with minors), squad's fixes: T1 `dispersionPx` of a failed restart is the string `"failed"` in `snapped-points.json` as in `diagnostic.json`, the strict reader refuses `Infinity` and `NaN`, round-trip and T15i read-back tests (T17c, T15i); T2 lattice distortion magnitude (3 px at the corners, 20 seeded boards), threshold bound and boundary test, a refused run deletes an earlier file (T17c); T3 fixed seeds and sample counts (T17b, T17c); T4 stage-to-category mapping total, empty frames and no-control session cases (T17a); T5 and A2 P3 records causes, fix and rejected alternatives and returns to design review (T17b, Tasks); T6 frame B at or before A, missing frame, deterministic encoder (T15j); T7 K5 verdict reference to T15o (T15i); T8 one string « (K7.7) » (T15k); T9 click scan words and exemptions, attention times sum to the budget line (T17d, T15l); T10 the CV30 gate of chained snapping is T16c's test (T16c); A1 ADR 0018 section « Re-snap file »; A3 T17c split note; S1 T16c file strict reader, cap, stale hashes, `--flagged` path attacks; S2 worst-case size test (T17c); U1 whether K7.8 counts toward the budget left to Q15; U2 K7.5 to K7.8 printed only with lot 3b-2; U3 K7.4 says the whole report is pasted, nothing else. | CV28, CV32 |
 
 ## Open questions
 
@@ -1661,7 +1666,7 @@ answer.
 - Q13 (Kosmo, after the diagnosis, at P2): replacement of D18 (sub-threshold compensation) and, if H2, the Kosmo
   Capture change among options (a) to (d) of "PR material".
 - Q15 (Kosmo, lot 3b, D52): the visual check (D30 point 3, T15k, step K7.8) asks Kosmo to look and describe, which
-  is outside the "Kosmo only pastes reports" budget of D48. Options: (1) keep it as an optional step outside the
-  10-minute budget; (2) postpone T15k until a verdict asks for it (recommended: the diagnosis numbers decide, and
+  is outside the "Kosmo only pastes reports" budget of D48. Options: (1) keep it as an optional step (Kosmo also
+  says whether its 10 min count toward the 10-minute budget, which they would exhaust); (2) postpone T15k until a verdict asks for it (recommended: the diagnosis numbers decide, and
   nothing is built that Kosmo may not use); (3) drop it. Until answered, T15k is not built (the build order skips
   it) and K7.8 is not documented.

@@ -12,10 +12,16 @@ settle; Kosmo validates the flagged photos within the budget (D30 point 4, D48).
 ## Files
 - Added `tools/camera/kosmo_camera/chain_calibration.py` (numpy, WSL tool venv): per dev photo in dart order, start
   = previous accepted points; snap (T17b), lattice (T17c), restarts; status `accepted` or `flagged` with reason;
-  writes `<runs>/calibration/calibration-points.json` (format on the `snapped_file` pattern) and a numbers-only
-  report with the flagged count and the estimated validation time from K7.6's real per-point time.
-- Changed `annotate/server.py`, `annotate/flow.py`, `annotate/static/app.js`: option `--flagged FILE` shows only the
-  flagged photos, the proposed points pre-placed; Kosmo accepts with Entrée or drags a point (snapped again).
+  writes `<runs>/calibration/calibration-points.json` (format `"kosmo-camera-calibration-points"` v1 on the
+  `snapped_file` pattern: stdlib strict reader, `MAX_BYTES` 4 MiB, annotation hashes, `"failed"` for infinite
+  values) and a numbers-only report with the flagged count, the estimated validation time from K7.6's real
+  per-point time, and the CV30 gate of the chained calibration (its error against the re-snapped controls of
+  `snapped-points.json`, dev then eval confirmation): that gate test belongs to T16c; T16b only consumes a source
+  that passed it.
+- Changed `annotate/server.py`, `annotate/flow.py`, `annotate/static/app.js`: option `--flagged FILE` (read with the
+  strict reader; stale hashes against the current annotations: « Calibration automatique périmée : relancer » and
+  no review) shows only the flagged photos, sessions resolved through the listing like T6a and T15k, the proposed
+  points pre-placed; Kosmo accepts with Entrée or drags a point (snapped again).
 - Changed `docs/camera/training.md`, `test_training_doc.py`: one command and the optional flagged review.
 - Added `tests/test_chain_calibration.py`; changed `test_annotate_flow.py`, `test_annotate_static.py`.
 
@@ -31,6 +37,9 @@ before the review and the plan proposes another automated alternative.
   calibration crossing flagged; a jump larger than the snap radius flagged, never accepted on a wrong crossing.
 - Budget: a flagged count above the 10-min estimate stops with its French line, no review started.
 - Flow: only flagged photos are shown; acceptance with Entrée writes the proposed points.
+- File: strict reader at cap and cap + 1, unknown key, `Infinity`/`NaN` refused, stale hashes; `--flagged` path
+  attacks of T15k (unlisted name, encoded `..`, `/`, backslash, NUL: 404).
+- Gate: CV30 on scripted chained errors, passes and fails at the boundary; eval never tunes.
 
 ## Done when
 Python checks of root "Test plan" green, the Python 3.14 `TOOL_TESTS` run green, `kosmo-detekt` exit 0.

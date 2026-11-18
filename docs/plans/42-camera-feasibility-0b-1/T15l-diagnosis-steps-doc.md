@@ -18,8 +18,12 @@ budget (D48, ADR 0018), no click.
 - Same file: the checklist K7.C gains the visual check lines only if Q15 keeps K7.8 (marked « facultatif »).
 - Changed `tools/camera/tests/test_training_doc.py`: the `diagnose` command with `--snapped` parses with its parser;
   the `docker run` block keeps the S10 flags and the read-only data mount; K7.5 to K7.8 named; the guide says
-  `diagnostic.json` and `snapped-points.json` are never pasted; no step K7.4 to K7.8 asks for a click (scan for
-  « cliquer », « clic » outside the « Recalage des clics » paragraph); the budget line present; the section title
+  `diagnostic.json` and `snapped-points.json` are never pasted; no step K7.4 to K7.7 asks for a click (the scan
+  matches the imperatives « cliquer », « cliquez », « recliquer », « recliquez », case-insensitive, in the step
+  bullets K7.4 to K7.7; exempt: the « Recalage des clics » paragraph and the done line of K7.3, which name clicks
+  without asking for one); the budget line present and the attention times of K7.4 to K7.7 (written « attention :
+  N min ») sum to its « environ » value and at most 10; K7.8, if present, is marked « facultatif » and its time
+  stated as Q15 decides; the section title
   it cites equals the one `diagnose.py` writes (read from the module constant, not retyped).
 
 ## Depends on

@@ -11,7 +11,7 @@ point 2 (a) and (c), CV28, CV31, CV32).
   `--snapped FILE`, required; read with `snapped_file`; absent, refused or stale against the annotation hashes: the
   run stops with one French line « Recalage automatique absent ou périmé : relancer K7.6 », exit 2). The
   annotation files keep Kosmo's clicks and are never written.
-- `D` per snapped point comes from the file's `dispersionPx`, in mm through the control homography (4 points);
+- `D` per snapped point comes from the file's `dispersionPx` (`"failed"` read as infinite, T17c), in mm through the control homography (4 points);
   controls with fewer visible points report `D` in px, apart; no restart is rerun.
 - « Recalage des clics » also gives the share of snapped and non-snapped points per role and source and the click
   precision `C` (p95 click-to-snap mm of T17c). Controls with a non-snapped point stay out of `T`, `E` and the
@@ -74,7 +74,7 @@ threshold on Kosmo's hand (Q10 option 3).
   not move (true `T` 0) but the CV18 measure locks onto the neighbouring wire on most photos (periodic trap, darts
   added during the volley), as in K5 (almost every photo "beyond", the real move not seen); a real 2 mm move from
   dart 20 also planted: the diagnosis gives `E` above `VALIDATION_MAX_MM` on those photos, `T` about 0 before dart
-  20 and about 2 mm after, and the share feeding CV29 makes H1 "mesure fausse" (verdict line checked in T15j).
+  20 and about 2 mm after, and the share feeding CV29 makes H1 "mesure fausse" (verdict line checked in T15o).
 - Second peak on a two-peak correlation: ratio equals the hand value.
 - `R` on reference photos with clicks offset by 1 px: equals the CV9 error of that offset; reported under
   "information", feeds no verdict field.
@@ -92,7 +92,8 @@ threshold on Kosmo's hand (Q10 option 3).
 - `main()` in a subprocess on T7 sessions with a split and lock written by the test.
 - Lot 3b: missing, over-cap or stale `--snapped` file stops with the French line and exit 2; a control whose click
   differs from its snapped point uses the snapped point; the « précision humaine » line uses `C` from the file and
-  changes no verdict field.
+  changes no verdict field; a `"failed"` `dispersionPx` in the file gives an infinite `D` (and `"failed"` in
+  `diagnostic.json`).
 
 ## Done when
 Python checks of root "Test plan" green (CI command too), `kosmo-detekt` exit 0.

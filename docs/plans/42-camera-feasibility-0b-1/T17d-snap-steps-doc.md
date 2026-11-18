@@ -16,10 +16,13 @@ Give Kosmo the one command of K7.4 and its paste point, mark the manual-entry st
   vous ne validez que les cas signalés par l'outil, 10 min au plus par campagne (ADR 0018). »; a link to
   `docs/adr/0018-automatic-ground-truth.md` and `docs/adr/0019-capture-framing.md`.
 - Changed `tools/camera/tests/test_training_doc.py`: the K7.4 command parses with the `snap_report` parser, starts
-  with `~/kosmo-tool-venv/bin/python`, has no `docker`; K7.3 holds no instruction to click; the guide says
-  `snap-report.md` is pasted and nothing else.
+  with `~/kosmo-tool-venv/bin/python`, has no `docker`; K7.3 and K7.4 hold no instruction to click (scan of the
+  imperatives « cliquer », « cliquez », « recliquer », « recliquez », case-insensitive, in those two bullets; the
+  K7.3 done line may name « clics »); K7.4 states « attention : 3 min »; the guide says `snap-report.md` is pasted
+  and nothing else; K7.5 and K7.6 are not yet printed (only the line « K7.5 et la suite arrivent dans la
+  prochaine livraison », T15l prints them with lot 3b-2).
 - Changed `tools/camera/tests/test_plan_docs.py`: ADR 0018 and ADR 0019 exist with their title, status line and
-  sections (as for ADR 0017).
+  sections (as for ADR 0017; ADR 0018 includes « Re-snap file »).
 
 ## Depends on
 T17a.

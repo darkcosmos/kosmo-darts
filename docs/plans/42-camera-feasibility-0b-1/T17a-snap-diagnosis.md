@@ -32,6 +32,10 @@ CV32, CV31, CV15, CV16 (images never leave the PC), CV4 (nothing tuned here), D4
 ## Tests
 - `snap_detail` agrees with `snap_point` on every T15m case; each `stage` reached by a scripted board (no ring
   wire, crossing beyond the radius, two crossings, blurred wire, dart-shaft crossing).
+- Stage-to-category mapping is total: every `stage` value (and `unreadable`) maps to exactly one category, checked
+  over the enum.
+- No frames directory content (empty `--frames`) and a session with no controls: no crash, counted in
+  « Échantillon ».
 - T-junction descriptor: a radial wire ending at the ring wire versus one crossing it (synthetic, `synth.py`).
 - Sweep: a start 15 px from a clean crossing is `too_far` at 1x and snapped at 2x.
 - Report on a T7 session with controls written by the test: counts add up per source and role; hidden (null)

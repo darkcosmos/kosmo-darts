@@ -17,7 +17,12 @@ its human precision, counted apart (D49, root "Approach, Automatic re-snap").
   `SNAP_LATTICE_MAX_PX`; fewer than `SNAP_LATTICE_MIN_CORNERS` snapped corners: « non vérifiable », counted.
 - Added `tools/camera/kosmo_camera/snapped_file.py` (stdlib, strict, `MAX_BYTES` 4 MiB): format
   `"kosmo-camera-snapped"`, version 1, per session `session`, `segmentsSha256`, `controlsSha256`; per control and
-  per segment the stored points, `points` (snapped or click), `snap`, `reasons`, `dispersionPx` per point.
+  per segment the stored points, `points` (snapped or click), `snap`, `reasons`, `dispersionPx` per point: a finite
+  number, the string `"failed"` for a failed restart (infinite `D`, as `diagnostic_file`), or null when not snapped;
+  the writer never emits `Infinity` or `NaN`, the strict reader refuses them (`parse_constant` raises). The file is
+  written to a temporary name then renamed; a refused run deletes any earlier `snapped-points.json` in `--out`.
+  Its format, hash linkage and "written only when accepted" rule are recorded in ADR 0018 (section "Re-snap file").
+  If the build grows past the task size, split into T17c-1 (lattice and file) and T17c-2 (acceptance report).
 - Changed `defaults.json`, `config.py`, `test_config.py`: `SNAP_ACCEPT_MIN_SHARE` 0.90, `SNAP_LATTICE_MAX_PX`,
   `SNAP_LATTICE_MIN_CORNERS` (values chosen on synthetic boards, pinned once).
 - Changed `docs/rules/camera.md`: CV32 (acceptance and re-snap parts), CV15 sentence on `snapped-points.json`.
@@ -32,12 +37,19 @@ CV32, CV31, CV28 (`D` per point stored for T15i), CV13, CV15, D48.
 ## Tests
 - Acceptance at the boundary: 0.90 accepted, one point fewer refused; one suspect point refuses with its cause line;
   a restart converging elsewhere refuses; failed restarts counted, not suspect.
-- Lattice: a calibration point moved onto a dart-shaft crossing 4 px away flagged; lens-like smooth distortion of
-  the synthetic board (radial, a few px at the corners) never flagged; a video frame cropped 16:9 with 2 visible
-  points « non vérifiable » when below the corner minimum.
+- Lattice: radial lens distortion k1 giving 3 px at the image corners (4080 px wide) never flagged, over 20 seeded
+  boards (seeds 0 to 19); the chosen `SNAP_LATTICE_MAX_PX` lies above the largest distortion residual of those
+  boards and below 4 px (a calibration point moved onto a dart-shaft crossing 4 px away is flagged); boundary: a
+  point offset so its residual is exactly `SNAP_LATTICE_MAX_PX` is not suspect, + 0.1 px is; a video frame cropped
+  16:9 with 2 visible points « non vérifiable » when below the corner minimum.
 - Re-snap file: points equal the snapped ones, clicks kept, `unsnapped` points keep the click; strict reader (cap,
-  cap + 1, unknown key, stale hashes detected by the reader helper); not written when refused.
-- Click precision on synthetic clicks offset by a known random spread: p95 within its interval.
+  cap + 1, unknown key, stale hashes detected by the reader helper); not written when refused; a refused run after
+  an accepted one leaves no `snapped-points.json`.
+- Failed restart (T1): round trip of a point with a failed restart writes `"failed"`, reads back as `math.inf`;
+  the reader refuses a file holding `Infinity`, `-Infinity` or `NaN`; T15i's reader helper returns infinite `D`.
+- Worst case size (S2): 1024 controls (`MAX_CONTROLS`) and 64 segments per session file, every point with a
+  `dispersionPx` and a reason, written under the 4 MiB cap.
+- Click precision: 400 synthetic clicks (seed 7) offset by a Gaussian spread of 2 px: p95 within its CV13 interval.
 
 ## Done when
 Python checks of root "Test plan" green, the Python 3.14 `TOOL_TESTS` run green, `kosmo-detekt` exit 0.

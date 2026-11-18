@@ -1,6 +1,9 @@
 # T17b: Snapping fix for the cause found on the real clicks, with realistic synthetic cases
 
 Status: content of "Cause and fix" confirmed or rewritten at plan update P3 from Kosmo's pasted K7.4 report (D52).
+P3 records here the confirmed causes, the chosen fix and the rejected alternatives (shape-check change, larger
+radius, changed wire profile test), with the one-case-per-cause list, and returns to design review before T17b
+is built.
 
 ## Goal
 Make the snap work on Kosmo's real targets for the dominant refusal causes of the T17a report, without ever ending
@@ -32,7 +35,8 @@ CV31, CV32, CV4 (parameters tuned on synthetic boards only; the real report give
 ## Tests
 - Every T15m case keeps its bounds (0.25 px, at least 90 % snapped per realistic case, never a wrong crossing,
   noise 5 included, the noise-5 regression).
-- New realistic cases, one per cause found, each named after it: at least 90 % snapped, at most 0.25 px.
+- New realistic cases, one per cause found (list fixed at P3), each named after it: 200 starts per case over 10
+  seeded boards (seeds 0 to 9), at least 90 % snapped, at most 0.25 px.
 - Wrong-crossing traps on the new shapes: a dart shaft crossing the radial wire within the radius, a T junction
   next to a crossing, a halo ridge parallel to the wire: refused or on the true crossing.
 

@@ -7,8 +7,9 @@ French text says « alignement », never « recalage », which names the snap on
 
 ## Change of lot 3b (D48, D52, Q15)
 - Built only if Kosmo keeps the visual check at Q15 (it is outside the paste-only budget of ADR 0018); otherwise
-  held until a verdict asks for it. Step numbers move: the three state strings say « relancer le diagnostic
-  (K7.7) » instead of « (K7.4) », and the step itself is K7.8 (« facultatif »).
+  held until a verdict asks for it. The state strings below say « relancer le diagnostic (K7.7) » (lot 3b step
+  numbers) and the static test pins that one string; the step itself is K7.8 (« facultatif »). Whether K7.8 counts
+  toward the 10-minute budget is part of Q15 (Kosmo's).
 - `clicks` reads `controlPoints` from `diagnostic.json`, which since T15i lot 3b are the re-snapped points
   (`snapped-points.json`); the label stays « Alignement d'après les clics » (they come from Kosmo's clicks).
 
@@ -16,10 +17,10 @@ French text says « alignement », never « recalage », which names the snap on
 - Changed `tools/camera/kosmo_camera/annotate/server.py`: option `--diagnostic FILE` (read with the stdlib strict
   reader of `diagnostic_file.py`, T15i; sessions absent from the file are ignored, a session whose
   `segmentsSha256` or `controlsSha256` differs from the current annotation file is marked "Diagnostic périmé :
-  relancer le diagnostic (K7.4)"). Route `GET /api/visual/<session>`: the session name is resolved through the
+  relancer le diagnostic (K7.7)"). Route `GET /api/visual/<session>`: the session name is resolved through the
   session listing like every T6a route (unlisted name, encoded `..`, `/`, backslash, NUL: 404 as T6a). For a
   listed session it always answers 200 with a `state` the page shows in French (S12): `ok`, "Diagnostic périmé :
-  relancer le diagnostic (K7.4)", "Pas de diagnostic pour cette session : relancer le diagnostic (K7.4)"; with
+  relancer le diagnostic (K7.7)", "Pas de diagnostic pour cette session : relancer le diagnostic (K7.7)"; with
   `ok`, per diagnosed photo (dart order) `dart`, `referencePhoto`, the two 3x3 matrices `auto` (from
   `autoPoints`) and `clicks` (from `controlPoints`), each null with "Non mesurable" when its points are
   missing or the system is near-singular, mapping the measured photo onto the reference photo, computed in Python
