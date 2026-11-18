@@ -254,6 +254,20 @@ def test_a_huge_integer_coordinate_answers_400_not_500_and_changes_nothing(tool)
     assert tool.act("hidden")[0] == 200  # the server still serves
 
 
+def test_s14_a_click_on_an_unreadable_photo_answers_200_unsnapped_unreadable_and_the_next_request_is_served(tool):
+    pytest.importorskip("numpy")
+    pytest.importorskip("PIL")
+    from kosmo_camera.annotate.snapping import Snapper
+    make_session(tool.captures)  # the photos hold a JPEG header only: the decoder cannot read them
+    tool.start(snapper=Snapper())
+    status, result = tool.act("click", x=300, y=300)
+    assert status == 200, result
+    slot = result["session"]["cursor"]["slots"][0]
+    assert (slot["point"], slot["status"], slot["reason"]) == ([300.0, 300.0], "unsnapped", "unreadable")
+    assert tool.json("GET", "/api/sessions")[0] == 200
+    assert tool.act("click", x=1700, y=300)[0] == 200
+
+
 def test_clicks_are_checked_against_the_real_jpeg_size_not_only_the_truth_size_d8(tool):
     # truth says 4080x3072 but the stored JPEG is 2000x1000: the calibration takes the real size, clicks beyond it fail
     make_session(tool.captures, jpeg_size=(2000, 1000))
