@@ -38,6 +38,8 @@ T15i, T15c (frames, `frame_at`), T17c (snapped video controls; every re-snap on 
 CV28, CV31, CV32, CV27, CV15, D50. Every threshold is read from `config.py`; none is chosen from the data.
 
 ## Tests
+- Chosen scale (D56): a synthetic wide-wire video (T17b video style, wires widened) re-snaps on B with the video
+  `snapParams` scale read from the file, and fails `TRACK_MAX_SNAP_PX` with scale 1.
 - Synthetic session (T7 ring-wire boards, generated 16:9 video cropped top and bottom): no move between A and B:
   `O` about 0; the board moved by a planned amount on 30 % of darts between A and B: `O` within 0.1 mm of the
   plan, share above `DIAG_MOVE_MM` matches; a durable shift from dart 20 in the video: `V` above it from dart 20,

@@ -10,7 +10,8 @@ budget (D48, ADR 0018), no click.
   verifies" (order of D55, P5 settled): K7.5 (one line `git fetch origin && git switch <branch> && git pull`, the
   real lot 3b-2 PR branch written by this task in place of `<branche du lot 3b-2>`, no rebuild; attention 1 min),
   K7.6 (one line `git pull && ` then the K7.4 command: automatic choice on dev, acceptance and re-snap, paste
-  `snap-report.md`; compute time from root "How Kosmo verifies" with the success-path time T17b measured, and the
+  `snap-report.md`; compute time one figure « au plus N min » = the snap counts of root "How Kosmo verifies" x the
+  largest success-path time T17b measured, plus 1 min of binning (U7, D56), no range; the
   rerun from the « Durée prévue d'une relance de K7.6 » line; attention 2 min), K7.7 (only after « Recalage
   accepté »: one line `docker build` (K7.1 image) `&&` the `diagnose` run with `--snapped`, with the sentence that
   the rebuild restarts neither Docker nor WSL and the request not to restart them during a squad session, D54;
@@ -27,7 +28,9 @@ budget (D48, ADR 0018), no click.
   holds `git fetch origin`, `git switch` with a name matching the branch pattern of T17d (no `<` left), `git pull`,
   in that order, and no `docker build`; K7.6 starts with `git pull &&`, its command parses with the `snap_report`
   parser, it holds « Durée prévue d'une relance de K7.6 » and no « 30 min »; K7.7 holds `docker build` before
-  `docker run` in one `&&` line and the sentence « ne redémarre ni Docker ni WSL »; no « D4 », « D5 », « Q15 »,
+  `docker run` in one `&&` line, inside a single code span or fenced block with no line break (U8: one pasteable
+  block, the test splits on newlines and finds both commands on the same line), and the sentence « ne redémarre ni
+  Docker ni WSL »; K7.6 gives one compute figure « au plus N min » and no « de … à … min » range (U7); no « D4 », « D5 », « Q15 »,
   « T15m » in the K7.4 to K7.7 bullets and the lot 3b line; the guide says
   `diagnostic.json` and `snapped-points.json` are never pasted; no step K7.4 to K7.7 asks for a click (the scan
   matches the imperatives « cliquer », « cliquez », « recliquer », « recliquez », case-insensitive, in the step

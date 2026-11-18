@@ -54,13 +54,18 @@ inside it is made on dev only, D55).
 ## Tests
 - Every T15m case keeps its bounds at scale 1 (0.25 px, at least 90 % snapped, never a wrong crossing, noise 5).
 - One case per cause, named after it, 200 starts over seeds 0 to 9: `wide_photo_wire` (photo style) snaps at
-  least 90 % with the scale 2 or 3 candidate, at most 0.25 x scale px; `video_wire` (video style) at scale 1;
+  least 90 % with the scale 2 or 3 candidate, at most 0.25 px in full-resolution px (D56); `video_wire` (video
+  style) at scale 1;
   `low_wire_contrast` (wire 6 grey levels above one side) with the lower floor; each also fails at scale 1 / floor
   4 (the case reproduces the cause).
 - Safety, every grid candidate at its own style: dart shaft across the radial wire, T junction next to a
   crossing, halo ridge parallel to the wire: refused or on the true crossing; never a wrong crossing.
-- Mapping: a crossing at a known full-resolution point is returned within the bound for scales 1 to 4, the
-  start near the image border at scale 4 gives `border`; descriptors present on a `coarse_no_ridge` failure.
+- Mapping (unbiased, D56): binning shifts pixel centres by (scale - 1) / 2 full-resolution px, so for scales 1
+  to 4 the mean signed error (x and y) over 200 seeded starts (seeds 0 to 9) is within 0.05 px, and a noiseless
+  board with a crossing at a known non-integer point returns it within 0.05 px; the start near the image border
+  at scale 4 gives `border`; descriptors present on a `coarse_no_ridge` failure.
+- Cache: the binned image is keyed by (image, factor), computed once per factor (a counting decoder stub) and
+  identical on a second call.
 - Timing: median success-path time per snap of each realistic case printed in Implementation notes (T15l).
 
 ## Done when

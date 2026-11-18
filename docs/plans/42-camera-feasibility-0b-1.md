@@ -229,7 +229,8 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   ambiguity; the likely cause is scale (photo wires about 7 px wide and 3 px blurred against the 2 to 3.3 px the
   detector was tuned for), not measured because the report has no width for stages before the fine fit. Fix
   (T17b): binning factor `scale` so that the unchanged detector runs in its regime, coarse descriptors filled even
-  on a coarse failure; choice (T17e): per source, the grid candidate with the highest dev snapped share, printed
+  on a coarse failure; choice (T17e, T17c): per source, the grid candidates ranked by dev snapped share, the first
+  one without a dev « croisement suspect » or unstable restart retained (D56), printed
   with the coarse descriptors in the K7.6 report, so a refused acceptance already holds what the one fix round
   needs. Alternatives rejected, with their Kosmo cost (ADR 0018, budget 10 min): (a) a second K7.4 run with more
   coarse statistics before any fix: +3 min, 11 min without a K7.6 rerun, 13 at worst; (b) the automatic choice
@@ -721,7 +722,8 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   = infinite; target `SNAP_REPEAT_MAX_MM`. Constants `SNAP_*` in `defaults.json`, each pinned once in
   `test_config.py`; the same function serves the tool and the diagnosis. Lot 3b (D49): the shape check and domain
   are amended by T17b for the causes found on the real clicks (T17a). D55: `scale` (binning factor, the radius
-  kept in full-resolution px, the result mapped back, bound 0.25 x scale px); grid `SNAP_SEARCH_SCALES` x
+  kept in full-resolution px, the result mapped back without bias, bound 0.25 full-resolution px at every scale,
+  D56); grid `SNAP_SEARCH_SCALES` x
   `SNAP_SEARCH_MIN_CONTRAST` fixed on synthetic boards, every candidate passing the wrong-crossing traps.
 - CV32 Snapping on real data and automatic re-snap (D48, D49; lot 3b). Diagnosis (T17a): `snap_report` reruns the
   snap from every stored point of controls and segments (photos and listed video frames), numbers and roles only,
@@ -744,10 +746,13 @@ any model file in the repository (decision 6); `.github/**` (CI job proposed to 
   (starts per point: the snaps K7.4 ran per point, plus `SNAP_REPEAT_DIRECTIONS`, plus 4 for a photo control
   point: its share of the at most 16 lattice corners of its control), never a fixed estimate. Choice (D55, T17e):
   before the acceptance, the same run snaps the dev control points of each source (video: hidden points excluded)
-  once per grid candidate and keeps the highest snapped share (tie: smaller scale, then higher floor); eval points
-  never enter the choice; the acceptance, the re-snap and `snapped-points.json` (`snapParams`) use the chosen
-  candidate; the candidate snaps are added to the planned duration, and the K7.6 run prints the planned duration
-  of one rerun from its own median time per snap.
+  once per grid candidate and ranks them by snapped share (tie: smaller scale, then higher floor); the share is
+  only a ranking (no ground truth on real images): the first-ranked candidate is retained only if its dev points
+  show no « croisement suspect » and no unstable restart, else it is excluded and the next one is checked the same
+  way, at most `SNAP_SEARCH_FALLBACKS` (2) times (D56, T17c); eval points never enter the choice; the acceptance,
+  the re-snap and `snapped-points.json` (`snapParams`, validated against the grids by the reader) use the retained
+  candidate; the candidate and fallback snaps are added to the planned duration, and the K7.6 run prints the
+  planned duration of one rerun from its own median time per snap.
 
 ## Files and types added or changed
 
@@ -1161,7 +1166,8 @@ the cases. Summary:
     K7.6 rerun, 10 min at worst, K7.8 outside it); K7.8 absent (Q15, D54); K7.4 and K7.5 hold `git fetch origin`,
     then `git switch <branch>` with a name matching the project branch pattern (no `<` placeholder left) and
     `git pull`; K7.5 has no `docker build`; K7.6 starts with `git pull &&` and cites « Durée prévue d'une relance
-    de K7.6 »; K7.7 holds `docker build` then `docker run` in one `&&` line and states that the rebuild restarts
+    de K7.6 » and one compute figure « au plus N min » (U7); K7.7 holds `docker build` then `docker run` in one
+    `&&` line with no line break inside (U8) and states that the rebuild restarts
     neither Docker nor WSL (D55, P5); no internal reference (D48 to D55, Q15, T15m) in the K7.4 to K7.7 bullets
     and the lot 3b line (U6); K7.3 marked done; ADR 0018 and ADR 0019 asserted by `test_plan_docs.py`.
   - T17a: `snap_detail` agrees with `snap_point`, every `stage` reached on a scripted board, T-junction descriptor,
@@ -1169,15 +1175,19 @@ the cases. Summary:
     unreadable counted, the « Durée prévue de K7.6 » line equals the D54 formula with an injected median, privacy
     scan, runs without `av` (CV32).
   - T17b: every T15m bound kept at scale 1; one realistic synthetic case per cause (`wide_photo_wire`,
-    `video_wire`, `low_wire_contrast`: at least 90 % snapped with its candidate, at most 0.25 x scale px, and
-    failing at scale 1 / floor 4); wrong-crossing traps for every grid candidate; mapping back to full resolution;
-    coarse descriptors on a `coarse_no_ridge` failure (CV31, D55).
-  - T17e: choice winner and tie rule on scripted outcomes, eval points never snapped by the choice, hidden video
-    points excluded, no eval row in the two new sections, candidate snaps equal the planned-duration term (CV32).
+    `video_wire`, `low_wire_contrast`: at least 90 % snapped with its candidate, at most 0.25 full-resolution px,
+    and failing at scale 1 / floor 4); wrong-crossing traps for every grid candidate; mapping back unbiased at
+    scales 1 to 4 (mean signed error within 0.05 px over seeded starts, exact noiseless case within 0.05 px);
+    binned-image cache once per (image, factor); coarse descriptors on a `coarse_no_ridge` failure (CV31, D55, D56).
+  - T17e: choice ranking and tie rule on scripted outcomes, near tie (100 % beats 99 %), a source with one dev
+    point, eval points never snapped by the choice, hidden video points excluded, no eval row in the two new
+    sections, candidate snaps equal the planned-duration term (CV32, D56).
   - T17c: acceptance at the 0.90 boundary, suspect crossing, restart elsewhere; decided on eval photo control
     points only (dev below 0.90 and eval above: accepted; the reverse: refused; dev printed « pour information »);
     the snaps the K7.6 run counts equal the starts the K7.4 formula planned plus the T17e candidate snaps; the
-    chosen candidate used and written as `snapParams`; segment points apart (D52); lattice never flags smooth lens-like
+    retained candidate used and written as `snapParams`; a high-share candidate with one dev suspect or unstable
+    restart loses to a slightly lower clean one, fallbacks capped at 2; the reader refuses a `snapParams` value
+    outside the grids (0, negative, NaN, wrong type, missing source); segment points apart (D52); lattice never flags smooth lens-like
     distortion; re-snap file strict reader and not written when refused; click precision `C` (CV32).
   - T15i: `T`, `E`, `E_seeded`, `R` on synthetic sessions, the periodic trap, peak ratio by hand, partial
     controls, `D` on rendered controls (clean, between two crossings, a failed restart counted infinite),
@@ -1291,9 +1301,9 @@ Kosmo Capture behave as before. Then on the PC (steps detailed in `docs/camera/t
     « Étage grossier (dev) », « Acceptation » et « Précision des clics », la ligne « Recalage accepté » ou
     « Recalage non accepté : … » et la ligne « Durée prévue d'une relance de K7.6 : environ N min ». Accepté : le
     fichier `~/kosmo-runs/snap/snapped-points.json` est écrit (ne jamais le coller). Coller `snap-report.md`.
-    (attention : 2 min ; calcul : de 4 à 36 min sans surveillance, au plus 2176 recalages pour le choix et 12780
-    pour l'acceptation ; T15l remplace la borne haute par celle tirée de la durée d'un recalage réussi mesurée en
-    T17b). Non accepté : l'équipe corrige une fois d'après les sections dev du rapport et vous relancez une fois
+    (attention : 2 min ; calcul : de 6 à 50 min sans surveillance, au plus 2176 recalages pour le choix, 5640 pour
+    vérifier deux candidats de repli et 12780 pour l'acceptation ; T15l remplace cette fourchette par un seul
+    chiffre, « au plus N min », tiré de la durée d'un recalage réussi mesurée en T17b, U7, D56). Non accepté : l'équipe corrige une fois d'après les sections dev du rapport et vous relancez une fois
     la même ligne (2 min d'attention de plus, budget de 10 min au pire) ; au-delà, l'équipe revoit le plan,
     jamais de clics.
   - K7.7 Seulement après « Recalage accepté » : reconstruire l'image et lancer le diagnostic (pas de carte
@@ -1703,6 +1713,7 @@ revised at P2. If the K7.6 acceptance fails twice, the squad stops and updates t
 | D53 | Design review of 3e636db (test changes requested; architecture, security, ux approve with minors), squad's fixes: T1 `dispersionPx` of a failed restart is the string `"failed"` in `snapped-points.json` as in `diagnostic.json`, the strict reader refuses `Infinity` and `NaN`, round-trip and T15i read-back tests (T17c, T15i); T2 lattice distortion magnitude (3 px at the corners, 20 seeded boards), threshold bound and boundary test, a refused run deletes an earlier file (T17c); T3 fixed seeds and sample counts (T17b, T17c); T4 stage-to-category mapping total, empty frames and no-control session cases (T17a); T5 and A2 P3 records causes, fix and rejected alternatives and returns to design review (T17b, Tasks); T6 frame B at or before A, missing frame, deterministic encoder (T15j); T7 K5 verdict reference to T15o (T15i); T8 one string « (K7.7) » (T15k); T9 click scan words and exemptions, attention times sum to the budget line (T17d, T15l); T10 the CV30 gate of chained snapping is T16c's test (T16c); A1 ADR 0018 section « Re-snap file »; A3 T17c split note; S1 T16c file strict reader, cap, stale hashes, `--flagged` path attacks; S2 worst-case size test (T17c); U1 whether K7.8 counts toward the budget left to Q15; U2 K7.5 to K7.8 printed only with lot 3b-2; U3 K7.4 says the whole report is pasted, nothing else. | CV28, CV32 |
 | D54 | Kosmo, 2026-11-18, lot 3b plan approved with changes: (1) Q15 option 2, T15k and K7.8 deferred until a verdict asks for them, then fitted in the 10-minute budget at P2 or P3 (about 2 min sample), else not done; (2) T17a splits every report section by split and source, T17b uses only the dev figures and the segment points, T17c decides on the eval photo control points, dev for information; (3) K7.4 prints the planned K7.6 duration (points x starts x median time per snap), replacing « jusqu'à environ 30 min »; (4) budget at worst 8 min plus 2 min for one K7.6 rerun = 10 min, K7.8 outside it; (5) K7.4 (and K7.5) use `git fetch origin`, `git switch <branch>`, `git pull`, the lot is a PR and T17d (T15l) writes the real branch name; (6) K7.5: squad's finding, `docker build` restarts neither Docker nor WSL and stops no container, so it does not cut the squad session (CPU, disk and network load only); `training.md` says so and asks not to restart Docker or WSL during a squad session; (7) segment points re-snapped and counted apart (D52) accepted. Design review of c976f0a (all four approve), minors folded in: U4 the build-order budget line gives the same figures as « Lot 3b » (K7.4 3 + K7.5 to K7.7 5 = 8 min, plus 2 for one K7.6 rerun, 10 at worst); test review, the P3 and T17b briefs quote only dev and segment figures (process point, Tasks). P5 stays open, to settle before T15l. | CV32 |
 | D55 | Squad's plan update P3, 2026-11-18, from the dev and segment figures of Kosmo's K7.4 report only (eval control figures withheld, D54): (1) confirmed: 0 of 161 dev photo control points snapped, 132 at `coarse_no_ridge`, 9 of 12 segment points at `coarse_no_ridge`, none recovered at 2x or 4x radius, T share 0 %, no ambiguity on photos, low noise, bright wires; video 7 of 111 snapped (width 3.26 px, blur 1.41 px); the cause of `coarse_no_ridge` is not measured (no width before the fine fit), scale is the leading hypothesis (photo wires about 7 px, blur about 3 px), the `_is_wire` floor the second; T-junction, radius, ambiguity and polarity rejected as dominant causes. (2) Fix (T17b, opus case 3): binning factor `scale` so the unchanged detector runs in its validated regime, a candidate grid `SNAP_SEARCH_SCALES` x `SNAP_SEARCH_MIN_CONTRAST` (at most 8) fixed and safety-tested on synthetic boards, coarse descriptors filled on a coarse failure. (3) Choice (T17e, new, sonnet): in the K7.6 run, per source, the candidate with the highest dev control snapped share, eval never used (CV4, D54); the chosen candidate drives T17c's acceptance and re-snap and is stored as `snapParams` (T15j re-snaps with it). (4) No second diagnosis run: option (a) (K7.4 rerun with more coarse statistics) costs 3 more minutes, 11 min without a K7.6 rerun and 13 at worst, over ADR 0018's 10; option (b) alone needs a second rebuild on a K7.6 rerun (11 at worst); (b) with the rebuild moved after the acceptance gives K7.4 3 + K7.5 1 (pull only) + K7.6 2 (`git pull &&` the K7.4 command) + K7.7 2 (`docker build &&` diagnose) = 8 min, plus 2 for one K7.6 rerun = 10. A refused acceptance already holds the dev coarse descriptors for the one fix round; a second refusal stops for a plan update, and any further Kosmo run is returned to Kosmo as a question (ADR 0018). (5) P5 settled: the image is rebuilt only in K7.7, after « Recalage accepté », so it holds the accepted `snap.py`. (6) Compute time of K7.6 from K7.4's real counts and timing (852 points, 2556 snaps in 62.4 s, median 12.1 ms): at most 272 x 8 = 2176 choice snaps plus 852 x 15 = 12780 acceptance starts = 14956 snaps, 3 min at 12.1 ms plus about 1 min of binning, 35 min at the T15m bound of 140 ms, so « de 4 à 36 min, sans surveillance »; K7.4's « Durée prévue de K7.6 : environ 3 min » used the failure-path median and is a lower bound; T17b measures the success-path time on its realistic cases for T15l, and the K7.6 run prints the rerun duration from its own median. (7) T15l removes the internal references from the `training.md` budget and compute lines (U6). | CV31, CV32, CV4 |
+| D56 | Design review round 4 of e8d2742 (test changes requested; architecture, security, ux approve with minors), squad's fixes: T1 the snap bound stays 0.25 full-resolution px at every scale (not 0.25 x scale) and the mapping back is tested unbiased at scales 1 to 4 (mean signed error within 0.05 px over seeded starts, an exact noiseless case within 0.05 px), since binning shifts pixel centres by (scale - 1) / 2 px (T17b); T5 binned-image cache once per (image, factor), deterministic (T17b); T2 and A4 the dev share only ranks the candidates: T17c retains the first-ranked one whose dev points show no « croisement suspect » and no unstable restart, at most `SNAP_SEARCH_FALLBACKS` 2 fallbacks, else « Recalage non accepté », with the high-share-but-suspect test (T17e ranks, T17c retains); T3 near-tie and single-dev-point tests (T17e); T4 wide-wire video re-snaps on B only with the file's scale (T15j); S3 the `snapParams` reader accepts only grid values, both sources required (T17c); A5 one ADR 0018 "Re-snap file" line on `snapParams` and its validation (T17c); U7 K7.6 shows one compute figure « au plus N min » from T17b's measured success-path time (T15l); U8 the K7.7 `docker build && docker run` line is one pasteable block, tested (T15l). Compute bound of K7.6 updated from K7.4's real counts: 2176 choice snaps + 5640 for two fallback checks (2 x (272 x 8 restarts + 161 x 4 lattice starts)) + 12780 acceptance starts = 20596 snaps, 4.2 min at 12.1 ms plus about 1 min of binning, 48 min at 140 ms plus 1, so « de 6 à 50 min » in the plan until T15l writes the single measured figure. Kosmo's attention budget unchanged: 8 min, 10 at worst. | CV31, CV32 |
 
 ## Open questions
 
