@@ -13,11 +13,11 @@ RULES_CAMERA = ROOT / "docs" / "rules" / "camera.md"
 
 ADR_16_STATUS = (
     "Status: Superseded by ADR 0020 on 2026-11-18: the drift measure and its compensation are stopped (rules CV18, "
-    "CV19); the code is frozen until task C1. Was: not validated and suspended on 2026-11-15 (D30)."
+    "CV19); code removed by task C1. Was: not validated and suspended on 2026-11-15 (D30)."
 )
 ADR_16_ASSISTED_STATUS = (
     "Status: Superseded by ADR 0020 on 2026-11-18: the snapping of clicks is stopped (rule CV31, 0 of 697 real photo "
-    "points snapped); the code is frozen until task C1."
+    "points snapped); code removed by task C1."
 )
 ADR_17_TITLE = "# ADR 0017: Per-image calibration and automatic recalibration in the game app (camera phases 1 to 3)"
 ADR_17_SECTIONS = ["Context", "Decision", "Verification", "Phase 0b-1 report", "Alternatives rejected", "Consequences"]
@@ -89,41 +89,45 @@ def flat(path):
     return " ".join(path.read_text(encoding="utf-8").split())
 
 
-def test_a31_adr_0016_decision_2_says_it_is_amended_by_the_assisted_click_section():
+def test_adr_0016_decision_2_has_no_amended_pointer_and_keeps_the_assisted_click_section_as_history():
     text = ADR_16.read_text(encoding="utf-8")
 
-    assert "Amended: see section Assisted click (D43, D44)." in flat(ADR_16)
+    assert "Amended: see section Assisted click" not in flat(ADR_16)
     assert "\n## Assisted click\n" in text
 
 
-def test_a31_adr_0016_decision_2_lists_the_stdlib_core_with_drift_file_and_strict_json():
-    core = "(`config`, `truth`, `split`, `annotations`, `board`, `drift_file`, `strict_json`)"
+def test_adr_0016_decision_2_lists_the_stdlib_core_without_drift_file():
+    core = "(`config`, `truth`, `split`, `annotations`, `board`, `strict_json`)"
 
     assert f"Stdlib-only core {core}" in flat(ADR_16)
 
 
-def test_a31_cv16_carries_the_after_d39_and_d43_sentence():
-    sentence = ("After D39 and D43: the stdlib-only rule covers every module except `snap.py` and the shared decoder "
-                "`luma.py`")
+def test_cv16_says_the_tool_is_stdlib_local_and_enters_the_tips_only():
+    text = flat(RULES_CAMERA)
+
+    assert ("CV16 Annotation tool (N24, C1 to C1c): stdlib only, `127.0.0.1` only, no external resource. Kosmo enters "
+            "the dart tips only (one point per judged dart, CV5, on its photo or listed video frame).") in text
+
+
+def test_cv16_says_calibration_control_snapping_drift_and_journey_are_not_in_the_tool():
+    sentence = ("calibration and control entry, snapping, drift and the journey are not in the tool. Captures are "
+                "read-only.")
 
     assert sentence in flat(RULES_CAMERA)
 
 
-def test_a31_cv16_carries_the_control_mode_sentence_with_split_frames_and_the_frame_route():
-    sentence = ("Control mode (T15d): `--split` (with `--lock`) and `--frames` are read again at every request and "
-                "never written; a split that does not match its lock, or an unreadable `frames.json`, gives one list "
-                "warning and switches control (or the video items) off; `GET /api/frame/<session>/<file>` serves "
-                "only a file listed in `frames.json` for a listed session.")
+def test_cv16_says_the_frame_route_serves_only_a_listed_file_of_a_listed_session():
+    sentence = ("`GET /api/frame/<session>/<file>` serves only a file listed in `frames.json` for a listed session.")
 
     assert sentence in flat(RULES_CAMERA)
 
 
-def test_cv16_carries_the_journey_sentence_one_instruction_and_drift_as_information():
-    sentence = ("Journey (T15e): the tool gives one active instruction, derived from the annotation file and the "
-                "presence of frames only and recomputed at every request; drift flags are information only, never an "
-                "instruction.")
+def test_cv16_says_the_removed_options_exit_with_status_2():
+    assert "(`--split`, `--lock`, `--drift`) exit with status 2." in flat(RULES_CAMERA)
 
-    assert sentence in flat(RULES_CAMERA)
+
+def test_cv20_and_cv25_are_read_and_kept_and_no_longer_entered_in_the_tool():
+    assert flat(RULES_CAMERA).count("No longer entered in the tool (C1, Q1 B); read and kept.") == 2
 
 
 def test_adr_0020_exists_with_its_title_proposed_status_and_supersedes_line():
@@ -207,8 +211,8 @@ def test_adr_0019_has_the_sections_of_the_plan_text(heading):
 
 
 @pytest.mark.parametrize("rule", ["CV18", "CV19", "CV31"])
-def test_camera_rules_mark_the_stopped_rules(rule):
-    assert f"- {rule} Stopped on 2026-11-18 (ADR 0020)." in flat(RULES_CAMERA)
+def test_camera_rules_mark_the_stopped_rules_and_their_removed_code(rule):
+    assert f"- {rule} Stopped on 2026-11-18 (ADR 0020). Code removed by C1." in flat(RULES_CAMERA)
 
 
 def test_camera_rules_record_the_retired_and_reserved_rule_numbers():

@@ -121,7 +121,7 @@ def test_previous_from_complete_goes_to_the_last_dart(tmp_path):
     assert cursor.number == 4
 
 
-def test_goto_selects_a_judged_dart_only_after_calibration(tmp_path):
+def test_goto_selects_a_judged_dart_with_no_calibration_needed(tmp_path):
     session = session_of(tmp_path)
     annotations = calibrated(session)
     _, cursor = apply(annotations, session, Action("goto", number=4), None)
