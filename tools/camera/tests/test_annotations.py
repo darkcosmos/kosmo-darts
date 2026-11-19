@@ -3,7 +3,6 @@ CV20 calibration segments of version 2 and the lossless migration of version 1, 
 statuses (CV31 values) of version 3 and the lossless migration of version 2."""
 import copy
 import dataclasses
-import hashlib
 import json
 import os
 import re
@@ -544,26 +543,7 @@ def test_segment_for_picks_the_last_segment_starting_at_or_before_the_dart_cv20(
     assert an.segment_for(Annotations("20261031-140322", TRUTH_SHA, (), ()), 1) is None
 
 
-def test_segments_sha256_hashes_the_encoded_calibration_list_without_snap_cv20_cv25():
-    full = _full()
-    encoded = json.loads(an.encode(full))["calibrations"]
-    for segment in encoded:
-        del segment["snap"]
-    expected = hashlib.sha256(json.dumps(encoded, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-    assert an.segments_sha256(full) == expected
-    moved = Calibration(1, "dart-001.jpg", 4080, 3072, ((1.0, 1.0),) * 4)
-    assert an.segments_sha256(Annotations(full.session, full.truth_sha256, (moved,), full.darts)) != expected
-    other_darts = Annotations(full.session, full.truth_sha256, full.calibrations, ())
-    assert an.segments_sha256(other_darts) == expected  # only the segments count
-    empty = Annotations(full.session, full.truth_sha256, (), ())
-    assert an.segments_sha256(empty) == hashlib.sha256(b"[]").hexdigest()
-
-
 # ---- version 3: control clicks and snap statuses, migration of version 2 (CV25) ----------------------------------
-
-def _canonical_sha(value):
-    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
-
 
 def test_v2_file_written_by_the_batch_1_tool_migrates_without_loss_cv25():
     text = TOOL_V2.read_text(encoding="utf-8")  # written by flow.apply and write_atomic at ab85842
@@ -573,7 +553,6 @@ def test_v2_file_written_by_the_batch_1_tool_migrates_without_loss_cv25():
     assert migrated.controls == () and all(s.snap == ("manual",) * 4 for s in migrated.calibrations)
     v3 = json.loads(an.encode(migrated))
     assert json.dumps(_v3_to_v2_dict(v3), indent=2, ensure_ascii=False) == text
-    assert an.segments_sha256(migrated) == _canonical_sha(v2["calibrations"])  # drift flags of v2 stay current
 
 
 def _random_v2(rng):
@@ -727,21 +706,6 @@ def test_worst_case_file_encodes_under_max_bytes_cv20_cv25():
     darts = tuple(DartAnnotation(n, Status.VISIBLE, point()) for n in range(1000, 2000))
     worst = Annotations("20261031-140322-99", TRUTH_SHA, segments, darts, controls)
     assert len(an.encode(worst).encode("utf-8")) <= an.MAX_BYTES
-
-
-def test_controls_sha256_follows_controls_and_snap_only_and_segments_sha256_ignores_controls_cv25():
-    a = an.read(GOLDEN_V3)
-    expected = _canonical_sha(_v3_dict()["controls"])
-    assert an.controls_sha256(a) == expected
-    moved = Control(1, an.PHOTO, None, 4080, 3072, ((1.0, 1.0),) * 4, (an.SNAPPED,) * 4)
-    assert an.controls_sha256(dataclasses.replace(a, controls=(moved,) + a.controls[1:])) != expected
-    resnapped = dataclasses.replace(a.controls[2], snap=(an.SNAPPED,) * 4)
-    assert an.controls_sha256(dataclasses.replace(a, controls=a.controls[:2] + (resnapped,))) != expected
-    other_tip = dataclasses.replace(a, darts=(DartAnnotation(1, Status.VISIBLE, (1.0, 1.0)),) + a.darts[1:])
-    assert an.controls_sha256(other_tip) == expected
-    assert an.segments_sha256(dataclasses.replace(a, controls=())) == an.segments_sha256(a)
-    assert an.segment_for(dataclasses.replace(a, controls=()), 3) == an.segment_for(a, 3)
-    assert an.controls_sha256(dataclasses.replace(a, controls=())) == hashlib.sha256(b"[]").hexdigest()
 
 
 def test_control_for_finds_the_control_of_a_dart_and_source_cv25():

@@ -13,7 +13,6 @@ then `migrate_v2` adds an empty control list and the status `manual` on every po
 writes version 3 only.
 """
 import enum
-import hashlib
 import json
 import math
 import os
@@ -477,24 +476,6 @@ def encode(annotations) -> str:
         raise AnnotationError(f"$: cannot encode: {error}") from error
     decode(text)
     return text
-
-
-def _canonical_sha256(value):
-    text = json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
-
-
-def segments_sha256(annotations) -> str:
-    """SHA-256 of the segment list encoded without `snap` (sorted keys, no spaces): identifies the calibrations a
-    drift measure used, whatever the darts and controls (CV18, CV20, CV25). `snap` is left out so the hash of a
-    segment is the same before and after the version 2 to 3 migration (flags measured on version 2 stay current)."""
-    return _canonical_sha256([_segment_geometry_json(c) for c in annotations.calibrations])
-
-
-def controls_sha256(annotations) -> str:
-    """SHA-256 of the encoded control list, `snap` included (sorted keys, no spaces): identifies the control clicks a
-    diagnosis used, whatever the segments and darts (CV25)."""
-    return _canonical_sha256(_controls_json(annotations))
 
 
 def control_for(annotations, dart_number, source):

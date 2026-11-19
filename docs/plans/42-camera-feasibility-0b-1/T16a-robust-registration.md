@@ -1,5 +1,7 @@
 # T16a (CONDITIONAL): Robust registration of a photo against its reference
 
+CANCELLED (2026-11-18): stopped; global per-image registration R replaces it (ADR 0020).
+
 Status: conditional. Built only if the T15j verdict says H1 (alone or with H2) and Kosmo confirms at plan update
 P2. Its content is finalized at P2 from the diagnostic numbers; this file fixes the frame.
 

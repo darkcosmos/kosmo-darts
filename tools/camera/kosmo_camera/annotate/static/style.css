@@ -13,6 +13,7 @@
   --link: #8ab4f8;
   --warn: #ffd166;
   --line: #5a5a5a;
+  --legend-text: #dddddd;
 }
 
 * { box-sizing: border-box; }
@@ -70,34 +71,10 @@ button.primary { background: var(--primary-bg); color: var(--primary-text); bord
   border-radius: 8px;
 }
 
-/* The one active instruction of the journey (U19): the only element with this style. */
-#journey {
-  margin: 0;
-  padding: 10px 16px;
-  font-size: 24px;
-  font-weight: bold;
-  line-height: 1.25;
-  background: var(--panel);
-  border-bottom: 3px solid var(--primary-bg);
-}
-
 #sessions { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-width: 720px; }
 #sessions li { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; }
 #sessions li button { width: 100%; text-align: left; }
-.session-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
 .session-name { font-weight: bold; }
-.session-role { color: var(--muted); }
-.badge { padding: 2px 8px; border: 2px solid var(--line); border-radius: 8px; font-size: 14px; }
-.badge-todo { border-color: var(--muted); }
-.badge-progress { border-color: var(--warn); color: var(--warn); }
-.badge-done { border-color: var(--ok); color: var(--ok); }
-.badge-ignored { color: var(--muted); }
-.steps { list-style: none; margin: 4px 0; padding: 0; }
-#sessions .steps li { background: none; border: 0; padding: 0; }
-.info-box { margin: 6px 0; padding: 6px 10px; background: #2a2a2a; border: 1px solid var(--line); border-radius: 8px; }
-.info-title { color: var(--muted); font-weight: bold; font-size: 14px; }
-#sessions li.focus { border: 3px solid var(--primary-bg); }
-.focus-mark { color: var(--primary-bg); font-weight: bold; }
 .session-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
 .session-actions button { flex: 1 1 160px; width: auto; text-align: center; }
 .session-info { color: var(--muted); }
@@ -107,13 +84,12 @@ button.primary { background: var(--primary-bg); color: var(--primary-text); bord
 
 #stage {
   position: relative;
-  width: min(100%, 960px);
+  width: 100%;
   height: 70vh;
   min-height: 320px;
   overflow: hidden;
   background: #000000;
   border: 1px solid var(--line);
-  flex: 1 1 560px;
   cursor: crosshair;
 }
 
@@ -140,20 +116,18 @@ button.primary { background: var(--primary-bg); color: var(--primary-text); bord
 
 #panel { flex: 0 1 360px; min-width: 280px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 #value { font-size: 72px; font-weight: bold; line-height: 1.1; }
-#entry, #help, #recalibration-help, #progress, #state { margin: 4px 0; }
-#help, #recalibration-help { color: var(--muted); font-size: 14px; }
-#diagram { width: 100%; max-width: 280px; height: auto; display: block; margin: 8px 0; }
+#entry, #help, #progress, #state { margin: 4px 0; }
+#help { color: var(--muted); font-size: 14px; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
-#recalibrate-actions button { flex: 1 1 100%; width: 100%; min-height: 48px; white-space: normal; }
 .picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .picker button.current { border-color: var(--primary-bg); border-width: 3px; }
 a { color: var(--link); }
-#panel.assisted { flex: 0 1 400px; }
-#insets { display: grid; grid-template-columns: repeat(2, 180px); gap: 8px; margin: 8px 0; }
-.inset { margin: 0; }
-.inset canvas { width: 180px; height: 180px; display: block; border: 2px solid var(--line); }
-.inset canvas.chosen { border-color: var(--primary-bg); }
-.inset figcaption { color: var(--text); font-size: 14px; }
-#ready { margin: 4px 0; font-weight: bold; }
-#panel.assisted #diagram { max-width: 140px; margin: 4px 0; }
-#control-actions button { flex: 1 1 100%; width: 100%; white-space: normal; }
+
+/* Legend: text plus shape, never colour alone; its text colour is checked against the panel colour. */
+#legend-title { margin: 8px 0 4px; font-size: 16px; color: var(--legend-text); }
+#legend { list-style: none; margin: 0 0 8px; padding: 0; color: var(--legend-text); font-size: 15px; }
+#legend li { margin: 2px 0; }
+
+/* The video frame is named by text, above the image: a bold line, no colour tint. */
+#stage-box { flex: 1 1 560px; width: min(100%, 960px); }
+#frame-label { margin: 0 0 6px; font-size: 18px; font-weight: bold; color: var(--text); }

@@ -14,13 +14,10 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 from kosmo_camera import annotations as annotation_file
-from kosmo_camera import drift_file
-from kosmo_camera.annotate import flow, journey, views
-from kosmo_camera.annotate.control_state import ControlSources
+from kosmo_camera.annotate import flow, views
+from kosmo_camera.annotate.frames_state import FrameSources
 from kosmo_camera.annotate.jpeg_size import JpegError, jpeg_size
-from kosmo_camera.annotate.snapping import Snapper
-from kosmo_camera.annotate.views import (IGNORED, IGNORED_LABEL, NO_DRIFT, OK, REJECTED, TOO_LARGE, TRUTH_INVALID,
-                                         DriftState, Loaded)
+from kosmo_camera.annotate.views import IGNORED, IGNORED_LABEL, OK, REJECTED, TOO_LARGE, TRUTH_INVALID, Loaded
 from kosmo_camera.truth import TruthError, read_truth, session_folders
 
 HOST = "127.0.0.1"
@@ -31,7 +28,7 @@ STATIC_FILES = {"index.html": "text/html; charset=utf-8", "app.js": "text/javasc
                 "style.css": "text/css; charset=utf-8"}
 _PHOTO_FILE = re.compile(r"dart-\d{3,}\.jpg")
 _FRAME_FILE = re.compile(r"video-\d{3,}\.jpg")
-_ACTION_KEYS = ("action", "x", "y", "number", "source")
+_ACTION_KEYS = ("action", "x", "y", "number")
 
 
 class HttpError(Exception):
@@ -52,15 +49,13 @@ def _clock():
 class SessionStore:
     """Sessions of a captures folder and their annotation files, with the in-memory state of the open sessions."""
 
-    def __init__(self, captures, annotations_dir, clock=_clock, drift=None, snapper=None, controls=None):
-        self.snapper = Snapper() if snapper is None else snapper
-        self.controls = ControlSources() if controls is None else controls
+    def __init__(self, captures, annotations_dir, clock=_clock, frames=None):
+        self.frames = FrameSources() if frames is None else frames
         self.captures = Path(captures)
-        self.drift_path = None if drift is None else Path(drift)
         self.annotations_dir = Path(annotations_dir)
         self.clock = clock
         self.lock = threading.RLock()
-        self.cursors = {}  # session name -> flow.Cursor (partial calibration lives here)
+        self.cursors = {}  # session name -> flow.Cursor
         self.unsaved = {}  # session name -> annotations whose write failed (kept for the retry)
 
     # ---- session list --------------------------------------------------------------------------------------------
@@ -115,103 +110,57 @@ class SessionStore:
                    "Vérifiez les points." if warnings else None)
         return Loaded(name, folder, OK, warning=warning, truth=truth, plan=plan, annotations=annotations)
 
-    def read_drift(self) -> DriftState:
-        """The flag file, read afresh at every request; unreadable gives one warning and no flags (S9)."""
-        if self.drift_path is None:
-            return NO_DRIFT
-        try:
-            flags = drift_file.read(self.drift_path)
-        except drift_file.DriftFileError as error:
-            return DriftState({}, f"Mesure de dérive illisible : {error}", True)
-        return DriftState({f.session: f for f in flags.sessions}, None, True)
-
-    @staticmethod
-    def _control_info(snapshot, loaded):
-        if loaded.state != OK:
-            return None
-        return snapshot.info(loaded.name, loaded.truth, loaded.annotations)
-
-    def _states(self, drift, snapshot, open_loaded=None) -> list:
-        """(loaded, journey state) of every listed session in list order; `open_loaded` replaces its own session."""
-        result = []
-        for name in self.listing():
-            loaded = open_loaded if open_loaded is not None and open_loaded.name == name else self.load(name)
-            info = self._control_info(snapshot, loaded)
-            result.append((loaded, info, journey.session_state(loaded, info, drift, self.snapper.available)))
-        return result
-
     def session_list(self) -> dict:
-        """The list answer: the session summaries with their journey, the focus and its instruction, the warnings."""
+        """The list answer: the session summaries in list order and the frame manifest warning."""
         with self.lock:
-            drift, snapshot = self.read_drift(), self.controls.read()
-            rows = self._states(drift, snapshot)
-            instruction = journey.global_instruction([state for _, _, state in rows])
-            sessions = [{**views.summary(loaded, info), **journey.session_fields(state)}
-                        for loaded, info, state in rows]
-            return {"sessions": sessions, "driftWarning": drift.warning,
-                    "controlWarning": " ; ".join(snapshot.warnings) or None, "instruction": instruction.text,
-                    "focus": instruction.focus, "continuePayload": instruction.continue_payload()}
+            snapshot = self.frames.read()
+            sessions = [views.summary(self.load(name)) for name in self.listing()]
+            return {"sessions": sessions, "framesWarning": snapshot.warning}
 
-    def view(self, loaded, cursor, drift=None, snapshot=None) -> dict:
-        drift = self.read_drift() if drift is None else drift
-        snapshot = self.controls.read() if snapshot is None else snapshot
-        rows = self._states(drift, snapshot, loaded)
-        focus = journey.global_instruction([state for _, _, state in rows]).focus
-        info, state = next((i, s) for l, i, s in rows if l.name == loaded.name)
-        result = views.view(loaded, cursor, self.snapper.available, info)
-        result.update(journey.session_fields(state))
-        result["instruction"] = journey.session_instruction(state, focus, cursor)
-        return result
+    def view(self, loaded, cursor, snapshot=None) -> dict:
+        snapshot = self.frames.read() if snapshot is None else snapshot
+        return views.view(loaded, cursor, snapshot.listed(loaded.name))
 
     def open_session(self, name) -> dict:
         with self.lock:
             loaded = self.load(name)
             cursor = None
             if loaded.state == OK:
-                previous = self.cursors.get(name)
-                pending = previous.pending if previous is not None and previous.kind == flow.CALIBRATION else ()  # slots
-                cursor = flow.resume(loaded.annotations, loaded.truth, pending)
+                cursor = flow.resume(loaded.annotations, loaded.truth)
                 self.cursors[name] = cursor
             return self.view(loaded, cursor)
 
     # ---- the write route -------------------------------------------------------------------------------------------
 
     def act(self, name, payload) -> dict:
-        """Apply one action of the flow and save at once. Returns the session view, `saved` or `error`, and `notice` when U reopened the previous control."""
+        """Apply one tip action of the flow and save at once. Returns the session view and `saved` or `error`."""
         with self.lock:
             loaded = self.load(name)
             if loaded.state != OK:
                 raise HttpError(409, loaded.message)
             action = self._action(payload)
             cursor = self.cursors.get(name) or flow.resume(loaded.annotations, loaded.truth)
-            snapshot = self.controls.read()
-            info = snapshot.info(name, loaded.truth, loaded.annotations)
-            snapping = _BoundSnapping(self.snapper, loaded, info)
-            if action.kind in ("click", "save"):
-                action = replace(action, size=self._photo_size(snapping, cursor))
+            if action.kind == "click":
+                action = replace(action, size=self._photo_size(loaded, cursor))
             try:
-                updated, new_cursor = flow.apply(loaded.annotations, loaded.truth, action, cursor, snapping, info.plan)
+                updated, new_cursor = flow.apply(loaded.annotations, loaded.truth, action, cursor)
                 annotation_file.validate_against(updated, loaded.truth)
-            except flow.FlowConflict as error:
-                raise HttpError(409, str(error)) from error
             except (flow.FlowError, annotation_file.AnnotationError) as error:
                 raise HttpError(400, str(error)) from error
             self.cursors[name] = new_cursor
             result = {}
             if updated != loaded.annotations:
                 result.update(self._save(name, updated))
-            view = self.view(replace(loaded, annotations=updated), new_cursor, snapshot=snapshot)
-            result["session"] = view
-            if new_cursor.reopened:
-                result["notice"] = flow.REOPENED  # a fixed text chosen by the flow, never built from the request
+            result["session"] = self.view(replace(loaded, annotations=updated), new_cursor)
             return result
 
     @staticmethod
-    def _photo_size(snapping, cursor):
-        if cursor.kind in (flow.COMPLETE, flow.CONTROL_DONE) or cursor.photo is None:
+    def _photo_size(loaded, cursor):
+        """Real JPEG size of the cursor photo, a photo of the plan inside the listed session folder."""
+        if cursor.kind != flow.DART or cursor.photo is None:
             return None
         try:
-            return jpeg_size(snapping.locate(cursor.photo)[0])
+            return jpeg_size(loaded.folder / cursor.photo)
         except JpegError as error:
             raise HttpError(500, str(error)) from error
 
@@ -238,10 +187,7 @@ class SessionStore:
             value = payload.get(key)
             if value is not None and not flow.is_coordinate(value):
                 raise HttpError(400, "Coordonnées invalides.")
-        source = payload.get("source")
-        if source is not None and (not isinstance(source, str) or source not in annotation_file.SOURCES):
-            raise HttpError(400, "Source invalide.")
-        return flow.Action(kind, payload.get("x"), payload.get("y"), number, source=source)
+        return flow.Action(kind, payload.get("x"), payload.get("y"), number)
 
     # ---- photos ----------------------------------------------------------------------------------------------------
 
@@ -262,38 +208,14 @@ class SessionStore:
     def frame(self, name, file) -> bytes:
         """A video frame of `frames.json`: only a listed session and a listed file are served (S13, as the photos)."""
         self.resolve_session(name)
-        listed = self.controls.read().frames.get(name)
-        if listed is None or file not in {f.file for f in listed.frames} or not _FRAME_FILE.fullmatch(file):
+        snapshot = self.frames.read()
+        listed = {f.file for f in snapshot.listed(name).values()}
+        if file not in listed or not _FRAME_FILE.fullmatch(file):
             raise HttpError(404, "Image introuvable.")
         try:
-            return (self.controls.frames / name / file).read_bytes()
+            return (snapshot.frames_dir / name / file).read_bytes()
         except OSError as error:
             raise HttpError(404, "Image introuvable.") from error
-
-
-class _BoundSnapping:
-    """What `flow.apply` sees of the snapper: the photos of one session named by the plan and the video frames named
-    by the manifest (never a request); a frame has its own size, listed in the manifest."""
-
-    def __init__(self, snapper, loaded, info):
-        self._snapper = snapper
-        self._folder = loaded.folder
-        self._size = (loaded.truth.photo_width, loaded.truth.photo_height)
-        self._frames = info.frames
-
-    def locate(self, photo):
-        """(path, expected size) of a photo of the plan or of a listed frame."""
-        if photo in self._frames:
-            return self._frames[photo]
-        return self._folder / photo, self._size
-
-    @property
-    def available(self) -> bool:
-        return self._snapper.available
-
-    def snap(self, photo, start):
-        path, size = self.locate(photo)
-        return self._snapper.snap(path, start, size)
 
 
 def _parse_json(data):
@@ -439,11 +361,10 @@ class AnnotationServer(ThreadingHTTPServer):
         super().__init__((HOST, port), _make_handler(store, Path(static_dir)))
 
 
-def make_server(captures, annotations_dir, port=DEFAULT_PORT, static_dir=STATIC_DIR, clock=_clock, drift=None,
-                snapper=None, controls=None):
+def make_server(captures, annotations_dir, port=DEFAULT_PORT, static_dir=STATIC_DIR, clock=_clock, frames=None):
     """Bind the server on 127.0.0.1 (raises OSError when the port is in use)."""
     captures, annotations_dir = Path(captures).resolve(), Path(annotations_dir).resolve()
     if annotations_dir == captures or captures in annotations_dir.parents:
         raise ValueError("Le dossier d'annotations ne doit pas être dans le dossier des captures (lecture seule).")
     annotations_dir.mkdir(parents=True, exist_ok=True)
-    return AnnotationServer(SessionStore(captures, annotations_dir, clock, drift, snapper, controls), port, static_dir)
+    return AnnotationServer(SessionStore(captures, annotations_dir, clock, frames), port, static_dir)

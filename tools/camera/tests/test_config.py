@@ -35,21 +35,12 @@ def test_committed_defaults_load_and_are_exposed_as_constants():
     assert (config.ANGLE_FRONT_MAX_DEGREES, config.ANGLE_OBLIQUE_MAX_DEGREES) == (15.0, 35.0)
     assert (config.DISTANCE_FAR_MAX, config.DISTANCE_MID_MAX) == (0.35, 0.6)
     assert (config.ZOOM_1X_BELOW, config.ZOOM_2X_MAX) == (1.5, 3.0)
-    # Drift (CV18, CV19, D18): the one place that pins DRIFT_MAX_MM, so that a change is intentional.
-    assert config.DRIFT_MAX_MM == 1.0 and config.DRIFT_MAX_MM == config.CAL_MAX_ERROR_MM / 2
-    assert config.DRIFT_CANDIDATES_MM == (0.5, 1.0, 2.0)
-    assert (config.DRIFT_COARSE_PX, config.DRIFT_PATCH_FRACTION, config.DRIFT_MIN_PEAK) == (512, 0.06, 0.2)
     # Control sample and video frames (CV26, CV27): the one place that pins them.
     assert (config.CONTROL_DEV_STRIDE, config.CONTROL_EVAL_VIDEO_FIRST, config.CONTROL_EVAL_VIDEO_LAST) == (10, 55, 60)
     assert (config.VIDEO_BEFORE_ENTRY_MS, config.VIDEO_MAX_DECODED_FRAMES) == (1000, 20000)
     assert config.VIDEO_MAX_BYTES == 512 * 1024 * 1024
-    # Assisted click (CV31, D43): the one place that pins the SNAP_* constants (initial values of the root plan).
-    assert (config.SNAP_RADIUS_PX, config.SNAP_WINDOW_PX, config.SNAP_SIGMAS_PX) == (10.0, 16, (1.0, 2.0, 3.0))
-    assert (config.SNAP_MIN_ANGLE_DEG, config.SNAP_MIN_SUPPORT_PX, config.SNAP_MIN_CONTRAST) == (30.0, 8, 4.0)
-    assert (config.SNAP_MAX_RESIDUAL_PX, config.SNAP_CONVERGE_PX, config.SNAP_MAX_ITER) == (0.75, 0.05, 5)
-    assert (config.SNAP_REPEAT_DIRECTIONS, config.SNAP_REPEAT_OFFSET_PX, config.SNAP_REPEAT_MAX_MM) == (8, 3.0, 0.25)
-    # Tool flow of the assisted click (CV31, T15n): images kept decoded, click replacement radius in source px.
-    assert (config.SNAP_CACHE_IMAGES, config.CLICK_REPLACE_RADIUS_PX) == (2, 100.0)
+    # ADR 0020 (CV18, CV19, CV31 stopped): no drift, snapping or click-replacement key is left.
+    assert not [key for key in config.SCHEMA if key.startswith(("DRIFT_", "SNAP_", "CLICK_"))]
 
 
 def test_unknown_key_raises(tmp_path):
@@ -78,20 +69,6 @@ def test_wrong_type_raises(tmp_path, key, bad):
     data[key] = bad
     with pytest.raises(config.ConfigError, match=key):
         config.load_defaults(_write(tmp_path, data))
-
-
-@pytest.mark.parametrize("bad", [[], 1.0, "0.5", [0.5, "1"], [0.5, True], [0.5, None]])
-def test_candidate_list_must_be_a_non_empty_list_of_numbers(tmp_path, bad):
-    data = _valid()
-    data["DRIFT_CANDIDATES_MM"] = bad
-    with pytest.raises(config.ConfigError, match="DRIFT_CANDIDATES_MM"):
-        config.load_defaults(_write(tmp_path, data))
-
-
-def test_candidate_list_is_read_as_a_tuple_of_floats(tmp_path):
-    data = _valid()
-    data["DRIFT_CANDIDATES_MM"] = [1, 2.5]
-    assert config.load_defaults(_write(tmp_path, data))["DRIFT_CANDIDATES_MM"] == (1.0, 2.5)
 
 
 def test_not_an_object_raises(tmp_path):

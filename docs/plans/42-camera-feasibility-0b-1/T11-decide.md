@@ -1,5 +1,7 @@
 # T11: Per-dart decision
 
+CANCELLED (2026-11-18): the RF-DETR chain is not built; this work is rewritten in phases 2 to 4 after their prototypes (root plan N12, N18).
+
 ## Goal
 Turn detector points on each dart photo into what the app would announce for that dart: a value, a flag "to check",
 or a miss, plus the predicted calibration, as the input of every measure.

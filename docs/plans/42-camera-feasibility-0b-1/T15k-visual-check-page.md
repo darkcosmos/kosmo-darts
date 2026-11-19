@@ -1,5 +1,7 @@
 # T15k: Tool page, visual check: reference and measured photo alternating, alignment applied
 
+CANCELLED (2026-11-18): the H1/H2 diagnosis is stopped (ADR 0020, root plan "Kept and stopped").
+
 ## Goal
 Let Kosmo see with his own eyes, on his PC only, whether a photo moved: the reference photo and the measured photo
 alternate, aligned by the automatic measure or by the control clicks, with the shift shown (D30 point 3). The

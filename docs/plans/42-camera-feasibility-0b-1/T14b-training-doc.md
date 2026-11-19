@@ -1,5 +1,7 @@
 # T14b: Training doc and feasibility report template
 
+CANCELLED (2026-11-18): the RF-DETR chain is not built; this work is rewritten in phases 2 to 4 after their prototypes (root plan N12, N18).
+
 HELD by D30: revised at P2; documents the held tasks (root plan "Tasks").
 
 ## Goal

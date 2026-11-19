@@ -1,5 +1,7 @@
 # T14: CLI and run chain
 
+CANCELLED (2026-11-18): the RF-DETR chain is not built; this work is rewritten in phases 2 to 4 after their prototypes (root plan N12, N18).
+
 HELD by D30: the drift guard parts ("refused while beyond") are replaced at P2; chains the held tasks.
 
 ## Goal

@@ -1,5 +1,7 @@
 # T9c: Calibration-point pseudo-labels of public images (CV23)
 
+CANCELLED (2026-11-18): calibration pseudo-labels of public sets are replaced by registration R (ADR 0020).
+
 HELD by D30: the compensated-calibration parts are replaced at P2; depends on T9o (root plan "Tasks").
 
 ## Goal

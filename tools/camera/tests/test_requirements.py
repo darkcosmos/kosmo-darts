@@ -58,27 +58,8 @@ def test_torch_pair_versions_match_apart_from_the_local_suffix():
 
 # ---- tool environment files (T15n, D44, CV16): numpy and Pillow for Kosmo's WSL, pytest for the 3.14 test run ----------
 
-TOOL_PACKAGES = {"numpy", "pillow"}
+TOOL_PACKAGES = {"numpy", "pillow"}  # no longer needed by the tool (ADR 0020); never in its test file
 TOOL_TEST_PACKAGES = {"pytest", "iniconfig", "packaging", "pluggy", "pygments"}
-
-
-def test_tool_requirements_hold_only_numpy_and_pillow_at_the_cpu_versions_with_two_hashes_each():
-    tool, cpu = _parse("requirements-tool.txt"), _parse("requirements-cpu.txt")
-    assert set(tool) == TOOL_PACKAGES
-    for name, (version, hashes) in tool.items():
-        assert version == cpu[name][0]
-        assert len(hashes) == len(set(hashes)) == 2
-        assert set(cpu[name][1]) & set(hashes), "the cp313 hash of requirements-cpu.txt must be one of the two"
-        assert set(cpu[name][1]) <= set(hashes)
-
-
-def test_tool_requirements_name_the_four_wheels_and_the_install_command():
-    text = (ROOT / "requirements-tool.txt").read_text(encoding="utf-8")
-    for name, version in (("numpy", "2.5.4"), ("pillow", "13.0.0")):
-        for tag in ("cp313", "cp314"):
-            assert f"{name}-{version}-{tag}-{tag}-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl" in text
-    assert "cp314t" not in text
-    assert "--require-hashes --only-binary=:all:" in text and "~/kosmo-tool-venv" in text
 
 
 def test_tool_test_requirements_hold_pytest_and_its_four_dependencies_at_the_cpu_pins_and_hashes():

@@ -20,7 +20,7 @@ from pathlib import Path
 import av
 from PIL import Image
 
-from kosmo_camera import annotations as ann, config, control, drift_file, frames_file as ff, split as split_module
+from kosmo_camera import annotations as ann, config, control, frames_file as ff, split as split_module, strict_json
 from kosmo_camera.truth import TruthError, read_truth, session_folders
 
 JPEG_QUALITY = 95
@@ -119,10 +119,10 @@ def _jpeg(pixels):
 
 
 def _write_bytes(path, data):
-    """Atomic write shared with the other camera files (`drift_file.replace_atomic`); an OS failure stays an OSError."""
+    """Atomic write shared with the other camera files (`strict_json.replace_atomic`); an OS failure stays an OSError."""
     try:
-        drift_file.replace_atomic(path, data)
-    except drift_file.DriftFileError as error:
+        strict_json.replace_atomic(path, data)
+    except strict_json.AtomicWriteError as error:
         raise OSError(str(error)) from error
 
 

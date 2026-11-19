@@ -3,7 +3,7 @@
 Written by `video_frames` in the container, read by the stdlib annotation tool on the same machine. It holds session
 names, so it is a local working file, regenerable, never pasted or committed (CV15). Stdlib only.
 
-The reader is strict like `drift_file`: a file over `MAX_BYTES` (never read past the cap), duplicate or unknown keys,
+The reader is strict like `annotations`: a file over `MAX_BYTES` (never read past the cap), duplicate or unknown keys,
 wrong types, any other format or version, duplicate sessions, unsorted dart numbers, a dart both framed and missing, a
 file name that is not `video-NNN.jpg` of its dart and an unknown reason are rejected. Writes are atomic.
 """
@@ -11,7 +11,7 @@ import json
 import re
 from dataclasses import dataclass
 
-from kosmo_camera import drift_file, strict_json
+from kosmo_camera import strict_json
 from kosmo_camera.annotations import SESSION_NAME
 
 MAX_BYTES = 4 * 1024 * 1024
@@ -209,6 +209,6 @@ def write_atomic(path, frames_file) -> None:
     if len(data) > MAX_BYTES:
         raise FramesFileError(f"$: file would be larger than {MAX_BYTES} bytes")
     try:
-        drift_file.replace_atomic(path, data)
-    except drift_file.DriftFileError as error:
+        strict_json.replace_atomic(path, data)
+    except strict_json.AtomicWriteError as error:
         raise FramesFileError(str(error)) from error
