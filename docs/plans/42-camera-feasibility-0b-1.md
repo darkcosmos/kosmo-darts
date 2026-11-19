@@ -171,8 +171,10 @@ Phase 0, tasks C1, C1b, C1c (Q1 B): see their task files. Phases 1 to 4: written
 Annotation tool after C1 and C1b (Q1 B, N24): session list with tip progress; a session opens on its first dart without
 a tip (no calibration screen); tip entry (click, « caché », « hors cible », undo, move) as today; segments and controls
 shown read-only, the video frame of a dart with its control on one key. Gone: calibration, recalibration and control
-screens, « recalé », « Recalage indisponible », the journey and the drift flags. Kosmo Capture and the game app are
-unchanged in 0b-1.
+screens, « recalé », « Recalage indisponible », the journey and the drift flags. States (no frame, no control, all
+tips in, click on a frame, unreadable frame or photo), their French texts, the « Image vidéo (lecture seule) » label
+and the text-and-shape legend: `C1b-tool-page.md`, "States" and "Screens" (U12, U13). Kosmo Capture and the game app
+are unchanged in 0b-1.
 
 ## Test plan
 
@@ -193,7 +195,9 @@ unchanged in 0b-1.
 - Phase 0: the apps do not change (the CI debug APK is unchanged in behavior). Plan approved and Q1 to Q3 answered on
   #42 (N23). After C1 to C1c, in WSL from `tools/camera/` (2 min): `python3 -m kosmo_camera.annotate` with the command
   of `training.md`; a session opens on a dart photo with its tip; place, undo and replace one tip on a copy of the
-  annotations folder; no calibration or control screen; with `--frames`, one key shows the dart's video frame.
+  annotations folder; no calibration or control screen; keys R, K and 1 to 4 do nothing and no « recalé » text shows;
+  with `--frames`, V shows the dart's video frame under « Image vidéo (lecture seule) »; on a dart without frame (or
+  without `--frames`), V shows « Pas d'image vidéo pour cette fléchette. » (U14).
 - Phase 1 onwards: one command and one pasted report per phase, as in the "Phases and gates" table, within 10 min.
 
 ## Tasks
@@ -285,6 +289,7 @@ New (Kosmo's strategy of 2026-11-18 and the squad's phase 0 design):
 | N22 | Design review round 1: every gate figure with n, 95 % interval and D12 verdict, plus the click noise floor in phase 1 (Q2 A); R deterministic (fixed seed, no time stop); phase 3 plan update names the dart-type source and minimum per type; one-line "Superseded by ADR 0020" markers in ADR 0018. | CV13, CV33+ |
 | N23 | Kosmo on #42, 2026-11-19: plan approved; Q1 B (C1 removes snapping, assisted click, drift, calibration and control entry; the tool keeps tip entry for short later campaigns, other dart types, at most 10 min); Q2 A (gate on the gap between R and the clicks, click noise included; floor and intervals printed); Q3 A (N19); ADR 0018 markers accepted. | CV16 |
 | N24 | C1 design: a session opens on its first dart without a tip (no calibration screen, tips need no segment); removed actions answer 400 and change nothing; a tip write keeps segments and controls as they are; `--drift`, `--split`, `--lock` removed, `--frames` kept to view frames; `requirements-tool-test.txt` kept (pytest for the Python 3.14 CI step). | CV16, CV20, CV25 |
+| N25 | Design review round 3: tool states table and French texts, frame label « Image vidéo (lecture seule) » and a text-and-shape legend in C1b (U12, U13); `progressLabel` is a server string (T5); `segments_sha256` and `controls_sha256` removed with their two tests (T2); C1 to C1c are one PR, the page is unusable between C1 and C1b (A9); kept and removed tests listed by name (T3). | CV16 |
 
 ## Open questions
 
