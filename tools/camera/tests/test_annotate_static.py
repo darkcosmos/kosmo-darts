@@ -117,7 +117,7 @@ def colors():
 
 PAIRS = (("--text", "--bg"), ("--text", "--panel"), ("--muted", "--bg"), ("--muted", "--panel"),
          ("--button-text", "--button-bg"), ("--primary-text", "--primary-bg"), ("--danger", "--panel"),
-         ("--ok", "--panel"), ("--link", "--panel"))
+         ("--ok", "--panel"), ("--link", "--panel"), ("--legend-text", "--panel"), ("--legend-text", "--bg"))
 
 
 @pytest.mark.parametrize("fore,back", PAIRS)
@@ -149,7 +149,7 @@ def test_double_click_guard_and_view_reset_are_present():
     assert "CLICK_GUARD_MS" in text and "lastActionAt" in text and "viewKey" in text
 
 
-# ---- recalibration page and drift flags (T6d; static checks only: no browser nor node in the sandbox) -------------------
+# ---- key letters, picker, counts (static checks only: no browser nor node in the sandbox) --------------------------------
 
 def key_actions():
     match = re.search(r"const KEY_ACTIONS = \{(.*?)\};", read("app.js"))
@@ -168,41 +168,10 @@ def test_key_actions_match_the_flow_action_names_and_no_letter_is_used_twice():
     assert sorted(labels) == sorted(letter.upper() for letter in mapping)
 
 
-def test_string_table_has_the_recalibration_strings_and_no_drift_string_a7():
-    table = string_table()
-    assert table["btnRecalibrate"] == "Recalibrer à partir de cette fléchette (R)"
-    assert table["oldPoint"] == "ancien {n}"
-    assert not [key for key in table if "drift" in key.lower() or "stale" in key.lower() or "Suggested" in key]
-
-
-def test_old_points_are_drawn_as_hollow_crosses_labelled_ancien_k():
-    source = read("app.js")
-    assert "function drawHollowCross" in source
-    assert re.search(r"fill\(TEXT\.oldPoint,\s*\{\s*n:\s*index \+ 1\s*\}\)", source)
-    assert "cursor.previousPoints" in source and "previousSegment" not in source and "view.segments" not in source  # A9
-
-
 def test_picker_label_is_the_number_ticked_when_annotated_without_any_drift_mark_a7():
     body = function_body("pickerText")
     assert "TEXT.pickerDone" in body and "TEXT.pickerLabel" in body and "dart.status === null" in body
     assert "!" not in re.sub(r"!==|!=", "", body) and "pickerText(dart)" in read("app.js")
-
-
-def test_the_page_shows_the_server_progress_badge_and_calibration_label_without_counting_a3():
-    source = read("app.js")
-    assert "calibrationStatus" not in source and "finished" not in source
-    assert "Terminée" not in source.replace(BADGE_LINE(source), "")  # the badge table is the only place
-    assert "item.badge" in function_body("sessionHead") and "item.steps" in function_body("stepRows")
-    panel = function_body("renderPanel")
-    assert "view.progress" in panel and "view.calibrationLabel" in panel
-    for body in (panel, function_body("sessionHead"), function_body("stepRows"), function_body("stepText"),
-                 function_body("sessionLine")):
-        assert not re.search(r"\.filter\(|\.length|\.every\(|\.some\(|\.reduce\(", body)
-    assert "calibrated" not in source and "segments" not in function_body("renderPanel")
-
-
-def BADGE_LINE(source):
-    return re.search(r"const BADGE_CLASS = \{.*?\};", source).group(0)
 
 
 def test_no_dérive_text_nor_drift_field_remains_in_the_page_cv30_a7():
@@ -213,20 +182,6 @@ def test_no_dérive_text_nor_drift_field_remains_in_the_page_cv30_a7():
                              r"banner\.drift", text), name
 
 
-def test_the_recalibration_row_is_full_width_and_at_least_48px_high():
-    html, css = read("index.html"), read("style.css")
-    assert 'id="recalibrate-actions"' in html
-    assert html.index("recalibrate-actions") < html.index("zoom-actions")
-    rule = re.search(r"#recalibrate-actions button\s*\{([^}]*)\}", css).group(1)
-    assert int(re.search(r"min-height:\s*(\d+)px", rule).group(1)) >= 48
-    assert re.search(r"width:\s*100%", rule) and "white-space: normal" in rule
-
-
-def test_list_reads_the_sessions_object_and_the_drift_warning_and_uses_text_content_only():
-    source = read("app.js")
-    assert "data.sessions" in source and "data.driftWarning" in source
-    assert "item.info" in source  # drift information is an info line of the card (CV30), never an instruction
-
 
 def test_warning_colour_has_a_contrast_of_at_least_4_5_on_background_and_panel():
     declared = colors()
@@ -234,16 +189,8 @@ def test_warning_colour_has_a_contrast_of_at_least_4_5_on_background_and_panel()
     assert contrast(declared["--warn"], declared["--panel"]) >= 4.5
 
 
-# ---- assisted point screen (T15f: CV16, CV25, CV31, D45 U25 to U29, U31; no browser nor node in the sandbox) ---------
 
-ASSISTED_STRINGS = (
-    "Enregistrer (Entrée)", "Point caché (H)", "Annuler (U)", "Quitter (Échap)", "Contrôle de calibration (K)",
-    "Photos contrôlées : {photo} / {photoTotal} · Images vidéo : {video} / {videoTotal}",
-    "Points prêts : {n} / 4 (Entrée pour enregistrer)", "Points prêts : {n} / 4 : placer les points manquants",
-    "Point {n}, {status}", "recalé", "non recalé", "caché",
-    "à cliquer", "Cliquer près du bon croisement : l'outil le recale.", "H seulement si une fléchette cache le point",
-    "Recalage indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)",
-    "Photo illisible : le recalage est impossible pour cette photo")
+COUNTING = r"\.filter\(|\.length|\.every\(|\.some\(|\.reduce\("
 
 
 def function_body(name):
@@ -252,210 +199,157 @@ def function_body(name):
     return match.group(1)
 
 
-@pytest.mark.parametrize("text", ASSISTED_STRINGS)
-def test_each_assisted_screen_string_is_a_constant_written_once(text):
-    assert read("app.js").count(f'"{text}"') == 1
-    assert text in string_table().values()
-
-
-def test_the_inset_zoom_is_60_source_px_shown_at_180_css_px_and_the_save_guard_is_300_ms():
+def test_the_page_shows_the_server_progress_badge_and_calibration_label_without_counting_a3():
     source = read("app.js")
-    assert re.search(r"const SNAP_INSET_PX = 60;", source) and re.search(r"const INSET_SIZE = 180;", source)
-    assert re.search(r"const SAVE_GUARD_MS = 300;", source) and re.search(r"const CLICK_GUARD_MS = 300;", source)
-    assert source.index("const CLICK_GUARD_MS") < source.index("const SAVE_GUARD_MS")
+    assert "calibrationStatus" not in source and "finished" not in source and "badge" not in source.lower()
+    assert "pointes saisies" not in source  # the label is the server's string, as given (T5)
+    panel, card = function_body("renderPanel"), function_body("sessionLine")
+    assert "view.progressLabel" in panel and "view.calibrationLabel" in panel
+    assert "item.progressLabel" in card and "item.calibrationLabel" in card
+    for body in (panel, card):
+        assert not re.search(COUNTING, body)
+    assert "segments" not in panel and "calibrated" not in source
 
 
-def test_the_obsolete_strings_are_gone_and_the_panel_is_400px_on_the_assisted_screen():
+def test_list_reads_the_sessions_object_and_the_frames_warning_and_uses_text_content_only():
     source = read("app.js")
-    assert "Points posés" not in source and "zoomCentre" not in source
-    assert re.search(r"#panel\.assisted\s*\{[^}]*flex:\s*0 1 400px", read("style.css"))
-
-
-def test_the_keys_of_the_assisted_screen_are_bound_in_the_document_handler():
-    source = read("app.js")
-    assert 'document.addEventListener("keydown", onKey)' in source
-    assert '"Enter"' in source and "/^[1-4]$/" in function_body("onAssistedKey")
-    assistant = function_body("onAssistedKey")
-    assert 'key === "h"' in assistant and '"hidden_point"' in assistant and 'key === "u"' in assistant
-    handler = function_body("onKey")
-    assert 'key === "Escape"' in handler and 'key === "0"' in handler and "Arrow" in handler
-    assert re.search(r'stage\.addEventListener\("wheel", onWheel', source)
-
-
-def test_entree_always_saves_with_the_repeat_and_save_guards_u25_u29():
-    enter = function_body("onEnter")
-    assert "event.preventDefault()" in enter and "event.repeat" in enter
-    assert "SAVE_GUARD_MS" in enter and "state.lastSaveAt" in enter
-    assert enter.index("preventDefault") < enter.index("saveItem()")
-    handler = function_body("onKey")
-    assert 'key === "Enter" && isAssisted(state.view)' in handler
-    assert handler.index('"Enter"') < handler.index("state.busy")  # a busy Entrée is still not a button click
-    assert "state.lastSaveAt = Date.now()" in read("app.js")
-
-
-def test_save_sends_the_open_item_and_the_control_source():
-    body = function_body("saveItem")
-    assert 'action: "save", number, source: cursor.source' in body and "!cursor.canSave" in body and "POINT_COUNT" not in read("app.js")  # A8: the server says
-
-
-def test_every_assisted_button_blurs_after_its_click_u25():
-    assert "button.blur()" in function_body("assistedButton")
-    body = function_body("renderAssistedActions")
-    assert body.count("assistedButton(") == 4 and "makeButton(" not in body
-
-
-def test_insets_are_drawn_from_the_loaded_image_with_an_aria_label_u31():
-    body = function_body("drawInsets")
-    assert "context.drawImage(image," in body
-    assert not re.search(r"fetch|new Image|\.src\s*=|/photo|/api", body)  # no new request
-    assert 'canvas.setAttribute("aria-label", fill(TEXT.insetAria' in function_body("renderAssistedPanel")
-    assert 'id="inset-4"' in read("index.html") and 'role="img"' in read("index.html")
-    for status in ("pointSnapped", "pointUnsnapped", "pointHidden", "pointEmpty"):
-        assert f"TEXT.{status}" in function_body("pointStatusText")
-
-
-def test_the_unreadable_and_unavailable_banners_and_the_ignored_clicks_are_wired():
-    banner = function_body("bannerMessage")
-    assert "TEXT.snapUnavailable" in banner and "TEXT.photoUnreadable" in banner and "view.cursor.unreadable" in banner
-    assert "state.notice" in banner and "result.notice" in function_body("perform")
-    assert "snapAvailable === false" in function_body("onStageClick")
+    assert "data.sessions" in source and "data.framesWarning" in source
+    card = function_body("sessionLine")
+    assert "item.message" in card and "item.warning" in card and "item.label" in card
+    assert not re.search(r"innerHTML|insertAdjacent", source)
+    for fragment in ("data.instruction", "continuePayload", "item.badge", "item.steps", "item.info", "data.focus"):
+        assert fragment not in source, fragment
 
 
 def test_video_frames_load_from_the_frame_route_and_skip_the_truth_size_check():
-    source = read("app.js")
-    assert '"/api/frame"' in function_body("imageUrl") and '"/photo"' in function_body("imageUrl")
-    assert 'cursor.source === "video"' in function_body("imageLoaded")
+    url = function_body("imageUrl")
+    assert "/api/frame/" in url and "/photo/" in url and "dart.frame.file" in url
+    loaded = function_body("imageLoaded")
+    assert re.search(r"if \(!state\.showFrame\) \{[^}]*truthWidth", loaded, re.DOTALL)  # the check is for photos only
 
 
-def test_the_page_builds_text_with_textcontent_only_on_the_assisted_screen():
-    for name in ("renderAssistedPanel", "drawInsets", "bannerMessage", "controlProgressText"):
-        assert not re.search(r"innerHTML|insertAdjacent", function_body(name))
+def test_v_calls_the_frame_route_only_when_the_dart_has_a_frame_else_the_button_is_disabled_and_says_why():
+    from kosmo_camera.annotate import flow
+    source, table = read("app.js"), string_table()
+    assert table["btnFrame"] == "Image vidéo (V)" and table["btnFrame"].endswith(" (V)")
+    assert 'const FRAME_KEY = "v";' in source and "key === FRAME_KEY" in function_body("onKey")
+    assert "v" not in key_actions() and "toggleFrame" not in "".join(key_actions().values())
+    assert "frame" not in flow.KINDS and "v" not in flow.KINDS
+    toggle = function_body("toggleFrame")
+    assert "!dart.frame" in toggle and "TEXT.noFrame" in toggle
+    assert toggle.index("TEXT.noFrame") < toggle.index("loadImage()")  # no image request without a listed frame
+    assert "dart.frame.file" in function_body("imageUrl") and "/api/frame/" not in toggle
+    button = function_body("frameButton")  # U15: the disabled button carries the reason in its name and title
+    assert "button.disabled = true" in button and "button.title = TEXT.noFrame" in button
+    assert re.search(r'setAttribute\("aria-label", `\$\{TEXT\.btnFrame\} : \$\{TEXT\.noFrame\}`\)', button)
+    assert "!dart.frame" in button and "frameButton()" in function_body("renderZoomActions")
 
 
-def test_the_reopened_notice_comes_from_the_server_and_the_page_infers_no_flow_event_a4():
-    source = read("app.js")
-    assert "reopenedItem" not in source and "TEXT.reopened" not in source and "rouverte" not in source
+STATES = (  # (key, French text, functions that use it at its trigger)
+    ("noFrame", "Pas d'image vidéo pour cette fléchette.", ("toggleFrame", "frameButton")),
+    ("legendNoControl", "○ C : contrôle — aucun pour cette fléchette", ("renderLegend",)),
+    ("allEntered", "Toutes les pointes sont saisies. Précédente (P) ou la liste pour corriger.",
+     ("applyView", "onStageClick")),
+    ("frameReadOnly", "Image vidéo en lecture seule : V pour revenir à la photo.", ("perform", "onStageClick")),
+    ("frameUnreadable", "Image vidéo illisible. Retour à la photo.", ("imageFailed",)),
+    ("photoUnreadable", "Photo illisible : saisie impossible sur cette photo.", ("imageFailed",)),
+)
+
+
+@pytest.mark.parametrize("key,text,users", STATES)
+def test_each_states_row_text_is_a_constant_of_the_page_used_at_its_trigger_u12(key, text, users):
+    assert string_table()[key] == text and read("app.js").count(f'"{text}"') == 1
+    for user in users:
+        assert f"TEXT.{key}" in function_body(user), (key, user)
+    assert "\n" not in text  # one line
+
+
+def test_the_frame_view_sets_the_label_and_sends_no_request_on_click_or_h_o_u_u13():
+    html, css, source = read("index.html"), read("style.css"), read("app.js")
+    assert string_table()["frameLabel"] == "Image vidéo (lecture seule)"
+    assert re.search(r'<p id="frame-label" hidden></p>', html) and html.index("frame-label") < html.index('id="stage"')
+    assert '$("frame-label").hidden = !state.showFrame' in function_body("renderPanel")
+    assert 'setText($("frame-label"), TEXT.frameLabel)' in function_body("start")
+    edits = re.search(r"const EDIT_ACTIONS = \[(.*?)\]", source).group(1)
+    assert set(re.findall(r'"(\w+)"', edits)) == {"click", "hidden", "off_board", "clear"}
     perform = function_body("perform")
-    assert "result.notice" in perform and "before" not in perform and "cursor.number" not in perform
-    assert "state.notice" in function_body("bannerMessage")
-    assert "setText(banner," in function_body("renderPanel")  # textContent only
+    assert perform.index("state.showFrame && EDIT_ACTIONS.includes(payload.action)") < perform.index("await request(")
+    assert "TEXT.frameReadOnly" in perform.split("await request(")[0]
+    click = function_body("onStageClick")
+    assert click.index("state.showFrame") < click.index("perform(") and "TEXT.frameReadOnly" in click
+    rule = re.search(r"#frame-label\s*\{([^}]*)\}", css).group(1)  # text style: bold text, no colour tint
+    assert "font-weight: bold" in rule and "background" not in rule and "var(--text)" in rule
 
 
-def test_the_page_draws_the_next_slot_and_the_diagram_flag_of_the_server_a5():
+LEGEND = ("+ pointe", "□ 1 à 4 : points du segment (lecture seule)", "○ C : contrôle (lecture seule)")
+
+
+def test_the_legend_has_the_three_text_lines_with_their_shapes_and_passes_4_5_on_the_panel_u13():
+    table, html, css = string_table(), read("index.html"), read("style.css")
+    assert (table["legendTip"], table["legendSegment"], table["legendControl"]) == LEGEND
+    assert '<ul id="legend"></ul>' in html and html.index('id="panel"') < html.index('id="legend"')
+    legend = function_body("renderLegend")
+    for key in ("legendTip", "legendSegment", "legendControl", "legendNoControl"):
+        assert f"TEXT.{key}" in legend
+    assert ".hidden" not in legend and '$("legend").hidden' not in read("app.js")  # always visible
+    declared = colors()
+    for back in ("--panel", "--bg"):
+        assert contrast(declared["--legend-text"], declared[back]) >= 4.5, back
+    assert "color: var(--legend-text)" in re.search(r"#legend\s*\{([^}]*)\}", css).group(1)
+    segment, control = function_body("drawSegmentPoint"), function_body("drawControlPoint")
+    assert "strokeRect" in segment and "label(context, text," in segment  # a square and its number
+    assert "arc(" in control and "CONTROL_LETTER" in control and 'CONTROL_LETTER = "C"' in read("app.js")
+
+
+def test_overlays_read_segments_control_and_frame_control_from_the_view():
+    stage, control = function_body("drawStage"), function_body("controlPoints")
+    assert "state.view.segments" in stage and "s.photo === dart.photo" in stage and "s.points" in stage
+    assert "dart.frame.control" in control and "dart.control" in control
+    assert "controlPoints(dart)" in stage and "state.showFrame" in stage
+    assert stage.index("if (!state.showFrame)") > stage.index("controlPoints(dart)")  # tip and segments: photo only
+
+
+def test_no_recalibration_nor_assisted_text_remains_and_no_key_r_k_or_1_to_4():
+    for name in FILES:
+        text = read(name)
+        for fragment in ("recalé", "Recalage", "Points prêts", "Continuer", "Contrôle de calibration", "Recalibrer",
+                         "Enregistrer (Entrée)", "ASSISTED_KINDS", "journey", "inset", "diagram", "recalibrate"):
+            assert fragment not in text, (name, fragment)
     source = read("app.js")
-    assert "nextSlotIndex" not in source and "noProposals" not in source and "trackItem" not in source
-    panel = function_body("renderAssistedPanel")
-    assert "cursor.nextSlot" in panel and "findIndex" not in panel
-    assert "cursor.diagram" in function_body("renderPanel")
+    assert set(key_actions()) == {"h", "o", "u", "n", "p"} and "/^[1-4]$/" not in source and '"Enter"' not in source
+    assert not re.search(r'key === "[rk1-4]"', source)
+
+
+def test_the_page_sends_only_the_actions_of_flow_kinds():
+    from kosmo_camera.annotate import flow
+    sent = set(re.findall(r'action:\s*"(\w+)"', read("app.js"))) | set(key_actions().values())
+    assert sent == {"click", "goto", "hidden", "off_board", "clear", "next", "previous"}
+    assert sent <= set(flow.KINDS)
+
+
+def test_an_unreadable_photo_ignores_clicks_and_keeps_h_o_u_n_p_and_a_failed_frame_goes_back_to_the_photo():
+    failed = function_body("imageFailed")
+    assert "state.clicksBlocked = TEXT.photoUnreadable" in failed
+    assert failed.index("state.showFrame = false") < failed.index("loadImage()")
+    click = function_body("onStageClick")
+    assert click.index("state.clicksBlocked") < click.index("perform(")
+    for name in ("perform", "renderActions", "renderPicker", "toggleFrame"):
+        assert "clicksBlocked" not in function_body(name), name  # only the click is ignored; V stays enabled
+    assert "button.disabled = true" not in failed and "TEXT.frameUnreadable" in failed
+
+
+def test_when_all_tips_are_entered_the_page_opens_on_the_last_dart_and_n_p_and_the_picker_work():
+    shown = function_body("shownDart")
+    assert "view.darts[view.darts.length - 1]" in shown and 'cursor.kind === "dart"' in shown
+    actions = function_body("renderActions")
+    assert '[TEXT.btnPrevious, "previous", true]' in actions and '[TEXT.btnNext, "next", true]' in actions
+    assert "complete" not in function_body("renderPicker") and "return" not in function_body("renderPicker")
+    assert 'setStatus(TEXT.allEntered)' in function_body("applyView")
 
 
 def test_a_message_has_one_place_and_is_cleared_at_the_next_action_u36():
     perform = function_body("perform")
     assert perform.index('setStatus("")') < perform.index("await request(")  # refusals never outlive the next action
-    assert "state.notice = null" in perform and perform.index("state.notice = null") < perform.index("await request(")
-    assert 'setStatus("")' in function_body("openSession") and 'setStatus("")' in function_body("showList")
-    assert "state.notice" in function_body("bannerMessage")  # the server notice goes to #banner, refusals to #status
-
-
-def test_entree_with_fewer_than_four_points_says_why_u37():
-    body = function_body("saveItem")
-    assert "TEXT.pointsMissing" in body and "cursor.ready" in body and "setStatus(" in body
-    assert body.index("TEXT.pointsMissing") < body.index("perform(")
-    assert string_table()["pointsMissing"] == "Points prêts : {n} / 4 : placer les points manquants"
-
-
-def test_the_diagram_follows_the_action_buttons_and_marks_done_points_without_colour_alone_u38_u39():
-    html = read("index.html")
-    assert html.index('id="actions"') < html.index('id="zoom-actions"') < html.index('id="diagram"')
-    assert "max-width: 140px" in read("style.css")  # with the insets, Enregistrer stays visible at 1080p
-    body = function_body("drawDiagramPoint")
-    assert "DONE_MARK" in body and "isDone" in body and 'DONE_MARK = "✓"' in read("app.js")
-
-
-# ---- journey page (T15g: CV16, CV30, D42 U23, U19, U35; the strings are pinned to the Python constants) --------------
-
-def test_the_step_row_templates_and_card_strings_are_defined_once():
-    table = string_table()
-    assert table["stepCalibrationDone"] == "Calibration : faite" and table["stepCalibrationTodo"] == "Calibration : à faire"
-    assert table["stepTips"] == "Pointes : {done} / {total}"
-    assert table["stepControlPhoto"] == "Contrôle photo : {done} / {total}"
-    assert table["stepControlVideo"] == "Contrôle vidéo : {done} / {total}"
-    assert table["infoTitle"] == "Information" and table["nextStep"] == "Prochaine étape"
-    assert table["btnContinue"] == "Continuer"
-    for text in ("Prochaine étape", "Continuer", "Information"):
-        assert len(re.findall(rf'\w+: "{text}"', read("app.js"))) == 1, text
-
-
-def test_the_page_restates_no_instruction_of_the_server_u35():
-    source = read("app.js")
-    for fragment in ("Cliquer les 4 points", "Pointer les fléchettes", "Contrôle terminé", "Session terminée",
-                     "Session illisible", "Contrôle indisponible", "Images vidéo absentes", "bouton Continuer"):
-        assert fragment not in source, fragment
-
-
-def test_journey_help_and_banner_are_three_distinct_elements_and_only_journey_has_the_instruction_style_u19():
-    html, css, source = read("index.html"), read("style.css"), read("app.js")
-    for element in ("journey", "help", "banner"):
-        assert html.count(f'id="{element}"') == 1, element
-    assert 'id="instruction"' not in html and '$("instruction")' not in source
-    rules = dict((name.strip(), body) for name, body in re.findall(r"(?m)^([#.][\w-]+(?:, [#.][\w-]+)*)\s*\{([^}]*)\}", css)
-                 if name.strip() in ("#journey", "#help, #recalibration-help", "#banner"))
-    assert set(rules) == {"#journey", "#help, #recalibration-help", "#banner"}
-    assert int(re.search(r"font-size:\s*(\d+)px", rules["#journey"]).group(1)) >= 20
-    assert "font-weight: bold" in rules["#journey"]
-    for other in ("#help, #recalibration-help", "#banner"):
-        assert "font-weight: bold" not in rules[other]
-        size = re.search(r"font-size:\s*(\d+)px", rules[other])
-        assert size is None or int(size.group(1)) < 20
-    assert css.count("border-bottom: 3px solid var(--primary-bg)") == 1  # the accent of the instruction line, once
-    assert source.count('$("journey")') == 1 and 'setText($("banner")' not in source.replace("setText(banner,", "")
-    calls = re.findall(r"setJourney\(([^)]*)\)", source)
-    assert len(calls) >= 3  # the list, the session screen and setJourney's own definition
-    assert [c for c in calls if c not in ('data.instruction', 'view.instruction', '""', "text")] == []
-
-
-def test_the_focus_card_carries_the_mark_and_continuer_sends_the_server_payload_u15():
-    card = function_body("sessionLine")
-    assert "TEXT.nextStep" in card and "focus" in card
-    assert "state.list.continuePayload" in function_body("sessionActions")
-    assert "continueFocus" in function_body("sessionActions") and "TEXT.btnContinue" in function_body("sessionActions")
-    body = function_body("continueFocus")
-    assert "list.continuePayload" in body and "openSession(list.focus)" in body and "perform(list.continuePayload)" in body
-    assert body.index("openSession(") < body.index("perform(")
-    assert "item.role" in function_body("sessionHead")  # the role is rendered on each card (Q9)
-    assert "state.list = data" in function_body("showList") and "state.list = null" in function_body("showList")
-
-
-def test_entree_on_the_list_runs_continuer_only_when_no_button_or_link_has_the_focus_u23_d42():
-    body = function_body("onListKey")
-    assert 'key !== "Enter"' in body and "document.activeElement" in body
-    assert '"BUTTON"' in body and '"A"' in body and "event.repeat" in body
-    assert body.index("activeElement") < body.index("continueFocus()")
-    handler = function_body("onKey")
-    assert "!state.view" in handler and "onListKey(key, event)" in handler
-    assert handler.index("onListKey(") < handler.index('key === "Enter" && isAssisted')  # the assisted rule stays
-    assert 'key === "Enter" && isAssisted(state.view)' in handler
-
-
-def test_the_card_shows_information_apart_and_skips_nothing_else_cv30():
-    body = function_body("infoBox")
-    assert "TEXT.infoTitle" in body and "item.info" in body and '"info-box"' in body
-    css = read("style.css")
-    assert re.search(r"\.info-box\s*\{[^}]*background", css)
-
-
-# ---- fragility of the T15f static tests (T1, T2 of the code review) ---------------------------------------------------
-
-def test_each_assisted_button_label_is_an_argument_of_assisted_button_t1():
-    body = function_body("renderAssistedActions")
-    for label in ("btnSave", "btnHidePoint", "btnUndo", "btnQuit"):
-        assert re.search(rf"assistedButton\(\s*TEXT\.{label}\s*,", body), label
-
-
-def test_the_save_time_is_stamped_only_by_a_save_action_t2():
-    source = read("app.js")
-    assert source.count("state.lastSaveAt = Date.now()") == 1
-    perform = function_body("perform")
-    stamp = re.search(r'if \(payload\.action === "save"\) \{\s*state\.lastSaveAt = Date\.now\(\);\s*\}', perform)
-    assert stamp, "the stamp belongs to the save action of perform"
-    assert "lastSaveAt" in function_body("onEnter") and "lastSaveAt" not in function_body("saveItem")
+    for name in ("openSession", "showList", "toggleFrame"):
+        assert 'setStatus("")' in function_body(name), name
+    assert "state.notice" not in read("app.js") and "view.warning" in function_body("bannerMessage")
