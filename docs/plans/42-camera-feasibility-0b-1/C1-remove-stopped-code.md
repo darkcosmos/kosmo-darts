@@ -61,7 +61,7 @@ Tests are named as on `0005f0c` (T3; a `...` name is a unique substring); the no
   `test_hidden_and_off_board_set_the_status_and_move_on`, `test_replace_a_tip_on_an_annotated_dart_and_move_on`,
   `test_replace_a_status_by_a_tip_and_a_tip_by_a_status`, `test_after_the_last_dart_the_cursor_goes_to_the_first_open_dart_then_complete`,
   `test_clear_removes_the_annotation_of_the_current_dart_and_the_cursor_stays`, `test_next_and_previous_only_move`,
-  `test_previous_from_complete_goes_to_the_last_dart`, `test_goto_selects_a_judged_dart_only_after_calibration` (no
+  `test_previous_from_complete_goes_to_the_last_dart`, `test_goto_selects_a_judged_dart_with_no_calibration_needed` (renamed by C1c, T3; no
   segment needed), `test_click_outside_the_photo_or_not_a_number_is_refused`, `test_click_on_the_photo_border_is_accepted`,
   `test_click_without_a_known_photo_size_is_refused`, `test_unknown_action_is_refused`,
   `test_resume_cursor_on_the_first_dart_not_annotated_then_complete`, `test_session_without_judged_dart_has_no_flow`,
@@ -96,7 +96,7 @@ hand-back gives main this "Proposed owner changes" text (the squad cannot edit `
 `tools/camera/requirements-tool.txt` est supprimé (plus de numpy ni de Pillow pour l'outil). Proposition : condition
 `hashFiles('tools/camera/requirements-tool-test.txt') != ''`, installation de `-r requirements-tool-test.txt` seul
 (pytest, empreintes exigées, wheels seules), puis `pytest -q -m "not slow" tests/test_annotate_flow.py
-tests/test_annotate_server.py tests/test_annotate_static.py tests/test_requirements.py` sous un Python 3.14 nu ;
+tests/test_annotate_server.py tests/test_annotate_static.py tests/test_requirements.py tests/test_strict_json.py` sous un Python 3.14 nu (stdlib seul pour ce dernier) ;
 commentaire : outil d'annotation (saisie des pointes et visionneuse) sur le Python 3.14 de WSL. »
 
 ## Model and Why this model
@@ -108,8 +108,8 @@ calls, mostly deletions; past 60, stop after a green flow and server, commit, an
 ## Implementation notes
 
 Commits `d28b211` (writer moved), `7dd2596` (flow, server, views, `frames_state`, entry point), `2a7ede5` (snap, config
-keys, tool requirements). Deviations: none; `test_goto_selects_a_judged_dart_only_after_calibration` keeps its name
-(T3) though no calibration is needed now; `static/app.js` still holds the old screens (`ASSISTED_KINDS`, snap insets),
+keys, tool requirements). Deviations: none; `test_goto_selects_a_judged_dart_only_after_calibration` kept its name at C1
+(T3), renamed `test_goto_selects_a_judged_dart_with_no_calibration_needed` by C1c; `static/app.js` still holds the old screens (`ASSISTED_KINDS`, snap insets),
 C1b rewrites them.
 
 - Writer: `strict_json.replace_atomic` and `AtomicWriteError`; new tests in `test_strict_json.py`
