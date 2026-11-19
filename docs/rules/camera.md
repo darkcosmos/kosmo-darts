@@ -6,8 +6,8 @@ Status: v1 (issue #42, phase 0b-1, detection feasibility measured offline on Kos
 never collide with the other rule documents in this folder. The truth file format is `docs/camera/capture-format.md`;
 the board rules BC1 and BC5 are in `docs/rules/x01.md` and the match rules.
 
-Status of 2026-11-18 (Kosmo's registration strategy, ADR 0020): CV18, CV19 and CV31 are stopped (their code is
-frozen until task C1 of the plan, never developed further); CV6, CV9, CV12 and CV14 are rewritten in phases 1 and 3 so
+Status of 2026-11-18 (Kosmo's registration strategy, ADR 0020): CV18, CV19 and CV31 are stopped (their code was
+removed by task C1 of the plan, never developed further); CV6, CV9, CV12 and CV14 are rewritten in phases 1 and 3 so
 that the reference and the predicted calibration both come from the global registration of each image and Kosmo's
 clicks. CV22 to CV24 and CV28 to CV30, defined only in the replaced plan, are retired, and CV32 (closed PR #90) was
 never adopted: these numbers are not reused. New rules start at CV33.
@@ -61,18 +61,17 @@ never adopted: these numbers are not reused. New rules start at CV33.
   like the split file, a local working file in `~/kosmo-runs/`: never pasted, never committed. The video frame manifest `frames.json` and
   the extracted frames folder (CV27) hold session names and are local working files too. After D30 reports name
   sessions by role only (`dev 1`, `eval 1`, CV26).
-- CV16 Annotation tool: stdlib only, `127.0.0.1` only, no external resource, captures read-only, writes only in the
-  annotations folder, atomic; every route resolves the session name against the listed sessions; never overwrites
-  an annotation file that the strict reader rejects (a version 1 file is accepted and written back as version 2 on
-  the first change, CV20). The drift flag file (`--drift`, CV18) is read-only for the tool: read again at every
-  session list and view, never written; a missing, invalid or oversized file gives one warning and no flags, and flags
-  measured on other segments than the current ones stay shown marked "(mesure périmée : relancer la mesure)". After
-  D39 and D43: the stdlib-only rule covers every module except `snap.py` and the shared decoder `luma.py`, both
-  imported lazily (`annotate/snapping.py`); without numpy and Pillow the tool starts, shows "Recalage indisponible"
-  and refuses calibration, recalibration and control saves (CV31); snapping reads only the photo or listed frame
-  already served by the tool, through `luma.decode_luma`, at most `SNAP_CACHE_IMAGES` (2) decoded images in memory; an
-  image that cannot be decoded leaves the point at the click, `unsnapped` with reason `unreadable`, and never stops the
-  tool.
+- CV16 Annotation tool (N24, C1 to C1c): stdlib only, `127.0.0.1` only, no external resource. Kosmo enters the dart
+  tips only (one point per judged dart, CV5, on its photo or listed video frame). The calibration segments (CV20), the
+  controls (CV25) and the listed video frames are shown read-only; calibration and control entry, snapping, drift and
+  the journey are not in the tool. Captures are read-only. The only write is an atomic write of `<session>.json` in the
+  annotations folder (`annotations.write_atomic`), and a tip write keeps the segments and controls of the file. Every
+  route resolves the session name against the listed sessions. A file that the strict reader rejects is never
+  overwritten (a version 1 file is accepted and written back as version 2 on the first change, CV20). `--frames DIR`
+  gives the extracted video frames: `frames.json` is read again at every request and never written, and
+  `GET /api/frame/<session>/<file>` serves only a file listed in `frames.json` for a listed session. A missing, invalid
+  or unreadable `frames.json` gives one fixed warning and no frame; the tips are unchanged. The removed options
+  (`--split`, `--lock`, `--drift`) exit with status 2.
   Control mode (T15d): `--split` (with `--lock`) and `--frames` are read again at every request and never written; a
   split that does not match its lock, or an unreadable `frames.json`, gives one list warning and switches control (or
   the video items) off; `GET /api/frame/<session>/<file>` serves only a file listed in `frames.json` for a listed
@@ -81,7 +80,7 @@ never adopted: these numbers are not reused. New rules start at CV33.
   only and recomputed at every request; drift flags are information only, never an instruction.
 - CV17 Sessions in `~/kosmo-data/captures-eval/` (confirmation campaign, later) are always eval: never in the split,
   never in training or tuning; `measure --set campaign` reads them under the same `frozen.json` guard.
-- CV18 Stopped on 2026-11-18 (ADR 0020). Drift of a judged photo: compared with the reference photo of its segment (CV20), both decoded to luma in
+- CV18 Stopped on 2026-11-18 (ADR 0020). Code removed by C1. Drift of a judged photo: compared with the reference photo of its segment (CV20), both decoded to luma in
   stored pixel order (D8). (1) Coarse: the box of the 4 segment points enlarged by 15 % is cropped from both,
   block-averaged so its longer side is at most `DRIFT_COARSE_PX` (512), and phase-correlated (zero mean, Hann window,
   normalised cross-power spectrum with a Gaussian low-pass, `numpy.fft`): shift `t0`. (2) Fine, per point `i`: square
@@ -96,7 +95,7 @@ never adopted: these numbers are not reused. New rules start at CV33.
   oversized file: Pillow's decompression bomb limit is kept). Drift is annotation quality control, independent of any
   model, so it reads every session, dev and eval, without the split lock (CV4 unaffected). The `drift` command writes a
   numbers-only report (CV15) and the local flag file `drift.json`. CV18 status (D30): not validated. Its results are information only until a measure passes the CV30 gate; the report starts with "Mesure de dérive non validée (diagnostic en cours) : ne pas recalibrer d'après ce rapport".
-- CV19 Stopped on 2026-11-18 (ADR 0020). Drift threshold and compensation: a photo is "beyond" when drift mm > `DRIFT_MAX_MM` (1.0 mm =
+- CV19 Stopped on 2026-11-18 (ADR 0020). Code removed by C1. Drift threshold and compensation: a photo is "beyond" when drift mm > `DRIFT_MAX_MM` (1.0 mm =
   `CAL_MAX_ERROR_MM` / 2, Kosmo, D18). Reference calibration of a photo = its compensated points `p_i + d_i` when
   measured and not beyond; none otherwise. Used for the `cal1`-`cal4` training labels, CV9, CV12 and CV14. Photos
   without reference calibration are dropped from the dataset and excluded from CV9 and CV12, each counted by reason.
@@ -110,7 +109,7 @@ never adopted: these numbers are not reused. New rules start at CV33.
   strictly ascending, each applies from its `fromDart` until the next one; a segment after the first starts at a judged
   dart (CV5) and is clicked on that dart's photo. A version 1 file is read by the kept version 1 reader and migrated
   without loss (a version 1 `calibration` becomes the single segment from dart 1; `null` becomes an empty list).
-  Writers wrote version 2 only until version 3 (CV25). Details in `docs/camera/annotation-format.md`.
+  Writers wrote version 2 only until version 3 (CV25). Details in `docs/camera/annotation-format.md`. No longer entered in the tool (C1, Q1 B); read and kept.
 - CV21 Public datasets (D20, D23, D27): only sets with an entry in `tools/camera/config/public-class-maps.json` are read,
   from `~/kosmo-data/public/<slug>/` (slug = Kosmo's folder name, `^[a-z0-9_-]{1,64}$`); the map holds only sets with
   status `accepted` or `conditional` in `docs/camera/datasets.md`, a set with a `pseudo-tip-box` target being
@@ -141,7 +140,7 @@ never adopted: these numbers are not reused. New rules start at CV33.
   (`controls: []`, every segment `snap: ["manual", "manual", "manual", "manual"]`); writers write version 3 only.
   `segments_sha256` excludes `snap` (drift flags stay valid across the v2-to-v3 migration), `controls_sha256` includes
   it. Use: CV9 reference and diagnosis (CV28); on dev, label source only through T16b (P2). Details in
-  `docs/camera/annotation-format.md`.
+  `docs/camera/annotation-format.md`. No longer entered in the tool (C1, Q1 B); read and kept.
 - CV26 Control sample (computed, never chosen by hand; roles of CV15): photo controls: every judged eval photo; per dev
   session the judged darts of rank 1, 1 + `CONTROL_DEV_STRIDE` (10), ... in dart order, plus the last judged dart, plus
   the reference photo of every segment (when it is a judged dart); video controls: the dev photo sample, plus the
@@ -159,7 +158,7 @@ never adopted: these numbers are not reused. New rules start at CV33.
   (512 MiB) or needing more than `VIDEO_MAX_DECODED_FRAMES` (20000) decoded frames is `video_unreadable`; any decode
   error is `video_unreadable` for that dart and the run continues (exit 0); the output prints
   `Images vidéo absentes : N` with the count per reason, and no session name.
-- CV31 Stopped on 2026-11-18 (ADR 0020). Assisted click, snap part (Kosmo, Q10, D39; design D43, D46; tool flow in T15n): `snap.snap_point(luma, start)`
+- CV31 Stopped on 2026-11-18 (ADR 0020). Code removed by C1. Assisted click, snap part (Kosmo, Q10, D39; design D43, D46; tool flow in T15n): `snap.snap_point(luma, start)`
   returns the sub-pixel crossing of a radial wire and a ring wire or colour edge within `SNAP_RADIUS_PX` of the start
   (status `snapped`), or the start itself (status `unsnapped`) with exactly one reason: `support`, `contrast`,
   `residual`, `angle`, `no_convergence`, `too_far`, `border`, or `ambiguous` (two or more distinct crossings of the
