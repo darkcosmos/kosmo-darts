@@ -15,7 +15,7 @@ from kosmo_camera import annotations as an
 from kosmo_camera import frames_file as ff
 from kosmo_camera.annotate import server as server_module
 from kosmo_camera.annotate.__main__ import main
-from kosmo_camera.annotate.frames_state import FrameSources
+from kosmo_camera.annotate.frames_state import FRAMES_UNREADABLE, FrameSources
 from kosmo_camera.annotate.jpeg_size import JpegError, jpeg_size, read_size
 from kosmo_camera.annotate.server import IGNORED_LABEL, make_server
 
@@ -632,6 +632,35 @@ def test_a_corrupt_frame_manifest_warns_and_leaves_the_photo_controls_s13(tool):
                        "(relancer l'extraction, K7.2)")
     assert str(tool.root) not in warning and "frames.json:" not in warning  # never the raw error text (S-minor1)
     assert all(d["frame"] is None for d in tool.json("GET", f"/api/sessions/{NAME}")[1]["darts"])
+
+
+def _frames_of_view(tool):
+    return {d["number"]: d["frame"] for d in tool.json("GET", f"/api/sessions/{NAME}")[1]["darts"]}
+
+
+def test_a_dart_without_a_usable_frame_has_frame_null_and_the_right_warning_cv27_t1(tool):
+    """The V key of the page depends on `frame`: null gives the « Pas d'image vidéo » message, no warning when the
+    frame is simply not listed, the fixed warning when the manifest is missing."""
+    make_session(tool.captures)
+    sources = frame_sources(tool, {NAME: {1: 850, 3: "video_missing"}})
+    tool.start(frames=sources)
+    listed = _frames_of_view(tool)  # frame not listed: no warning, the other darts keep theirs
+    assert listed[3] is None and listed[4] is None and listed[1]["file"] == "video-001.jpg"
+    assert tool.json("GET", "/api/sessions")[1]["framesWarning"] is None
+    (sources.frames / "frames.json").unlink()  # manifest missing: every dart without frame, one fixed warning
+    assert set(_frames_of_view(tool).values()) == {None}
+    assert tool.json("GET", "/api/sessions")[1]["framesWarning"] == FRAMES_UNREADABLE
+
+
+def test_a_listed_frame_whose_file_is_missing_is_listed_and_its_route_answers_404_cv27_t1(tool):
+    """The view lists what the manifest lists; the page meets the missing file as an unreadable image (U12)."""
+    make_session(tool.captures)
+    sources = frame_sources(tool, {NAME: {1: 850}})
+    (sources.frames / NAME / "video-001.jpg").unlink()
+    tool.start(frames=sources)
+    assert _frames_of_view(tool)[1]["file"] == "video-001.jpg"
+    assert tool.json("GET", "/api/sessions")[1]["framesWarning"] is None
+    assert tool.request("GET", f"/api/frame/{NAME}/video-001.jpg")[0] == 404
 
 
 def test_the_source_of_an_action_is_checked_and_unknown_keys_are_refused(tool):
