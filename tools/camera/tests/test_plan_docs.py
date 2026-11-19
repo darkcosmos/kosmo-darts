@@ -154,12 +154,22 @@ DONE_TASKS = ["T1", "T2", "T3", "T4", "T4b", "T5", "T5b", "T6a", "T6b", "T6c", "
 
 
 def test_no_phase_1_task_file_is_written_before_kosmo_mounts_the_images():
-    """N19: only done, cancelled and C1 task files exist; the phase 1 prototype row has no file (N18)."""
+    """N19: only done, cancelled and C1 to C1c task files exist; the phase 1 prototype row has no file (N18)."""
     ids = sorted(path.name.split("-", 1)[0] for path in PLANS.glob("*.md"))
 
-    assert ids == sorted(DONE_TASKS + CANCELLED_TASKS + ["C1"])
+    assert ids == sorted(DONE_TASKS + CANCELLED_TASKS + ["C1", "C1b", "C1c"])
     assert "| P1 | Phase 1 prototype: registration R on the real images, a number vs Kosmo's clicks | not written (N19) |" \
         in PLAN.read_text(encoding="utf-8")
+
+
+def test_the_plan_records_kosmo_answers_q1_b_q2_a_q3_a_and_has_no_open_question_left():
+    text = " ".join(PLAN.read_text(encoding="utf-8").split())
+
+    assert "| N23 | Kosmo on #42, 2026-11-19: plan approved; Q1 B" in text
+    assert "between R and the clicks, click noise included (Q2 A)" in text  # phase 1 gate wording
+    assert "the dev sessions only (17:44 and 18:03, Q3 A): 4 series of 3 consecutive photos per session" in text
+    assert "- Q1 to Q3: answered by Kosmo on 2026-11-19 (N23)." in text
+
 
 ADR_18 = ROOT / "docs" / "adr" / "0018-automatic-ground-truth.md"
 ADR_19 = ROOT / "docs" / "adr" / "0019-capture-framing.md"

@@ -57,8 +57,9 @@ Kosmo's clicks, and converged from a start 10 mm and 3 degrees off.
 ## Consequences
 
 - Stopped: `snap.py`, the assisted click of the annotation tool, `drift.py` and the drift flags, the H1/H2 diagnosis,
-  the calibration pseudo-labels of public images, RF-DETR Nano. Their removal from the code is task C1 of the plan,
-  scheduled by Kosmo's answer to question Q1; until then the code is frozen, not developed.
+  the calibration pseudo-labels of public images, RF-DETR Nano. Their removal from the code, with the entry of
+  calibrations and controls in the tool, is tasks C1 to C1c of the plan (Kosmo's answer B to question Q1, 2026-11-19);
+  the tool keeps the entry of dart tips for short later campaigns.
 - Rules CV18, CV19 and CV31 are stopped; rules CV6, CV9, CV12 and CV14 are rewritten in phases 1 and 3 so that the
   reference and the predicted calibration both come from registration (R) and Kosmo's clicks.
 - The annotation format v3 is read only; Kosmo's tips, calibrations and controls are kept as ground truth.
