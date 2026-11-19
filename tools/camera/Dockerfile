@@ -11,10 +11,6 @@
 #     kosmo-camera:gpu python -m kosmo_camera.gpu_check
 #
 # The GPU check needs no data. Tools that read data add the optional mount -v ~/kosmo-data:/data:ro (read-only).
-# The image also runs the drift measure (no GPU needed), with the sessions and annotations mounted read-only:
-#   docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges --read-only --tmpfs /tmp:rw,size=2g \
-#     -v ~/kosmo-data:/data:ro -v ~/kosmo-runs:/runs:rw kosmo-camera:gpu \
-#     python -m kosmo_camera.drift --captures /data/captures --annotations /data/annotations --runs /runs
 #
 # No USER on purpose (D7): with rootless Docker, uid 0 inside is Kosmo's own uid.
 # Residual risk: the weights are a pickle, trusted on first download after the MD5 check, then pinned by SHA-256 and

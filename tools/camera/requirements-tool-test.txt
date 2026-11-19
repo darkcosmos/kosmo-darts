@@ -1,8 +1,9 @@
-# Test-only additions for the Python 3.14 run of the tool and snapping tests (T15n, D44): pytest and its four
-# dependencies, the pins and hashes of requirements-cpu.txt (pure-Python wheels). Never installed by Kosmo; used with
-# requirements-tool.txt in a throwaway venv (sandbox, proposed CI step):
+# Test-only file for the Python 3.14 run of the annotation tool tests (T15n, D44): pytest and its four
+# dependencies, the pins and hashes of requirements-cpu.txt (pure-Python wheels). The tool itself needs the
+# standard library only (ADR 0020). Never installed by Kosmo; used alone in a throwaway venv (sandbox, proposed
+# CI step):
 #   python3 -m venv "$d/v" && "$d/v/bin/pip" install --require-hashes --only-binary=:all: \
-#     -r tools/camera/requirements-tool.txt -r tools/camera/requirements-tool-test.txt
+#     -r tools/camera/requirements-tool-test.txt
 iniconfig==2.3.1 \
     --hash=sha256:9121e2c1fdb355232495be3194c8dfe87ccc2d5dee45947b78e68f499790d7a7
 packaging==26.3 \
