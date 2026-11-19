@@ -5,23 +5,25 @@ import os
 import re
 import socket
 import subprocess
-import sys
 import threading
 from pathlib import Path
 
 import pytest
 
-from annotate_support import NAME, SIZE, FakeSnapping, jpeg_bytes, make_session, stdlib_pythons, tree_listing
+from annotate_support import NAME, SIZE, jpeg_bytes, make_session, stdlib_pythons, tree_listing
 from kosmo_camera import annotations as an
-from kosmo_camera import drift_file
+from kosmo_camera import frames_file as ff
 from kosmo_camera.annotate import server as server_module
 from kosmo_camera.annotate.__main__ import main
+from kosmo_camera.annotate.frames_state import FrameSources
 from kosmo_camera.annotate.jpeg_size import JpegError, jpeg_size, read_size
-from kosmo_camera.annotate.control_state import SPLIT_GENERIC, split_reason
-from kosmo_camera.split import SplitError
 from kosmo_camera.annotate.server import IGNORED_LABEL, make_server
 
-POINTS = [(300, 300), (1700, 300), (1700, 900), (300, 900)]  # far apart (U27), inside a 2000 x 1000 photo
+POINTS = [(300, 300), (1700, 300), (1700, 900), (300, 900)]  # inside a 2000 x 1000 photo
+SEGMENT = an.Calibration(1, "dart-001.jpg", *SIZE, tuple((float(x), float(y)) for x, y in POINTS))
+REMOVED_KINDS = ("recalibrate", "select", "save", "control", "hidden_point")  # stopped by ADR 0020 (Q1 B)
+VIDEO_SIZE = (1920, 1080)
+OTHER = "20261101-090000"
 
 
 class Tool:
@@ -33,10 +35,9 @@ class Tool:
         self.static_dir = static_dir
         self.server = None
 
-    def start(self, drift=None, snapper=None, controls=None):
-        self.snapper = FakeSnapping() if snapper is None else snapper
+    def start(self, frames=None):
         self.server = make_server(self.captures, self.annotations, 0, self.static_dir, clock=lambda: "12:34:56",
-                                  drift=drift, snapper=self.snapper, controls=controls)
+                                  frames=frames)
         self.port = self.server.server_address[1]
         threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True).start()
         return self
@@ -67,14 +68,10 @@ class Tool:
     def act(self, action, name=NAME, **fields):
         return self.json("POST", f"/api/sessions/{name}/actions", {"action": action, **fields})
 
-    def calibrate(self, name=NAME):
-        """The four clicks, then Entrée (the `save` action, which names the open item: the calibration is dart 1)."""
-        for x, y in POINTS:
-            status, result = self.act("click", name, x=x, y=y)
-            assert status == 200, result
-        status, result = self.act("save", name, number=1)
-        assert status == 200, result
-        return result
+    def write_annotations(self, annotations, name=NAME):
+        """An annotation file as an earlier tool left it (segments and controls are no longer entered, N24)."""
+        self.annotations.mkdir(exist_ok=True)
+        an.write_atomic(self.annotations / f"{name}.json", annotations)
 
 
 @pytest.fixture
@@ -176,20 +173,13 @@ def test_session_list_and_open_with_progress_and_resume_cursor(tool):
     tool.start()
     status, body = tool.json("GET", "/api/sessions")
     session = body["sessions"][0]
-    journey_keys = {"badge", "steps", "info"}  # the journey fields, tested in test_annotate_journey.py
-    assert {k: v for k, v in session.items() if k not in journey_keys} == {
-        "name": NAME, "message": None, "warning": None, "label": None,
-        "progress": {"done": 0, "total": 3}, "calibrated": False, "calibrationLabel": "Non calibrée",
-        "control": {"available": False, "reason": "Contrôle : indisponible (option --split absente)", "role": None}}
-    assert set(session) == journey_keys | {"name", "message", "warning", "label", "progress", "calibrated",
-                                           "calibrationLabel", "control"}  # no role without --split
-    assert body["driftWarning"] is None and body["controlWarning"] is None
+    assert session == {"name": NAME, "message": None, "warning": None, "label": None,
+                       "progressLabel": "0 / 3 pointes saisies", "calibrationLabel": "Non calibrée"}
+    assert body == {"sessions": [session], "framesWarning": None}
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert view["cursor"] == {"kind": "calibration", "number": None, "photo": "dart-001.jpg", "pending": [],
-                              "slots": [{"point": None, "status": None, "reason": None}] * 4, "source": None,
-                              "selected": None, "ready": 0, "nextSlot": 0, "diagram": True,
-                              "canSave": False, "previousPoints": None, "unreadable": False}
-    assert view["snapAvailable"] is True
+    # no calibration screen: a session without segment opens on its first dart (N24)
+    assert view["cursor"] == {"kind": "dart", "number": 1, "photo": "dart-001.jpg"}
+    assert view["segments"] == []
     assert [d["number"] for d in view["darts"]] == [1, 3, 4] and view["skipped"] == [2, 5]
     assert view["readOnly"] is False and view["photoSize"] == list(SIZE)
     assert all(re.fullmatch(r"[DT]?\d{1,2}", d["value"]) for d in view["darts"])  # true value shown large by the page
@@ -199,30 +189,22 @@ def test_session_list_and_open_with_progress_and_resume_cursor(tool):
 def test_full_flow_autosaves_each_change_and_reports_the_saved_time(tool):
     make_session(tool.captures)
     tool.start()
-    tool.act("click", x=POINTS[0][0], y=POINTS[0][1])
-    assert not annotation_file(tool).exists()  # a partial calibration is not a file change
-    for x, y in POINTS[1:]:
-        status, result = tool.act("click", x=x, y=y)
-    assert "saved" not in result and not annotation_file(tool).exists()  # four ready points are not written either
-    status, result = tool.act("save", number=1)
-    assert result["saved"] == "Enregistré à 12:34:56"
-    assert result["session"]["cursor"]["number"] == 1
+    assert not annotation_file(tool).exists()  # opening writes nothing
     status, result = tool.act("click", x=100.5, y=200.5)
     assert result["saved"] == "Enregistré à 12:34:56" and result["session"]["cursor"]["number"] == 3
     tool.act("hidden")
     saved = an.read(annotation_file(tool))
-    assert saved.calibrations[0].width == SIZE[0] and [d.number for d in saved.darts] == [1, 3]
+    assert saved.calibrations == () and [d.number for d in saved.darts] == [1, 3]  # tips need no segment (N24)
     # reopening resumes at the first dart not annotated, with the earlier tips returned
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
     assert view["cursor"]["number"] == 4 and view["darts"][0]["tip"] == [100.5, 200.5]
     status, listing = tool.json("GET", "/api/sessions")
-    assert listing["sessions"][0]["progress"] == {"done": 2, "total": 3}
+    assert listing["sessions"][0]["progressLabel"] == "2 / 3 pointes saisies"
 
 
 def test_clear_goes_through_the_post_route_and_there_is_no_delete_or_put(tool):
     make_session(tool.captures)
     tool.start()
-    tool.calibrate()
     tool.act("hidden")
     status, view = tool.act("previous")
     status, result = tool.act("clear")
@@ -238,7 +220,6 @@ def test_clear_goes_through_the_post_route_and_there_is_no_delete_or_put(tool):
 def test_flow_errors_answer_400_and_change_nothing(tool):
     make_session(tool.captures)
     tool.start()
-    tool.calibrate()
     before = tree_listing(tool.root)
     for body in ({"action": "bogus"}, {"action": "click"}, {"action": "click", "x": -1, "y": 5},
                  {"action": "click", "x": 5000, "y": 5}, {"action": "click", "x": 5, "y": 3073},
@@ -253,7 +234,6 @@ def test_flow_errors_answer_400_and_change_nothing(tool):
 def test_a_huge_integer_coordinate_answers_400_not_500_and_changes_nothing(tool):
     make_session(tool.captures)
     tool.start()
-    tool.calibrate()
     before = tree_listing(tool.root)
     for body in ({"action": "click", "x": 10 ** 400, "y": 5}, {"action": "click", "x": 5, "y": -(10 ** 400)}):
         status, result = tool.json("POST", f"/api/sessions/{NAME}/actions", body)
@@ -262,39 +242,19 @@ def test_a_huge_integer_coordinate_answers_400_not_500_and_changes_nothing(tool)
     assert tool.act("hidden")[0] == 200  # the server still serves
 
 
-def test_s14_a_click_on_an_unreadable_photo_answers_200_unsnapped_unreadable_and_the_next_request_is_served(tool):
-    pytest.importorskip("numpy")
-    pytest.importorskip("PIL")
-    from kosmo_camera.annotate.snapping import Snapper
-    make_session(tool.captures)  # the photos hold a JPEG header only: the decoder cannot read them
-    tool.start(snapper=Snapper())
-    status, result = tool.act("click", x=300, y=300)
-    assert status == 200, result
-    slot = result["session"]["cursor"]["slots"][0]
-    assert (slot["point"], slot["status"], slot["reason"]) == ([300.0, 300.0], "unsnapped", "unreadable")
-    assert tool.json("GET", "/api/sessions")[0] == 200
-    assert tool.act("click", x=1700, y=300)[0] == 200
-
-
 def test_clicks_are_checked_against_the_real_jpeg_size_not_only_the_truth_size_d8(tool):
-    # truth says 4080x3072 but the stored JPEG is 2000x1000: the calibration takes the real size, clicks beyond it fail
+    # truth says 4080x3072 but the stored JPEG is 2000x1000: a tip beyond the real size fails
     make_session(tool.captures, jpeg_size=(2000, 1000))
     tool.start()
-    status, result = tool.act("click", x=2001, y=10)
-    assert status == 400
-    for x, y in POINTS:
-        status, result = tool.act("click", x=x, y=y)
-    tool.act("save", number=1)
-    calibration = an.read(annotation_file(tool)).calibrations[0]
-    assert (calibration.width, calibration.height) == (2000, 1000)
+    assert tool.act("click", x=2001, y=10)[0] == 400
     assert tool.act("click", x=10, y=1001)[0] == 400
+    assert not annotation_file(tool).exists()
     assert tool.act("click", x=1999.5, y=999.5)[0] == 200
 
 
 def test_click_beyond_the_truth_photo_size_is_refused_when_the_jpeg_is_larger(tool):
     make_session(tool.captures, jpeg_size=(6000, 4000))
     tool.start()
-    tool.calibrate()
     assert tool.act("click", x=5000, y=100)[0] == 400  # validate_against: tip outside the truth photo size
 
 
@@ -336,7 +296,6 @@ def test_nothing_outside_the_annotations_folder_is_ever_created(tool):
     make_session(tool.captures)
     tool.start()
     before = tree_listing(tool.captures)
-    tool.calibrate()
     tool.act("hidden")
     tool.act("off_board")
     assert tree_listing(tool.captures) == before  # captures untouched (hashes)
@@ -439,7 +398,7 @@ def test_rejected_annotation_file_is_read_only_with_cause_and_never_overwritten(
     tool.start()
     before = tree_listing(tool.root)
     listed = states(tool)[NAME]
-    assert "format" in listed["message"] and listed["progress"] is None
+    assert "format" in listed["message"] and listed["progressLabel"] is None
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
     assert view["readOnly"] is True
     assert tool.act("hidden")[0] == 409 and tool.act("click", x=1, y=1)[0] == 409
@@ -452,7 +411,7 @@ def test_annotation_contradicting_the_truth_is_rejected_too(tool):
     bad = an.Annotations(NAME, sha, (), (an.DartAnnotation(2, an.Status.HIDDEN, None),))  # dart 2 is voided
     annotation_file(tool).write_text(an.encode(bad), encoding="utf-8")
     tool.start()
-    assert states(tool)[NAME]["message"] and states(tool)[NAME]["progress"] is None
+    assert states(tool)[NAME]["message"] and states(tool)[NAME]["progressLabel"] is None
 
 
 def test_annotation_file_over_1_mib_is_refused_and_untouched(tool):
@@ -495,9 +454,11 @@ def test_v1_file_opened_listed_and_browsed_stays_byte_identical_cv16_cv20(tool):
     tool.start()
     before = tree_listing(tool.root)
     listed = states(tool)[NAME]
-    assert listed["message"] is None and listed["calibrated"] is True and listed["progress"] == {"done": 2, "total": 3}
+    assert listed["message"] is None and listed["calibrationLabel"] == "Calibrée"
+    assert listed["progressLabel"] == "2 / 3 pointes saisies"
     status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert view["cursor"]["number"] == 4 and view["calibration"]["points"] == [list(map(float, p)) for p in POINTS]
+    assert view["cursor"]["number"] == 4
+    assert view["segments"] == [{"fromDart": 1, "photo": "dart-001.jpg", "points": [list(map(float, p)) for p in POINTS]}]
     for action in ("previous", "next"):
         assert tool.act(action)[0] == 200
     assert tool.act("goto", number=1)[0] == 200
@@ -538,20 +499,19 @@ def test_session_without_judged_dart_is_listed_as_ignored_and_not_openable_cv3(t
     tool.start()
     listed = states(tool)
     for name in ("20261101-100000", "20261102-100000"):
-        assert listed[name]["badge"] == "Ignorée" and listed[name]["label"] == IGNORED_LABEL
-        assert listed[name]["progress"] is None
+        assert listed[name]["label"] == IGNORED_LABEL
+        assert listed[name]["progressLabel"] is None
         assert 400 <= tool.act("click", name, x=1, y=1)[0] < 500
         assert 400 <= tool.act("hidden", name)[0] < 500
         status, view = tool.json("GET", f"/api/sessions/{name}")
         assert view["readOnly"] is True and "cursor" not in view
-    assert listed[NAME]["badge"] != "Ignorée" and IGNORED_LABEL == "Ignorée : aucune fléchette jugée"
+    assert listed[NAME]["label"] is None and IGNORED_LABEL == "Ignorée : aucune fléchette jugée"
     assert [p.name for p in tool.annotations.iterdir()] == []  # no file created
 
 
 def test_save_error_keeps_the_screen_state_and_retries_on_the_next_action(tool, monkeypatch):
     make_session(tool.captures)
     tool.start()
-    tool.calibrate()
     real = an.write_atomic
 
     def failing(path, annotations):
@@ -627,565 +587,66 @@ def test_help_works_with_the_stdlib_only(tmp_path, python):
                             env={"PATH": os.environ.get("PATH", "")})
     assert result.returncode == 0, result.stderr
     assert "--captures" in result.stdout and "--annotations" in result.stdout and "--port" in result.stdout
-    assert "--drift" in result.stdout
-
-
-# ---- recalibration and drift flags (T6c, CV16, CV20) -----------------------------------------------------------------
-
-NEW_POINTS = [(11, 12), (13, 14), (15, 16), (17, 18)]
-
-
-def _go_to(tool, number):
-    status, result = tool.act("goto", number=number)
-    assert status == 200, result
-    return result
-
-
-def _recalibrate_at(tool, number, points=NEW_POINTS):
-    _go_to(tool, number)
-    tool.act("recalibrate")
-    for index, (x, y) in enumerate(points, start=1):
-        tool.act("select", number=index)  # the proposals sit far from the new points: the key chooses the slot
-        status, result = tool.act("click", x=x, y=y)
-        assert status == 200, result
-    return tool.act("save", number=number)
-
-
-def test_the_cursor_says_can_save_and_sends_the_previous_points_of_a_recalibration_a8_a9(tool):
-    make_session(tool.captures)
-    tool.start()
-    cursor = lambda result: result[1]["session"]["cursor"]
-    first = tool.act("select", number=1)
-    assert (cursor(first)["canSave"], cursor(first)["previousPoints"]) == (False, None)  # no point yet
-    for index, (x, y) in enumerate(POINTS, start=1):
-        tool.act("select", number=index)
-        result = tool.act("click", x=x, y=y)
-        assert cursor(result)["canSave"] is (index == 4)  # the server decides: 4 ready points, not 3
-        assert cursor(result)["previousPoints"] is None  # a calibration never carries a previous segment
-    tool.act("save", number=1)
-    dart = _go_to(tool, 3)
-    assert dart["session"]["cursor"]["canSave"] is False and dart["session"]["cursor"]["previousPoints"] is None  # a dart screen
-    result = tool.act("recalibrate")
-    assert cursor(result)["kind"] == "recalibration"
-    assert cursor(result)["previousPoints"] == [list(map(float, p)) for p in POINTS]
-    assert cursor(result)["canSave"] is True  # the proposals are the segment in force (CV31)
-
-
-def test_previous_points_are_sent_on_a_recalibration_cursor_only_not_on_a_control_cv31(tool):
-    control_tool(tool, frames={NAME: {1: 1850, 4: 3850}})
-    cursor = open_control(tool)["cursor"]
-    assert (cursor["kind"], cursor["previousPoints"]) == ("control", None)
-
-
-def test_recalibration_from_a_dart_is_saved_with_its_photo_and_real_jpeg_size_cv20(tool):
-    make_session(tool.captures, jpeg_size=(2000, 1000))
-    tool.start()
-    tool.calibrate()
-    tool.act("click", x=100.5, y=200.5)  # tip of dart 1
-    status, result = _recalibrate_at(tool, 3)
-    assert status == 200 and result["saved"] == "Enregistré à 12:34:56"
-    saved = an.read(annotation_file(tool))
-    assert [(c.from_dart, c.photo, c.width, c.height) for c in saved.calibrations] == [
-        (1, "dart-001.jpg", 2000, 1000), (3, "dart-003.jpg", 2000, 1000)]
-    assert [d.tip for d in saved.darts] == [(100.5, 200.5)]
-    assert result["session"]["cursor"]["kind"] == "dart" and result["session"]["cursor"]["number"] == 3
-    assert [s["fromDart"] for s in result["session"]["segments"]] == [1, 3]
-    status, result = tool.act("recalibrate")
-    assert status == 200 and result["session"]["cursor"]["kind"] == "recalibration"
-    assert result["session"]["cursor"]["pending"] == [list(p) for p in NEW_POINTS]
-
-
-def test_clear_on_a_saved_recalibration_removes_it_at_once_cv20(tool):
-    make_session(tool.captures)
-    tool.start()
-    tool.calibrate()
-    _recalibrate_at(tool, 3)
-    tool.act("recalibrate")
-    status, result = tool.act("clear")
-    assert status == 200 and result["saved"] == "Enregistré à 12:34:56"
-    assert [c.from_dart for c in an.read(annotation_file(tool)).calibrations] == [1]
-    assert len(result["session"]["cursor"]["pending"]) == 3
-
-
-def test_clear_of_the_calibration_screen_is_refused_while_later_segments_exist_cv20(tool):
-    make_session(tool.captures)
-    tool.start()
-    tool.calibrate()
-    _recalibrate_at(tool, 3)
-    before = annotation_file(tool).read_bytes()
-    _go_to(tool, 1)
-    status, result = tool.act("recalibrate")
-    assert result["session"]["cursor"]["kind"] == "calibration"
-    status, result = tool.act("clear")
-    assert status == 400 and result["error"] == "Supprimez d'abord les recalibrations suivantes."
-    assert annotation_file(tool).read_bytes() == before
-
-
-def test_the_save_at_the_segment_cap_answers_409_and_the_file_is_unchanged_cv20(tool):
-    make_session(tool.captures, judged=tuple(range(1, 70)), voided=(), no_photo=())
-    tool.start()
-    tool.calibrate()
-    saved = an.read(annotation_file(tool))
-    filler = tuple(an.Calibration(n, f"dart-{n:03d}.jpg", *SIZE, tuple((float(n), 1.0) for _ in range(4)))
-                   for n in range(4, 4 + an.MAX_SEGMENTS - 1))
-    an.write_atomic(annotation_file(tool), an.Annotations(saved.session, saved.truth_sha256,
-                                                           saved.calibrations + filler, ()))
-    before = annotation_file(tool).read_bytes()
-    _go_to(tool, 3)
-    tool.act("recalibrate")
-    status, result = tool.act("save", number=3)  # the proposals of the segment in force are four ready points
-    assert status == 409 and result["error"] == "Nombre maximal de recalibrations atteint (64)"
-    assert annotation_file(tool).read_bytes() == before
-
-
-def _sha(tool):
-    return an.segments_sha256(an.read(annotation_file(tool)))
-
-
-def _flags(session=NAME, label="S01", sha="0" * 64, max_mm=0.4, beyond=(), suggested=(), unmeasurable=()):
-    return drift_file.SessionFlags(session, label, sha, max_mm, tuple(beyond), tuple(suggested), tuple(unmeasurable))
-
-
-def _write_drift(path, *flags):
-    path.write_text(drift_file.encode(drift_file.DriftFile(1.0, tuple(flags))), encoding="utf-8")
-
-
-def _list(tool):
-    status, body = tool.json("GET", "/api/sessions")
-    assert status == 200
-    return body
-
-
-@pytest.mark.parametrize("flags, label", [
-    (dict(), "Dérive OK (max 0,4 mm)"),
-    (dict(max_mm=None), "Dérive OK"),
-    (dict(beyond=[3, 4], suggested=[3]), "À recalibrer à partir de la fléchette 3"),
-    (dict(beyond=[1, 3], suggested=[1, 3]), "À recalibrer à partir des fléchettes 1, 3"),
-    (dict(unmeasurable=[4]), "Dérive OK (max 0,4 mm) ; 1 photo non mesurable"),
-    (dict(beyond=[3], suggested=[3], unmeasurable=[1, 4]),
-     "À recalibrer à partir de la fléchette 3 ; 2 photos non mesurables"),
-])
-def test_session_list_labels_come_from_the_drift_file_cv16(tool, flags, label):
-    make_session(tool.captures)
-    drift = tool.root / "drift.json"
-    tool.start(drift)
-    tool.calibrate()
-    _write_drift(drift, _flags(sha=_sha(tool), **flags))
-    body = _list(tool)
-    assert label in body["sessions"][0]["info"] and not any("périmée" in line for line in body["sessions"][0]["info"])
-    assert body["driftWarning"] is None
-
-
-def test_session_absent_from_the_drift_file_is_not_measured_and_unlisted_ones_are_ignored(tool):
-    make_session(tool.captures)
-    drift = tool.root / "drift.json"
-    _write_drift(drift, _flags(session="20250101-000000"))
-    tool.start(drift)
-    body = _list(tool)
-    assert "Dérive non mesurée" in body["sessions"][0]["info"] and body["driftWarning"] is None
-
-
-def test_stale_flags_keep_the_suggested_darts_with_the_stale_mention_and_mark_each_dart_u7(tool):
-    make_session(tool.captures)
-    drift = tool.root / "drift.json"
-    tool.start(drift)
-    tool.calibrate()
-    _write_drift(drift, _flags(sha=_sha(tool), beyond=[3, 4], suggested=[3], unmeasurable=[1]))
-    status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert "drift" not in view["darts"][0] and "driftStale" not in view  # the page reads no drift field (A7)
-    _recalibrate_at(tool, 4)  # the segments change after the measure
-    body = _list(tool)
-    assert ("À recalibrer à partir de la fléchette 3 ; 1 photo non mesurable "
-            "(mesure périmée : relancer la mesure)") in body["sessions"][0]["info"]
-    assert "driftStale" not in body["sessions"][0]
-
-
-def test_the_views_carry_no_drift_field_nor_the_old_state_a7(tool):
-    make_session(tool.captures)
-    tool.start()
-    status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    session = _list(tool)["sessions"][0]
-    assert not {"driftLabel", "driftStale", "state"} & set(session)
-    assert not {"driftLabel", "driftStale", "state"} & set(view)
-    assert all("drift" not in dart for dart in view["darts"])
-
-
-@pytest.mark.parametrize("content", [b"{not json", b"", b"x" * (drift_file.MAX_BYTES + 1), None])
-def test_unreadable_oversized_or_missing_drift_file_warns_once_and_the_tool_serves_cv16(tool, content):
-    make_session(tool.captures)
-    drift = tool.root / "drift.json"
-    if content is not None:
-        drift.write_bytes(content)
-    tool.start(drift)
-    body = _list(tool)
-    assert body["driftWarning"].startswith("Mesure de dérive illisible : ")
-    assert not any("dérive" in line.lower() for line in body["sessions"][0]["info"])
-    status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert status == 200
-    assert tool.calibrate()["saved"]
-
-
-def test_the_flag_file_is_read_again_at_every_list_and_never_written_cv16(tool):
-    make_session(tool.captures)
-    drift = tool.root / "drift.json"
-    tool.start(drift)
-    tool.calibrate()
-    _write_drift(drift, _flags(sha=_sha(tool), beyond=[3], suggested=[3]))
-    assert any(line.startswith("À recalibrer") for line in _list(tool)["sessions"][0]["info"])
-    _write_drift(drift, _flags(sha=_sha(tool), max_mm=0.2))
-    digest = hashlib.sha256(drift.read_bytes()).hexdigest()
-    assert "Dérive OK (max 0,2 mm)" in _list(tool)["sessions"][0]["info"]
-    _recalibrate_at(tool, 3)
-    tool.act("recalibrate")
-    tool.act("clear")
-    tool.json("GET", f"/api/sessions/{NAME}")
-    assert hashlib.sha256(drift.read_bytes()).hexdigest() == digest
-    assert sorted(p.name for p in tool.root.iterdir()) == ["annotations", "captures", "drift.json", "static"]
-
-
-def test_drift_option_is_passed_to_the_server(tmp_path, monkeypatch):
-    seen = {}
-
-    def fake(captures, annotations, port, drift=None, snapper=None, controls=None):
-        seen["drift"] = drift
-        raise ValueError("stop")
-
-    monkeypatch.setattr("kosmo_camera.annotate.__main__.make_server", fake)
-    (tmp_path / "c").mkdir()
-    args = ["--captures", str(tmp_path / "c"), "--annotations", str(tmp_path / "a")]
-    assert main(args + ["--drift", str(tmp_path / "d.json")]) == 2 and seen["drift"] == tmp_path / "d.json"
-    assert main(args) == 2 and seen["drift"] is None
-
-
-# ---- assisted calibration (T15n, CV31, U27, U29, A32) ----------------------------------------------------------------
-
-def test_a_click_is_snapped_on_the_photo_of_the_session_and_the_view_shows_the_slots_cv31(tool):
-    make_session(tool.captures)
-    tool.start(snapper=FakeSnapping(shift=(0.5, 0.25), failing={(1700.0, 300.0): "contrast"}))
-    tool.act("click", x=300, y=300)
-    status, result = tool.act("click", x=1700, y=300)
-    assert status == 200 and "saved" not in result
-    slots = result["session"]["cursor"]["slots"]
-    assert slots[0] == {"point": [300.5, 300.25], "status": "snapped", "reason": None}
-    assert slots[1] == {"point": [1700.0, 300.0], "status": "unsnapped", "reason": "contrast"}
-    assert slots[2]["point"] is None and result["session"]["cursor"]["ready"] == 2
-    assert [Path(photo) for photo, _ in tool.snapper.calls] == [tool.captures / NAME / "dart-001.jpg"] * 2
-
-
-def test_select_then_click_goes_to_that_slot_and_a_far_click_is_refused_u27(tool):
-    make_session(tool.captures)
-    tool.start()
-    tool.calibrate()
-    tool.act("previous")
-    status, result = tool.act("click", x=1000, y=600)
-    assert status == 409 and result["error"].startswith("Clic loin des 4 points")
-    assert tool.act("select", number=4)[0] == 200
-    status, result = tool.act("click", x=1000, y=600)
-    assert status == 200 and result["session"]["cursor"]["slots"][3]["point"] == [1000.0, 600.0]
-    assert result["session"]["cursor"]["selected"] is None
-    assert tool.act("select", number=5)[0] == 400
-
-
-def test_save_below_four_ready_points_answers_409_and_writes_nothing_u29(tool):
-    make_session(tool.captures)
-    tool.start()
-    tool.act("click", x=300, y=300)
-    tool.act("click", x=1700, y=300)
-    status, result = tool.act("save", number=1)
-    assert status == 409 and result["error"] == "Points prêts : 2 / 4"
-    assert not annotation_file(tool).exists()
-
-
-def test_a_repeated_save_answers_409_and_writes_one_segment_u29(tool):
-    make_session(tool.captures)
-    tool.start()
-    tool.calibrate()
-    before = annotation_file(tool).read_bytes()
-    status, result = tool.act("save", number=1)
-    assert status == 409 and result["error"] == "Photo déjà enregistrée"
-    assert tool.act("save")[0] == 409  # a save that names no open item is no save
-    assert annotation_file(tool).read_bytes() == before and len(an.read(annotation_file(tool)).calibrations) == 1
-
-
-def test_hide_is_refused_with_409_on_the_calibration_screen_cv20(tool):
-    make_session(tool.captures)
-    tool.start()
-    status, result = tool.act("hidden")
-    assert status == 409 and "4 points" in result["error"]
-    assert not annotation_file(tool).exists()
-
-
-def test_the_saved_segment_keeps_the_snap_statuses_of_the_clicks_cv31(tool):
-    make_session(tool.captures)
-    tool.start(snapper=FakeSnapping(failing={(300.0, 900.0): "unreadable"}))
-    tool.calibrate()
-    assert an.read(annotation_file(tool)).calibrations[0].snap == ("snapped",) * 3 + ("unsnapped",)
-
-
-def test_without_numpy_or_pillow_the_tool_serves_and_refuses_the_calibration_a32(tool):
-    make_session(tool.captures)
-    tool.start()
-    tool.calibrate()
-    tool.act("click", x=100.5, y=200.5)  # tip of dart 1
-    before = annotation_file(tool).read_bytes()
-    tool.start(snapper=FakeSnapping(available=False))
-    status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert status == 200 and view["snapAvailable"] is False
-    expected = "Recalage indisponible : relancer l'outil avec ~/kosmo-tool-venv/bin/python (K7.1b)"
-    tool.act("goto", number=3)
-    status, result = tool.act("recalibrate")
-    assert status == 409 and result["error"] == expected
-    status, result = tool.act("click", x=100.5, y=200.5)  # a tip does not need the snapper
-    assert status == 200 and result["saved"]
-    after = annotation_file(tool).read_bytes()
-    assert after != before and an.read(annotation_file(tool)).calibrations == an.decode(before.decode()).calibrations
-
-
-def test_without_numpy_or_pillow_a_new_session_refuses_clicks_and_save_and_writes_nothing_a32(tool):
-    make_session(tool.captures)
-    tool.start(snapper=FakeSnapping(available=False))
-    for body in ({"action": "click", "x": 300, "y": 300}, {"action": "save", "number": 1}):
-        status, result = tool.json("POST", f"/api/sessions/{NAME}/actions", body)
-        assert status == 409 and result["error"].startswith("Recalage indisponible"), body
-    assert not annotation_file(tool).exists()
-
-
-# ---- control mode (T15d: CV16, CV25, CV26, CV27, CV31) ----------------------------------------------------------------
-
-VIDEO_SIZE = (1920, 1080)
-OTHER = "20261101-090000"
-
-
-def control_sources(tool, dev=(NAME,), eval=(), frames=None, lock_of=None):
-    """A split with the given session names, its lock and, when `frames` is a dict (session -> {dart: reason or
-    position_ms}), a frames folder: an int is a frame at that position, a string is a missing reason."""
-    from kosmo_camera import frames_file as ff
-    from kosmo_camera import split as sp
-    from kosmo_camera.annotate.control_state import ControlSources
-    units = tuple(sp.Unit(name, None, None, set_name) for set_name, names in (("dev", dev), ("eval", eval))
-                  for name in names)
-    counts = {s: {"units": sum(1 for u in units if u.set == s), "darts": 0} for s in sp.SETS}
-    counts["ignoredSessions"] = 0
-    data = sp.encode(sp.Split("session", units, counts))
-    split_path, lock_path = tool.root / "split.json", tool.root / "split-lock.json"
-    split_path.write_bytes(data)
-    lock_path.write_bytes(sp.make_lock(data if lock_of is None else lock_of))
-    frames_dir = None
-    if frames is not None:
-        frames_dir = tool.root / "frames"
-        frames_dir.mkdir(exist_ok=True)
-        sessions = []
-        for name, darts in frames.items():
-            (frames_dir / name).mkdir(parents=True, exist_ok=True)
-            listed, missing = [], []
-            for dart, value in sorted(darts.items()):
-                if isinstance(value, str):
-                    missing.append(ff.Missing(dart, value))
-                    continue
-                file = ff.video_file_name(dart)
-                content = jpeg_bytes(*VIDEO_SIZE, exif_padding=50)
-                (frames_dir / name / file).write_bytes(content)
-                listed.append(ff.Frame(dart, value, *VIDEO_SIZE, file, hashlib.sha256(content).hexdigest()))
-            sessions.append(ff.SessionFrames(name, tuple(listed), tuple(missing)))
-        ff.write_atomic(frames_dir / "frames.json", ff.FramesFile(1000, tuple(sessions)))
-    return ControlSources(split_path, lock_path, frames_dir)
-
-
-def open_control(tool, name=NAME):
-    status, result = tool.act("control", name)
-    assert status == 200, result
-    return result["session"]
-
-
-def save_item(tool, view, name=NAME):
-    cursor = view["cursor"]
-    return tool.act("save", name, number=cursor["number"], source=cursor["source"])
-
-
-def control_tool(tool, **kwargs):
-    make_session(tool.captures)
-    tool.start(controls=control_sources(tool, **kwargs))
-    tool.calibrate()
-    return tool
-
-
-def test_without_split_the_control_is_off_with_its_text_and_nothing_changes_cv16(tool):
-    make_session(tool.captures)
-    tool.start()
-    tool.calibrate()
-    before = tree_listing(tool.root)
-    status, result = tool.act("control")
-    assert (status, result["error"]) == (409, "Contrôle : indisponible (option --split absente)")
-    assert tree_listing(tool.root) == before
-
-
-def test_control_photos_then_video_are_saved_with_snap_size_and_position_cv25_cv26(tool):
-    control_tool(tool, frames={NAME: {1: 1850, 4: 3850}})  # dev sample: darts 1 and 4, photo and video
-    view = open_control(tool)
-    cursor = view["cursor"]
-    assert (cursor["kind"], cursor["source"], cursor["number"], cursor["photo"]) == ("control", "photo", 1, "dart-001.jpg")
-    assert [slot["point"] for slot in cursor["slots"]] == [list(map(float, p)) for p in POINTS]  # the segment, snapped
-    assert view["control"]["photo"] == {"done": 0, "total": 2} and view["control"]["video"] == {"done": 0, "total": 2}
-    assert view["control"]["role"] == "dev 1" and NAME not in json.dumps(view["control"])
-    status, result = save_item(tool, view)
-    assert status == 200 and result["saved"] == "Enregistré à 12:34:56", result
-    cursor = result["session"]["cursor"]
-    assert (cursor["source"], cursor["number"]) == ("photo", 4)
-    status, result = save_item(tool, result["session"])
-    cursor = result["session"]["cursor"]
-    assert (cursor["source"], cursor["number"], cursor["photo"]) == ("video", 1, "video-001.jpg")
-    assert [slot["status"] for slot in cursor["slots"]] == [None] * 4  # the first video item has no proposal
-    for x, y in POINTS:
-        status, result = tool.act("click", x=x, y=y)
-        assert status == 200, result
-    status, result = save_item(tool, result["session"])
-    assert status == 200 and result["session"]["control"]["video"] == {"done": 1, "total": 2}
-    saved = an.read(annotation_file(tool))
-    assert [(c.dart, c.source, c.position_ms, (c.width, c.height)) for c in saved.controls] == [
-        (1, "photo", None, SIZE), (1, "video", 1850, VIDEO_SIZE), (4, "photo", None, SIZE)]
-    assert all(c.snap == ("snapped",) * 4 for c in saved.controls) and len(saved.calibrations) == 1
-
-
-def test_a_repeated_save_answers_409_and_writes_one_control_u29(tool):
-    control_tool(tool)
-    view = open_control(tool)
-    assert save_item(tool, view)[0] == 200
-    before = annotation_file(tool).read_bytes()
-    status, result = save_item(tool, view)  # the same item again: it is no longer the open one
-    assert (status, result["error"]) == (409, "Photo déjà enregistrée")
-    assert annotation_file(tool).read_bytes() == before and len(an.read(annotation_file(tool)).controls) == 1
-
-
-def test_a_proposal_that_does_not_snap_must_be_clicked_before_save_and_a_hide_follows_the_rule_cv31(tool):
-    make_session(tool.captures)
-    tool.start(snapper=FakeSnapping(failing={POINTS[2]: "contrast"}), controls=control_sources(tool))
-    tool.calibrate()
-    view = open_control(tool)
-    assert [slot["point"] is None for slot in view["cursor"]["slots"]] == [False, False, True, False]
-    status, result = save_item(tool, view)
-    assert (status, result["error"]) == (409, "Points prêts : 3 / 4")
-    status, result = tool.act("hidden_point")
-    assert status == 200 and result["session"]["cursor"]["slots"][2]["status"] == "hidden"
-    hidden_view = result["session"]
-    status, result = tool.act("hidden_point")  # nothing left to click, no point chosen
-    assert (status, result["error"]) == (409, "Choisir le point à cacher : touche 1 à 4, puis H")
-    status, result = save_item(tool, hidden_view)
-    assert status == 200, result
-    control = an.read(annotation_file(tool)).controls[0]
-    assert control.points[2] is None and control.snap[2] is None and control.snap[:2] == ("snapped", "snapped")
-
-
-def test_leaving_the_control_screen_by_reopening_the_session_changes_nothing_u16(tool):
-    control_tool(tool)
-    open_control(tool)
-    tool.act("select", number=1)
-    tool.act("click", x=11, y=12)
-    before = annotation_file(tool).read_bytes()
-    status, view = tool.json("GET", f"/api/sessions/{NAME}")  # Escape: the page reopens the session
-    assert status == 200 and view["cursor"]["kind"] == "dart" and view["cursor"]["slots"] == []
-    assert annotation_file(tool).read_bytes() == before and an.read(annotation_file(tool)).controls == ()
-
-
-def test_resume_after_a_restart_opens_the_first_item_without_a_control_cv26(tool):
-    control_tool(tool)
-    assert save_item(tool, open_control(tool))[0] == 200
-    tool.server.shutdown()
-    tool.server.server_close()
-    tool.start(controls=control_sources(tool))  # a new process: the cursors are lost
-    view = open_control(tool)
-    assert (view["cursor"]["source"], view["cursor"]["number"]) == ("photo", 4)
-
-
-def test_undo_with_no_change_reopens_the_previous_item_and_removes_its_control_u28(tool):
-    control_tool(tool)
-    assert save_item(tool, open_control(tool))[0] == 200
-    assert len(an.read(annotation_file(tool)).controls) == 1
-    status, result = tool.act("clear")
-    assert status == 200 and result["saved"]
-    assert an.read(annotation_file(tool)).controls == ()
-    cursor = result["session"]["cursor"]
-    assert (cursor["number"], cursor["source"]) == (1, "photo") and cursor["ready"] == 4
-
-
-def test_counts_follow_the_sample_eval_all_judged_dev_sample_reference_photos_counted_cv26(tool):
-    make_session(tool.captures)
-    make_session(tool.captures, OTHER)
-    tool.start(controls=control_sources(tool, dev=(NAME,), eval=(OTHER,)))
-    tool.calibrate()
-    counts = {s["name"]: s["control"] for s in tool.json("GET", "/api/sessions")[1]["sessions"]}
-    assert counts[NAME]["photo"] == {"done": 0, "total": 2} and counts[NAME]["role"] == "dev 1"  # darts 1 and 4
-    assert counts[OTHER]["photo"] == {"done": 0, "total": 3} and counts[OTHER]["role"] == "eval 1"  # every judged
-    tool.act("goto", number=3)
-    tool.act("recalibrate")
-    for x, y in NEW_POINTS:
-        tool.act("select", number=NEW_POINTS.index((x, y)) + 1)
-        tool.act("click", x=x, y=y)
-    assert tool.act("save", number=3)[0] == 200  # the segment from dart 3: its photo joins the dev sample
-    tool.act("goto", number=4)
-    status, result = tool.act("click", x=50.5, y=60.5)  # a tip changes nothing
-    assert result["session"]["control"]["photo"] == {"done": 0, "total": 3}
-
-
-@pytest.mark.parametrize("message, reason", [
-    ("split does not match the lock (SHA-256)", "il ne correspond plus au verrou (split-lock.json)"),
-    ("cannot read the split or its lock: No such file", "le split ou son verrou est illisible"),
-    ("split is too large", "le split est trop gros"),
-    ("lock: wrong format or version", "le verrou (split-lock.json) est invalide"),
-    ("split: unknown mode", SPLIT_GENERIC),
-])
-def test_a_refused_split_is_explained_in_french_with_a_generic_fallback_cv16(message, reason):
-    assert split_reason(SplitError(message)) == reason
-
-
-def test_a_split_that_does_not_match_its_lock_warns_in_the_list_and_switches_control_off_cv16(tool):
-    make_session(tool.captures)
-    other = control_sources(tool, dev=(OTHER,))
-    other_data = other.split.read_bytes()
-    tool.start(controls=control_sources(tool, lock_of=other_data))
-    tool.calibrate()
-    status, body = tool.json("GET", "/api/sessions")
-    assert body["controlWarning"] == "Split refusé : il ne correspond plus au verrou (split-lock.json)"
-    assert body["sessions"][0]["control"] == {"available": False, "reason": "Contrôle : indisponible (split refusé)",
-                                              "role": None}
-    assert tool.act("control")[0] == 409
-    assert tool.act("goto", number=3)[0] == 200  # the rest of the tool is unchanged
-
-
-def test_a_session_absent_from_the_split_has_no_control_and_is_still_annotated(tool):
-    make_session(tool.captures)
-    tool.start(controls=control_sources(tool, dev=(OTHER,)))
-    status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert view["control"]["reason"] == "Contrôle : indisponible (session absente du split)"
-    assert tool.act("control")[0] == 409
-
-
-def test_a_session_with_every_frame_missing_has_no_video_item_and_its_reasons_are_counted_s13(tool):
-    control_tool(tool, frames={NAME: {1: "video_missing", 4: "past_end"}})
-    status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert view["control"]["video"] == {"done": 0, "total": 0} and view["control"]["framesPresent"] is True
-    assert view["control"]["frameMissing"] == {"video_missing": 1, "past_end": 1}
-    view = open_control(tool)
-    for _ in range(2):
-        status, result = save_item(tool, view)
-        assert status == 200
-        view = result["session"]
-    assert view["cursor"]["kind"] == "control_done"  # the photos done, no video item to skip to
-    assert tool.act("control")[1]["session"]["cursor"]["kind"] == "control_done"
+    assert "--frames" in result.stdout
+    assert not [flag for flag in ("--drift", "--split", "--lock") if flag in result.stdout]  # ADR 0020
+
+
+@pytest.mark.parametrize("flag", ["--drift", "--split", "--lock"])
+def test_the_removed_options_exit_2(tmp_path, flag):
+    captures = tmp_path / "captures"
+    captures.mkdir()
+    with pytest.raises(SystemExit) as exit_info:
+        main(["--captures", str(captures), "--annotations", str(tmp_path / "ann"), flag, str(tmp_path / "x.json")])
+    assert exit_info.value.code == 2
+
+def frame_sources(tool, frames):
+    """A frames folder (session -> {dart: position_ms or missing reason}) and its `frames.json` (CV27)."""
+    frames_dir = tool.root / "frames"
+    frames_dir.mkdir(exist_ok=True)
+    sessions = []
+    for name, darts in frames.items():
+        (frames_dir / name).mkdir(parents=True, exist_ok=True)
+        listed, missing = [], []
+        for dart, value in sorted(darts.items()):
+            if isinstance(value, str):
+                missing.append(ff.Missing(dart, value))
+                continue
+            file = ff.video_file_name(dart)
+            content = jpeg_bytes(*VIDEO_SIZE, exif_padding=50)
+            (frames_dir / name / file).write_bytes(content)
+            listed.append(ff.Frame(dart, value, *VIDEO_SIZE, file, hashlib.sha256(content).hexdigest()))
+        sessions.append(ff.SessionFrames(name, tuple(listed), tuple(missing)))
+    ff.write_atomic(frames_dir / "frames.json", ff.FramesFile(1000, tuple(sessions)))
+    return FrameSources(frames_dir)
 
 
 def test_a_corrupt_frame_manifest_warns_and_leaves_the_photo_controls_s13(tool):
-    sources = control_sources(tool, frames={})
+    sources = frame_sources(tool, {})
     make_session(tool.captures)
     (sources.frames / "frames.json").write_text("{", encoding="utf-8")
-    tool.start(controls=sources)
-    warning = tool.json("GET", "/api/sessions")[1]["controlWarning"]
+    tool.start(frames=sources)
+    status, body = tool.json("GET", "/api/sessions")
+    warning = body["framesWarning"]
+    assert status == 200 and [s["name"] for s in body["sessions"]] == [NAME]
     assert warning == ("Images vidéo illisibles : frames.json est invalide ou illisible "
                        "(relancer l'extraction, K7.2)")
     assert str(tool.root) not in warning and "frames.json:" not in warning  # never the raw error text (S-minor1)
+    assert all(d["frame"] is None for d in tool.json("GET", f"/api/sessions/{NAME}")[1]["darts"])
+
+
+def test_the_source_of_an_action_is_checked_and_unknown_keys_are_refused(tool):
+    make_session(tool.captures)
+    tool.start()
+    before = tree_listing(tool.root)
+    for body in ({"action": "hidden", "source": "photo"}, {"action": "click", "x": 5, "y": 5, "source": "video"},
+                 {"action": "hidden", "dart": 1}):  # `source` is no longer a key of the route (N24)
+        assert tool.json("POST", f"/api/sessions/{NAME}/actions", body) == (400, {"error": "Action invalide."}), body
+    assert tree_listing(tool.root) == before
 
 
 def test_frame_route_serves_only_listed_files_of_listed_sessions_s13(tool):
-    control_tool(tool, frames={NAME: {1: 850}})
+    make_session(tool.captures)
+    tool.start(frames=frame_sources(tool, {NAME: {1: 850}}))
     (tool.root / "frames" / NAME / "video-004.jpg").write_bytes(jpeg_bytes(*VIDEO_SIZE))  # on disk, not in the manifest
     (tool.root / "frames" / OTHER).mkdir()
     (tool.root / "frames" / OTHER / "video-001.jpg").write_bytes(jpeg_bytes(*VIDEO_SIZE))
@@ -1199,255 +660,124 @@ def test_frame_route_serves_only_listed_files_of_listed_sessions_s13(tool):
 
 
 def test_frame_route_without_the_frames_option_is_a_404_s13(tool):
-    control_tool(tool)
+    make_session(tool.captures)
+    tool.start()
     assert tool.request("GET", f"/api/frame/{NAME}/video-001.jpg")[0] == 404
 
 
-def test_s14_a_click_on_an_unreadable_video_frame_is_unsnapped_unreadable_and_the_tool_keeps_serving(tool):
-    pytest.importorskip("numpy")
-    pytest.importorskip("PIL")
-    from kosmo_camera.annotate.snapping import Snapper
-    make_session(tool.captures)
-    tool.start(snapper=Snapper(), controls=control_sources(tool, frames={NAME: {1: 850}}))
-    tool.calibrate()
-    for _ in range(2):  # photos 1 and 4: header-only JPEGs, unreadable too; hide every point to get to the video
-        view = open_control(tool)
-        for number in range(1, 5):
-            tool.act("select", number=number)
-            tool.act("hidden_point")
-        assert tool.act("save", number=view["cursor"]["number"], source="photo")[0] == 200
-    status, result = tool.act("control")
-    cursor = result["session"]["cursor"]
-    assert (cursor["source"], cursor["photo"]) == ("video", "video-001.jpg")
-    status, result = tool.act("click", x=300, y=300)
-    assert status == 200, result
-    slot = result["session"]["cursor"]["slots"][0]
-    assert (slot["status"], slot["reason"]) == ("unsnapped", "unreadable")
-    assert result["session"]["cursor"]["unreadable"] is True
-    assert tool.json("GET", "/api/sessions")[0] == 200
+# ---- tip entry only (ADR 0020, Q1 B, N24) -----------------------------------------------------------------------------
+
+def _photo_control(dart):
+    return an.Control(dart, an.PHOTO, None, *SIZE, ((10.0, 10.0), None, (30.0, 30.0), (40.0, 40.0)),
+                      (an.SNAPPED, None, an.UNSNAPPED, an.SNAPPED))
 
 
-def test_the_source_of_an_action_is_checked_and_unknown_keys_are_refused(tool):
-    control_tool(tool)
-    for body in ({"action": "save", "number": 1, "source": "audio"}, {"action": "save", "number": 1, "source": 1},
-                 {"action": "save", "number": 1, "dart": 1}):
-        assert tool.json("POST", f"/api/sessions/{NAME}/actions", body)[0] == 400, body
+def _video_control(dart):
+    return an.Control(dart, an.VIDEO, 850, *VIDEO_SIZE, ((1.0, 2.0), (3.0, 4.0), (5.0, 6.0), (7.0, 8.0)),
+                      (an.UNSNAPPED,) * 4)
 
 
-def test_without_numpy_or_pillow_control_is_refused_with_409_and_nothing_changes_a32(tool):
-    make_session(tool.captures)
-    tool.start(snapper=FakeSnapping(available=False), controls=control_sources(tool))
-    status, result = tool.act("control")
-    assert status == 409 and result["error"].startswith("Recalage indisponible")
-    assert not annotation_file(tool).exists()
+def _v3_file(tool, sha):
+    """A version 3 file with one segment and controls, as the stopped tool could leave it."""
+    darts = (an.DartAnnotation(1, an.Status.VISIBLE, (100.5, 200.5)),)
+    annotations = an.Annotations(NAME, sha, (SEGMENT,), darts, (_photo_control(1), _video_control(1)))
+    tool.write_annotations(annotations)
+    return annotations
 
 
-def _tip_all(tool):
-    for _ in range(3):  # darts 1, 3 and 4: one click sets the tip and moves on
-        assert tool.act("click", x=50.5, y=60.5)[0] == 200
-
-
-def test_the_list_gives_the_roles_the_focus_session_and_its_instruction_q9_cv16(tool):
-    make_session(tool.captures)
-    make_session(tool.captures, name=OTHER)
-    tool.start(controls=control_sources(tool, dev=(NAME,), eval=(OTHER,)))
-    body = _list(tool)
-    assert (body["focus"], body["instruction"]) == (NAME, "Cliquer les 4 points de calibration de la photo de la "
-                                                           "fléchette 1 (bouton Continuer)")
-    assert [(s["name"], s["role"], s["badge"]) for s in body["sessions"]] == [(NAME, "dev 1", "À faire"),
-                                                                              (OTHER, "eval 1", "À faire")]
-    tool.calibrate()
-    body = _list(tool)
-    assert body["instruction"] == "Pointer les fléchettes : prochaine fléchette 1 (bouton Continuer)"
-    assert body["sessions"][0]["badge"] == "En cours"
-    assert [(s["key"], s["done"], s["total"], s["status"]) for s in body["sessions"][0]["steps"]] == [
-        ("calibration", 1, 1, "done"), ("tips", 0, 3, "todo"), ("control_photo", 0, 2, "todo"),
-        ("control_video", 0, 0, "unavailable")]
-    assert body["sessions"][1]["steps"][0]["status"] == "todo"
-
-
-def test_the_list_sends_the_payload_of_the_continue_button_and_none_without_a_button_u15_u23(tool):
-    make_session(tool.captures)
-    tool.start(controls=control_sources(tool, dev=(NAME,)))
-    assert _list(tool)["continuePayload"] == {}  # calibration: opening the session is enough
-    tool.calibrate()
-    assert _list(tool)["continuePayload"] == {"action": "goto", "number": 1}
-    _tip_all(tool)
-    body = _list(tool)
-    assert body["instruction"].startswith("Contrôle de calibration : photo de la fléchette 1")
-    assert body["continuePayload"] == {"action": "control"}
-
-
-def test_the_list_has_no_continue_payload_when_the_instruction_has_no_action_u35(tool):
-    make_session(tool.captures)
+@pytest.mark.parametrize("body", [{"action": kind} for kind in REMOVED_KINDS]
+                         + [{"action": "save", "number": 1}, {"action": "control", "number": 1},
+                            {"action": "click", "x": 5, "y": 5, "source": "photo"},
+                            {"action": "hidden", "source": "video"}, {"action": "hidden", "dart": 1}])
+def test_the_removed_actions_and_the_source_key_answer_400_and_leave_the_folder_byte_identical_n24(tool, body):
+    _, sha = make_session(tool.captures)
+    _v3_file(tool, sha)
     tool.start()
-    tool.calibrate()
-    _tip_all(tool)
-    body = _list(tool)  # no --split: "Contrôle indisponible", no button
-    assert body["instruction"].startswith("Contrôle indisponible") and body["continuePayload"] is None
-    assert body["focus"] == NAME
+    before = tree_listing(tool.root)
+    status, result = tool.json("POST", f"/api/sessions/{NAME}/actions", body)
+    assert status == 400 and result["error"] in ("Action inconnue.", "Action invalide."), body
+    assert tree_listing(tool.root) == before
 
 
-def test_a_blocked_session_alone_gives_its_instruction_and_no_focus_u35(tool):
+def test_a_tip_write_on_a_v3_file_keeps_its_segments_and_controls_cv20_cv25(tool):
+    _, sha = make_session(tool.captures)
+    stored = _v3_file(tool, sha)
+    tool.start()
+    for body in ({"action": "click", "x": 1.5, "y": 2.5}, {"action": "hidden"}, {"action": "goto", "number": 1},
+                 {"action": "clear"}, {"action": "off_board"}):
+        status, result = tool.json("POST", f"/api/sessions/{NAME}/actions", body)
+        assert status == 200, (body, result)
+    saved = an.read(annotation_file(tool))
+    assert saved.calibrations == stored.calibrations and saved.controls == stored.controls
+    assert [(d.number, d.status) for d in saved.darts] == [(1, an.Status.OFF_BOARD), (3, an.Status.VISIBLE),
+                                                             (4, an.Status.HIDDEN)]
+
+
+def test_a_tips_only_file_reads_strictly_and_feeds_the_view_segment_for_and_control_sample_n24(tool):
+    from kosmo_camera import control
+    from kosmo_camera.truth import read_truth
     folder, _ = make_session(tool.captures)
-    (folder / "truth.json").write_text("{", encoding="utf-8")
     tool.start()
-    body = _list(tool)
-    assert body["instruction"] == "Session illisible ou refusée : voir l'information de la carte"
-    assert (body["focus"], body["continuePayload"]) == (None, None)
-    assert "invalide" in body["sessions"][0]["info"][0]
+    for _ in range(3):
+        assert tool.act("click", x=50, y=60)[0] == 200
+    saved = an.read(annotation_file(tool))
+    assert saved.calibrations == () and saved.controls == () and len(saved.darts) == 3
+    view = tool.json("GET", f"/api/sessions/{NAME}")[1]
+    assert view["segments"] == [] and view["cursor"] == {"kind": "complete", "number": None, "photo": None}
+    assert [an.segment_for(saved, n) for n in (1, 3, 4)] == [None] * 3
+    sample = control.sample(read_truth(folder / "truth.json"), saved, "dev")
+    assert sample.photo_darts == (1, 4)  # stride and last dart only: no segment photo is added
 
 
-def test_the_badge_values_are_pinned_for_the_list_page_t15g(tool):
-    make_session(tool.captures)
-    make_session(tool.captures, name=OTHER, judged=(), voided=(1, 2), no_photo=(3,))
+def test_the_progress_label_counts_the_entered_tips_of_24_darts(tool):
+    make_session(tool.captures, judged=tuple(range(1, 25)), voided=(), no_photo=())
     tool.start()
-    badges = {s["name"]: s["badge"] for s in _list(tool)["sessions"]}
-    assert badges == {NAME: "À faire", OTHER: "Ignorée"}
-    tool.calibrate()
-    assert {s["name"]: s["badge"] for s in _list(tool)["sessions"]}[NAME] == "En cours"
-    # "Terminée" is pinned by test_the_instruction_follows_every_save_with_no_cached_text_cv16
+    assert states(tool)[NAME]["progressLabel"] == "0 / 24 pointes saisies"
+    for _ in range(24):
+        assert tool.act("click", x=50, y=60)[0] == 200
+    assert states(tool)[NAME]["progressLabel"] == "24 / 24 pointes saisies"
 
 
-def test_without_split_the_list_has_no_role_and_says_control_is_unavailable_u17(tool):
-    make_session(tool.captures)
-    tool.start()
-    tool.calibrate()
-    _tip_all(tool)
-    body = _list(tool)
-    assert "role" not in body["sessions"][0]
-    assert body["instruction"] == "Contrôle indisponible : relancer l'outil avec --split (K7.3)"
-    assert body["instruction"] != "Contrôle terminé : fermer l'outil et lancer le diagnostic (K7.4)"
-    status, view = tool.json("GET", f"/api/sessions/{NAME}")
-    assert view["instruction"] == "Contrôle indisponible : relancer l'outil avec --split (K7.3)"
-    assert "Contrôle : indisponible (option --split absente)" in body["sessions"][0]["info"]
+def test_the_session_view_carries_the_photo_control_and_the_listed_frame_of_each_dart_cv25_cv27(tool):
+    _, sha = make_session(tool.captures)
+    _v3_file(tool, sha)
+    tool.start(frames=frame_sources(tool, {NAME: {1: 850, 3: "video_missing"}}))
+    darts = {d["number"]: d for d in tool.json("GET", f"/api/sessions/{NAME}")[1]["darts"]}
+    assert darts[1]["control"] == [[10.0, 10.0], None, [30.0, 30.0], [40.0, 40.0]]
+    assert darts[1]["frame"] == {"file": "video-001.jpg", "control": [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [7.0, 8.0]]}
+    assert (darts[3]["control"], darts[3]["frame"]) == (None, None)  # a missing frame is not listed
+    assert (darts[4]["control"], darts[4]["frame"]) == (None, None)
 
 
-def test_the_instruction_follows_every_save_with_no_cached_text_cv16(tool):
-    control_tool(tool, frames={NAME: {1: 1850, 4: 3850}})
-    _tip_all(tool)
-    assert _list(tool)["instruction"] == "Contrôle de calibration : photo de la fléchette 1 (bouton Continuer)"
-    view = open_control(tool)
-    assert view["instruction"] == "Contrôle de calibration : photo de la fléchette 1"  # the screen's own title
-    result = save_item(tool, view)[1]
-    assert result["session"]["instruction"] == "Contrôle de calibration : photo de la fléchette 4"
-    result = save_item(tool, result["session"])[1]
-    assert result["session"]["instruction"] == "Contrôle de calibration : image vidéo de la fléchette 1"
-    assert _list(tool)["instruction"] == ("Contrôle de calibration : image vidéo de la fléchette 1 "
-                                          "(bouton Continuer)")
-    for x, y in POINTS:
-        tool.act("click", x=x, y=y)
-    result = tool.act("save", number=1, source="video")[1]
-    assert result["session"]["instruction"] == "Contrôle de calibration : image vidéo de la fléchette 4"
-    for x, y in POINTS:
-        tool.act("click", x=x, y=y)  # the next video item proposes the previous one: these clicks replace nothing
-    result = tool.act("save", number=4, source="video")[1]
-    final = "Contrôle terminé : fermer l'outil et lancer le diagnostic (K7.4)"
-    assert result["session"]["instruction"] == final and _list(tool)["instruction"] == final
-    assert _list(tool)["sessions"][0]["badge"] == "Terminée" and _list(tool)["focus"] is None
-
-
-def test_drift_flags_never_change_the_instruction_and_stay_in_the_information_lines_cv30(tool):
-    make_session(tool.captures)
-    drift = tool.root / "drift.json"
-    tool.start(drift)
-    tool.calibrate()
-    before = (_list(tool)["instruction"], tool.json("GET", f"/api/sessions/{NAME}")[1]["instruction"])
-    _write_drift(drift, _flags(sha=_sha(tool), beyond=[3, 4], suggested=[3], unmeasurable=[1]))
-    body = _list(tool)
-    view = tool.json("GET", f"/api/sessions/{NAME}")[1]
-    assert (body["instruction"], view["instruction"]) == before
-    assert body["sessions"][0]["info"][0] == "Mesure de dérive non validée : information seulement"
-    for text in (body["instruction"], view["instruction"], body["driftWarning"], view["warning"], view["message"]):
-        assert text is None or "Dérive" not in text
-    drift.write_text("{not json", encoding="utf-8")
-    assert _list(tool)["instruction"] == before[0]
-
-
-def test_the_view_carries_the_calibration_label_progress_and_badge_so_the_page_counts_nothing_a3(tool):
-    make_session(tool.captures)
-    tool.start()
-    view = tool.json("GET", f"/api/sessions/{NAME}")[1]
-    assert (view["calibrationLabel"], view["progress"], view["badge"]) == (
-        "Non calibrée", {"done": 0, "total": 3}, "À faire")  # no segment: to do
-    tool.calibrate()
-    tool.act("click", x=50.5, y=60.5)
-    view = tool.json("GET", f"/api/sessions/{NAME}")[1]
-    assert (view["calibrationLabel"], view["progress"], view["badge"]) == (
-        "Calibrée", {"done": 1, "total": 3}, "En cours")  # one segment: in progress
-    assert _list(tool)["sessions"][0]["calibrationLabel"] == "Calibrée"
-    _recalibrate_at(tool, 3)
-    view = tool.json("GET", f"/api/sessions/{NAME}")[1]
-    assert view["calibrationLabel"] == "Calibrée (2 segments)"  # several segments
-    assert _list(tool)["sessions"][0]["calibrationLabel"] == "Calibrée (2 segments)"
-    for _ in range(2):
-        tool.act("click", x=50.5, y=60.5)
-    view = tool.json("GET", f"/api/sessions/{NAME}")[1]
-    assert view["progress"] == {"done": 3, "total": 3} and view["badge"] == "En cours"  # control not done: not finished
-
-
-def test_a_session_with_nothing_left_has_the_terminee_badge_in_the_view_and_the_list_a3(tool):
-    control_tool(tool, frames={NAME: {1: 1850, 4: 3850}})
-    _tip_all(tool)
-    view = open_control(tool)
-    result = save_item(tool, view)[1]
-    result = save_item(tool, result["session"])[1]
-    for source, number in (("video", 1), ("video", 4)):
-        for x, y in POINTS:
-            tool.act("click", x=x, y=y)
-        result = tool.act("save", number=number, source=source)[1]
-    assert result["session"]["badge"] == "Terminée" and _list(tool)["sessions"][0]["badge"] == "Terminée"
-    assert result["session"]["progress"] == {"done": 3, "total": 3}
-
-
-def test_the_undo_that_reopens_the_previous_control_answers_with_the_fixed_notice_and_no_other_action_does_u28(tool):
-    control_tool(tool, frames={NAME: {1: 1850, 4: 3850}})
-    _tip_all(tool)
-    view = open_control(tool)
-    notice = "Photo précédente rouverte : son enregistrement est retiré jusqu'à Entrée"
-    result = save_item(tool, view)[1]
-    assert "notice" not in result  # a save is not a reopening
-    result = tool.act("select", number=2)[1]
-    assert "notice" not in result
-    result = tool.act("click", x=7.0, y=8.0)[1]
-    assert "notice" not in result
-    result = tool.act("clear")[1]  # takes back the click only
-    assert "notice" not in result
-    result = tool.act("clear")[1]  # now the previous control comes back
-    assert result["notice"] == notice and result["session"]["cursor"]["number"] == 1
-    assert "notice" not in tool.act("select", number=1)[1]  # gone at the next answer
-    assert "notice" not in tool.act("clear")[1]  # the first item: nothing before it
-    status, error = tool.act("clear", notice="x")  # the request keys stay the whitelist
-    assert status == 400 and "notice" not in error
-
-
-def test_an_eval_session_shorter_than_the_video_range_ends_with_no_missing_frames_message_cv26(tool):
-    make_session(tool.captures)  # darts 1, 3, 4: none in the eval video range, so no frame is planned or extracted
-    tool.start(controls=control_sources(tool, dev=(), eval=(NAME,), frames={}))
-    tool.calibrate()
-    _tip_all(tool)
-    view = open_control(tool)
-    for _ in range(3):  # the photo controls of darts 1, 3 and 4
-        result = save_item(tool, view)[1]
-        view = result["session"]
-    assert view["cursor"]["kind"] == "control_done"
-    listed = _list(tool)
-    assert listed["sessions"][0]["badge"] == "Terminée" and view["badge"] == "Terminée"
-    assert listed["instruction"] == "Contrôle terminé : fermer l'outil et lancer le diagnostic (K7.4)"
-    assert "Images vidéo absentes" not in listed["instruction"] and "Images vidéo absentes" not in view["instruction"]
-    assert "Contrôle vidéo : aucune image prévue pour cette session" in view["info"]
-    video = next(s for s in view["steps"] if s["key"] == "control_video")
-    assert (video["status"], video["done"], video["total"]) == ("done", 0, 0)
-
-
-def test_planned_video_frames_absent_from_the_manifest_keep_the_missing_frames_message_cv27(tool):
-    make_session(tool.captures)
-    tool.start(controls=control_sources(tool, dev=(NAME,), frames={}))  # a dev session always plans frames
-    tool.calibrate()
-    _tip_all(tool)
-    view = open_control(tool)
-    while view["cursor"]["kind"] == "control":
-        view = save_item(tool, view)[1]["session"]
-    assert _list(tool)["instruction"] == "Images vidéo absentes : lancer l'extraction (K7.2)"
-    assert "Contrôle vidéo : indisponible (images vidéo absentes)" in view["info"]
-    assert view["badge"] == "En cours" and "Contrôle vidéo : aucune image prévue pour cette session" not in view["info"]
+@pytest.mark.parametrize("python", stdlib_pythons())
+def test_the_tool_starts_lists_and_saves_a_tip_with_numpy_and_pillow_blocked(tmp_path, python):
+    root = Path(__file__).resolve().parent.parent
+    captures, annotations = tmp_path / "captures", tmp_path / "annotations"
+    make_session(captures)
+    script = tmp_path / "run_tool.py"
+    script.write_text(
+        "import importlib.abc, json, sys, threading, urllib.request\n"
+        "class Block(importlib.abc.MetaPathFinder):\n"
+        "    def find_spec(self, name, path=None, target=None):\n"
+        "        if name.split('.')[0] in ('numpy', 'PIL'):\n"
+        "            raise ImportError('blocked: ' + name)\n"
+        "sys.meta_path.insert(0, Block())\n"
+        f"sys.path.insert(0, {str(root)!r})\n"
+        "from pathlib import Path\n"
+        "from kosmo_camera.annotate.server import make_server\n"
+        f"server = make_server(Path({str(captures)!r}), Path({str(annotations)!r}), 0,\n"
+        f"                     Path({str(root / 'kosmo_camera' / 'annotate' / 'static')!r}))\n"
+        "threading.Thread(target=server.serve_forever, daemon=True).start()\n"
+        "base = 'http://127.0.0.1:%d' % server.server_address[1]\n"
+        "names = [s['name'] for s in json.load(urllib.request.urlopen(base + '/api/sessions'))['sessions']]\n"
+        "body = json.dumps({'action': 'click', 'x': 5, 'y': 6}).encode()\n"
+        f"request = urllib.request.Request(base + '/api/sessions/{NAME}/actions', body,\n"
+        "                                 {'Content-Type': 'application/json', 'Origin': base}, method='POST')\n"
+        "saved = json.load(urllib.request.urlopen(request))['saved']\n"
+        "server.shutdown()\n"
+        "assert not [m for m in sys.modules if m.split('.')[0] in ('numpy', 'PIL')]\n"
+        "print(names, saved)\n", encoding="utf-8")
+    result = subprocess.run([python, "-I", "-S", str(script)], capture_output=True, text=True,
+                            env={"PATH": os.environ.get("PATH", "")}, timeout=60)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.startswith(f"['{NAME}'] Enregistré à ")

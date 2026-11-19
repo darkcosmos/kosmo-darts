@@ -9,8 +9,7 @@ import pytest
 
 STATIC = Path(__file__).parent.parent / "kosmo_camera" / "annotate" / "static"
 FILES = ("index.html", "app.js", "style.css")
-ACTION_KEYS = {"btnHidden": "H", "btnOffBoard": "O", "btnClear": "U", "btnNext": "N", "btnPrevious": "P",
-               "btnRecalibrate": "R", "btnControl": "K"}
+ACTION_KEYS = {"btnHidden": "H", "btnOffBoard": "O", "btnClear": "U", "btnNext": "N", "btnPrevious": "P"}
 ENGLISH_WORDS = re.compile(r"\b(next|previous|hidden|clear|cancel|loading|error|back|save|saved|dart|darts"
                            r"|the|and|please|click|off board|undo|none|yes|no)\b", re.IGNORECASE)
 
@@ -69,8 +68,7 @@ def test_each_action_button_label_ends_with_its_key_letter():
 
 def test_the_key_handler_maps_the_same_letters_to_the_same_actions():
     source = read("app.js")
-    for letter, action in (("h", "hidden"), ("o", "off_board"), ("u", "clear"), ("n", "next"), ("p", "previous"),
-                           ("r", "recalibrate"), ("k", "control")):
+    for letter, action in (("h", "hidden"), ("o", "off_board"), ("u", "clear"), ("n", "next"), ("p", "previous")):
         assert re.search(rf'{letter}:\s*"{action}"', source), letter
 
 
@@ -162,7 +160,6 @@ def key_actions():
 def test_key_actions_match_the_flow_action_names_and_no_letter_is_used_twice():
     from kosmo_camera.annotate import flow
     mapping = key_actions()
-    assert mapping["r"] == "recalibrate"
     assert set(mapping.values()) <= set(flow.KINDS)
     assert len(re.findall(r'\b(\w):\s*"\w+"', re.search(r"const KEY_ACTIONS = \{(.*?)\};", read("app.js")).group(1))) \
         == len(mapping)
@@ -282,7 +279,6 @@ def test_the_keys_of_the_assisted_screen_are_bound_in_the_document_handler():
     assert 'key === "h"' in assistant and '"hidden_point"' in assistant and 'key === "u"' in assistant
     handler = function_body("onKey")
     assert 'key === "Escape"' in handler and 'key === "0"' in handler and "Arrow" in handler
-    assert 'k: "control"' in source  # K reaches every session screen, Terminé included, through the shared handler
     assert re.search(r'stage\.addEventListener\("wheel", onWheel', source)
 
 
@@ -345,13 +341,6 @@ def test_the_reopened_notice_comes_from_the_server_and_the_page_infers_no_flow_e
     assert "setText(banner," in function_body("renderPanel")  # textContent only
 
 
-def test_the_page_strings_that_the_server_also_knows_equal_the_python_constants_a6():
-    from kosmo_camera.annotate import flow
-    table = string_table()
-    assert table["snapUnavailable"] == flow.UNAVAILABLE
-    assert table["photoUnreadable"] == flow.PHOTO_UNREADABLE
-
-
 def test_the_page_draws_the_next_slot_and_the_diagram_flag_of_the_server_a5():
     source = read("app.js")
     assert "nextSlotIndex" not in source and "noProposals" not in source and "trackItem" not in source
@@ -385,28 +374,6 @@ def test_the_diagram_follows_the_action_buttons_and_marks_done_points_without_co
 
 # ---- journey page (T15g: CV16, CV30, D42 U23, U19, U35; the strings are pinned to the Python constants) --------------
 
-def js_object(name):
-    match = re.search(rf"const {name} = \{{(.*?)\}};", read("app.js"), re.DOTALL)
-    assert match, name
-    return match.group(1)
-
-
-def test_the_badge_values_of_the_page_are_the_server_constants_t3():
-    from kosmo_camera.annotate import journey
-    page = re.findall(r'"([^"]+)":\s*"badge-\w+"', js_object("BADGE_CLASS"))
-    assert sorted(page) == sorted([journey.STATE_TODO, journey.STATE_IN_PROGRESS, journey.STATE_DONE,
-                                   journey.STATE_IGNORED])
-    assert page == ["À faire", "En cours", "Terminée", "Ignorée"]
-
-
-def test_the_step_statuses_and_keys_of_the_page_are_the_server_constants_t3():
-    from kosmo_camera.annotate import journey
-    source = read("app.js")
-    assert f'const STEP_DONE = "{journey.DONE}";' in source
-    assert f'const STEP_UNAVAILABLE = "{journey.UNAVAILABLE}";' in source
-    assert re.findall(r"(\w+):", js_object("STEP_TEXT")) == list(journey.ROWS)
-
-
 def test_the_step_row_templates_and_card_strings_are_defined_once():
     table = string_table()
     assert table["stepCalibrationDone"] == "Calibration : faite" and table["stepCalibrationTodo"] == "Calibration : à faire"
@@ -424,17 +391,6 @@ def test_the_page_restates_no_instruction_of_the_server_u35():
     for fragment in ("Cliquer les 4 points", "Pointer les fléchettes", "Contrôle terminé", "Session terminée",
                      "Session illisible", "Contrôle indisponible", "Images vidéo absentes", "bouton Continuer"):
         assert fragment not in source, fragment
-
-
-def test_the_recalibration_explanation_is_the_server_text_in_the_side_panel_u19():
-    from kosmo_camera.annotate import journey
-    assert string_table()["recalibrationExplanation"] == journey.RECALIBRATION_EXPLANATION
-    html = read("index.html")
-    panel = html[html.index('<aside id="panel">'):html.index("</aside>")]
-    assert 'id="recalibration-help"' in panel and 'id="recalibration-help"' not in html.replace(panel, "")
-    assert html.index('id="recalibration-help"') > html.index('id="help"')
-    body = function_body("renderPanel")
-    assert 'cursor.kind !== "recalibration"' in body and "TEXT.recalibrationExplanation" in body
 
 
 def test_journey_help_and_banner_are_three_distinct_elements_and_only_journey_has_the_instruction_style_u19():
