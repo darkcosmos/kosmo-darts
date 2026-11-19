@@ -20,29 +20,14 @@ Le découpage sépare les sessions en deux ensembles : « dev » (environ 70 %) 
 (environ 30 %) pour mesurer (CV3). Le découpage se fait par session. Si l'équilibre n'est pas atteint, il se fait par
 blocs, et le résultat est alors marqué « plus optimiste » partout où il apparaît.
 
-Étape K1, dans le dossier `tools/camera/` du dépôt, depuis WSL :
+Étape K1, faite : le découpage est verrouillé et commité dans `tools/camera/config/split-lock.json` (modes, décomptes et
+empreinte, aucun nom de session). Il ne change plus : rien à relancer pour cette étape.
 
-```bash
-python3 -m kosmo_camera.split --captures ~/kosmo-data/captures --lock ~/kosmo-runs/split-lock.json
-```
-
-- La commande affiche le mode (session ou blocs, « plus optimiste »), les unités et les fléchettes jugées par
-  ensemble, et le SHA-256 du découpage (`split sha256`).
-- Le fichier de découpage est écrit dans `~/kosmo-runs/split.json`. La commande refuse de l'écraser : elle ne se lance
-  qu'une fois. Le découpage ne change plus une fois verrouillé.
-- Le fichier de verrouillage est écrit dans `~/kosmo-runs/split-lock.json` (modes, décomptes et empreinte, aucun nom
-  de session).
-- Collez dans le chat la sortie complète de la commande, puis le contenu du fichier `~/kosmo-runs/split-lock.json`
-  (par exemple avec `cat ~/kosmo-runs/split-lock.json`). L'équipe le commit tel quel, octet pour octet, dans
-  `tools/camera/config/split-lock.json`. Aucun des deux ne contient de nom de session.
-- Pour recommencer après une erreur, et seulement tant que le verrouillage n'est pas commité : supprimez
-  `~/kosmo-runs/split.json` et `~/kosmo-runs/split-lock.json`, puis relancez la commande.
 - L'ensemble « eval » n'est jamais utilisé pour entraîner, régler ou choisir un seuil (CV4).
-- Le mode blocs n'est verrouillé qu'après votre accord.
 
 ## Annotate
 
-Étape K2 : annoter toutes les sessions existantes avec l'outil. Compter environ une heure.
+Étape K2 : saisir la pointe de chaque fléchette jugée des sessions existantes, avec l'outil. L'outil reprend où vous étiez.
 
 Lancer l'outil dans WSL, depuis le dossier `tools/camera/` du dépôt (comme pour K1) :
 
@@ -57,10 +42,10 @@ signalez-le dans le chat avec le message affiché : ne cherchez pas de contourne
 
 Ce que vous devez voir :
 
-- La liste des sessions, avec l'avancement et l'état de calibration (« Non calibrée » ou calibrée). Une session sans
-  fléchette jugée est marquée « Ignorée : aucune fléchette jugée » et ne s'ouvre pas.
-- La calibration demande les 4 points dans l'ordre (« Calibration : point 1 sur 4 », puis 2, 3, 4). Un schéma met en
-  évidence le prochain point à cliquer : le coin extérieur du double, entre les fils indiqués.
+- La liste des sessions, avec « n / N pointes saisies » et l'état « Calibrée » ou « Non calibrée » (lecture seule). Une
+  session sans fléchette jugée est marquée « Ignorée : aucune fléchette jugée » et ne s'ouvre pas.
+- Les segments de calibration et les contrôles déjà faits ne se modifient plus dans l'outil : ils s'affichent en
+  lecture seule (voir K7.C).
 - Chaque photo de fléchette affiche sa vraie valeur (par exemple « T20 »). Les entrées annulées sont sautées.
 - Un clic pose la pointe et affiche la fléchette suivante. Après chaque action, la barre d'état affiche
   « Enregistré à HH:MM:SS ».
@@ -74,16 +59,14 @@ Touches de l'outil :
 |---|---|
 | `H` | Cachée (fléchette non visible) |
 | `O` | Hors cible |
-| `U` | Effacer (la pointe de la fléchette courante, ou le dernier point en calibration) |
+| `U` | Effacer (la pointe de la fléchette courante) |
+| `V` | Image vidéo de la fléchette, en lecture seule (K7.3) |
 | `N` | Suivante |
 | `P` | Précédente |
 | `+` ou `=` / `-` | Zoom avant / arrière (sur un clavier AZERTY, `+` et `0` demandent Maj ; `=` évite Maj) |
 | `0` | Vue entière |
 | Flèches | Déplacer la vue (la molette zoome à l'endroit du curseur : déplacer la vue est rarement utile) |
 | `Échap` | Retour à la liste des sessions |
-
-Les quatre points de calibration ne sont enregistrés qu'après le quatrième clic : si vous quittez avant (`Ctrl+C`
-ou relance), ils sont perdus et la calibration est à refaire.
 
 Pour arrêter l'outil, appuyez sur `Ctrl+C` dans le terminal. Pour reprendre, relancez la même commande : le travail
 déjà enregistré est repris.
@@ -117,17 +100,17 @@ Ce qu'il faut voir : le tableau `nvidia-smi` avec le nom du GPU (RTX 4070, 12 Go
 la ligne `cuda available: True`, puis `device name:` avec le nom du GPU. Si la ligne dit `cuda available: False`,
 collez toute la sortie dans le chat et arrêtez-vous là.
 
-## Contrôle de calibration
+## Visionneuse (K7)
 
 Étape K5 suspendue le 15/11/2026 : la mesure de dérive n'est pas fiable (presque toutes les photos sortent au-delà du seuil, et le déplacement vu à l'œil à partir de la fléchette 57 de la session d'éval de 18h24 n'apparaît pas). Ne recalibrez plus d'après le rapport de dérive. Les recalibrations déjà faites sont gardées. K7 est arrêtée à son tour, voir ci-dessous.
 
-Étapes K7 arrêtées le 18/11/2026 (nouvelle stratégie de l'issue #42) : vos clics de contrôle sont terminés et gardés comme vérité de référence ; aucun nouveau clic de calibration ou de contrôle ne vous sera demandé. Le recalage des points (« recalé », « non recalé ») et la mesure de dérive ne seront plus développés. Les clics de K7.1b et K7.3 (recalage, calibration, contrôle) sont arrêtés. Selon votre réponse B à la question Q1 de #42, la tâche C1 retire de l'outil la saisie des calibrations et des contrôles, le recalage et la dérive ; l'outil garde l'affichage de vos annotations et la saisie des pointes, pour de futures campagnes courtes (autres types de fléchettes, 10 min au plus). La suite (phase 1) sera une seule commande, après que vous aurez confirmé sur #42 que le dossier d'images réelles est monté.
+Étapes K7 arrêtées le 18/11/2026 (nouvelle stratégie de l'issue #42) : vos clics de contrôle sont terminés et gardés comme vérité de référence ; aucun nouveau clic de calibration ou de contrôle ne vous sera demandé. Le recalage des points (« recalé », « non recalé ») et la mesure de dérive ne seront plus développés. Les clics de K7.1b et K7.3 (recalage, calibration, contrôle) sont arrêtés. Réponse B à la question Q1 de #42, appliquée par la tâche C1 : l'outil garde l'affichage de vos annotations et la saisie des pointes, pour de futures campagnes courtes (autres types de fléchettes, 10 min au plus) ; il montre en lecture seule vos segments, vos contrôles et les images vidéo. Le recalage, la dérive et la saisie des calibrations et des contrôles n'y sont plus. La suite (phase 1) sera une seule commande, après que vous aurez confirmé sur #42 que le dossier d'images réelles est monté.
 
-K7.0. Dans votre clone : `git fetch origin`, puis `git switch feat/camera-feasibility-0b-1-detection` et `git pull`. (1 min)
+K7.0. Dans votre clone : `git fetch origin`, puis `git switch docs/camera-registration-strategy` et `git pull` (la branche de la PR de l'issue #42). (1 min)
 
 ```bash
 git fetch origin
-git switch feat/camera-feasibility-0b-1-detection
+git switch docs/camera-registration-strategy
 git pull
 ```
 
@@ -136,12 +119,6 @@ K7.1. Reconstruire l'image depuis la racine du dépôt : `docker build -f tools/
 ```bash
 docker build -f tools/camera/Dockerfile -t kosmo-camera:gpu tools/camera
 ```
-
-K7.1b. Une seule fois : préparer l'environnement du recalage dans WSL (il ne contient que numpy et Pillow, aux versions déjà utilisées dans l'image, vérifiées par empreinte), en collant cette seule commande depuis la racine du dépôt :
-
-`python3 -m venv ~/kosmo-tool-venv && ~/kosmo-tool-venv/bin/pip install --require-hashes --only-binary=:all: -r tools/camera/requirements-tool.txt && ~/kosmo-tool-venv/bin/python -c "import numpy, PIL; print('numpy', numpy.__version__, '- Pillow', PIL.__version__)"`
-
-Elle se termine par la ligne `numpy 2.5.4 - Pillow 13.0.0`. Si WSL répond que `venv` manque : `sudo apt install python3-venv`, puis recoller la commande. L'outil se lance ensuite toujours avec `~/kosmo-tool-venv/bin/python` (K7.3). (2 à 5 min)
 
 K7.2. Extraire les images vidéo prises environ 1 s avant chaque saisie (pas de carte graphique nécessaire) :
 
@@ -152,79 +129,39 @@ docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges -
 Elle affiche le nombre d'images extraites, la ligne « Images vidéo absentes : N » et les manquantes par raison ; une
 vidéo illisible ne l'arrête pas. Rien à coller. Le fichier `frames.json` et le dossier `~/kosmo-runs/frames` restent sur votre ordinateur : ne les collez jamais. (2 à 5 min)
 
-K7.3. Relancer l'outil d'annotation dans WSL, depuis `tools/camera/`, avec l'environnement de K7.1b :
+K7.3. Lancer l'outil dans WSL, depuis `tools/camera/` (la commande `python3` de WSL suffit, rien d'autre à installer) :
 
 ```bash
-~/kosmo-tool-venv/bin/python -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations --frames ~/kosmo-runs/frames
+python3 -m kosmo_camera.annotate --captures ~/kosmo-data/captures --annotations ~/kosmo-data/annotations --frames ~/kosmo-runs/frames
 ```
 
-puis ouvrir `http://127.0.0.1:8765`. La ligne en haut donne la seule consigne en cours. Sur la liste, la carte
-« Prochaine étape » a un bouton « Continuer » (ou Entrée) ; dans une session, appuyer sur K (« Contrôle de
-calibration »), depuis n'importe quel écran de la session, même « Terminé ». Vos clics servent à désigner le
-bon croisement de fils, pas à le viser au pixel : l'outil recale chaque point sur le croisement exact. Pour
-chaque photo, les 4 points de la photo précédente sont déjà proposés et recalés ; les 4 vignettes agrandies à
-droite montrent chaque point avec son état (« recalé » veut dire : le point est placé sur le croisement exact ; « non recalé », « caché », « à cliquer »). Si les 4
-sont sur le bon croisement : Entrée. Si un point est sur le mauvais croisement ou « à cliquer » : cliquer près
-du bon croisement (le point le plus proche est remplacé et recalé ; pour un point loin de votre clic,
-choisir d'abord le point avec les touches 1 à 4), puis Entrée. H seulement si une fléchette cache le point
-(touche 1 à 4 puis H ; une photo inutilisable : 1 H 2 H 3 H 4 H puis Entrée, elle compte comme cachée) ; U
-annule le dernier changement, ou revient à la photo précédente (son enregistrement est retiré jusqu'à
-Entrée) ; Échap pour quitter. Entrée enregistre toujours, même après un clic sur un bouton. Rien n'est enregistré avant Entrée
-(« Points prêts : n / 4 », puis « Enregistré à HH:MM:SS »). La première photo de chaque session part de la
-calibration de la session ; la première image vidéo de chaque session n'a pas de proposition : 4 clics. Après
-un déplacement de la cible, les points proposés partent sur un mauvais croisement ou restent « à cliquer » :
-les recliquer. Même travail ensuite sur les images vidéo. Environ 190 photos et 45 images vidéo (les nombres
-exacts s'affichent sur la carte de chaque session, « Contrôle photo : D / T ») : le plus souvent une seule
-touche par photo (environ 5 s), 4 clics sur la première image vidéo de chaque session (4 images), quelques
-clics après un déplacement : environ 20 à 30 min au total (au lieu de 1 h 15), en plusieurs fois si vous voulez (l'outil
-reprend où vous étiez). Un point « non recalé » est gardé à votre clic et compté dans le diagnostic. Sans
-`--split`, la ligne en haut dit « Contrôle indisponible : relancer l'outil avec --split (K7.3) » ; sans `--frames`,
-« Images vidéo absentes : lancer l'extraction (K7.2) » ; lancé
-avec `python3` au lieu de `~/kosmo-tool-venv/bin/python`, il affiche « Recalage indisponible » : relancer
-comme indiqué. Rien à coller.
+puis ouvrir `http://127.0.0.1:8765`. Si le port 8765 est pris, ajoutez `--port <numéro>` à la commande.
+
+Dans une session, la touche `V` affiche l'image vidéo de la fléchette (prise environ 1 s avant la saisie), quand elle
+existe ; `V` à nouveau revient à la photo. Sans image vidéo, `V` ne change rien et affiche « Pas d'image vidéo pour cette
+fléchette. » : le bouton « Image vidéo (V) » est alors grisé. Sans `--frames`, aucune image vidéo n'est proposée. Si
+`frames.json` est illisible, l'outil affiche « Images vidéo illisibles : frames.json est invalide ou illisible (relancer
+l'extraction, K7.2) ». Rien à coller.
+
 
 K7.4 à K7.6 : annulées le 18/11/2026 (le diagnostic n'est plus prévu).
 
-K7.C. Checklist (ce que seul Kosmo peut vérifier, le JavaScript ne tourne pas dans le bac à sable). Le contrôle visuel
-prévu avec K7.4 à K7.6 est annulé le 18/11/2026.
+K7.C. Contrôle visuel en 2 minutes (ce que seul Kosmo peut vérifier : le JavaScript ne tourne pas dans le bac à sable).
+Lancez l'outil (K7.3), ouvrez une session dont des fléchettes ont une image vidéo et des segments, puis vérifiez :
 
-- Liste des sessions :
-  - une seule consigne affichée à la fois, jamais une consigne déjà faite ;
-  - chaque carte de session dit ce qui est fait et ce qui reste ; aucun « Dérive au-delà du seuil » ni « À recalibrer » ;
-  - la carte « Prochaine étape » est celle de la session annoncée, la consigne ne cite aucune touche et le bouton
-    « Continuer » ouvre l'étape annoncée ;
-  - Entrée lance « Continuer » seulement quand aucun autre bouton n'a le focus (après Tab sur un autre bouton, Entrée
-    active ce bouton-là).
-- Contrôle de calibration (K) :
-  - les 4 points proposés apparaissent déjà recalés, chacun dans sa vignette agrandie avec son état en toutes lettres ;
-  - un clic à quelques pixels du bon croisement déplace le point le plus proche et le recale exactement sur le
-    croisement (vignette à l'appui) ; un clic loin de tout croisement net donne « non recalé » ;
-  - Entrée enregistre seulement quand les 4 points sont prêts, même quand un bouton a le focus (après un clic sur
-    « Point caché (H) », Entrée enregistre) ; avec moins de 4 points elle affiche « Points prêts : n / 4 : placer les
-    points manquants » ; gardée enfoncée ou pressée deux fois vite, elle n'enregistre pas la photo suivante sans la voir ;
-  - en 1080p, les 4 vignettes, « Points prêts », « Enregistrer (Entrée) » et les boutons se voient ensemble sans
-    faire défiler, le schéma du cadran étant placé après les boutons ;
-  - sur le schéma, un point posé ou caché est vert, plein et marqué d'un « ✓ » (pas seulement la couleur) et le
-    prochain point est le jaune agrandi ;
-  - H sans point choisi ni point « à cliquer » affiche « Choisir le point à cacher : touche 1 à 4, puis H » et ne
-    cache rien ; les touches 1 à 4, H, U, Échap, la touche 0, la molette et K marchent, K aussi depuis « Terminé » ;
-  - « Points prêts : n / 4 » suit les changements et « Enregistré à HH:MM:SS » apparaît après Entrée ; la progression
-    « Photos contrôlées » augmente ;
-  - après un clic puis Échap, puis K, la même photo revient avec les points proposés ; U sans changement revient à la
-    photo précédente avec ses points ; un refus (en rouge, en haut) disparaît à l'action suivante.
-- Recalibration (R) :
-  - l'écran explique ce que fait une recalibration, sur le côté, et la photo reste entière à l'écran en 1080p sans
-    faire défiler ;
-  - elle propose les points en vigueur, recalés, et s'enregistre par Entrée.
-- Messages d'indisponibilité :
-  - lancé avec `python3` seul, l'outil s'ouvre et dit « Recalage indisponible : relancer l'outil avec
-    ~/kosmo-tool-venv/bin/python (K7.1b) » ;
-  - une session d'évaluation courte (moins de 55 fléchettes) n'a aucune image vidéo à contrôler : sa carte dit
-    « Contrôle vidéo : aucune image prévue pour cette session », jamais « Images vidéo absentes », et elle peut
-    être « Terminée » sans extraction ni image vidéo ;
-  - sans `--split`, la ligne en haut dit « Contrôle indisponible : relancer l'outil avec --split (K7.3) » et la carte
-    « Contrôle : indisponible (option --split absente) » ; sans `--frames`, la ligne dit « Images vidéo absentes :
-    lancer l'extraction (K7.2) » ; jamais « Contrôle terminé ».
+- Pointes : après la dernière pointe saisie, le message « Toutes les pointes sont saisies. Précédente (P) ou la liste
+  pour corriger. » apparaît.
+- Touche `V` sur une fléchette sans image vidéo : rien ne change, le message « Pas d'image vidéo pour cette fléchette. »
+  apparaît, et le bouton « Image vidéo (V) » est grisé.
+- Touche `V` sur une fléchette avec image vidéo : l'image s'affiche, avec le libellé « Image vidéo (lecture seule) » au-dessus de la photo ; `V` revient à la photo.
+- Légende sous les boutons : « + pointe », « □ 1 à 4 : points du segment (lecture seule) », puis « ○ C : contrôle
+  (lecture seule) » ou « ○ C : contrôle — aucun pour cette fléchette ».
+- Image vidéo affichée : un clic sur l'image ne pose aucune pointe et ne change rien.
+- Photo d'une fléchette couverte par un segment : des carrés numérotés 1 à 4 marquent les points du segment ; un contrôle
+  s'affiche en cercle marqué C. Ces repères ne bougent pas au clic.
+- Touches `R`, `K` et `1` à `4` : elles ne font rien, aucun écran de recalage ou de calibration ne s'ouvre.
+- Aucun texte « recalé » ni « non recalé » nulle part sur la page.
+- Un clic sur la photo pose la pointe, et la barre d'état affiche « Enregistré à HH:MM:SS » (comme en K2).
 
 ## Confirmation campaign protocol
 
